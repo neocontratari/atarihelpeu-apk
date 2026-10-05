@@ -34,90 +34,21 @@ a{color:#6ea8ff}
 </style></head><body>
 
 <h1>ATARI 130XE v C++</h1>
-<p class="pod">Vyvojova vetev. Puvodni Atari v nabidce bezi dal a tohle se ho nijak nedotyka.</p>
+<p class="pod">Zadni strana pristroje: log a testy. Puvodni ATARI 130XE EMULATOR v nabidce bezi dal a tohle se ho nijak nedotyka.</p>
 
-<h2 style="font-size:16px;margin:0 0 4px">ATARI Z ROM</h2>
-<p class="pod" style="margin:0 0 10px">Nabootuje se OS z tve ROM, pocka se na READY,
-napise se BYE a rizeni prevezme SELF-TEST v ROM. Nic z toho nekreslim ja.</p>
-<canvas id="plat" width="384" height="240"
-        style="width:100%;image-rendering:pixelated;background:#000;
-               border:1px solid #262931;border-radius:8px;display:block"></canvas>
-<div id="stavAtari" class="hot" style="margin:6px 0 10px">Nespusteno</div>
+<!-- B291: Rene - "proste v helpu atari emu bude to co jsi udelal a co jsem
+     ti odsouhlasil". Cele Atari 130XE ze schvaleneho navrhu (obrazovka,
+     klavesnice, konzole, kazetak, POWER, servisni tlacitka) uz NENI na teto
+     strance - kresli ho C++ primo na displej (AtariDeviceView nad touto
+     strankou). Tahle stranka je jen "zadni strana": log a testy. Pristroj ji
+     ukaze tlacitkem LOG/CHYBA, zpet se jde tlacitkem nize nebo sipkou zpet.
+     Puvodni platna (plat, kbdplat) a JS smycka emulace jsou pryc - stroj
+     krokuje vlastni C++ vlakno, takze tady by se jen pralo dve smycky. -->
+<button id="btnZpet" type="button" style="background:#1e5c33">&#9664; ZPET NA ATARI 130XE</button>
+<div id="stavPristroje" class="hot" style="margin:4px 0 14px">-</div>
 
-<!-- BUILD2SC1: Rene - "preved do apky sekce help atari c++ a dej si pozor
-     at mame emu atari 130xe v HELP ciste v c++." Klavesnice+konzole NEJSOU
-     HTML/CSS tlacitka - je to DRUHY obrazek, ktery si C++ sam vykresli
-     (nap_atari_keyboard.h) presne stejnym principem jako obraz atari
-     obrazovky vyse (surovy RGB -> base64 -> putImageData). Tahle stranka
-     jen zobrazi hotovy obrazek a posle zpatky, kam jsi sahl prstem -
-     zadna vlastni HTML logika tlacitek. Zatim jen klavesnice+konzolovy pas
-     (HELP/START/SELECT/OPTION/RESET) - kazetak a servisni tlacitka jsou
-     dalsi kolo. -->
-<!-- BUILD2SC2: image-rendering:pixelated ZAMERNE ODSTRANENO - puvodne tu
-     bylo, aby "sedelo" k hranatemu ROM fontu z prvni verze. Ted uz C++
-     kresli skutecny vyhlazeny font a gradienty (viz nap_atari_keyboard.h),
-     takze nearest-neighbor zmenseni by to naopak kazilo (zubate hrany) -
-     normalni (smooth) zmenseni prohlizece sedi lip. Atari OBRAZOVKY
-     (kresli()/plat vyse) se to netyka - tam je "pixelated" spravne,
-     protoze tam ma byt videt skutecny hranaty pixel emulovaneho Atari. -->
-<canvas id="kbdplat" width="706" height="1254"
-        style="width:100%;max-width:420px;display:block;margin:0 auto;
-               background:#444;touch-action:none;
-               border:1px solid #262931;border-radius:8px"></canvas>
-<div id="stavKbd" class="hot" style="margin:6px 0 10px;text-align:center">Klavesnice (C++)</div>
-
-<button id="btnBoot" type="button">1. NABOOTOVAT OS (pak uz bezi samo, presne jako skutecne Atari)</button>
-<button id="btnSt" type="button" style="background:#2a2d34">2. DO SELF-TESTU (BYE)</button>
 <div class="btny" style="margin-bottom:6px">
-  <button id="btnSel" style="background:#2a2d34">SELECT</button>
-  <button id="btnStart" style="background:#2a2d34">START</button>
-  <button id="btnOpt" style="background:#2a2d34">OPTION</button>
-</div>
-<div class="btny" style="margin-bottom:6px">
-  <button id="btnHelpKey" style="background:#2a2d34">HELP</button>
-  <button id="btnReturnKey" style="background:#2a2d34">RETURN</button>
-  <!-- BUILD2SB82: Rene - "RESET na realnem Atari zachovava napsany
-       kod, jen vymaze obrazovku - POWER maze vse a bootuje znovu."
-       RESET = skutecne Atari RESET tlacitko (nemaze pamet/hardware,
-       jen znovu nahodi procesor - opraveno, aby nemazalo ani PORTB
-       bankovani, tim byl program po resetu ztraceny) - i zachranna
-       brzda pri zaseknuti. POWER = fyzicky vypinac - vymaze VSE a
-       zavede system od zacatku, presne jako bootNative(). RETURN =
-       samotna klavesa Enter bez psani textu. -->
-  <button id="btnResetKey" style="background:#5c1e1e">RESET</button>
-  <button id="btnPowerKey" style="background:#5c1e1e">POWER</button>
-</div>
-<!-- BUILD2SB78: Rene - "poradny test musi byt takovy, ze se vypise
-     jen CSAVE/CLOAD BEZ tveho return - ten musim dat ja ne ty. Tam
-     muze byt chyba." Tlacitka NAPISI jen text, RETURN posila
-     uzivatel sam pres samostatne RETURN tlacitko nahore - presne
-     jako na realnem stroji (napsat prikaz, pockat, rozhodnout se
-     kdy stisknout RETURN, sledovat pipnuti). -->
-<div class="btny" style="margin-bottom:6px">
-  <button id="btnCsave" style="background:#2a2d34">NAPSAT: CSAVE (bez RETURN)</button>
-  <button id="btnCload" style="background:#2a2d34">NAPSAT: CLOAD (bez RETURN)</button>
-</div>
-<!-- BUILD2SB81: Rene - "z prikaz sam o sobe CSAVE musi ihned
-     ukladat na mobil zvuk ve wav - zadne jine pomocne tlacitko
-     neni treba." Samostatne "CSAVE -> ULOZIT WAV" tlacitko ZMIZELO -
-     samotne psani "CSAVE" (tlacitko vyse) ted SAMO automaticky
-     zaznamenava zvuk po celou dobu operace a uklada ho, viz
-     zahajNahravaniPriCsave() v hlavni smycce nize. -->
-<div class="btny" style="margin-bottom:6px">
-  <input id="prikazText" type="text" placeholder="Vlastni prikaz (napr. PRINT 1+1)"
-         style="flex:1;padding:11px;font-size:14px;border-radius:8px;border:1px solid #262931;background:#0f1013;color:#dfe3e8">
-  <button id="btnNapisPrikaz" style="width:auto;padding:11px 16px;background:#2a2d34">NAPSAT</button>
-</div>
-<!-- BUILD2SB55: Rene - "zrus pomocna tlacitka zvuku a grafiky. Po
-     botovani nabehne okamzite realne atari s opravdovym snimkovanim.
-     Po BYE self test - a tam v testu zvuku pobezi zvuk presne tak jak
-     na realnem atari." Zadna testovaci pomocna tlacitka - appka po
-     kliknuti na NABOOTOVAT jede sama, presnym tempem 50 snimku/s
-     (skutecny PAL Atari takt), s prubeznym zvukem. Nic se neda
-     "spustit" ani "prehrat" navic - bud appka bezi presne jako
-     skutecne Atari, nebo nebezi vubec. -->
-<div class="btny" style="margin-bottom:6px">
-  <input id="poznamkaText" type="text" placeholder="Co teď testuješ? (např. OPTION -> SOUND TEST)"
+  <input id="poznamkaText" type="text" placeholder="Co teď testuješ? (např. CSAVE po RETURN)"
          style="flex:1;padding:11px;font-size:14px;border-radius:8px;border:1px solid #262931;background:#0f1013;color:#dfe3e8">
   <button id="btnPoznamka" style="width:auto;padding:11px 16px;background:#2d6cdf">ZAPSAT</button>
 </div>
@@ -178,14 +109,12 @@ neuklada a bod 2 nefunguje. Poznas to i v logu podle radku
 </div>
 
 <p class="pozn">
-Zvuk tu zatim neni (POKEY jeste neni hotovy - jen tolik, aby ROM
-nezustala viset). Obraz uz je - ANTIC/GTIA po jednotlivych radkach,
-vcetne DLI, hracu a strel. Chybi jeste: kolize, skrolovani, GTIA
-rezimy 9/10/11, VBXE, joystick, kazeta.<br><br>
 Tenhle test pousti jadro na desetitisicich nahodnych stavu a porovnava vysledek
 s cislem, ktere vyslo na pocitaci. Delam to proto, ze pocitac je x86 a telefon
 ARM - a na ARM se nektere veci chovaji jinak. Kdyz se to rozejde, ma se to
-poznat ted, a ne az podle spatneho obrazu.
+poznat ted, a ne az podle spatneho obrazu.<br><br>
+B291: v C++ zatim chybi disketova mechanika (ATR) a cteni z pasky (CLOAD) -
+tlacitko ATR/DISK to na pristroji poctive napise, nic se nepredstira.
 </p>
 
 <p><a href="../index.html">&larr; Zpet do nabidky</a></p>
@@ -205,24 +134,30 @@ var KROKY=[
  {n:1,co:'Build v GitHub Actions',
   ok:'Build je zeleny.',
   ne:'Build je cerveny -> posli mi log z Actions.'},
- {n:2,co:'Rozcestnik po otevreni aplikace',
-  ok:'Sedm tlacitek jako dosud, nic preskladane.',
-  ne:'Cokoli je jinde, chybi nebo pribylo.'},
- {n:3,co:'ATARI 130XE EMULATOR - zahraj si chvili',
-  ok:'Bezi UPLNE STEJNE jako dosud. Obraz, zvuk, ovladani, rychlost.',
-  ne:'Jakakoli zmena proti minule verzi. Tohle je nejdulezitejsi krok.'},
- {n:4,co:'Tlacitko HELP',
-  ok:'Otevrela se tato tmava stranka ATARI 130XE v C++.',
-  ne:'Otevrel se stary napovedni panel, nebo je nahore cerveny pruh o knihovne.'},
- {n:5,co:'SPUSTIT TEST JADRA (nize na teto strance)',
-  ok:'Nahore naskoci ZELENY pruh OBOJI SEDI.',
-  ne:'Cerveny pruh NESEDI, hlaseni o chybe, nebo appka spadne.'},
- {n:6,co:'PS1 a SEGA - obraz i zvuk',
-  ok:'Obojí bezi stejne jako dosud, na mobilu i na televizi.',
-  ne:'Jakakoli zmena - ticho, trhani, jiny obraz.'},
- {n:7,co:'ZKOPIROVAT CELY LOG DO SCHRANKY (uplne dole)',
-  ok:'Tlacitko hlasi ZKOPIROVANO a pocet znaku.',
-  ne:'Hlasi NEPOVEDLO SE.'}
+ {n:2,co:'HELP v hlavni nabidce',
+  ok:'Naskoci cele Atari 130XE presne jako schvaleny navrh: obrazovka, klavesnice, konzole, kazetak, POWER, N&P logo, servisni tlacitka. Atari se samo zapne a nastartuje do READY.',
+  ne:'Chybi cokoli z navrhu, je to jinak, nebo appka spadne.'},
+ {n:3,co:'Zmackni par klaves a tlacitek (i rychle tuknuti)',
+  ok:'KAZDA klavesa i tlacitko se viditelne zamackne a pusti. Pismena se pisou na obrazovku Atari.',
+  ne:'Nektera klavesa/tlacitko se nezamackne nebo nepise.'},
+ {n:4,co:'SHIFT (i CONTROL)',
+  ok:'Tuknuti = zlate a zustane zamcene, dalsi tuknuti = odemceno. SHIFT+1 napise !',
+  ne:'Nezustane zamcene nebo nepise velke znaky.'},
+ {n:5,co:'Kazetak: PLAY, REC, STOP, EJECT, nulovani',
+  ok:'PLAY/REC drzi, civky se toci, pocitadlo bezi; STOP pusti; EJECT otevre dvirka, tuknuti na okenko je zavre; male tlacitko vynuluje pocitadlo.',
+  ne:'Cokoli z toho nefunguje.'},
+ {n:6,co:'CSAVE: napis CSAVE, RETURN, po pipnuti RETURN',
+  ok:'Slyset piskani a data, civky se toci; po konci je pod pristrojem CSAVE ULOZENO a soubor csave_vystup.wav v Download/AtariHelp/Atari_emu.',
+  ne:'Zadny WAV, nebo hlaska o chybe.'},
+ {n:7,co:'POWER (zeleny vypinac vlevo)',
+  ok:'Vypnuti: pristroj ztmavne, obrazovka zhasne, nic jineho nereaguje. Zapnuti: Atari nastartuje od zacatku.',
+  ne:'Nezhasne, nebo po zapnuti nenastartuje.'},
+ {n:8,co:'Servisni tlacitka: TURBO/BASIC, XEX/MOBIL, BASIC/TBXL TXT, HELP, MENU',
+  ok:'TURBO/BASIC spusti Turbo-BASIC XL; XEX/MOBIL vybere a spusti XEX/ZIP; TXT napise program; HELP ukaze napovedu; MENU vrati do nabidky.',
+  ne:'Nektere nereaguje nebo dela neco jineho.'},
+ {n:9,co:'ATARI 130XE EMULATOR, PS1 a SEGA v hlavni nabidce',
+  ok:'Bezi UPLNE STEJNE jako dosud.',
+  ne:'Jakakoli zmena proti minule verzi.'}
 ];
 var vysledky={};
 function vykresliKroky(){
@@ -257,421 +192,19 @@ function souhrn(){
   document.getElementById('souhrn').textContent=t;
 }
 
-var ctx=null;
-function kresli(j){
-  try{
-    if(!ctx) ctx=document.getElementById('plat').getContext('2d');
-    if(j.chyba){ $('stavAtari').textContent='Chyba: '+j.chyba; return; }
-    var bin=atob(j.rgb), img=ctx.createImageData(j.w,j.h), d=img.data;
-    for(var i=0,p=0,q=0;i<j.w*j.h;i++){
-      d[q++]=bin.charCodeAt(p++); d[q++]=bin.charCodeAt(p++);
-      d[q++]=bin.charCodeAt(p++); d[q++]=255;
-    }
-    ctx.putImageData(img,0,0);
-    $('stavAtari').textContent='PC=$'+j.pc.toString(16).toUpperCase()
-      +'  DLIST=$'+j.dlist.toString(16).toUpperCase()
-      +'  DMACTL=$'+j.dmactl.toString(16).toUpperCase()
-      +'  PORTB=$'+j.portb.toString(16).toUpperCase()
-      +'  snimku='+j.snimku+(j.jam?'  JADRO ZASEKNUTE':'');
-  }catch(e){ $('stavAtari').textContent='kresleni selhalo: '+e.message; }
-}
-function volej(f,arg){
-  try{
-    var vysledek=JSON.parse(arg===undefined?AHATARICPP[f]():AHATARICPP[f](arg));
-    // B287: driv se tu z "zvuk_b64" v odpovedi rovnou prehravalo pres JS
-    // Web Audio API (BUILD2SB79) - ted uz hraje primo jadro pres nativni
-    // OpenSL ES (viz atariZachytitCsaveZvukNative + nap_atari_audio_push
-    // v C++), takze JS uz nic prehravat nema. Pole "zvuk_b64" v JSON
-    // odpovedi tu z techhle volani (atariKonzole/atariHelp/atariBootReset)
-    // porad muze byt (Java strana se nemenila), proste se jen ignoruje.
-    return vysledek;
-  }
-  catch(e){ return {chyba:String(e.message||e)}; }
-}
-
-// ====================================================================
-// BUILD2SC1+SC2: KLAVESNICE + KONZOLE - viz komentar u <canvas id="kbdplat">
-// vyse. Stejny atob()+putImageData() vzorec jako kresli() pro atari
-// obrazovku, jen na druhem platne. Prekresluje se JEN po doteku (kbd
-// obrazek ~3,6 MB base64 pri rozliseni 706x1254 - BUILD2SC2 zvyseno z
-// puvodnich 471x836/~1,6 MB kvuli ostrejsimu pismu, viz KbdDeck::W/H -
-// porad OK, protoze na rozdil od atari obrazovky se nekresli 50x/s, jen
-// kdyz se nejake tlacitko/klavesa doopravdy zmeni).
-// ====================================================================
-var kbdCtx=null;
-function kresliKbd(j){
-  try{
-    if(!kbdCtx) kbdCtx=document.getElementById('kbdplat').getContext('2d');
-    if(!j||j.chyba){ $('stavKbd').textContent='Chyba: '+(j&&j.chyba||'?'); return; }
-    var bin=atob(j.rgb), img=kbdCtx.createImageData(j.w,j.h), d=img.data;
-    for(var i=0,p=0,q=0;i<j.w*j.h;i++){
-      d[q++]=bin.charCodeAt(p++); d[q++]=bin.charCodeAt(p++);
-      d[q++]=bin.charCodeAt(p++); d[q++]=255;
-    }
-    kbdCtx.putImageData(img,0,0);
-  }catch(e){ $('stavKbd').textContent='kresleni klavesnice selhalo: '+e.message; }
-}
-function obnovKbdObraz(){
-  try{ kresliKbd(JSON.parse(AHATARICPP.kbdObraz())); }
-  catch(e){ $('stavKbd').textContent='nelze precist obraz klavesnice: '+e.message; }
-}
-// Souradnice doteku na <canvas> (CSS pixely, muze byt zmensene/zvetsene
-// proti skutecnym 706x1254 - BUILD2SC2, drive 471x836, viz KbdDeck::W/H)
-// prevedeme na souradnice PRIMO v obrazku - presne tak, jak to ocekava
-// kbdHitTest v C++.
-function kbdSouradnice(e){
-  var r=document.getElementById('kbdplat').getBoundingClientRect();
-  var x=(e.clientX-r.left)*(706/r.width), y=(e.clientY-r.top)*(1254/r.height);
-  return [Math.round(x), Math.round(y)];
-}
-// Kazdy prst (pointerId) si drzi SVOJE id klavesy od pointerdown do
-// pointerup/cancel - umoznuje drzet SHIFT jednim prstem a tuknout
-// pismeno druhym (viz komentar u kbdHitTestNative v C++).
-var kbdDotekId={};
-function kbdPointerDown(e){
-  e.preventDefault();
-  var xy=kbdSouradnice(e), id=-1;
-  try{ id=AHATARICPP.kbdHitTest(xy[0],xy[1]); }catch(_e){}
-  if(id<0) return;
-  kbdDotekId[e.pointerId]=id;
-  try{ AHATARICPP.kbdDotek(id,1); }catch(_e){}
-  obnovKbdObraz();
-}
-function kbdPointerUp(e){
-  e.preventDefault();
-  var id=kbdDotekId[e.pointerId];
-  if(id===undefined) return;
-  delete kbdDotekId[e.pointerId];
-  try{ AHATARICPP.kbdDotek(id,0); }catch(_e){}
-  obnovKbdObraz();
-}
-(function(){
-  var c=document.getElementById('kbdplat');
-  c.addEventListener('pointerdown',kbdPointerDown,{passive:false});
-  c.addEventListener('pointerup',kbdPointerUp,{passive:false});
-  c.addEventListener('pointercancel',kbdPointerUp,{passive:false});
-  c.addEventListener('pointerleave',kbdPointerUp,{passive:false});
-})();
-setTimeout(obnovKbdObraz,250); // pocatecni (nezmacknuty) obrazek klavesnice
-
-$('btnBoot').addEventListener('click',function(){
-  this.textContent='BOOTUJI...'; var b=this;
-  setTimeout(function(){
-    // BUILD2SB80: Rene - "obraz uz hotovy, zvuk dohani o 5-15s
-    // pozdeji." Boot uz NEBEZI 600 snimku najednou - jen resetuje
-    // stroj (bleskove, bez zvuku) a hned spusti normalni smycku,
-    // ktera "boot animaci" (OS pocitaci test atd.) proste ODEHRAJE
-    // PRIROZENYM TEMPEM presne jako cokoli jineho - zvuk i obraz
-    // spolu, snimek po snimku, zadna fronta k dohaneni.
-    volej('atariBootReset');
-    b.textContent='1. NABOOTOVAT OS (pak uz bezi samo, presne jako skutecne Atari)';
-    obnovLog();
-    spustSmycku();
-  },50);
-});
-$('btnSt').addEventListener('click',function(){
-  this.textContent='PISI BYE...'; var b=this;
-  setTimeout(function(){
-    // BUILD2SB80: fronta klaves misto velkeho bloku - viz komentar
-    // u frontaKlaves vyse.
-    zaraditText('BYE'); zaraditReturn();
-    b.textContent='2. DO SELF-TESTU (BYE)'; obnovLog();
-  },50);
-});
-$('btnSel').addEventListener('click',function(){ volej('atariKonzole','select'); obnovLog(); });
-$('btnStart').addEventListener('click',function(){ volej('atariKonzole','start'); obnovLog(); });
-$('btnOpt').addEventListener('click',function(){ volej('atariKonzole','option'); obnovLog(); });
-$('btnHelpKey').addEventListener('click',function(){ volej('atariHelp'); obnovLog(); });
-$('btnReturnKey').addEventListener('click',function(){ zaraditReturn(); obnovLog(); });
-$('btnResetKey').addEventListener('click',function(){ volej('atariReset'); obnovLog(); });
-// BUILD2SB82: Rene - "POWER maze vse a bootuje znovu - pridej
-// tlacitko power." Presne stejna logika jako hlavni BOOT tlacitko -
-// kompletni obnova stroje od nuly, pak normalni smycka prirozene
-// odehraje cely start.
-$('btnPowerKey').addEventListener('click',function(){
-  var b=this; var puvodni=b.textContent;
-  b.textContent='VYPINAM A ZAPINAM...';
-  setTimeout(function(){
-    volej('atariBootReset');
-    b.textContent=puvodni; obnovLog();
-  },50);
-});
-// BUILD2SB81: Rene - "z prikaz sam o sobe CSAVE musi ihned ukladat
-// na mobil zvuk ve wav - zadne jine pomocne tlacitko neni treba."
-// Napsani "CSAVE" ted SAMO zahaji nahravani zvuku, ktery appka uz
-// beztak generuje pri normalnim behu (viz zahajNahravani nize a
-// hlavni smycka, kde se kazdy kousek zvuku KOPIRUJE i do nahravky,
-// kdyz bezi).
-$('btnCsave').addEventListener('click',function(){ zaraditText('CSAVE'); zahajNahravani('csave_vystup'); obnovLog(); });
-$('btnCload').addEventListener('click',function(){ zaraditText('CLOAD'); obnovLog(); });
-$('btnNapisPrikaz').addEventListener('click',function(){
-  var t=$('prikazText'); if(!t||!t.value.trim())return;
-  zaraditText(t.value.trim().toUpperCase()); zaraditReturn();
-  t.value=''; obnovLog();
-});
+// B291: zadna JS smycka ani kresleni - Atari krokuje a kresli C++ (viz
+// komentar nahore). Tady jen poznamky do logu a navrat na pristroj.
 $('btnPoznamka').addEventListener('click',function(){
   var t=$('poznamkaText'); if(!t||!t.value.trim())return;
   try{ AHATARICPP.atariPoznamka(t.value.trim()); }catch(e){}
   t.value=''; obnovLog();
 });
-/* BUILD2SB55: Rene - "zrus pomocna tlacitka zvuku a grafiky. Po
-   botovani nabehne okamzite realne atari s opravdovym snimkovanim. Po
-   BYE self test - a tam v testu zvuku pobezi zvuk presne tak jak na
-   realnem atari. Tam ja uvidim jestli to slape ci nikoli."
-   Zadna testovaci pomocna tlacitka, zadne rucni kroky, zadne "prehrat
-   2 vteriny zvuku na pozadani". JEDNA souvisla smycka, ktera bezi
-   PRESNYM TEMPEM skutecneho Atari (50 snimku/s, PAL) - ne rychleji,
-   ne pomaleji - dokud appka bezi. Video a zvuk se advancuji SPOLU,
-   snimek po snimku, takze zustavaji synchronizovane presne tak, jak
-   by byly na skutecnem stroji. */
-function napPoznamka(t){ try{AHATARICPP.atariPoznamka(t);}catch(_e){} }
-// B287: Rene - "chci ciste jadro atari emu v c++ - Java odhaduje a to je
-// problem... vyzaduji aby... bylo opravdu emu atari pod tlacitkem HELP
-// ciste v c++." Az do B286 appka prehravala zvuk OKLIKOU: JS Web Audio
-// API s rucnim odhadem/orezavanim fronty (AudioContext, dalsiZvukStart,
-// MAX_PREDSTIH_S/OREZANI_REZERVA_S...) - cela historie B257 az B286 (vc.
-// puvodniho "zahlcovani" a jeho postupnych oprav) je v gitu a
-// PREDAVACI_PROTOKOL, kdyby bylo treba se vratit. Ted uz nic z toho tady
-// neni: zvuk hraje PRIMO jadro pres nativni OpenSL ES (viz
-// nap_atari_audio_push + nap_atari_sl_* v nap_atari_native.cpp) - presne
-// vzor, jaky uz pouziva a ma overeny v produkci PS1 jadro teto appky.
-// Stav zvukove fronty (podtekani, zpozdeni) uz se taky NEODHADUJE v JS -
-// cte se primo z jadra (viz atariZvukDiag() nize ve smyckaTik).
-var zvukHlaseniPocitadlo=0;
-var smyckaBezi=false, posledniCas=null, zbytekCasu=0;
-var SNIMEK_S=1/50; // PAL Atari = presne 50 snimku za vterinu, stejne jako skutecny stroj
-var VZORKU_NA_SNIMEK=Math.round(44100/50);
-// BUILD2SB80: Rene - "obraz uz je hotovy, zvuk hraje az za 5-15s -
-// delay." PRICINA byla, ze psani textu/self-test/boot delalo VELKY
-// blok stovek snimku bleskove v jednom volani a pak vratilo hotovy
-// obraz OKAMZITE - ale zvuk pro tech nekolik simulovanych vterin se
-// MUSEL prehrat realnou rychlosti, takze vznikla fronta "zvuku z
-// minulosti" dohanejici uz hotovy obraz. OPRAVA: fronta klaves -
-// KAZDY stisk se ted odbavi presne stejnym tempem jako normalni beh,
-// jeden snimek za tik hlavni smycky, misto zvlastniho velkeho bloku.
-var frontaKlaves=[];
-// BUILD2SB80: presna kopie NativeAtariCoreBridge.kbcode() (Java) -
-// musi zustat DOSLOVA stejna, jinak by fronta klaves posilala jine
-// kody nez co appka doopravdy ocekava.
-function kbcodeJs(c){
-  switch((c||'').toUpperCase()){
-    case 'A': return 0x3F; case 'B': return 0x15; case 'C': return 0x12;
-    case 'D': return 0x3A; case 'E': return 0x2A; case 'F': return 0x38;
-    case 'G': return 0x3D; case 'H': return 0x39; case 'I': return 0x0D;
-    case 'J': return 0x01; case 'K': return 0x05; case 'L': return 0x00;
-    case 'M': return 0x25; case 'N': return 0x23; case 'O': return 0x08;
-    case 'P': return 0x0A; case 'Q': return 0x2F; case 'R': return 0x28;
-    case 'S': return 0x3E; case 'T': return 0x2D; case 'U': return 0x0B;
-    case 'V': return 0x10; case 'W': return 0x2E; case 'X': return 0x16;
-    case 'Y': return 0x2B; case 'Z': return 0x17;
-    case '\n': return 0x0C;
-    case ' ': return 0x21;
-    default: return -1;
-  }
+$('btnZpet').addEventListener('click',function(){
+  try{ AHATARICPP.zobrazZarizeni(); }catch(e){}
+});
+function obnovStav(){
+  try{ $('stavPristroje').textContent=AHATARICPP.stavZarizeni(); }catch(e){ $('stavPristroje').textContent='-'; }
 }
-function zaraditText(text){
-  if(!text) return;
-  for(var i=0;i<text.length;i++){
-    var kod=kbcodeJs(text[i]);
-    if(kod<0) continue;
-    // BUILD2SB80 KRITICKE: klavesa(kod) v jadru KAZDYM volanim
-    // znovu vyvola preruseni klavesnice (IRQ) - kdybychom kod poslali
-    // 8x (jednou za snimek), appka by to videla jako OSM
-    // SAMOSTATNYCH stisknuti, ne jedno drzene po dobu 8 snimku!
-    // Kod se proto posle jen NA PRVNIM snimku drzeni - zbylych 7
-    // snimku jen bezi dal (-1 = nesahat na klavesnici), a klavesa
-    // zustane "drzena" sama od sebe, presne jako pri drzeni prstu.
-    frontaKlaves.push(kod);
-    for(var f=0;f<7;f++) frontaKlaves.push(-1);
-  }
-}
-function zaraditReturn(){
-  frontaKlaves.push(kbcodeJs('\n'));
-  for(var f=0;f<7;f++) frontaKlaves.push(-1);
-}
-// BUILD2SB81: Rene - "z prikaz sam o sobe CSAVE musi ihned ukladat
-// na mobil zvuk ve wav." Appka uz beztak generuje zvuk KAZDY snimek
-// v hlavni smycce (viz nize) - staci kdyz se, dokud "nahravkaBezi"
-// je true, KAZDY takovy kousek TAKE ulozi do pole, misto jen
-// prehravat. Po urcite dobe (bezpecna rezerva i pro delsi programy)
-// se vsechny kousky slozi dohromady a posle k ulozeni jako .wav -
-// presne to same, co uz overene fungovalo v puvodni atariCsaveDoWav,
-// jen ted BEZ zvlastniho vyvolavani operace - jen sbira, co uz beztak
-// probiha.
-var nahravkaBezi=false, nahravkaKousky=[], nahravkaNazev='csave_vystup';
-// BUILD2SB92: Rene - "cim vic csave tim se lag zvetsuje...vyhazuj
-// nepotrebne veci z pameti za chodu." Predtim se nahravani VZDY
-// ukoncilo az po pevnych 50000ms, bez ohledu na to, ze skutecne
-// CSAVE davno doiehalo (~24s) - kazde spusteni tak drzelo v pameti
-// desitky vterin zvuku navic (primo overeno logem appky: ulozeny WAV
-// mel VZDY presne 4418820 bajtu = 50,1s). OPRAVA: sledovat SKUTECNY
-// kazetovy motor (novy most atariMotorZapnuty->PACTL bit3) - jakmile
-// appka jednou uvidi motor BEZET a pak ho uvidi STAT, je to skutecny
-// konec CSAVE prenosu a nahravani se ukonci HNED. Pevnych 50s
-// zustava jen jako zalozni pojistka pro pripad, ze by motor z
-// nejakeho duvodu nikdy nezhasl.
-var nahravkaVidelaZapnutyMotor=false;
-function zahajNahravani(nazev){
-  nahravkaBezi=true; nahravkaKousky=[]; nahravkaNazev=nazev||'csave_vystup';
-  nahravkaVidelaZapnutyMotor=false;
-  clearTimeout(window._nahravkaTimeout);
-  // OPRAVA B283: puvodni komentar tvrdil "zmereno ~28s pro 100radkovy
-  // program" - PO KONTROLE to NEBYLO skutecne zmereno (CLI test pouziva
-  // stejnou zaraditText()/kbcodeJs() jako appka - viz vyse - ktera umi
-  // jen pismena/mezeru/RETURN, takze cislice radkovych cisel by v ni
-  // zmizely a zadny skutecny 100radkovy program by tak nikdy nevznikl).
-  // OPRAVENO na pravdive tvrzeni: skutecne zmereno je jen CSAVE
-  // minimalniho programu (~24s), 50s tomu dava ~2x rezervu. Delsi
-  // programy nejsou touhle cestou zmeritelne a samostatne zmereny
-  // nejsou. Nevadi to ale na bezpecnosti - tohle je POUZE zalozni
-  // pojistka pro pripad, ze by detekce konce motoru (viz vyse) selhala;
-  // za normalnich okolnosti ukonci nahravani VZDY drive ona, nezavisle
-  // na delce programu (sleduje skutecny stav motoru, ne pevny cas). I
-  // kdyby tahle pojistka musela zasahnout, vysledek je presne stejny
-  // jako puvodni chovani appky pred B282 (pevnych 50s) - zadna regrese,
-  // jen uz to neni JEDINY mechanismus ukonceni.
-  window._nahravkaTimeout=setTimeout(ukoncitNahravani, 50000);
-}
-function pripojKeNahravce(b64){
-  if(!b64) return;
-  var bin=atob(b64), n=bin.length;
-  var bajty=new Uint8Array(n);
-  for(var i=0;i<n;i++) bajty[i]=bin.charCodeAt(i);
-  nahravkaKousky.push(bajty);
-}
-// BUILD2SB94: Rene po B285 (log): "furt to neni 1ku1." Zmereno (Node,
-// presna kopie algoritmu nize, ~2.5MB - presne Reneho velikost WAV):
-// samotne SPOJENI kousku je levne (~1.7ms), ale base64 KODOVANI
-// (String.fromCharCode.apply po 8190 bajtech, ~300x za sebou) stoji
-// ~20-25ms na rychlem stolnim stroji - na realnem (pomalejsim)
-// telefonu to muze byt klidne vic. Tahle cela prace drive bezela
-// NARAZ, JEDNIM synchronnim behem, presne v okamziku, kdy motor
-// kazety zhasne (= CSAVE "konci") - tedy presne kdyz appka normalne
-// pokracuje dal (napr. do self-testu) - a blokovala hlavni vlakno
-// (a tim i hlavni smycku/generovani zvuku) po celou tu dobu najednou.
-// OPRAVA: stejne kodovani, stejny vysledny soubor (zadna zmena
-// vystupu), ale rozdelene na male davky po KUSU_NA_TIK kousku,
-// zpracovane PRES VICE TIKU UDALOSTNI SMYCKY (setTimeout 0) - takze
-// hlavni vlakno nikdy neni blokovane vic nez cca jeden maly kousek
-// najednou, misto cele davky v jednom kuse.
-function ukoncitNahravani(){
-  if(!nahravkaBezi) return;
-  clearTimeout(window._nahravkaTimeout); // BUILD2SB92: at uz konci z detekce motoru nebo z timeoutu, nikdy obojí
-  nahravkaBezi=false;
-  var kousky=nahravkaKousky; nahravkaKousky=[];
-  var celkem=0;
-  for(var i=0;i<kousky.length;i++) celkem+=kousky[i].length;
-  var spojene=new Uint8Array(celkem);
-  var pozice=0;
-  for(var i=0;i<kousky.length;i++){ spojene.set(kousky[i],pozice); pozice+=kousky[i].length; }
-  // Uint8Array -> base64 (bez atob/btoa limitu na velikost - po castech)
-  // BUILD2SB90: Rene - "csave se neuklada." NALEZENA PRESNA PRICINA
-  // (primo overeno v Pythonu, ne odhad): 8192 NENI delitelne tremi -
-  // base64 kóduje po skupinach 3 bajtu -> 4 znaky, takze KAZDY kus o
-  // velikosti nedelitelne 3 dostane VLASTNI vycpavkove znaky "="
-  // UPROSTRED vysledneho retezce (ne jen na konci) - presne to
-  // zpusobuje "bad base-64"/"Excess data after padding" chybu, co
-  // se objevovala v logu. Oprava: KUS musi byt delitelny 3, aby
-  // KAZDY kus (krome posledniho) vysel jako "cely" base64 blok bez
-  // vycpavky uprostred.
-  var KUS=8190; // 8190 = 2730*3, delitelne tremi
-  var KUSU_NA_TIK=40; // ~40*8190=~328KB/tik - male davky, zadna jednotliva nezpusobi vlastni mezeru
-  var b64Casti=[], i=0;
-  function pokracovatKodovani(){
-    var zpracovano=0;
-    while(i<spojene.length && zpracovano<KUSU_NA_TIK){
-      var podpole=spojene.subarray(i,Math.min(i+KUS,spojene.length));
-      b64Casti.push(btoa(String.fromCharCode.apply(null,podpole)));
-      i+=KUS; zpracovano++;
-    }
-    if(i<spojene.length){ setTimeout(pokracovatKodovani,0); return; }
-    ulozitDokonceny(b64Casti.join(''));
-  }
-  function ulozitDokonceny(b64){
-    var vysledek;
-    try{ vysledek=JSON.parse(AHATARICPP.atariUlozitZvukJakoWav(b64, nahravkaNazev)); }
-    catch(e){ vysledek={chyba:String(e.message||e)}; }
-    if(vysledek && vysledek.cesta){ napPoznamka('CSAVE_WAV_ULOZENO '+vysledek.cesta); }
-    else if(vysledek && vysledek.chyba){ napPoznamka('CSAVE_WAV_CHYBA '+vysledek.chyba); }
-  }
-  pokracovatKodovani();
-}
-// BUILD2SB55: volej() ocekava JSON odpoved (pouziva JSON.parse) - ale
-// audioChunk vraci HOLY base64 retezec (viz duvod v nap_atari_native.cpp -
-// vola se ~50x/s, JSON obal by byl zbytecna rezie). Proto samostatna
-// varianta bez JSON.parse.
-function volej0(f,arg){
-  try{ return AHATARICPP[f](arg); }catch(e){ return ''; }
-}
-function smyckaTik(ted){
-  if(!smyckaBezi) return;
-  if(posledniCas===null) posledniCas=ted;
-  var delta=(ted-posledniCas)/1000;
-  posledniCas=ted;
-  // BUILD2SB55: kdyz appka byla na chvili na pozadi (zamceny telefon,
-  // prepnuta karta...), "delta" muze byt obrovska - orezat, at se
-  // appka nesnazi "dohnat" minuty naraz (zamrzla by na chvili uplne).
-  if(delta>0.25) delta=0.25;
-  zbytekCasu+=delta;
-  var kroku=0, posledniObraz=null;
-  while(zbytekCasu>=SNIMEK_S && kroku<10){ // strop 10 snimku/tik - i kdyby prohlizec chvili zadrhl, nedohanet donekonecna
-    kroku++;
-    var jePosledni = (zbytekCasu-SNIMEK_S < SNIMEK_S || kroku===10);
-    // BUILD2SB80: pokud fronta kláves neco ceka (psani textu, RETURN,
-    // BYE pro self-test...), tenhle snimek "drzi" prave TU klavesu -
-    // presne stejnym zpusobem, jakym by ji drzel prst na skutecne
-    // klavesnici, jeden snimek soucasneho normalniho behu po druhem.
-    var kod = frontaKlaves.length>0 ? frontaKlaves.shift() : -1;
-    // BUILD2SB71: drahy atariObraz() (JSON parse + base64 obrazek) jen
-    // pro POSLEDNI snimek davky - ten jediny se stejne vykresli. Ostatni
-    // snimky jen posunout levnym atariAdvance() (zadny navrat dat).
-    if(jePosledni){
-      volej0('atariKrokSKlavesou', kod);
-      posledniObraz=volej('atariObraz',0); // uz NEadvancuje - krok uz probehl vyse
-    } else {
-      volej0('atariKrokSKlavesou', kod);
-    }
-    // B287: atariAudioChunk se MUSI volat KAZDY snimek, bez podminky -
-    // je to jedine misto, kde jadro krokuje svuj zvukovy generator
-    // (genAudio) pro prubezny beh, a ten musi jet presne 1x za snimek,
-    // at zvuk nezrychli/nezpomali (viz nap_atari_native.cpp). Vracena
-    // data uz JS NEPREHRAVA (hraje primo jadro pres OpenSL ES) - pouziva
-    // se VYHRADNE pro CSAVE->WAV nahravku, kdyz bezi.
-    var kousekZvuku=volej0('atariAudioChunk',VZORKU_NA_SNIMEK);
-    if(nahravkaBezi){
-      pripojKeNahravce(kousekZvuku);
-      // BUILD2SB92: skutecny konec CSAVE = motor byl videt ZAPNUTY
-      // a ted je VYPNUTY. Nez appka motor aspon jednou uvidi bezet,
-      // nic neukoncuje (kdyby nahodou SEROUT/PACTL zapis prisel az
-      // o snimek pozdeji nez zahajNahravani()). Volano PRIMO (ne
-      // pres volej0) - je to bezargumentove volani vracejici cislo,
-      // presne jako ostatni bezargumentove AHATARICPP.* metody v
-      // tomhle souboru, zadny JSON obal netreba.
-      var motorTed=0;
-      try{ motorTed=AHATARICPP.atariMotorZapnuty(); }catch(e){}
-      if(motorTed) nahravkaVidelaZapnutyMotor=true;
-      if(nahravkaVidelaZapnutyMotor && !motorTed) ukoncitNahravani();
-    }
-    zbytekCasu-=SNIMEK_S;
-  }
-  if(posledniObraz) kresli(posledniObraz);
-  // B287: hlasit stav zvukove fronty kazdych ~5s (250 tiku pri ~50/s) -
-  // stejna kadence jako drive (BUILD2SB64), ale zdroj pravdy je ted
-  // PRIMO nativni (C++/OpenSL) fronta, zadny JS odhad (viz
-  // atariZvukDiagNative v C++).
-  zvukHlaseniPocitadlo++;
-  if(zvukHlaseniPocitadlo%250===0){
-    try{ var diag=AHATARICPP.atariZvukDiag(); if(diag) napPoznamka(diag); }catch(e){}
-  }
-  requestAnimationFrame(smyckaTik);
-}
-function spustSmycku(){
-  if(smyckaBezi) return;
-  smyckaBezi=true;
-  posledniCas=null; zbytekCasu=0;
-  requestAnimationFrame(smyckaTik);
-}
-
 function nactiCesty(){
   try{
     var c=JSON.parse(AHATARICPP.cestyKLogu());
@@ -697,7 +230,7 @@ $('btnCopy').addEventListener('click',function(){
   }catch(e){ b.textContent='NEPOVEDLO SE: '+e.message; }
   setTimeout(function(){ nactiCesty(); obnovLog(); },300);
 });
-$('btnRefresh').addEventListener('click',function(){ obnovLog(); nactiCesty(); });
+$('btnRefresh').addEventListener('click',function(){ obnovStav(); obnovLog(); nactiCesty(); });
 vykresliKroky(); souhrn();
 setTimeout(function(){ nactiCesty(); obnovLog(); },200);
 

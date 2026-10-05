@@ -9,8 +9,15 @@ android {
         applicationId "eu.atarihelp.emu10.test"  // TEST vedle prave apky (neprepise ji)
         minSdk 24
         targetSdk 34
-        versionCode 333
-        versionName "EMU10-B287-ATARI-ZVUK-NATIVNI-OPENSL"  // Rene po B286:
+        versionCode 334
+        versionName "EMU10-B291-ATARI-HELP-ZARIZENI-CPP"
+        // B291: Rene po B290 - "to preved v helpu presne tak vcetne kazetaku a
+        // obrazovky - podle toho navrhu na kterem jsme se dohodli". Cele Atari
+        // 130XE ze schvaleneho navrhu (obrazovka, klavesnice, konzole, kazetak,
+        // POWER, N&P logo, servisni tlacitka) kresli a ridi C++ primo na
+        // displej (AtariDeviceView + nap_atari_device.h), emulace ve vlastnim
+        // C++ vlaknu. Viz CO_JE_V_B291.md.
+        // (puvodni komentar B287:) Rene po B286:
         // "Ne - tu kontrolu udelej jeste pred testem - chci ciste jadro
         // atari emu v c++ - Java odhaduje a to je problem - Partaku
         // nelakuj me - atari emu v jave je v aplikaci. Proto ted delame

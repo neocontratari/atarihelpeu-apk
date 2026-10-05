@@ -82,15 +82,22 @@ public final class NativeAtariCoreBridge {
     // index.html a komentar u C++ funkce.
     private static native int motorZapnutyNative();
 
-    // BUILD2SC1: klavesnice+konzole v C++ (viz nap_atari_keyboard.h). Stejny
-    // tvar jako screenNative() - C++ vykresli cely obrazek klavesnice jako
-    // RGB a vrati base64, zadne HTML/CSS tlacitko. kbdTouchNative dostane
-    // jen ID klavesy/tlacitka (jak ho vratil hitTest v JS - viz index.html)
-    // a jestli je dole(1)/nahoru(0) - samo si v C++ poradi se SHIFT/CTRL
-    // zamky, konzolovym drzenim i jednorazovymi akcemi (HELP, RESET, BREAK).
-    private static native String kbdScreenNative();
-    private static native int    kbdHitTestNative(int x, int y);
-    private static native void   kbdTouchNative(int id, int dolu);
+    // B291: CELE zarizeni Atari 130XE ze schvaleneho navrhu (obrazovka,
+    // klavesnice, konzole, kazetak, POWER, servisni tlacitka) kresli a ridi
+    // C++ (nap_atari_device.h + vlakna v nap_atari_native.cpp) PRIMO na
+    // displej pres SurfaceView (AtariDeviceView) - zadny JavaScript ani
+    // base64 obrazek jako v B289/B290 (tam se stisk na telefonu nestihl
+    // ukazat). Java sem jen preda plochu displeje a souradnice prstu.
+    private static native void    devStartNative(boolean studeny);
+    private static native void    devStopNative();
+    private static native void    devSurfaceNative(android.view.Surface s, int w, int h);
+    private static native int     devTouchNative(int pointerId, int akce, float x, float y);
+    private static native int     devTypeTextNative(String text, boolean runPotom);
+    private static native boolean devLoadXexNative(byte[] data, String jmeno);
+    private static native void    devStatusNative(String zprava, int ms);
+    private static native String  devPollLogNative();
+    private static native byte[]  devTakeWavNative();
+    private static native String  devInfoNative();
 
     // B287: Rene - "chci ciste jadro atari emu v c++ - Java odhaduje a to
     // je problem... vyzaduji aby... bylo opravdu emu atari pod tlacitkem
@@ -197,19 +204,47 @@ public final class NativeAtariCoreBridge {
         try { return atariZvukDiagNative(); } catch (Throwable t) { return null; }
     }
 
-    /** BUILD2SC1: bezpecne wrappery pro klavesnici+konzoli v C++. */
-    public static String kbdScreenSafe() {
-        if (!loaded) return "{\"chyba\":\"knihovna napatari se nenacetla\"}";
-        try { String r = kbdScreenNative(); return r == null ? "{\"chyba\":\"nic\"}" : r; }
-        catch (Throwable t) { return "{\"chyba\":\"" + String.valueOf(t.getMessage()).replace('"','\'') + "\"}"; }
-    }
-    public static void kbdTouchSafe(int id, int dolu) {
+    /** B291: bezpecne wrappery pro zarizeni v HELP (nikdy nehodi vyjimku). */
+    public static void devStartSafe(boolean studeny) {
         if (!loaded) return;
-        try { kbdTouchNative(id, dolu); } catch (Throwable ignored) {}
+        try { devStartNative(studeny); } catch (Throwable ignored) {}
     }
-    public static int kbdHitTestSafe(int x, int y) {
-        if (!loaded) return -1;
-        try { return kbdHitTestNative(x, y); } catch (Throwable t) { return -1; }
+    public static void devStopSafe() {
+        if (!loaded) return;
+        try { devStopNative(); } catch (Throwable ignored) {}
+    }
+    public static void devSurfaceSafe(android.view.Surface s, int w, int h) {
+        if (!loaded) return;
+        try { devSurfaceNative(s, w, h); } catch (Throwable ignored) {}
+    }
+    /** akce: 0 = prst dolu, 1 = nahoru, 2 = zruseno. Vraci servisni akci (0 = zadna). */
+    public static int devTouchSafe(int pointerId, int akce, float x, float y) {
+        if (!loaded) return 0;
+        try { return devTouchNative(pointerId, akce, x, y); } catch (Throwable t) { return 0; }
+    }
+    public static int devTypeTextSafe(String text, boolean runPotom) {
+        if (!loaded || text == null) return 0;
+        try { return devTypeTextNative(text, runPotom); } catch (Throwable t) { return 0; }
+    }
+    public static boolean devLoadXexSafe(byte[] data, String jmeno) {
+        if (!loaded || data == null) return false;
+        try { return devLoadXexNative(data, jmeno); } catch (Throwable t) { return false; }
+    }
+    public static void devStatusSafe(String zprava, int ms) {
+        if (!loaded) return;
+        try { devStatusNative(zprava, ms); } catch (Throwable ignored) {}
+    }
+    public static String devPollLogSafe() {
+        if (!loaded) return null;
+        try { return devPollLogNative(); } catch (Throwable t) { return null; }
+    }
+    public static byte[] devTakeWavSafe() {
+        if (!loaded) return null;
+        try { return devTakeWavNative(); } catch (Throwable t) { return null; }
+    }
+    public static String devInfoSafe() {
+        if (!loaded) return "B291 PRISTROJ knihovna napatari neni nactena";
+        try { return devInfoNative(); } catch (Throwable t) { return "B291 PRISTROJ stav: chyba " + t.getMessage(); }
     }
 
     /** Vrati vysledek jako JSON. Nikdy nehodi vyjimku. */

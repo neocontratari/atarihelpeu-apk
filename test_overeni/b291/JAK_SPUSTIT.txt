@@ -1,0 +1,36 @@
+B291 - testy zarizeni Atari 130XE v HELP (vse na obycejnem Linuxu s g++)
+========================================================================
+
+Spoustet z adresare test_overeni/b291. JAVA_HOME = cesta k JDK (kvuli jni.h),
+napr. /usr/lib/jvm/java-21-openjdk-amd64.
+
+1) Beh Atari bez Androidu (psani klavesnici, CSAVE -> WAV):
+   g++ -std=c++17 -O2 -I../../app/src/main/cpp/atari -o test_b291_runtime \
+       test_b291_runtime.cpp ../../app/src/main/cpp/atari/nap_atari_cpu.cpp
+   ./test_b291_runtime                     -> VYSTUP_test_b291_runtime.txt
+
+2) SKUTECNY nap_atari_native.cpp (stejny soubor jako v appce) se SKUTECNYMI
+   vlakny emulace a kresleni; Android (okno displeje, OpenSL, JNIEnv) je
+   nahrazen malymi nahradami v stub/. Test "saha prstem" na pristroj presne
+   jako Java (devTouchNative):
+   g++ -std=c++17 -O2 -pthread -Istub -I$JAVA_HOME/include \
+       -I$JAVA_HOME/include/linux -I../../app/src/main/cpp/atari \
+       -o test_b291_jni_host test_b291_jni_host.cpp \
+       ../../app/src/main/cpp/atari/nap_atari_cpu.cpp
+   ./test_b291_jni_host                    -> VYSTUP_test_b291_jni_host.txt
+   ./test_b291_jni_host - csave            -> VYSTUP_test_b291_jni_host_csave.txt
+
+3) Obrazek pristroje (PPM) + rychlost kresleni:
+   g++ -std=c++17 -O2 -I../../app/src/main/cpp/atari -o render_b291 \
+       render_b291.cpp ../../app/src/main/cpp/atari/nap_atari_cpu.cpp
+   ./render_b291 pristroj.ppm 1080 100     (100 = rozlozeni jako na telefonu)
+   ./render_b291 stisky.ppm 1000 1         (1 = stisky, 2 = vypnuto, 3 = dvirka)
+
+4) Vygenerovani nap_atari_fonts2.h a nap_atari_logo.h:
+   python3 gen_b291_assets.py <adresar s ChakraPetch-Medium.ttf a
+                               SpaceMono-Regular.ttf> ../..
+
+Kontrola shody s navrhem: obrazek z bodu 3 se porovnaval s obrazkem, ktery
+z PRESNE stejneho CSS schvaleneho navrhu (Main.dc.html) vykreslil Chromium
+(Playwright) pri sirce pristroje 376 CSS px (jak ho Rene videl na telefonu).
+Texty sedi na 0-1 px, tvary/barvy/stiny odpovidaji.

@@ -32,6 +32,25 @@ struct Machine {
   int nmien = 0, nmist = 0x1F;
   int line = 0;            // scanline 0..311 (PAL)
   long long frame = 0;
+  // B291: pocet zapisu do SEROUT ($D20D) - zarizeni v HELP podle nej pozna,
+  // ze behem behu kazetoveho motoru doopravdy odchazela data (CSAVE), a ne
+  // jen cteni (CLOAD). Jen pocitadlo, na emulaci samotnou nema vliv.
+  long long seroutPocet = 0;
+  // B291: viz runScanline - zkratka SIO jen pro zavadeni XEX (vychozi VYPNUTO)
+  bool sioRychlyTimeout = false;
+  long long sioZkratek = 0;
+  void sioHnedTimeout() {
+    // Navrat ze SIOV ($E459) se stavem 138 (timeout = zarizeni neodpovida):
+    // DSTATS=138, Y=138 (N=1), a RTS na volajiciho - presne to, co by OS
+    // dostal po vyprseni casu bez pripojene mechaniky.
+    mem.ram[0x303] = 138;
+    cpu.c.y = 138; cpu.c.nf = 1; cpu.c.zf = 0;
+    cpu.c.sp = (cpu.c.sp + 1) & 0xFF; int lo = mem.ram[0x100 | cpu.c.sp];
+    cpu.c.sp = (cpu.c.sp + 1) & 0xFF; int hi = mem.ram[0x100 | cpu.c.sp];
+    cpu.c.pc = (((hi << 8) | lo) + 1) & 0xFFFF;
+    cpu.c.cycles += 6;
+    sioZkratek++;
+  }
 
   // GTIA
   int hposp[4] = {0,0,0,0}, hposm[4] = {0,0,0,0};
@@ -329,6 +348,7 @@ struct Machine {
         // dostane "pripraveno na dalsi" AZ KDYZ predchozi bajt
         // doopravdy cely dohral, presne jako na skutecnem hardwaru.
         serout = v;
+        seroutPocet++;
         const int SCANLINE_NA_BAJT = (int)((1773447.0/600.0)*10.0/114.0 + 0.5); // ~260
         // BUILD2SB86 KRITICKA POJISTKA (znovuobjeveny puvodni problem
         // z B268 komentare vyse): outBusy a shiftBusy NESMI byt
@@ -822,7 +842,14 @@ struct Machine {
 
     // TEPRVE TED procesor - behem nej se zaznamenavaji zapisy do GTIA
     const long long konec = lineCyc0 + 114;
-    while (cpu.c.cycles < konec && !cpu.c.jam) cpu.step();
+    while (cpu.c.cycles < konec && !cpu.c.jam) {
+      // B291: jen behem zavadeni XEX v HELP (viz XexLoader v nap_atari_runtime.h):
+      // OS se pri startu snazi zavest disk D1:, ktery tu neni - misto ~10 s
+      // cekani na odpoved SIO hned vratit "zarizeni neodpovida" (138).
+      // Mimo zavadeni XEX je priznak vypnuty a beh je PRESNE jako driv.
+      if (sioRychlyTimeout && cpu.c.pc == 0xE459) { sioHnedTimeout(); continue; }
+      cpu.step();
+    }
 
     if (viditelna) {
       const int y = line - 8;

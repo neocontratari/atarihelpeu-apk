@@ -34,19 +34,29 @@
 // BUILD2SC2: skutecny font (Chakra Petch, presne jako schvaleny navrh) pres
 // stb_truetype.h - jediny .cpp v projektu, kde se STB_TRUETYPE_IMPLEMENTATION
 // skutecne preklada (standardni vzorec pro "single header" knihovny: vsude
-// jinde, vcetne nap_atari_keyboard.h, se jen deklaruje bez teto makro -
+// jinde, vcetne nap_atari_device.h (B291), se jen deklaruje bez teto makro -
 // overeno primo ve zdroji stb_truetype.h, ze implementace NENI zavisla na
 // poradi/vicenasobnem includu deklaraci, jen na tomhle makru).
 #define STB_TRUETYPE_IMPLEMENTATION
 #include "../vendor/stb/stb_truetype.h"
-// KRITICKE: nap_atari_keyboard.h nize taky dela #include stb_truetype.h
+// KRITICKE: nap_atari_device.h nize taky dela #include stb_truetype.h
 // (jen pro deklarace). Kdyby STB_TRUETYPE_IMPLEMENTATION zustalo
 // definovane, tenhle druhy #include by znovu zkompiloval CELOU
 // implementaci -> "redefinition" chyby (chyceno primo v test_b2sc1 -
 // standalone g++ build to odhalil driv, nez by to zkazilo NDK/CI build).
 #undef STB_TRUETYPE_IMPLEMENTATION
-#include "nap_atari_keyboard.h"    // BUILD2SC1+SC2: klavesnice+konzole v C++, cista (bez JNI) cast - viz test_b2sc1
+// B291: cele zarizeni Atari 130XE ze schvaleneho navrhu (nahrazuje
+// nap_atari_keyboard.h z B289/B290 - ta umela jen klavesnici a konzoli)
+#include "nap_atari_device.h"
+#include "nap_atari_runtime.h"
 #include <string>
+#include <thread>
+#include <mutex>
+#include <condition_variable>
+#include <chrono>
+#include <android/native_window.h>
+#include <android/native_window_jni.h>
+#include <sys/resource.h>
 
 // BUILD2SB79: presunuto sem (z puvodniho mista dale v souboru) - musi
 // byt dostupne uz pro bootNative() vyse, ktera ted take zachytava a
@@ -228,10 +238,10 @@ Java_eu_atarihelp_emu10_NativeAtariCoreBridge_runSelfTest(JNIEnv *env, jclass) {
 // ---------------------------------------------------------------
 static Machine   *g_stroj = nullptr;
 static AnticView *g_view  = nullptr;
-// BUILD2SC1: klavesnice+konzole - viz nap_atari_keyboard.h. Staticka,
-// stejny duvod jako g_mem vyse (zadny Android thread hazard, appka ji
-// pouziva jen z JNI volani z JS smycky).
-static KbdDeck g_kbd;
+// B291: stroj ted krokuje VLASTNI nativni vlakno (emulace zarizeni v HELP),
+// ne JS smycka. Kazdy pristup ke g_stroj/g_view - z JNI i z vlakna - proto
+// probiha POD TIMHLE ZAMKEM, aby se dve vlakna nikdy nepotkala uvnitr stroje.
+static std::mutex g_mStroj;
 
 static void zaloz() {
   if (!g_stroj) g_stroj = new Machine();
@@ -293,7 +303,11 @@ static SLObjectItf s_atariSlMixObj = nullptr;
 static SLObjectItf s_atariSlPlayerObj = nullptr;
 static SLPlayItf   s_atariSlPlay = nullptr;
 static SLAndroidSimpleBufferQueueItf s_atariSlQueue = nullptr;
-static bool s_atariSlReady = false;
+static std::atomic<bool> s_atariSlReady{false};
+// B291: otevreni/zavreni zvuku se muze sejit z vice vlaken (UI vlakno pri
+// vstupu do HELP + JS most pri nacteni stranky) - jen jedno najednou,
+// jinak by vznikly dva prehravace (ozvena).
+static std::mutex g_mSl;
 static int16_t s_atariSlBlocks[NAP_ATARI_SL_BLOCKS][NAP_ATARI_SL_BLOCK_FRAMES * 2];
 static int     s_atariSlNext = 0;
 
@@ -319,6 +333,7 @@ static void nap_atari_sl_callback(SLAndroidSimpleBufferQueueItf bq, void*) {
 }
 
 static void nap_atari_sl_open(void) {
+  std::lock_guard<std::mutex> slZamek(g_mSl);
   if (s_atariSlReady) return;
   if (slCreateEngine(&s_atariSlEngineObj, 0, nullptr, 0, nullptr, nullptr) != SL_RESULT_SUCCESS) return;
   if ((*s_atariSlEngineObj)->Realize(s_atariSlEngineObj, SL_BOOLEAN_FALSE) != SL_RESULT_SUCCESS) return;
@@ -350,11 +365,12 @@ static void nap_atari_sl_open(void) {
 }
 
 static void nap_atari_sl_close(void) {
+  std::lock_guard<std::mutex> slZamek(g_mSl);
   if (s_atariSlPlayerObj) { (*s_atariSlPlayerObj)->Destroy(s_atariSlPlayerObj); s_atariSlPlayerObj = nullptr; }
   if (s_atariSlMixObj)    { (*s_atariSlMixObj)->Destroy(s_atariSlMixObj);       s_atariSlMixObj = nullptr; }
   if (s_atariSlEngineObj) { (*s_atariSlEngineObj)->Destroy(s_atariSlEngineObj); s_atariSlEngineObj = nullptr; }
   s_atariSlEngine = nullptr; s_atariSlPlay = nullptr; s_atariSlQueue = nullptr;
-  bool bylOtevreny = s_atariSlReady;
+  bool bylOtevreny = s_atariSlReady.load();
   s_atariSlReady = false;
   g_atariRing.clear();
   if (bylOtevreny) ALOG("B287 ATARI_ZVUK_NATIVNI OpenSL ES zavren");
@@ -402,6 +418,7 @@ Java_eu_atarihelp_emu10_NativeAtariCoreBridge_atariZvukDiagNative(JNIEnv *env, j
  */
 extern "C" JNIEXPORT jstring JNICALL
 Java_eu_atarihelp_emu10_NativeAtariCoreBridge_bootNative(JNIEnv *env, jclass, jint snimku) {
+  std::lock_guard<std::mutex> zamek(g_mStroj);
   delete g_stroj; g_stroj = nullptr;
   delete g_view;  g_view  = nullptr;
   zaloz();
@@ -472,6 +489,7 @@ Java_eu_atarihelp_emu10_NativeAtariCoreBridge_bootNative(JNIEnv *env, jclass, ji
 /** Stisk klavesy (kod KBCODE) a nekolik snimku, aby ji OS prevzal. */
 extern "C" JNIEXPORT void JNICALL
 Java_eu_atarihelp_emu10_NativeAtariCoreBridge_keyNative(JNIEnv *, jclass, jint kod, jint snimku) {
+  std::lock_guard<std::mutex> zamek(g_mStroj);
   if (!g_stroj) return;
   g_stroj->klavesa(kod);
   for (int f = 0; f < snimku && !g_stroj->cpu.c.jam; f++) g_stroj->runFrame();
@@ -495,6 +513,7 @@ Java_eu_atarihelp_emu10_NativeAtariCoreBridge_keyNative(JNIEnv *, jclass, jint k
 // JS stejne poctive jako cokoli jineho.
 extern "C" JNIEXPORT void JNICALL
 Java_eu_atarihelp_emu10_NativeAtariCoreBridge_consolSetNative(JNIEnv *, jclass, jint maska) {
+  std::lock_guard<std::mutex> zamek(g_mStroj);
   if (!g_stroj) return;
   g_stroj->consol = maska & 7;
 }
@@ -502,6 +521,7 @@ Java_eu_atarihelp_emu10_NativeAtariCoreBridge_consolSetNative(JNIEnv *, jclass, 
 /** Konzolove klavesy: bit0 START, bit1 SELECT, bit2 OPTION. 0 = stisknuto. */
 extern "C" JNIEXPORT void JNICALL
 Java_eu_atarihelp_emu10_NativeAtariCoreBridge_consolNative(JNIEnv *, jclass, jint maska, jint snimku) {
+  std::lock_guard<std::mutex> zamek(g_mStroj);
   if (!g_stroj) return;
   g_stroj->consol = maska & 7;
   for (int f = 0; f < snimku && !g_stroj->cpu.c.jam; f++) g_stroj->runFrame();
@@ -510,6 +530,7 @@ Java_eu_atarihelp_emu10_NativeAtariCoreBridge_consolNative(JNIEnv *, jclass, jin
 
 extern "C" JNIEXPORT void JNICALL
 Java_eu_atarihelp_emu10_NativeAtariCoreBridge_runNative(JNIEnv *, jclass, jint snimku) {
+  std::lock_guard<std::mutex> zamek(g_mStroj);
   if (!g_stroj) return;
   for (int f = 0; f < snimku && !g_stroj->cpu.c.jam; f++) g_stroj->runFrame();
   // BUILD2SB75: viz komentar u srovnatSledovaniZvuku() v machine.h.
@@ -532,6 +553,7 @@ Java_eu_atarihelp_emu10_NativeAtariCoreBridge_runNative(JNIEnv *, jclass, jint s
 // zatim neemuluje).
 extern "C" JNIEXPORT void JNICALL
 Java_eu_atarihelp_emu10_NativeAtariCoreBridge_resetNative(JNIEnv *, jclass) {
+  std::lock_guard<std::mutex> zamek(g_mStroj);
   if (!g_stroj) return;
   g_stroj->reset();
   g_stroj->consol = 7;
@@ -540,6 +562,7 @@ Java_eu_atarihelp_emu10_NativeAtariCoreBridge_resetNative(JNIEnv *, jclass) {
 /** Vykresli aktualni obraz a vrati ho jako base64 RGB. */
 extern "C" JNIEXPORT jstring JNICALL
 Java_eu_atarihelp_emu10_NativeAtariCoreBridge_screenNative(JNIEnv *env, jclass) {
+  std::lock_guard<std::mutex> zamek(g_mStroj);
   if (!g_stroj || !g_view) return env->NewStringUTF("{\"chyba\":\"stroj nebezi\"}");
   // Obraz uz je hotovy - vznikl radek po radku behem emulace snimku,
   // takze v nem sedi i zmeny barev z DLI. Tady se jen zabali.
@@ -591,6 +614,7 @@ Java_eu_atarihelp_emu10_NativeAtariCoreBridge_screenNative(JNIEnv *env, jclass) 
 // (viz atariAudioChunk v Jave) - kompaktni text, zadny JSON navic.
 extern "C" JNIEXPORT jstring JNICALL
 Java_eu_atarihelp_emu10_NativeAtariCoreBridge_regsNative(JNIEnv *env, jclass) {
+  std::lock_guard<std::mutex> zamek(g_mStroj);
   if (!g_stroj) return env->NewStringUTF("?");
   char buf[144];
   snprintf(buf, sizeof(buf), "%d,%d,%d,%d|%d,%d,%d,%d|%d|spk=%d|kliku=%lld|jam=%d|pc=%d",
@@ -617,6 +641,7 @@ Java_eu_atarihelp_emu10_NativeAtariCoreBridge_regsNative(JNIEnv *env, jclass) {
 // misto jen v kratkych kouscich jako normalni beh.
 extern "C" JNIEXPORT jstring JNICALL
 Java_eu_atarihelp_emu10_NativeAtariCoreBridge_atariZachytitCsaveZvukNative(JNIEnv *env, jclass, jint celkemSnimku) {
+  std::lock_guard<std::mutex> zamek(g_mStroj);
   if (!g_stroj) return env->NewStringUTF("");
   const double SR = 44100.0;
   const int vzorkuNaSnimek = 882; // 44100/50 - presne 1 PAL snimek
@@ -683,6 +708,7 @@ Java_eu_atarihelp_emu10_NativeAtariCoreBridge_atariZachytitCsaveZvukNative(JNIEn
 // nikdy nezhasl.
 extern "C" JNIEXPORT jint JNICALL
 Java_eu_atarihelp_emu10_NativeAtariCoreBridge_motorZapnutyNative(JNIEnv *, jclass) {
+  std::lock_guard<std::mutex> zamek(g_mStroj);
   if (!g_stroj) return 0;
   const bool motorVypnuty = (g_stroj->mem.pia.ctlA >> 3) & 1; // bit3=1 -> OFF
   return motorVypnuty ? 0 : 1;
@@ -696,6 +722,7 @@ Java_eu_atarihelp_emu10_NativeAtariCoreBridge_motorZapnutyNative(JNIEnv *, jclas
 // zajisti, ze vysledek zaseknuti je TICHO, ne nesmyslny bzukot.
 extern "C" JNIEXPORT jstring JNICALL
 Java_eu_atarihelp_emu10_NativeAtariCoreBridge_audioChunkNative(JNIEnv *env, jclass, jint pocetVzorku) {
+  std::lock_guard<std::mutex> zamek(g_mStroj);
   if (!g_stroj) return env->NewStringUTF("");
   const double SR = 44100.0;
   const int n = pocetVzorku > 0 ? pocetVzorku : 1;
@@ -733,79 +760,535 @@ Java_eu_atarihelp_emu10_NativeAtariCoreBridge_audioChunkNative(JNIEnv *env, jcla
   return env->NewStringUTF(b64.c_str());
 }
 
+
 // ===================================================================
-// BUILD2SC1: KLAVESNICE + KONZOLE V C++ - viz nap_atari_keyboard.h.
+//  B291: ZARIZENI ATARI 130XE V HELP - CELE V C++
 //
-// Rene: "preved do apky sekce help atari c++ a dej si pozor at mame emu
-// atari 130xe v HELP ciste v c++." C++ vykresli CELY obrazek klavesnice
-// (stejny princip jako screenNative() vyse - surovy RGB framebuffer ->
-// base64), WebView ho jen zobrazi a posle zpet souradnice doteku.
-// Zadne HTML/CSS tlacitko - presne jako u hlavniho Atari obrazu.
+//  Rene po B290: "tlacitka se nezamackavaji nemas kazetak - nemas nic !!!
+//  ... to preved v helpu presne tak vcetne kazetaku a obrazovky - podle
+//  toho navrhu na kterem jsme se dohodli".
+//
+//  PROC SE V B290 TLACITKA NEZAMACKAVALA (zjisteno v kodu, ne odhadem):
+//   1) kazdy dotek posilal do JavaScriptu cely obrazek klavesnice
+//      (~3,6 MB base64) dvakrat (prst dolu + nahoru), synchronne - prohlizec
+//      nestihl "zmacknuty" obrazek mezi tim vubec vykreslit;
+//   2) kbdTouchNative koncil hned na zacatku "if (!g_stroj) return;" -
+//      dokud nebylo stisknuto NABOOTOVAT OS, dotek nedelal VUBEC NIC.
+//
+//  TED: zadny JavaScript ani base64. Java jen vytvori plochu (SurfaceView)
+//  a posila sem souradnice prstu. Tady bezi dve vlakna:
+//   - EMULACE: 50 snimku/s (PAL), jemne dorovnavane podle zaplneni
+//     zvukove fronty OpenSL; klavesy/konzole/POWER z dotyku, psani textu,
+//     zavadeni XEX, CSAVE -> WAV.
+//   - KRESLENI: nap_atari_device.h kresli pristroj PRIMO do okna displeje
+//     (ANativeWindow), jen zmenene oblasti. Stisk je videt do jednoho
+//     snimku (~16 ms) a vzdy aspon 110 ms.
 // ===================================================================
-static long long nap_kbd_ted_ms() {
+static long long nap_ted_ns() {
   timespec t{};
   clock_gettime(CLOCK_MONOTONIC, &t);
-  return (long long)t.tv_sec * 1000 + t.tv_nsec / 1000000;
+  return (long long)t.tv_sec * 1000000000LL + t.tv_nsec;
+}
+static long long nap_ted_ms() { return nap_ted_ns() / 1000000LL; }
+
+static nap::dev::Device &devGet() {
+  static nap::dev::Device *d = new nap::dev::Device();
+  return *d;
+}
+static std::mutex g_mDev;                          // stav pristroje (dotyk x kresleni)
+static std::mutex g_mEv;                           // fronta udalosti pro stroj
+static std::vector<nap::dev::Ev> g_evQ;
+static nap::TypeQueue g_typeQ;                     // pod g_mStroj
+static nap::CsaveRecorder g_rec;                   // pod g_mStroj
+static nap::XexLoader g_xex;                       // pod g_mStroj
+static std::mutex g_mFrame;
+static std::vector<uint32_t> g_sdilenySnimek;      // posledni snimek Atari pro kresleni
+static std::atomic<unsigned long long> g_snimekSeq{0};
+static std::atomic<bool> g_motorOn{false};
+static std::atomic<bool> g_strojBezi{false};       // POWER (z pohledu emulace)
+static std::atomic<bool> g_run{false};
+static std::thread g_emuVlakno, g_kresliVlakno;
+static std::mutex g_mRun;
+static std::mutex g_mWake;
+static std::condition_variable g_cvWake;
+static bool g_wake = false;
+// okno displeje (timed_mutex: zanik plochy nesmi nikdy zablokovat UI vlakno)
+static std::timed_mutex g_mWin;
+static ANativeWindow *g_win = nullptr;
+static bool g_uvolnitOkno = false;      // zanik plochy behem kresleni - uvolni kreslici vlakno
+static std::atomic<int> g_viewW{0}, g_viewH{0}, g_bufW{0}, g_bufH{0};
+static bool g_needLayout = false, g_needGeometry = false, g_forceFull = false;
+static bool g_formatHlaseno = false;
+// vystupy pro Javu (log, hotovy WAV)
+static std::mutex g_mOut;
+static std::vector<std::string> g_logOut;
+static std::vector<int16_t> g_wavOut;
+static bool g_wavReady = false;
+static std::atomic<long long> g_snimkuCelkem{0};
+// START/SELECT/OPTION: program je cte jako UROVEN (ne preruseni) - i hodne
+// kratke tuknuti musi stroj videt drzene aspon 5 snimku, jinak by se mohlo
+// ztratit mezi dvema snimky. (Klavesy se ztratit nemuzou - jdou pres IRQ.)
+static int g_consolChtene = 7;
+static long long g_consolDrzetDo[3] = {0, 0, 0};
+static int consolEfektivni() {
+  int m = g_consolChtene & 7;
+  long long f = g_snimkuCelkem.load();
+  for (int b = 0; b < 3; b++) if (f < g_consolDrzetDo[b]) m &= ~(1 << b);
+  return m;
 }
 
-/** Vykresli aktualni stav klavesnice a vrati jako base64 RGB (stejny tvar jako screenNative). */
-extern "C" JNIEXPORT jstring JNICALL
-Java_eu_atarihelp_emu10_NativeAtariCoreBridge_kbdScreenNative(JNIEnv *env, jclass) {
-  g_kbd.render(nap_kbd_ted_ms());
-  const int W = KbdDeck::W, H = KbdDeck::H, PX = W * H;
-  std::string raw; raw.reserve((size_t)PX * 3);
-  for (int i = 0; i < PX * 3; i++) raw.push_back((char)g_kbd.fb[i]);
-  std::string b64; b64.reserve((raw.size() + 2) / 3 * 4);
-  for (size_t i = 0; i < raw.size(); i += 3) {
-    const unsigned a0 = (unsigned char)raw[i];
-    const unsigned a1 = (i + 1 < raw.size()) ? (unsigned char)raw[i + 1] : 0;
-    const unsigned a2 = (i + 2 < raw.size()) ? (unsigned char)raw[i + 2] : 0;
-    const unsigned t = (a0 << 16) | (a1 << 8) | a2;
-    b64.push_back(B64[(t >> 18) & 63]); b64.push_back(B64[(t >> 12) & 63]);
-    b64.push_back((i + 1 < raw.size()) ? B64[(t >> 6) & 63] : '=');
-    b64.push_back((i + 2 < raw.size()) ? B64[t & 63] : '=');
+static void devLog(const std::string &s) {
+  ALOG("%s", s.c_str());
+  std::lock_guard<std::mutex> l(g_mOut);
+  if (g_logOut.size() < 400) g_logOut.push_back(s);
+}
+// Priorita vlakna (nice): emulace vyrabi i zvuk, nesmi zaostavat (-8 =
+// Android THREAD_PRIORITY_URGENT_DISPLAY), kresleni -4 (DISPLAY). Kdyby to
+// system nedovolil, bezi vlakno dal s normalni prioritou.
+static void nastavPriorituVlakna(int nice, const char *jmeno) {
+  int r = setpriority(PRIO_PROCESS, 0, nice);
+  char b[120];
+  snprintf(b, sizeof(b), "B291 %s priorita nice=%d %s", jmeno, nice, r == 0 ? "nastavena" : "nepovolena (bezi normalne)");
+  devLog(b);
+}
+static void pokeRender() {
+  { std::lock_guard<std::mutex> l(g_mWake); g_wake = true; }
+  g_cvWake.notify_one();
+}
+// Studeny start - smazat a postavit cely stroj znovu (jako bootNative).
+// POZOR: volat jen pod g_mStroj.
+static void studenyStartLocked(int consol) {
+  delete g_stroj; g_stroj = nullptr;
+  delete g_view;  g_view  = nullptr;
+  zaloz();
+  std::memset(g_stroj->mem.ram, 0, sizeof(g_stroj->mem.ram));
+  g_stroj->reset();
+  g_stroj->consol = consol & 7;
+  g_typeQ.clear();
+  g_rec.reset();
+}
+static void vyzvednoutVystupyLocked() {
+  for (auto &s : g_rec.log) devLog(s);
+  g_rec.log.clear();
+  for (auto &s : g_xex.log) devLog(s);
+  g_xex.log.clear();
+  if (g_rec.maHotovo) {
+    std::lock_guard<std::mutex> o(g_mOut);
+    g_wavOut.swap(g_rec.hotovo);
+    g_rec.hotovo.clear();
+    g_rec.maHotovo = false;
+    g_wavReady = true;
   }
-  std::string out = "{\"w\":" + std::to_string(W) + ",\"h\":" + std::to_string(H)
-    + ",\"rgb\":\"" + b64 + "\"}";
-  return env->NewStringUTF(out.c_str());
 }
 
-/**
- * Ktera klavesa/tlacitko je na souradnicich (x,y) v obrazku klavesnice
- * (0..KbdDeck::W-1, 0..KbdDeck::H-1 - BUILD2SC2: rozliseni uz neni napevno
- * 471x836, viz komentar u KbdDeck::W/H). JS si pri polozeni prstu (pointer-
- * down) zavola tohle JEDNOU, vysledne ID si sam pamatuje (podle pointerId,
- * kvuli vicero prstum najednou - napr. drzet SHIFT a tuknout pismeno) a
- * PRESNE TOHLE ID pak posila do kbdTouchNative - geometrie klaves tak
- * zije jen na JEDNOM miste (C++), JS zadnou kopii souradnic nema.
- * Vraci -1 kdyz dotek netrefil nic.
- */
-extern "C" JNIEXPORT jint JNICALL
-Java_eu_atarihelp_emu10_NativeAtariCoreBridge_kbdHitTestNative(JNIEnv *, jclass, jint x, jint y) {
-  return (jint)g_kbd.hitTest((int)x, (int)y);
+static void emuVlaknoMain() {
+  std::vector<float> zvuk(882);
+  long long dalsi = nap_ted_ns();
+  devLog("B291 EMULACE_VLAKNO start (50 snimku/s, zvuk OpenSL, vse v C++)");
+  nastavPriorituVlakna(-8, "EMULACE_VLAKNO");
+  while (g_run.load()) {
+    // 1) udalosti z doteku na pristroji
+    std::vector<nap::dev::Ev> ev;
+    { std::lock_guard<std::mutex> l(g_mEv); ev.swap(g_evQ); }
+    if (!ev.empty()) {
+      std::lock_guard<std::mutex> l(g_mStroj);
+      for (const auto &e : ev) {
+        switch (e.t) {
+          case nap::dev::Ev::POWER_ON:
+            g_xex.zrus();
+            studenyStartLocked(7);
+            if (g_stroj) g_stroj->sioRychlyTimeout = false;
+            g_strojBezi = true; g_atariRing.clear();
+            g_consolChtene = 7; g_consolDrzetDo[0] = g_consolDrzetDo[1] = g_consolDrzetDo[2] = 0;
+            devLog("B291 POWER ZAPNUTO - studeny start (pamet i hardware od nuly, jako vypinac na skrini)");
+            break;
+          case nap::dev::Ev::POWER_OFF:
+            g_strojBezi = false; g_typeQ.clear(); g_rec.reset(); g_xex.zrus(); g_atariRing.clear();
+            devLog("B291 POWER VYPNUTO");
+            break;
+          case nap::dev::Ev::KEY:
+            if (g_stroj && g_strojBezi) g_stroj->klavesa(e.v);
+            break;
+          case nap::dev::Ev::CONSOL: {
+            int nove = e.v & 7;
+            for (int b = 0; b < 3; b++)
+              if (!(nove & (1 << b)) && (g_consolChtene & (1 << b))) g_consolDrzetDo[b] = g_snimkuCelkem.load() + 5;
+            g_consolChtene = nove;
+            if (g_stroj) g_stroj->consol = consolEfektivni();
+            break;
+          }
+          case nap::dev::Ev::RESET:
+            if (g_stroj && g_strojBezi) {
+              g_stroj->reset(); g_stroj->consol = 7;
+              devLog("B291 RESET (tlacitko RESET na pristroji - pamet zustava)");
+            }
+            break;
+          case nap::dev::Ev::BREAK:
+            if (g_stroj && g_strojBezi) g_stroj->breakKey();
+            break;
+          default: break;
+        }
+      }
+      vyzvednoutVystupyLocked();
+    }
+    if (!g_strojBezi.load()) {
+      std::this_thread::sleep_for(std::chrono::milliseconds(15));
+      dalsi = nap_ted_ns();
+      continue;
+    }
+    // 2) tempo: PAL 50 snimku/s; kdyz je ve zvukove fronte vic/min nez
+    //    ~60 ms, snimek se protahne/zkrati (max o 8 %) - zvuk tak nikdy
+    //    neuteka ani nenarusta zpozdeni, a kdyz zvuk nebezi, plati hodiny.
+    long long perioda = 20000000LL;
+    if (s_atariSlReady) {
+      long long fillMs = (long long)(g_atariRing.avail() / 2) * 1000LL / 44100LL;
+      long long korekce = (fillMs - 60) * 40000LL;
+      if (korekce > 1600000LL) korekce = 1600000LL;
+      if (korekce < -1600000LL) korekce = -1600000LL;
+      perioda += korekce;
+    }
+    dalsi += perioda;
+    long long ted = nap_ted_ns();
+    if (dalsi > ted) std::this_thread::sleep_for(std::chrono::nanoseconds(dalsi - ted));
+    else if (ted - dalsi > 200000000LL) dalsi = ted;   // zpozdeni (pozadi): nedohanet naraz
+    // 3) jeden snimek stroje
+    {
+      std::lock_guard<std::mutex> l(g_mStroj);
+      if (!g_stroj) studenyStartLocked(7);
+      if (!g_xex.aktivni()) g_stroj->consol = consolEfektivni();   // pri zavadeni XEX drzi OPTION zavadec
+      g_typeQ.step(*g_stroj);
+      if (!g_stroj->cpu.c.jam) g_stroj->runFrame();
+      if (g_stroj->cpu.c.jam) std::fill(zvuk.begin(), zvuk.end(), 0.f);
+      else g_stroj->genAudio(zvuk.data(), 882, 44100.0);
+      nap_atari_audio_push(zvuk.data(), 882);
+      g_rec.snimek(*g_stroj, zvuk.data(), 882);
+      g_xex.poSnimku(*g_stroj);
+      g_motorOn = nap::CsaveRecorder::motor(*g_stroj);
+      {
+        std::lock_guard<std::mutex> f(g_mFrame);
+        if (g_sdilenySnimek.size() != (size_t)AnticView::W * AnticView::H)
+          g_sdilenySnimek.assign((size_t)AnticView::W * AnticView::H, 0xFF000000u);
+        std::memcpy(g_sdilenySnimek.data(), g_view->fb, g_sdilenySnimek.size() * 4);
+      }
+      g_snimekSeq++;
+      g_snimkuCelkem++;
+      vyzvednoutVystupyLocked();
+    }
+    pokeRender();
+  }
+  devLog("B291 EMULACE_VLAKNO stop");
 }
 
-/**
- * Dotek na klavesnici/konzole. id je vysledek kbdHitTestNative (z
- * pointerdown, JS si ho pamatuje pro dany prst) - ne souradnice. dolu:
- * 1=dotek dolu (prst polozen), 0=dotek nahoru (prst zvednut).
- *
- * BUILD2SC1 KRITICKE (poucka z BUILD2SB80 vyse): KbdDeck sama NIKDY
- * nevola klavesa() opakovane pro jeden drzeny dotek (viz touchDown -
- * pulzuje jen jednou pri polozeni prstu) - presne ten bug, co by
- * zpusobil "osm stisku misto jednoho drzeneho", uz je osetren v
- * KbdDeck samotne, ne tady.
- */
+static void kresliVlaknoMain() {
+  unsigned long long posledniSeq = ~0ULL;
+  devLog("B291 KRESLICI_VLAKNO start (pristroj kresli C++ primo na displej)");
+  nastavPriorituVlakna(-4, "KRESLICI_VLAKNO");
+  while (g_run.load()) {
+    {
+      std::unique_lock<std::mutex> lk(g_mWake);
+      g_cvWake.wait_for(lk, std::chrono::milliseconds(16), [] { return g_wake; });
+      g_wake = false;
+    }
+    if (!g_run.load()) break;
+    std::lock_guard<std::timed_mutex> wl(g_mWin);
+    if (g_uvolnitOkno) {
+      if (g_win) ANativeWindow_release(g_win);
+      g_win = nullptr; g_uvolnitOkno = false;
+      devLog("B291 PRISTROJ plocha uvolnena kreslicim vlaknem (zanikla behem kresleni)");
+    }
+    if (!g_win || g_bufW.load() <= 0 || g_bufH.load() <= 0) continue;
+    nap::dev::Device &d = devGet();
+    nap::dev::IRect pr{0, 0, 0, 0};
+    bool full = false;
+    const long long ted = nap_ted_ms();
+    {
+      std::lock_guard<std::mutex> dl(g_mDev);
+      if (g_needGeometry) {
+        ANativeWindow_setBuffersGeometry(g_win, g_bufW.load(), g_bufH.load(), WINDOW_FORMAT_RGBA_8888);
+        g_needGeometry = false; full = true;
+        // prvni rozlozeni pristroje trva na telefonu chvili - mezitim plocha
+        // hned tmava (barva stranky navrhu #0b0b0d), aby neprobliklo nic jineho
+        if (d.W != g_bufW.load() || d.H != g_bufH.load()) {
+          ANativeWindow_Buffer b0;
+          if (ANativeWindow_lock(g_win, &b0, nullptr) == 0) {
+            if (b0.bits && (b0.format == WINDOW_FORMAT_RGBA_8888 || b0.format == WINDOW_FORMAT_RGBX_8888)) {
+              for (int y = 0; y < b0.height; y++) {
+                uint32_t *row = (uint32_t *)b0.bits + (size_t)y * b0.stride;
+                for (int x = 0; x < b0.width; x++) row[x] = 0xFF0D0B0Bu;
+              }
+            }
+            ANativeWindow_unlockAndPost(g_win);
+          }
+        }
+      }
+      if (g_needLayout || d.W != g_bufW.load() || d.H != g_bufH.load()) {
+        long long t0 = nap_ted_ms();
+        d.layout(g_bufW.load(), g_bufH.load());
+        char b[160];
+        snprintf(b, sizeof(b), "B291 PRISTROJ rozlozen %dx%d (displej %dx%d) za %lld ms", d.W, d.H, g_viewW.load(), g_viewH.load(), nap_ted_ms() - t0);
+        devLog(b);
+        g_needLayout = false; full = true;
+      }
+      unsigned long long seq = g_snimekSeq.load();
+      if (seq != posledniSeq) {
+        posledniSeq = seq;
+        if (g_strojBezi.load()) {
+          std::lock_guard<std::mutex> f(g_mFrame);
+          if (g_sdilenySnimek.size() == (size_t)AnticView::W * AnticView::H) d.setAtariFrame(g_sdilenySnimek.data());
+        }
+      }
+      d.motorOn = g_motorOn.load();
+      d.update(ted);
+      d.render(ted);
+      pr = d.takePresentRect();
+      if (g_forceFull) { full = true; g_forceFull = false; }
+      if (full) pr = nap::dev::IRect{0, 0, d.W, d.H};
+    }
+    if (pr.x1 <= pr.x0 || pr.y1 <= pr.y0) continue;
+    ARect ar;
+    ar.left = pr.x0; ar.top = pr.y0; ar.right = pr.x1; ar.bottom = pr.y1;
+    ANativeWindow_Buffer buf;
+    if (ANativeWindow_lock(g_win, &buf, &ar) != 0) { g_forceFull = true; continue; }
+    // bezpecnost: zapisovat jen do 32bit bufferu presne ocekavane velikosti
+    bool ok = buf.bits && buf.width == d.W && buf.height == d.H && buf.stride >= buf.width &&
+              (buf.format == WINDOW_FORMAT_RGBA_8888 || buf.format == WINDOW_FORMAT_RGBX_8888);
+    if (ok) {
+      d.copyOut((uint32_t *)buf.bits, buf.stride, nap::dev::IRect{ar.left, ar.top, ar.right, ar.bottom});
+    } else {
+      if (!g_formatHlaseno) {
+        char b[160];
+        snprintf(b, sizeof(b), "B291 PRISTROJ buffer displeje nesedi (%dx%d fmt=%d, cekano %dx%d RGBA) - nastavuji znovu",
+                 buf.width, buf.height, buf.format, d.W, d.H);
+        devLog(b); g_formatHlaseno = true;
+      }
+      g_needGeometry = true;
+    }
+    ANativeWindow_unlockAndPost(g_win);
+  }
+  devLog("B291 KRESLICI_VLAKNO stop");
+}
+
+/** Start pristroje (vstup do HELP / navrat z pozadi). studeny=1: jako
+ *  zapnuti vypinace - novy stroj a vychozi stav pristroje. */
 extern "C" JNIEXPORT void JNICALL
-Java_eu_atarihelp_emu10_NativeAtariCoreBridge_kbdTouchNative(JNIEnv *, jclass, jint id, jint dolu) {
-  if (!g_stroj) return;
-  KbdEvent ev = dolu ? g_kbd.touchDown((int)id, nap_kbd_ted_ms())
-                     : g_kbd.touchUp((int)id, nap_kbd_ted_ms());
-  switch (ev.typ) {
-    case KbdEvent::KLAVESA:      g_stroj->klavesa(ev.scan); break;
-    case KbdEvent::KONZOLE_MASK: g_stroj->consol = ev.konzoleMask & 7; break;
-    case KbdEvent::RESET:        g_stroj->reset(); g_stroj->consol = 7; break;
-    case KbdEvent::BREAK:        g_stroj->breakKey(); break;
-    default: break;
+Java_eu_atarihelp_emu10_NativeAtariCoreBridge_devStartNative(JNIEnv *, jclass, jboolean studeny) {
+  std::lock_guard<std::mutex> r(g_mRun);
+  bool zapnuto;
+  {
+    std::lock_guard<std::mutex> dl(g_mDev);
+    if (studeny) devGet().resetUi();
+    zapnuto = devGet().power;
   }
+  {
+    std::lock_guard<std::mutex> l(g_mStroj);
+    if (studeny || !g_stroj) {
+      g_xex.zrus();
+      studenyStartLocked(7);
+      devLog(studeny ? "B291 HELP otevren - pristroj ZAPNUT, studeny start Atari"
+                     : "B291 HELP - stroj neexistoval, studeny start");
+    }
+    g_strojBezi = zapnuto;
+  }
+  nap_atari_sl_open();
+  if (g_run.load()) { pokeRender(); return; }
+  g_run = true;
+  g_emuVlakno = std::thread(emuVlaknoMain);
+  g_kresliVlakno = std::thread(kresliVlaknoMain);
+}
+
+/** Stop pristroje (odchod z HELP, appka na pozadi). Ceka na obe vlakna. */
+extern "C" JNIEXPORT void JNICALL
+Java_eu_atarihelp_emu10_NativeAtariCoreBridge_devStopNative(JNIEnv *, jclass) {
+  std::lock_guard<std::mutex> r(g_mRun);
+  if (!g_run.load()) return;
+  g_run = false;
+  pokeRender();
+  if (g_emuVlakno.joinable()) g_emuVlakno.join();
+  if (g_kresliVlakno.joinable()) g_kresliVlakno.join();
+}
+
+/** Plocha displeje (SurfaceView). surface=null -> plocha zanika: po navratu
+ *  z teto funkce uz se do ni nekresli (drzime g_mWin jako kreslici vlakno). */
+extern "C" JNIEXPORT void JNICALL
+Java_eu_atarihelp_emu10_NativeAtariCoreBridge_devSurfaceNative(JNIEnv *env, jclass, jobject surface, jint w, jint h) {
+  if (!surface) {
+    // Plocha zanika: pockat, az kreslici vlakno dokresli snimek (max 1,5 s).
+    // Kdyby se zaseklo (napr. v ANativeWindow_lock), UI vlakno NEBLOKOVAT -
+    // okno uvolni kreslici vlakno samo hned, jak se vrati (drzime vlastni
+    // referenci, takze objekt okna do te doby plati).
+    std::unique_lock<std::timed_mutex> wl(g_mWin, std::defer_lock);
+    if (!wl.try_lock_for(std::chrono::milliseconds(1500))) {
+      g_uvolnitOkno = true;
+      devLog("B291 PRISTROJ plocha zanikla behem kresleni - uvolni ji kreslici vlakno");
+      return;
+    }
+    if (g_win) { ANativeWindow_release(g_win); g_win = nullptr; }
+    g_uvolnitOkno = false;
+    devLog("B291 PRISTROJ plocha zanikla");
+    return;
+  }
+  std::lock_guard<std::timed_mutex> wl(g_mWin);
+  if (g_uvolnitOkno) { if (g_win) ANativeWindow_release(g_win); g_win = nullptr; g_uvolnitOkno = false; }
+  ANativeWindow *nw = ANativeWindow_fromSurface(env, surface);
+  if (!nw) { devLog("B291 PRISTROJ CHYBA: ANativeWindow_fromSurface vratilo null"); return; }
+  bool nova = (nw != g_win);
+  if (!nova) ANativeWindow_release(nw);                 // stejna plocha: jen zmena velikosti
+  else { if (g_win) ANativeWindow_release(g_win); g_win = nw; }
+  int vw = w > 0 ? w : ANativeWindow_getWidth(g_win);
+  int vh = h > 0 ? h : ANativeWindow_getHeight(g_win);
+  if (vw <= 0 || vh <= 0) return;
+  // vnitrni rozliseni: sirka max 1080 px (vetsi displej dopocita kompozitor)
+  int bw = vw, bh = vh;
+  if (bw > 1080) { bh = (int)((long long)bh * 1080 / bw); bw = 1080; }
+  g_viewW = vw; g_viewH = vh;
+  if (bw != g_bufW.load() || bh != g_bufH.load()) { g_bufW = bw; g_bufH = bh; g_needLayout = true; }
+  if (nova) g_formatHlaseno = false;
+  g_needGeometry = true;
+  g_forceFull = true;
+  char b[160];
+  snprintf(b, sizeof(b), "B291 PRISTROJ plocha %s %dx%d -> kresleni %dx%d", nova ? "nova" : "zmena", vw, vh, bw, bh);
+  devLog(b);
+  pokeRender();
+}
+
+/** Dotek prstu. akce: 0=dolu, 1=nahoru, 2=zruseno (vsechny prsty).
+ *  x,y v pixelech plochy. Vraci servisni akci pro Javu (0 = zadna). */
+extern "C" JNIEXPORT jint JNICALL
+Java_eu_atarihelp_emu10_NativeAtariCoreBridge_devTouchNative(JNIEnv *, jclass, jint pid, jint akce, jfloat x, jfloat y) {
+  const int vw = g_viewW.load(), bw = g_bufW.load();
+  float k = (vw > 0 && bw > 0) ? (float)bw / (float)vw : 1.f;
+  float bx = x * k, by = y * k;
+  nap::dev::Ev ev[8];
+  int n = 0, svc = 0;
+  const long long ted = nap_ted_ms();
+  {
+    std::lock_guard<std::mutex> dl(g_mDev);
+    nap::dev::Device &d = devGet();
+    if (d.W <= 1) return 0;
+    if (akce == 0) n = d.pointerDown(pid & 15, bx, by, ted, ev, 8);
+    else if (akce == 1) n = d.pointerUp(pid & 15, bx, by, ted, ev, 8, &svc);
+    else n = d.pointerCancelAll(ted, ev, 8);
+  }
+  if (n > 0) {
+    std::lock_guard<std::mutex> l(g_mEv);
+    for (int i = 0; i < n; i++) g_evQ.push_back(ev[i]);
+  }
+  pokeRender();
+  return svc;
+}
+
+/** Napsat text do Atari (tlacitko BASIC/TBXL TXT). runPotom: na konec RUN. */
+extern "C" JNIEXPORT jint JNICALL
+Java_eu_atarihelp_emu10_NativeAtariCoreBridge_devTypeTextNative(JNIEnv *env, jclass, jstring text, jboolean runPotom) {
+  if (!text) return 0;
+  const char *c = env->GetStringUTFChars(text, nullptr);
+  std::string t = c ? c : "";
+  if (c) env->ReleaseStringUTFChars(text, c);
+  if (runPotom) { if (!t.empty() && t.back() != '\n') t.push_back('\n'); t += "RUN"; }
+  int n, preskoceno;
+  {
+    std::lock_guard<std::mutex> l(g_mStroj);
+    int p0 = g_typeQ.preskoceno;
+    n = g_typeQ.addText(t);
+    preskoceno = g_typeQ.preskoceno - p0;
+  }
+  char b[160];
+  snprintf(b, sizeof(b), "B291 TXT do Atari: %d stisku klaves pripraveno%s (%d znaku na Atari klavesnici neni)",
+           n, runPotom ? " + RUN" : "", preskoceno);
+  devLog(b);
+  return n;
+}
+
+/** Spustit XEX (XEX/MOBIL, TURBO/BASIC, NET HRY). */
+extern "C" JNIEXPORT jboolean JNICALL
+Java_eu_atarihelp_emu10_NativeAtariCoreBridge_devLoadXexNative(JNIEnv *env, jclass, jbyteArray data, jstring jmeno) {
+  if (!data) return JNI_FALSE;
+  jsize n = env->GetArrayLength(data);
+  std::vector<uint8_t> buf((size_t)n);
+  if (n > 0) env->GetByteArrayRegion(data, 0, n, (jbyte *)buf.data());
+  std::string nm = "program.xex";
+  if (jmeno) { const char *c = env->GetStringUTFChars(jmeno, nullptr); if (c) { nm = c; env->ReleaseStringUTFChars(jmeno, c); } }
+  bool ok;
+  {
+    std::lock_guard<std::mutex> l(g_mStroj);
+    ok = g_xex.priprav(buf.data(), buf.size(), nm);
+    if (ok) {
+      studenyStartLocked(3);                 // OPTION drzene = BASIC vypnuty
+      g_stroj->sioRychlyTimeout = true;
+      g_strojBezi = true;
+    }
+    vyzvednoutVystupyLocked();
+  }
+  if (ok) {
+    std::lock_guard<std::mutex> dl(g_mDev);
+    nap::dev::Device &d = devGet();
+    if (!d.power) { d.power = true; d.powerAt = nap_ted_ms(); }
+    d.atariValid = false; d.markScreen(); d.markLegend();
+    d.setStatusMessage(("SPOUSTIM " + nm).c_str(), nap_ted_ms(), 4000);
+  }
+  pokeRender();
+  return ok ? JNI_TRUE : JNI_FALSE;
+}
+
+/** Kratka zprava ve stavovem radku pod pristrojem (napr. "CSAVE ULOZENO"). */
+extern "C" JNIEXPORT void JNICALL
+Java_eu_atarihelp_emu10_NativeAtariCoreBridge_devStatusNative(JNIEnv *env, jclass, jstring msg, jint ms) {
+  std::string m;
+  if (msg) { const char *c = env->GetStringUTFChars(msg, nullptr); if (c) { m = c; env->ReleaseStringUTFChars(msg, c); } }
+  {
+    std::lock_guard<std::mutex> dl(g_mDev);
+    devGet().setStatusMessage(m.c_str(), nap_ted_ms(), ms > 0 ? ms : 4000);
+  }
+  pokeRender();
+}
+
+/** Radky do logu appky (Java si je vyzvedava a pripisuje). null = nic. */
+extern "C" JNIEXPORT jstring JNICALL
+Java_eu_atarihelp_emu10_NativeAtariCoreBridge_devPollLogNative(JNIEnv *env, jclass) {
+  std::vector<std::string> v;
+  { std::lock_guard<std::mutex> o(g_mOut); v.swap(g_logOut); }
+  if (v.empty()) return nullptr;
+  std::string s;
+  for (auto &l : v) { s += l; s.push_back('\n'); }
+  // NewStringUTF chce "modified UTF-8": nase radky jsou ciste ASCII
+  for (auto &ch : s) if ((unsigned char)ch >= 0x80) ch = '?';
+  return env->NewStringUTF(s.c_str());
+}
+
+/** Hotovy CSAVE zaznam (16-bit PCM mono 44100 Hz, little endian) nebo null. */
+extern "C" JNIEXPORT jbyteArray JNICALL
+Java_eu_atarihelp_emu10_NativeAtariCoreBridge_devTakeWavNative(JNIEnv *env, jclass) {
+  std::vector<int16_t> pcm;
+  {
+    std::lock_guard<std::mutex> o(g_mOut);
+    if (!g_wavReady) return nullptr;
+    pcm.swap(g_wavOut);
+    g_wavReady = false;
+  }
+  std::vector<uint8_t> b(pcm.size() * 2);
+  for (size_t i = 0; i < pcm.size(); i++) {
+    b[i * 2] = (uint8_t)(pcm[i] & 0xFF);
+    b[i * 2 + 1] = (uint8_t)((pcm[i] >> 8) & 0xFF);
+  }
+  jbyteArray arr = env->NewByteArray((jsize)b.size());
+  if (!arr) return nullptr;
+  env->SetByteArrayRegion(arr, 0, (jsize)b.size(), (const jbyte *)b.data());
+  return arr;
+}
+
+/** Kratky stav pro log (POWER, snimky, motor, frontu klaves). */
+extern "C" JNIEXPORT jstring JNICALL
+Java_eu_atarihelp_emu10_NativeAtariCoreBridge_devInfoNative(JNIEnv *env, jclass) {
+  char b[256];
+  int pc = -1; bool jam = false; size_t fronta;
+  {
+    std::lock_guard<std::mutex> l(g_mStroj);
+    if (g_stroj) { pc = g_stroj->cpu.c.pc; jam = g_stroj->cpu.c.jam; }
+    fronta = g_typeQ.q.size();
+  }
+  snprintf(b, sizeof(b), "B291 PRISTROJ stav: bezi=%s power=%s snimku=%lld pc=$%04X%s motor=%s klaves_ve_fronte=%u zvuk_fronta=%ums",
+           g_run.load() ? "ano" : "ne", g_strojBezi.load() ? "ZAP" : "VYP", g_snimkuCelkem.load(), pc & 0xFFFF,
+           jam ? " JAM" : "", g_motorOn.load() ? "ZAP" : "VYP", (unsigned)fronta,
+           (unsigned)((g_atariRing.avail() / 2) * 1000 / 44100));
+  return env->NewStringUTF(b);
 }

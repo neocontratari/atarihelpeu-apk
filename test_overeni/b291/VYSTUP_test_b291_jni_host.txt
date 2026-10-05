@@ -1,0 +1,98 @@
+B291 HELP otevren - pristroj ZAPNUT, studeny start Atari
+B291 PRISTROJ plocha nova 1080x2160 -> kresleni 1080x2160
+B291 KRESLICI_VLAKNO start (pristroj kresli C++ primo na displej)
+B291 KRESLICI_VLAKNO priorita nice=-4 nastavena
+B291 EMULACE_VLAKNO start (50 snimku/s, zvuk OpenSL, vse v C++)
+B291 EMULACE_VLAKNO priorita nice=-8 nastavena
+B291 PRISTROJ rozlozen 1080x2160 (displej 1080x2160) za 186 ms
+OK     kresleni bezi - na displej doslo aspon jedno predani
+OK     okno nastaveno na 1080x2160 RGBA
+OK     emulace bezi (aspon 40 snimku za 1,5 s)
+OK     Atari nastartovalo do READY (obraz z jadra)
+klidovy stav: 2 predani/s, 10.7 % plochy za snimek
+--- obrazovka ---
+
+  READY
+  PRINT 2+2
+  4
+
+  READY
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+---
+OK     dotyky na klavesy napsaly PRINT 2+2
+OK     Atari spocitalo 4
+OK     SHIFT po klepnuti zustava zamceny
+OK     druhe klepnuti SHIFT odemkne
+OK     SHIFT+1 napsalo '!'
+OK     kratke tuknuti na START program zachytil (min. 5 snimku drzeni)
+OK     PLAY zamcene a pocitadlo pocita (+1 za vterinu)
+OK     STOP pustil PLAY/REC
+OK     nulovaci spinac vynuloval pocitadlo
+OK     EJECT otevrel dvirka kazetaku
+OK     klepnuti na okenko dvirka zavrelo
+OK     MENU vraci Jave akci MENU
+OK     BASIC/TBXL TXT vraci akci TXT
+OK     POWER vypnul stroj (zadne dalsi snimky)
+OK     POWER zapnul stroj znovu (snimky bezi)
+OK     XEX prijat k zavedeni
+B291 TXT do Atari: 57 stisku klaves pripraveno (0 znaku na Atari klavesnici neni)
+B291 POWER VYPNUTO
+B291 POWER ZAPNUTO - studeny start (pamet i hardware od nuly, jako vypinac na skrini)
+B291 XEX turbo_basic_xl.xex: 20877 bajtu - studeny start s OPTION (BASIC vypnuty), pak segmenty
+B291 XEX OS nastartovan za 77 snimku (BASIC=VYPNUTY, RAMTOP=$C0) - nahravam segmenty
+B291 TXT do Atari: 8 stisku klaves pripraveno (0 znaku na Atari klavesnici neni)
+B291 XEX turbo_basic_xl.xex: INIT c.1 prevzal rizeni a bezi (program spusten z INIT)
+--- obrazovka (TBXL) ---
+
+  READY
+  ? $FF*2
+  510
+
+  READY
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+---
+OK     Turbo-BASIC XL bezi ($FF*2 = 510 umi jen TBXL)
+OK     bez plochy se nic nekresli
+OK     po navratu plochy se kresli znovu
+OK     stop: obe vlakna skoncila (bez zaseknuti)
+B291 PRISTROJ plocha zanikla
+B291 PRISTROJ plocha nova 1080x2160 -> kresleni 1080x2160
+B291 KRESLICI_VLAKNO stop
+B291 EMULACE_VLAKNO stop
+B291 PRISTROJ stav: bezi=ne power=ZAP snimku=1832 pc=$F310 motor=VYP klaves_ve_fronte=0 zvuk_fronta=1486ms
+
+VYSLEDEK: 24 kontrol, 0 chyb

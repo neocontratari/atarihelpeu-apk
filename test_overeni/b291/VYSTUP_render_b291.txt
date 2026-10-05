@@ -1,0 +1,1 @@
+layout+pozadi 148.1 ms, prvni render 78.9 ms, present 6.4 ms | ustaleny snimek prumer 4.97 ms, nejhorsi 10.75 ms, kopie 21% plochy  W=1080 H=2160

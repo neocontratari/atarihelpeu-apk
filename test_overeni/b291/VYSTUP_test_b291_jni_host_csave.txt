@@ -1,0 +1,13 @@
+B291 HELP otevren - pristroj ZAPNUT, studeny start Atari
+B291 PRISTROJ plocha nova 1080x2160 -> kresleni 1080x2160
+B291 KRESLICI_VLAKNO start (pristroj kresli C++ primo na displej)
+B291 EMULACE_VLAKNO start (50 snimku/s, zvuk OpenSL, vse v C++)
+B291 PRISTROJ rozlozen 1080x2160 (displej 1080x2160) za 116 ms
+B291 KAZETA motor ZAPNUT (PACTL bit3=0) - nahravam zvuk z jadra
+B291 CSAVE_HOTOVO motor VYPNUT, SEROUT bajtu=264, zvuk=24.1s -> ukladam WAV
+OK     CSAVE zapnul motor kazety (videt i na civkach pristroje)
+OK     CSAVE: hotovy WAV prisel do Javy (devTakeWav)
+WAV 24.1 s (2123856 bajtu)
+OK     delka WAV odpovida CSAVE
+
+VYSLEDEK: 3 kontrol, 0 chyb

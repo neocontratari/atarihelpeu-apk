@@ -304,7 +304,11 @@ if(NAP_ENABLE_ATARI)
     # B287: nativni OpenSL ES zvuk (CESTA A, stejne jako napps1core vyse) -
     # ciste C++ jadro uz Atari zvuk neprehrava pres JS/Java, ale primo pres
     # OpenSL ES (funguje od API 9, takze sedi s minSdk 24).
-    target_link_libraries(napatari ${log-lib} OpenSLES)
+    # B291: + android (ANativeWindow - C++ kresli zarizeni Atari 130XE primo
+    # na displej) a vlakna (emulace a kresleni bezi ve vlastnich vlaknech).
+    # find_package i tady: Atari nesmi zaviset na tom, jestli je zapnute PS1.
+    find_package(Threads REQUIRED)
+    target_link_libraries(napatari ${log-lib} OpenSLES android Threads::Threads)
     # stejna prisnost jako NDK: chybejici symbol shodi build, ne az appku
     target_link_options(napatari PRIVATE -Wl,--no-undefined -Wl,-z,max-page-size=16384)
 endif()

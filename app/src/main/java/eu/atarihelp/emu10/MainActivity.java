@@ -99,6 +99,7 @@ public class MainActivity extends Activity {
     private static final int PICK_PS1_GAME = 7; // BUILD2SA2
     private static final int PICK_AUDIO_PERMISSION = 14; // BUILD2SA13C14: local MP3/WAV library permissions
     private static final int PICK_TV_WEB_SCREEN = 13; // BUILD2SA13C9: whole-phone MediaProjection mirror
+    private static final int PICK_ATARI_CPP_XEX = 21; // B291: XEX/MOBIL na pristroji Atari 130XE v HELP
     private static final String ATARIHELP_BROWSER_UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36"; // BUILD2SA5K
     private static final long ATARIHELP_MIN_REQUEST_GAP_MS = 30000L; // BUILD2SA5M: no accidental hammering.
     private static final long ATARIHELP_FAIL_COOLDOWN_MS = 15L * 60L * 1000L;
@@ -4054,7 +4055,8 @@ public class MainActivity extends Activity {
                 StringBuilder sb = new StringBuilder();
                 for (String r : cely.split("\n")) {
                     if (r.contains("BUILD2SA14") || r.contains("BUILD2SB49") || r.contains("BUILD2SB52") || r.contains("VERZE APKY")
-                            || r.contains("napatari") || r.contains("ATARI_CPP")) {
+                            || r.contains("napatari") || r.contains("ATARI_CPP") || r.contains("B291") || r.contains("B287")
+                            || r.contains("BUILD2SB81")) {
                         sb.append(r).append('\n');
                     }
                 }
@@ -4412,25 +4414,16 @@ public class MainActivity extends Activity {
             catch (Throwable t) { return null; }
         }
 
-        // BUILD2SC1: klavesnice + konzolova tlacitka atari 130XE - CISTE V
-        // C++ (viz nap_atari_keyboard.h). Presne stejny vzorec jako
-        // atariObraz() vyse - C++ vykresli hotovy obrazek, Java/JS ho jen
-        // predava dal. Zadne z techto treti metod nic neloguje (zadny
-        // appendNativeLog) - dotek prstem se dost casto opakuje a kazdy
-        // jednotlivy by log zahltil (stejny duvod jako u atariObraz, ktery
-        // ale na rozdil od techto treti ma svuj vlastni dulezity pripad -
-        // jam=true - ktery stoji za zalogovani). Selhani nacteni knihovny
-        // je stejne uz videt v logAtari z jeNactene(), neni potreba duplikovat.
-        @JavascriptInterface public String kbdObraz() {
-            return NativeAtariCoreBridge.kbdScreenSafe();
+        /** B291: tlacitko ZPET NA ATARI 130XE na strance s logem - znovu
+         *  ukaze pristroj (C++ plocha nad strankou). */
+        @JavascriptInterface public void zobrazZarizeni() {
+            ui.post(() -> atariZarizeniSkryj(false));
         }
-        /** Souradnice v obrazku klavesnice (0..470,0..835) -> id klavesy/tlacitka, nebo -1. */
-        @JavascriptInterface public int kbdHitTest(int x, int y) {
-            return NativeAtariCoreBridge.kbdHitTestSafe(x, y);
-        }
-        /** id: 0-56 klavesa, 100-104 konzolovy pas (HELP/START/SELECT/OPTION/RESET) - z kbdHitTest. dolu: 1=prst dolu, 0=prst nahoru. */
-        @JavascriptInterface public void kbdDotek(int id, int dolu) {
-            NativeAtariCoreBridge.kbdTouchSafe(id, dolu);
+        /** B291: kratky stav pristroje (POWER, snimky, motor...) do logu. */
+        @JavascriptInterface public String stavZarizeni() {
+            String s = NativeAtariCoreBridge.devInfoSafe();
+            appendNativeLog(s);
+            return s;
         }
 
         /** Vysledek jednoho kroku testu. Rene klepne, ja to mam v logu. */
@@ -6562,6 +6555,290 @@ public class MainActivity extends Activity {
         appendNativeLog("B287 ATARI_ZVUK_NATIVNI_STOP duvod=" + source + ":" + compactUrl(url));
     }
 
+    // =====================================================================
+    //  B291: PRISTROJ ATARI 130XE V HELP
+    //
+    //  Rene: "v helpu atari emu bude to co jsi udelal a co jsem ti odsouhlasil"
+    //  (schvaleny navrh: obrazovka, klavesnice, konzole, kazetak, POWER, N&P
+    //  logo, servisni tlacitka). Cele zarizeni kresli C++ primo na displej
+    //  (AtariDeviceView = SurfaceView nad strankou HELP) a C++ ma i vlastni
+    //  vlakno emulace (50 snimku/s + zvuk OpenSL). Tady jen:
+    //   - plochu pri vstupu do HELP vytvorit, pri odchodu odstranit,
+    //   - servisni tlacitka (XEX z mobilu, Turbo-BASIC, TXT, LOG, HELP, MENU,
+    //     NET HRY) obslouzit tim, co umi jen Android (vyber souboru, dialog),
+    //   - z C++ vyzvedavat radky logu a hotovy CSAVE WAV a ten ulozit.
+    // =====================================================================
+    private static final String ATARI_CPP_URL = "file:///android_asset/emu_atari_cpp/index.html";
+    private AtariDeviceView atariZarizeni = null;
+    private boolean atariZarizeniSkryte = false;          // LOG/CHYBA: je videt stranka s logem
+    private volatile boolean atariCppNetCil = false;      // NET HRY spustene z pristroje
+    private byte[] atariCppCekajiciHra = null;            // hra z NET HRY cekajici na pristroj
+    private String atariCppCekajiciJmeno = null;
+
+    private final Runnable atariZarizeniTik = new Runnable() {
+        @Override public void run() {
+            if (atariZarizeni == null) return;
+            atariZarizeniVyzvedni();
+            ui.postDelayed(this, 400);
+        }
+    };
+
+    /** onPageStarted: HELP -> pristroj zapnout, jinam -> vypnout. */
+    private void atariZarizeniPodleUrl(String url) {
+        try {
+            if (isAtariCppOwnerUrl(url)) {
+                atariZarizeniZapni();
+            } else {
+                atariZarizeniVypni("odchod na " + compactUrl(url));
+                // NET HRY: cil zustava jen behem prochazeni her (most / web)
+                if (url != null && url.startsWith("file:///android_asset/") && !url.contains("atari_xex_bridge")) {
+                    atariCppNetCil = false;
+                }
+            }
+        } catch (Throwable t) {
+            appendNativeLog("B291 PRISTROJ_URL_CHYBA " + safeMsg(t));
+        }
+    }
+
+    private void atariZarizeniZapni() {
+        if (rootFrame == null || atariZarizeni != null) return;
+        if (!NativeAtariCoreBridge.isLoaded()) {
+            // bez knihovny by plocha jen zakryla stranku cernou - nechat stranku (ukaze chybu)
+            appendNativeLog("B291 PRISTROJ_NEZAPNUT knihovna napatari neni nactena: " + NativeAtariCoreBridge.loadError());
+            return;
+        }
+        try {
+            AtariDeviceView v = new AtariDeviceView(this, this::atariZarizeniAkce);
+            rootFrame.addView(v, new FrameLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+            atariZarizeni = v;
+            atariZarizeniSkryte = false;
+            v.requestFocus();
+            NativeAtariCoreBridge.devStartSafe(true);
+            atariNativeAudioActive = true;
+            appendNativeLog("B291 PRISTROJ_ZAPNUT - Atari 130XE ze schvaleneho navrhu, kresli C++ primo na displej");
+            ui.removeCallbacks(atariZarizeniTik);
+            ui.postDelayed(atariZarizeniTik, 400);
+            if (atariCppCekajiciHra != null) {
+                final byte[] d = atariCppCekajiciHra;
+                final String n = atariCppCekajiciJmeno;
+                atariCppCekajiciHra = null;
+                atariCppCekajiciJmeno = null;
+                ui.postDelayed(() -> atariCppSpustProgram(d, n, "NET_HRY"), 700);
+            }
+        } catch (Throwable t) {
+            appendNativeLog("B291 PRISTROJ_CHYBA_ZAPNUTI " + safeMsg(t));
+        }
+    }
+
+    private void atariZarizeniVypni(String duvod) {
+        if (atariZarizeni == null) return;
+        final AtariDeviceView v = atariZarizeni;
+        atariZarizeni = null;
+        atariZarizeniSkryte = false;
+        ui.removeCallbacks(atariZarizeniTik);
+        try { NativeAtariCoreBridge.devStopSafe(); } catch (Throwable ignored) {}
+        try { if (v.getParent() instanceof ViewGroup) ((ViewGroup) v.getParent()).removeView(v); } catch (Throwable ignored) {}
+        atariZarizeniVyzvedni();
+        appendNativeLog("B291 PRISTROJ_VYPNUT duvod=" + duvod);
+    }
+
+    /** LOG/CHYBA = schovat pristroj (je videt stranka s logem a testy). */
+    private void atariZarizeniSkryj(boolean skryt) {
+        if (atariZarizeni == null) return;
+        atariZarizeniSkryte = skryt;
+        atariZarizeni.setVisibility(skryt ? View.GONE : View.VISIBLE);
+        appendNativeLog("B291 PRISTROJ " + (skryt ? "SKRYT - stranka s logem (LOG/CHYBA)" : "ZOBRAZEN"));
+        if (skryt && web != null) {
+            try { web.evaluateJavascript("try{obnovLog();nactiCesty();}catch(e){}", null); } catch (Throwable ignored) {}
+        } else if (!skryt) {
+            atariZarizeni.requestFocus();
+        }
+    }
+
+    /** Radky logu z C++ a hotovy CSAVE WAV (tik kazdych 400 ms). */
+    private void atariZarizeniVyzvedni() {
+        try {
+            String l = NativeAtariCoreBridge.devPollLogSafe();
+            if (l != null) {
+                for (String r : l.split("\n")) if (r.length() > 0) appendNativeLog(r);
+            }
+            final byte[] pcm = NativeAtariCoreBridge.devTakeWavSafe();
+            if (pcm != null && pcm.length > 0) {
+                new Thread(() -> {
+                    String r = ulozitAtariPcmWav(pcm, "csave_vystup");
+                    NativeAtariCoreBridge.devStatusSafe(r.startsWith("/")
+                            ? "CSAVE ULOZENO: Download/AtariHelp/Atari_emu/csave_vystup.wav"
+                            : "CSAVE WAV SE NEULOZIL: " + r, 7000);
+                }, "b291-csave-wav").start();
+            }
+        } catch (Throwable t) {
+            appendNativeLog("B291 PRISTROJ_VYZVEDNUTI_CHYBA " + safeMsg(t));
+        }
+    }
+
+    /** Stejny zapis WAV jako BUILD2SB81 (16-bit PCM mono 44100 Hz) - vraci cestu nebo popis chyby. */
+    private String ulozitAtariPcmWav(byte[] pcm, String nazev) {
+        try {
+            File dir = new File(getPublicAtariHelpDownloadsDir(), "Atari_emu");
+            if (!dir.exists()) dir.mkdirs();
+            String jmeno = safeFileName((nazev == null || nazev.isEmpty()) ? "csave_vystup.wav" : nazev);
+            if (!jmeno.toLowerCase(Locale.US).endsWith(".wav")) jmeno = jmeno + ".wav";
+            File f = new File(dir, jmeno);
+            java.nio.ByteBuffer h = java.nio.ByteBuffer.allocate(44).order(java.nio.ByteOrder.LITTLE_ENDIAN);
+            h.put(new byte[]{'R', 'I', 'F', 'F'}); h.putInt(36 + pcm.length);
+            h.put(new byte[]{'W', 'A', 'V', 'E'}); h.put(new byte[]{'f', 'm', 't', ' '});
+            h.putInt(16); h.putShort((short) 1); h.putShort((short) 1);
+            h.putInt(44100); h.putInt(44100 * 2); h.putShort((short) 2); h.putShort((short) 16);
+            h.put(new byte[]{'d', 'a', 't', 'a'}); h.putInt(pcm.length);
+            try (FileOutputStream fos = new FileOutputStream(f, false)) {
+                fos.write(h.array());
+                fos.write(pcm);
+            }
+            appendNativeLog("B291 CSAVE_WAV ulozeno=" + f.getAbsolutePath() + " bajtu=" + pcm.length
+                    + " (" + String.format(Locale.US, "%.1f", pcm.length / 88200.0) + " s)");
+            return f.getAbsolutePath();
+        } catch (Throwable t) {
+            appendNativeLog("B291 CSAVE_WAV chyba=zapis:" + safeMsg(t));
+            return safeMsg(t);
+        }
+    }
+
+    /** Servisni tlacitka pristroje (kod z C++ po PUSTENI tlacitka). */
+    private void atariZarizeniAkce(int kod) {
+        final String[] jmena = {"?", "NET_HRY", "XEX_MOBIL", "ATR_DISK", "TURBO_BASIC", "BASIC_TBXL_TXT", "LOG_CHYBA", "HELP", "MENU"};
+        appendNativeLog("B291 SERVISNI_TLACITKO " + (kod > 0 && kod < jmena.length ? jmena[kod] : String.valueOf(kod)));
+        try {
+            switch (kod) {
+                case 1:   // NET / HRY
+                    atariCppNetCil = true;
+                    appendNativeLog("B291 NET_HRY - vybrana hra (XEX/ZIP) se spusti v Atari C++ v HELP");
+                    showAtariNetGamesBridge();
+                    break;
+                case 2: { // XEX / MOBIL
+                    Intent i = new Intent(Intent.ACTION_GET_CONTENT);
+                    i.addCategory(Intent.CATEGORY_OPENABLE);
+                    i.setType("*/*");
+                    startActivityForResult(Intent.createChooser(i, "XEX / ZIP pro Atari 130XE (C++)"), PICK_ATARI_CPP_XEX);
+                    break;
+                }
+                case 3:   // ATR / DISK
+                    NativeAtariCoreBridge.devStatusSafe("ATR DISK: DISKETOVA MECHANIKA V C++ JESTE NENI", 7000);
+                    appendNativeLog("B291 ATR_DISK: disketova mechanika (SIO D1:) v C++ jadru zatim neni - ATR spusti hlavni ATARI 130XE EMULATOR. Nic se nepredstira.");
+                    break;
+                case 4: { // TURBO / BASIC
+                    byte[] tb = atariCppAsset("emu_atari_cpp/turbo_basic_xl.xex");
+                    atariCppSpustProgram(tb, "turbo_basic_xl.xex", "TURBO_BASIC");
+                    break;
+                }
+                case 5:   // BASIC/TBXL TXT
+                    atariCppTxtDialog();
+                    break;
+                case 6:   // LOG / CHYBA
+                    appendNativeLog(NativeAtariCoreBridge.devInfoSafe());
+                    atariZarizeniSkryj(true);
+                    break;
+                case 7:   // HELP
+                    atariCppHelpDialog();
+                    break;
+                case 8:   // MENU
+                    if (web != null) web.loadUrl("file:///android_asset/index.html");
+                    break;
+                default:
+                    break;
+            }
+        } catch (Throwable t) {
+            appendNativeLog("B291 SERVISNI_TLACITKO_CHYBA " + safeMsg(t));
+        }
+    }
+
+    private byte[] atariCppAsset(String cesta) {
+        try (InputStream in = getAssets().open(cesta)) {
+            ByteArrayOutputStream bo = new ByteArrayOutputStream();
+            byte[] b = new byte[16384];
+            int n;
+            while ((n = in.read(b)) > 0) bo.write(b, 0, n);
+            return bo.toByteArray();
+        } catch (Throwable t) {
+            appendNativeLog("B291 ASSET_CHYBA " + cesta + " " + safeMsg(t));
+            return null;
+        }
+    }
+
+    /** XEX (i uvnitr ZIP) -> C++ zavadec. ATR zatim neumime - poctive to rekne. */
+    private void atariCppSpustProgram(byte[] data, String name, String odkud) {
+        if (data == null || data.length == 0) {
+            NativeAtariCoreBridge.devStatusSafe("SOUBOR JE PRAZDNY", 5000);
+            appendNativeLog("B291 " + odkud + " prazdna data");
+            return;
+        }
+        AtariExtract ex = extractAtariPayloadFromMaybeZip(name, data);
+        byte[] d = (ex != null && ex.data != null && ex.data.length > 0) ? ex.data : data;
+        String n = (ex != null && ex.name != null && ex.name.length() > 0) ? ex.name : name;
+        if (d.length >= 2 && (d[0] & 0xFF) == 0x96 && (d[1] & 0xFF) == 0x02) {
+            NativeAtariCoreBridge.devStatusSafe("ATR DISK: MECHANIKA V C++ JESTE NENI", 7000);
+            appendNativeLog("B291 " + odkud + " " + n + " je ATR (disketa) - v C++ zatim neni mechanika, nic se nespousti");
+            return;
+        }
+        boolean ok = NativeAtariCoreBridge.devLoadXexSafe(d, n);
+        appendNativeLog("B291 " + odkud + " " + n + " bajtu=" + d.length + (ok ? " -> zavadim v C++" : " -> NENI XEX (chybi $FFFF) - nic se nespousti"));
+        if (!ok) NativeAtariCoreBridge.devStatusSafe("NENI XEX: " + n, 6000);
+    }
+
+    private void atariCppTxtDialog() {
+        final android.widget.EditText et = new android.widget.EditText(this);
+        et.setMinLines(8);
+        et.setGravity(android.view.Gravity.TOP | android.view.Gravity.START);
+        et.setHint("10 PRINT \"ATARIHELP\"\n20 GOTO 10");
+        et.setInputType(android.text.InputType.TYPE_CLASS_TEXT | android.text.InputType.TYPE_TEXT_FLAG_MULTI_LINE
+                | android.text.InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS);
+        et.setTypeface(android.graphics.Typeface.MONOSPACE);
+        new android.app.AlertDialog.Builder(this)
+                .setTitle("BASIC / TBXL TXT → Atari 130XE")
+                .setMessage("Text se do Atari napise jeho vlastni klavesnici (klavesa po klavese, jako bys to psal ty).")
+                .setView(et)
+                .setPositiveButton("VLOZIT + RUN", (dlg, w) -> atariCppNapis(et.getText().toString(), true))
+                .setNeutralButton("VLOZIT", (dlg, w) -> atariCppNapis(et.getText().toString(), false))
+                .setNegativeButton("ZAVRIT", null)
+                .show();
+    }
+
+    private void atariCppNapis(String text, boolean run) {
+        if (text == null || text.trim().isEmpty()) return;
+        int n = NativeAtariCoreBridge.devTypeTextSafe(text, run);
+        NativeAtariCoreBridge.devStatusSafe("PISU DO ATARI: " + n + " KLAVES" + (run ? " + RUN" : ""), 5000);
+    }
+
+    private void atariCppHelpDialog() {
+        String t =
+                "POWER (zeleny vypinac vlevo u obrazovky) - vypne / zapne Atari. Zapnuti = studeny start (pamet se vymaze).\n\n"
+              + "RESET - jako na skutecnem Atari: program v pameti zustane.\n\n"
+              + "HELP, START, SELECT, OPTION - konzolova tlacitka, drzi se po dobu stisku.\n\n"
+              + "SHIFT a CONTROL - tuknuti = zamceno (zlate), dalsi tuknuti = odemceno.\n\n"
+              + "Kazetak: REC a PLAY drzi, STOP je pusti, EJECT otevre dvirka - zavres je tuknutim na okenko. "
+              + "Male tlacitko vedle pocitadla ho vynuluje. REW / FWD pretaci pocitadlo.\n\n"
+              + "CSAVE: napis CSAVE, RETURN, po pipnuti znovu RETURN. Po skonceni nahravani se WAV sam ulozi do "
+              + "Download/AtariHelp/Atari_emu/csave_vystup.wav.\n\n"
+              + "XEX/MOBIL - spusti XEX nebo ZIP z telefonu. TURBO/BASIC - Turbo-BASIC XL 1.5. "
+              + "NET/HRY - hry z atarihelp.eu (spusti se tady v C++).\n\n"
+              + "BASIC/TBXL TXT - vlozeni vypisu programu (pise se klavesnici Atari).\n\n"
+              + "LOG/CHYBA - log a testy (zpet tlacitkem ZPET NA ATARI 130XE nebo sipkou zpet).\n\n"
+              + "ATR/DISK - disketova mechanika v C++ zatim neni (ATR spusti hlavni ATARI 130XE EMULATOR).\n\n"
+              + "MENU - zpet do hlavni nabidky.";
+        android.widget.TextView tv = new android.widget.TextView(this);
+        tv.setText(t);
+        tv.setTextSize(15f);
+        int pad = (int) (18 * getResources().getDisplayMetrics().density);
+        tv.setPadding(pad, pad / 2, pad, pad / 2);
+        android.widget.ScrollView sv = new android.widget.ScrollView(this);
+        sv.addView(tv);
+        new android.app.AlertDialog.Builder(this)
+                .setTitle("ATARI 130XE (C++) - ovladani")
+                .setView(sv)
+                .setPositiveButton("ZAVRIT", null)
+                .show();
+    }
+
     // BUILD2SK31: sdilena obranna JS-cistici funkce - volana z KAZDEHO mista, kde
     // se PS1 jadro zastavuje (hlavni odchod ze stranky, mazani cache behem hry,
     // "boot dokoncen az po odchodu" edge-case), aby se predesla stara PS1
@@ -8220,6 +8497,7 @@ public class MainActivity extends Activity {
                 stopNativeIfLeavingSega(url, "onPageStarted");
                 stopPs1IfLeaving(url, "onPageStarted");
                 stopAtariNativeAudioIfLeaving(url, "onPageStarted");
+                atariZarizeniPodleUrl(url);   // B291: pristroj Atari 130XE (C++) v HELP
             }
 
             @Override
@@ -10388,6 +10666,16 @@ public class MainActivity extends Activity {
     }
 
     private void queueAtariGameFor130xe(String name, byte[] data, String reason) {
+        // B291: NET/HRY stisknute na pristroji v HELP -> hra jde do C++ Atari,
+        // ne do stareho JS emulatoru (ten se tim nijak nemeni).
+        if (atariCppNetCil && data != null && data.length > 0 && web != null) {
+            atariCppNetCil = false;
+            atariCppCekajiciHra = data;
+            atariCppCekajiciJmeno = (name == null || name.length() == 0) ? "atarihelp_game.xex" : name;
+            appendNativeLog("B291 NET_HRY -> C++ HELP: " + atariCppCekajiciJmeno + " bajtu=" + data.length + " reason=" + reason);
+            web.loadUrl(ATARI_CPP_URL);
+            return;
+        }
         if (data == null || data.length == 0 || web == null) {
             appendNativeLog("BUILD2SA5AG EMU130_QUEUE_SKIP_EMPTY reason=" + reason + " name=" + name);
             return;
@@ -10599,6 +10887,28 @@ public class MainActivity extends Activity {
     @Override
     protected void onActivityResult(int req, int res, Intent data) {
         super.onActivityResult(req, res, data);
+        if (req == PICK_ATARI_CPP_XEX) { // B291: XEX/MOBIL na pristroji v HELP
+            if (res != RESULT_OK || data == null || data.getData() == null) {
+                appendNativeLog("B291 XEX_MOBIL vyber zrusen");
+                return;
+            }
+            final Uri uri = data.getData();
+            final String nm = safeFileName(getDisplayName(uri));
+            new Thread(() -> {
+                try (InputStream in = getContentResolver().openInputStream(uri)) {
+                    ByteArrayOutputStream bo = new ByteArrayOutputStream();
+                    byte[] b = new byte[16384];
+                    int n;
+                    while (in != null && (n = in.read(b)) > 0 && bo.size() < 16 * 1024 * 1024) bo.write(b, 0, n);
+                    final byte[] d = bo.toByteArray();
+                    ui.post(() -> atariCppSpustProgram(d, nm, "XEX_MOBIL"));
+                } catch (Throwable t) {
+                    appendNativeLog("B291 XEX_MOBIL_CHYBA " + safeMsg(t));
+                    NativeAtariCoreBridge.devStatusSafe("SOUBOR NELZE PRECIST", 5000);
+                }
+            }, "b291-xex-mobil").start();
+            return;
+        }
         if (req == PICK_TV_WEB_SCREEN) {
             String pendingScreenUrl = napTvWebPendingScreenUrl;
             napTvWebPendingScreenUrl = null;
@@ -10741,6 +11051,11 @@ public class MainActivity extends Activity {
         }
         backPosledniStisk = ted;
         try {
+            // B291: ze stranky s logem (LOG/CHYBA) se zpet vraci na pristroj
+            if (atariZarizeni != null && atariZarizeniSkryte) {
+                atariZarizeniSkryj(false);
+                return;
+            }
             if (web != null && web.canGoBack()) {
                 stopNativeInPlaceHard("backPressedBeforeGoBack");
                 stopPs1SessionHard("backPressedBeforeGoBack");
@@ -10792,6 +11107,13 @@ public class MainActivity extends Activity {
             atariNativeAudioActive = false;
             appendNativeLog("B287 ATARI_ZVUK_NATIVNI_STOP duvod=activityPause");
         }
+        // B291: pristroj v HELP - vlakna emulace a kresleni zastavit (stroj
+        // a jeho stav zustava, po navratu bezi dal od stejneho mista)
+        if (atariZarizeni != null) {
+            ui.removeCallbacks(atariZarizeniTik);
+            NativeAtariCoreBridge.devStopSafe();
+            appendNativeLog("B291 PRISTROJ pauza (appka na pozadi) " + NativeAtariCoreBridge.devInfoSafe());
+        }
         if (web != null) web.onPause();
     }
 
@@ -10803,6 +11125,7 @@ public class MainActivity extends Activity {
         try { if (napDisplayManager != null) napDisplayManager.unregisterDisplayListener(napTvListener); } catch (Throwable ignored) {}
         stopNativeInPlaceHard("activityDestroy");
         stopPs1SessionHard("activityDestroy");
+        NativeAtariCoreBridge.devStopSafe();    // B291
         NativeAtariCoreBridge.audioStopSafe();  // B287
         atariNativeAudioActive = false;
         super.onDestroy();
@@ -10855,6 +11178,13 @@ public class MainActivity extends Activity {
             NativeAtariCoreBridge.audioStartSafe();
             atariNativeAudioActive = true;
             appendNativeLog("B287 ATARI_ZVUK_NATIVNI_START duvod=activityResume");
+        }
+        // B291: pristroj v HELP bezi dal (bez noveho startu Atari)
+        if (atariZarizeni != null) {
+            NativeAtariCoreBridge.devStartSafe(false);
+            ui.removeCallbacks(atariZarizeniTik);
+            ui.postDelayed(atariZarizeniTik, 400);
+            appendNativeLog("B291 PRISTROJ pokracuje po navratu appky");
         }
         // ====== OTACENI SE NESMI ZAMYKAT ======
         // Drive jsem tady vynucoval portret (aby se po navratu z hry PS1
