@@ -1,13 +1,14 @@
-B292 ATARI_SELFTEST cpu=29C55806 instr=51200 0.01s | mem=8CD99DC5 reads=16252928 0.05s | 3.06 MIPS = 6.9x realny cas Atari (cely stroj po cyklech)
-SELFTEST {"cpuHash":"29C55806","cpuInstr":51200,"cpuSec":0.01,"memHash":"8CD99DC5","memReads":16252928,"memSec":0.05,"mips":3.06,"realtimeX":6.9,"abi":"jine","charSigned":1}
+B292 ATARI_SELFTEST cpu=29C55806 instr=51200 0.00s | mem=D3949DC5 reads=16252928 0.04s | 3.70 MIPS = 8.4x realny cas Atari (cely stroj po cyklech)
+SELFTEST {"cpuHash":"29C55806","cpuInstr":51200,"cpuSec":0.00,"memHash":"D3949DC5","memReads":16252928,"memSec":0.04,"mips":3.70,"realtimeX":8.4,"abi":"jine","charSigned":1}
 OK     samokontrola probehla (51200 instrukci, 16252928 cteni)
 B291 HELP otevren - pristroj ZAPNUT, studeny start Atari
+B293 JADRO = ATARI 130XE PAL: RAM 64 kB + rozsirena 4x16 kB (PORTB bity 2-3, procesor bit 4, ANTIC bit 5), OS XL/XE rev.2 (soucet $9211), BASIC rev.C vestaveny, self-test ROM $5000, TRIG3=0 (bez cartridge), RESET = reset CPU+ANTIC+PIA/MMU, plovouci datova sbernice, ANTIC/GTIA PAL 312 radku, POKEY 1,773 MHz
 B291 PRISTROJ plocha nova 1080x2160 -> kresleni 1080x2160
 B291 EMULACE_VLAKNO start (50 snimku/s, zvuk OpenSL, vse v C++)
 B291 EMULACE_VLAKNO priorita nice=-8 nastavena
 B291 KRESLICI_VLAKNO start (pristroj kresli C++ primo na displej)
 B291 KRESLICI_VLAKNO priorita nice=-4 nastavena
-B291 PRISTROJ rozlozen 1080x2160 (displej 1080x2160) za 143 ms
+B291 PRISTROJ rozlozen 1080x2160 (displej 1080x2160) za 145 ms
 OK     Atari nastartovalo do READY
 drzeni A 2,5 s -> 19 znaku A
 OK     drzena klavesa se opakuje jako na skutecnem Atari
@@ -16,12 +17,13 @@ B291 TXT do Atari: 44 stisku klaves pripraveno (0 znaku na Atari klavesnici neni
 B292 KAZETA motor ZAPNUT (PACTL bit3=0) - nahravam linku SIO DATA OUT
 B292 CSAVE_HOTOVO motor VYPNUT, SEROUT bajtu=264, zvuk=24.1s -> ukladam WAV
 B291 HELP otevren - pristroj ZAPNUT, studeny start Atari
+B293 JADRO = ATARI 130XE PAL: RAM 64 kB + rozsirena 4x16 kB (PORTB bity 2-3, procesor bit 4, ANTIC bit 5), OS XL/XE rev.2 (soucet $9211), BASIC rev.C vestaveny, self-test ROM $5000, TRIG3=0 (bez cartridge), RESET = reset CPU+ANTIC+PIA/MMU, plovouci datova sbernice, ANTIC/GTIA PAL 312 radku, POKEY 1,773 MHz
 B291 PRISTROJ plocha nova 1080x2160 -> kresleni 1080x2160
 B291 EMULACE_VLAKNO start (50 snimku/s, zvuk OpenSL, vse v C++)
 B291 EMULACE_VLAKNO priorita nice=-8 nastavena
 B291 KRESLICI_VLAKNO start (pristroj kresli C++ primo na displej)
 B291 KRESLICI_VLAKNO priorita nice=-4 nastavena
-B291 PRISTROJ rozlozen 1080x2160 (displej 1080x2160) za 143 ms
+B291 PRISTROJ rozlozen 1080x2160 (displej 1080x2160) za 145 ms
 B291 TXT do Atari: 44 stisku klaves pripraveno (0 znaku na Atari klavesnici neni)
 B292 KAZETA motor ZAPNUT (PACTL bit3=0) - nahravam linku SIO DATA OUT
 B292 CSAVE_HOTOVO motor VYPNUT, SEROUT bajtu=264, zvuk=24.1s -> ukladam WAV
@@ -29,8 +31,8 @@ OK     CSAVE: hotovy WAV prisel do Javy (devTakeWav)
 WAV 24.1 s
 OK     EJECT vraci Jave akci VYBER KAZETY
 OK     EJECT otevrel dvirka
-B292 KAZETA VLOZENA OK kazeta_b292.wav: 24.1 s, 44100 Hz, 1 kanal(y) (FSK v kanalu 1), 16 bit; pri 600 Bd 264 bajtu v 2 zaznamech, 0 chyb ramce; demodulace 32 ms
-devLoadTape: OK kazeta_b292.wav: 24.1 s, 44100 Hz, 1 kanal(y) (FSK v kanalu 1), 16 bit; pri 600 Bd 264 bajtu v 2 zaznamech, 0 chyb ramce; demodulace 32 ms
+B292 KAZETA VLOZENA OK kazeta_b292.wav: 24.1 s, 44100 Hz, 1 kanal(y) (FSK v kanalu 1), 16 bit; pri 600 Bd 264 bajtu v 2 zaznamech, 0 chyb ramce; demodulace 35 ms
+devLoadTape: OK kazeta_b292.wav: 24.1 s, 44100 Hz, 1 kanal(y) (FSK v kanalu 1), 16 bit; pri 600 Bd 264 bajtu v 2 zaznamech, 0 chyb ramce; demodulace 35 ms
 OK     kazeta vlozena (WAV demodulovan)
 OK     po vlozeni kazety se dvirka zavrela
 B291 POWER VYPNUTO
@@ -40,7 +42,7 @@ B292 KAZETAK PLAY - kazeta: kazeta_b292.wav, pozice 0.0 s
 B292 KAZETA motor ZAPNUT (PACTL bit3=0) - nahravam linku SIO DATA OUT
 B292 KAZETA motor VYPNUT (SEROUT bajtu=0, 21.6s) - neni to CSAVE, WAV se nevytvari
 B291 TXT do Atari: 5 stisku klaves pripraveno (0 znaku na Atari klavesnici neni)
-B292 KAZETA VLOZENA OK kazeta_b292.wav: 24.1 s, 44100 Hz, 1 kanal(y) (FSK v kanalu 1), 16 bit; pri 600 Bd 264 bajtu v 2 zaznamech, 0 chyb ramce; demodulace 32 ms
+B292 KAZETA VLOZENA OK kazeta_b292.wav: 24.1 s, 44100 Hz, 1 kanal(y) (FSK v kanalu 1), 16 bit; pri 600 Bd 264 bajtu v 2 zaznamech, 0 chyb ramce; demodulace 35 ms
 B291 POWER VYPNUTO
 B291 POWER ZAPNUTO - studeny start (pamet i hardware od nuly, jako vypinac na skrini)
 B291 TXT do Atari: 6 stisku klaves pripraveno (0 znaku na Atari klavesnici neni)

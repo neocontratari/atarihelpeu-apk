@@ -20,7 +20,9 @@ public final class NativeAtariCoreBridge {
     // test_b292_jni_host (x86_64): procesor vcetne poctu cyklu na sbernici,
     // pamet 130XE pres vsech 256 hodnot PORTB (CPU i ANTIC).
     public static final String OCEKAVANY_CPU_HASH = "29C55806";
-    public static final String OCEKAVANY_MEM_HASH = "8CD99DC5";
+    // (pamet: stejne cislo jako u stareho jadra - mapovani pameti 130XE pres
+    // vsech 256 hodnot PORTB je po kontrole 130XE totozne)
+    public static final String OCEKAVANY_MEM_HASH = "D3949DC5";
     public static final long   OCEKAVANO_INSTRUKCI = 51200L;
     public static final long   OCEKAVANO_CTENI     = 16252928L;
 

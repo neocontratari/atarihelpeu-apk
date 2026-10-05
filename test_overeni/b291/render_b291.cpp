@@ -24,7 +24,6 @@ int main(int argc, char **argv) {
   // skutecny obraz Atari (READY) z jadra
   Machine *m = new Machine(); AnticView *v = new AnticView();
   m->mem.os = NAP_OS_ROM; m->mem.bas = NAP_BASIC_ROM; m->view = v;
-  std::memset(m->mem.ram, 0, sizeof(m->mem.ram));
   m->reset(); m->consol = 7;
   for (int f = 0; f < bootFrames; f++) m->runFrame();
 

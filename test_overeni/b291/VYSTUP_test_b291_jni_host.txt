@@ -4,19 +4,19 @@ B291 KRESLICI_VLAKNO start (pristroj kresli C++ primo na displej)
 B291 KRESLICI_VLAKNO priorita nice=-4 nastavena
 B291 EMULACE_VLAKNO start (50 snimku/s, zvuk OpenSL, vse v C++)
 B291 EMULACE_VLAKNO priorita nice=-8 nastavena
-B291 PRISTROJ rozlozen 1080x2160 (displej 1080x2160) za 179 ms
+B291 PRISTROJ rozlozen 1080x2160 (displej 1080x2160) za 140 ms
 B291 HELP otevren - pristroj ZAPNUT, studeny start Atari
 B291 PRISTROJ plocha nova 1080x2160 -> kresleni 1080x2160
 B291 KRESLICI_VLAKNO start (pristroj kresli C++ primo na displej)
 B291 KRESLICI_VLAKNO priorita nice=-4 nastavena
 B291 EMULACE_VLAKNO start (50 snimku/s, zvuk OpenSL, vse v C++)
 B291 EMULACE_VLAKNO priorita nice=-8 nastavena
-B291 PRISTROJ rozlozen 1080x2160 (displej 1080x2160) za 179 ms
+B291 PRISTROJ rozlozen 1080x2160 (displej 1080x2160) za 140 ms
 OK     kresleni bezi - na displej doslo aspon jedno predani
 OK     okno nastaveno na 1080x2160 RGBA
 OK     emulace bezi (aspon 40 snimku za 1,5 s)
 OK     Atari nastartovalo do READY (obraz z jadra)
-klidovy stav: 0 predani/s, 0.0 % plochy za snimek
+klidovy stav: 1 predani/s, 21.3 % plochy za snimek
 --- obrazovka ---
 
   READY
@@ -113,6 +113,6 @@ B291 PRISTROJ plocha zanikla
 B291 PRISTROJ plocha nova 1080x2160 -> kresleni 1080x2160
 B291 KRESLICI_VLAKNO stop
 B291 EMULACE_VLAKNO stop
-B291 PRISTROJ stav: bezi=ne power=ZAP snimku=1407 pc=$F2FD motor=VYP klaves_ve_fronte=0 zvuk_fronta=1486ms
+B291 PRISTROJ stav: bezi=ne power=ZAP snimku=1405 pc=$F309 motor=VYP klaves_ve_fronte=0 zvuk_fronta=1486ms
 
 VYSLEDEK: 24 kontrol, 0 chyb

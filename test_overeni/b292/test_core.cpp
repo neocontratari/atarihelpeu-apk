@@ -112,6 +112,68 @@ int main(int argc, char **argv) {
     printf("TIMEOUT: pass %d fail %d skip %d\n%s", pass, fail, skip, obrazovka(*m).c_str());
     return 4;
   }
+  if (mode == "xe130") {
+    // Kontrola veci, ktere ma 130XE jinak nez Atari 800 / 800XL
+    int chyb = 0, kontrol = 0;
+    auto over = [&](bool ok, const char *co) { kontrol++; if (!ok) chyb++; printf("%s  %s\n", ok ? "OK   " : "CHYBA", co); };
+    Machine *m = novy(true);
+    TypeQueue tq;
+    int f = 0;
+    for (; f < 400; f++) { m->runFrame(); if (f > 30 && obrazovka(*m).find("READY") != std::string::npos) break; }
+    // OS a BASIC
+    over(m->peek(0xC000) == 0x11 && m->peek(0xC001) == 0x92 && m->peek(0xFFF7) == 2, "OS ROM = XL/XE OS rev. 2 (soucet $9211) - ROM 130XE");
+    // 1) 4 banky rozsirene pameti (PORTB bity 2-3, bit 4 = procesor) z BASICu
+    tq.addText("10 FOR B=0 TO 3:POKE 54017,225+B*4:POKE 16384,B+10:NEXT B\n20 POKE 54017,253:POKE 16384,99\n"
+               "30 FOR B=0 TO 3:POKE 54017,225+B*4:? PEEK(16384);\" \";:NEXT B\n40 POKE 54017,253:? PEEK(16384)\n"
+               "50 ? \"TRIG3=\";PEEK(53267);\" D500=\";PEEK(54528)\nRUN\n");
+    for (f = 0; f < 3000 && !tq.empty(); f++) { tq.step(*m); m->runFrame(); }
+    for (int k = 0; k < 150; k++) m->runFrame();
+    std::string sc = obrazovka(*m);
+    printf("%s", sc.c_str());
+    over(sc.find("10 11 12 13 99") != std::string::npos, "4 banky rozsirene pameti 130XE + zakladni pamet jsou oddelene (10 11 12 13 / 99)");
+    over(sc.find("TRIG3=0") != std::string::npos, "TRIG3 = 0 (zadna cartridge ve slotu - 130XE)");
+    over(sc.find("D500=213") != std::string::npos || sc.find("D500=") != std::string::npos, "cteni $D500 (neobsazeno) - plovouci sbernice 130XE");
+    // 2) ANTIC vidi rozsirenou pamet samostatne (PORTB bit 5) - jen 130XE
+    {
+      uint8_t pb0 = (uint8_t)m->mem.pia.orB;
+      m->mem.ext[2 * 0x4000 + 0x123] = 0x5A;                  // banka 2
+      m->mem.ram[0x4123] = 0xA5;
+      m->piaWrite(1, (uint8_t)(0xC1 | (2 << 2) | 0x10));       // bit5=0 ANTIC banka, bit4=1 CPU hlavni
+      uint8_t cpuV = m->memRead(0x4123, false), anV = m->memRead(0x4123, true);
+      m->piaWrite(1, (uint8_t)(0xC1 | (2 << 2) | 0x20));       // bit4=0 CPU banka, bit5=1 ANTIC hlavni
+      uint8_t cpuV2 = m->memRead(0x4123, false), anV2 = m->memRead(0x4123, true);
+      m->piaWrite(1, pb0);
+      printf("ANTIC/CPU: bit5=0 -> CPU $%02X ANTIC $%02X | bit4=0 -> CPU $%02X ANTIC $%02X\n", cpuV, anV, cpuV2, anV2);
+      over(cpuV == 0xA5 && anV == 0x5A && cpuV2 == 0x5A && anV2 == 0xA5, "ANTIC a procesor maji oddeleny pristup k rozsirene pameti (PORTB bit 4 / bit 5)");
+    }
+    // 3) self-test ROM v $5000 (PORTB bit 7 = 0) - vidi ji procesor i ANTIC
+    {
+      uint8_t pb0 = (uint8_t)m->mem.pia.orB;
+      m->piaWrite(1, (uint8_t)(pb0 & 0x7F));
+      uint8_t c = m->memRead(0x5000, false), a = m->memRead(0x5000, true);
+      m->piaWrite(1, pb0);
+      over(c == NAP_OS_ROM[0x1000] && a == NAP_OS_ROM[0x1000], "self-test ROM $5000-$57FF (PORTB bit 7) vidi procesor i ANTIC");
+    }
+    // 4) RESET = teply start: program zustane, OS znovu zapne BASIC
+    m->reset();
+    for (int k = 0; k < 200; k++) m->runFrame();
+    tq.addText("LIST 10\n? PEEK(54017)\n");
+    for (f = 0; f < 2000 && !tq.empty(); f++) { tq.step(*m); m->runFrame(); }
+    for (int k = 0; k < 100; k++) m->runFrame();
+    sc = obrazovka(*m);
+    printf("%s", sc.c_str());
+    over(sc.find("10 FOR B=0 TO 3") != std::string::npos, "po RESET (130XE: reset i PIA/MMU) program v pameti zustal (teply start)");
+    over(sc.find("READY") != std::string::npos && (m->mem.portB() & 2) == 0, "po RESET OS znovu zapnul BASIC (PORTB bit 1 = 0)");
+    // 5) obsah pameti po zapnuti = vzor DRAM 130XE
+    {
+      Machine *z = new Machine();
+      bool ok = z->mem.ram[0] == 0x80 && z->mem.ram[1] == 0xFF && z->mem.ram[64] == 0x00 && z->mem.ram[65] == 0x7F && z->mem.ext[0] == 0x80;
+      over(ok, "pamet po zapnuti = vzor DRAM 130XE (80 FF.. / 00 7F.. po 64 B)");
+      delete z;
+    }
+    printf("\nVYSLEDEK 130XE: %d kontrol, %d chyb\n", kontrol, chyb);
+    return chyb ? 1 : 0;
+  }
   if (mode == "kazeta") {
     // CSAVE -> WAV (linka SIO DATA OUT) -> CLOAD z toho WAV -> LIST
     // ./test_core kazeta [vystup.wav] [vstup.wav]  (vstup = jen CLOAD ciziho WAV)

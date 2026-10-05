@@ -1,0 +1,60 @@
+OK     OS ROM = XL/XE OS rev. 2 (soucet $9211) - ROM 130XE
+                                        
+  READY                                 
+  10 FOR B=0 TO 3:POKE 54017,225+B*4:POK
+  E 16384,B+10:NEXT B                   
+  20 POKE 54017,253:POKE 16384,99       
+  30 FOR B=0 TO 3:POKE 54017,225+B*4:? P
+  EEK(16384);" ";:NEXT B                
+  40 POKE 54017,253:? PEEK(16384)       
+  50 ? "TRIG3=";PEEK(53267);" D500=";PEE
+  K(54528)                              
+  RUN                                   
+  10 11 12 13 99                        
+  TRIG3=0 D500=0                        
+                                        
+  READY                                 
+                                        
+                                        
+                                        
+                                        
+                                        
+                                        
+                                        
+                                        
+                                        
+OK     4 banky rozsirene pameti 130XE + zakladni pamet jsou oddelene (10 11 12 13 / 99)
+OK     TRIG3 = 0 (zadna cartridge ve slotu - 130XE)
+OK     cteni $D500 (neobsazeno) - plovouci sbernice 130XE
+ANTIC/CPU: bit5=0 -> CPU $A5 ANTIC $5A | bit4=0 -> CPU $5A ANTIC $A5
+OK     ANTIC a procesor maji oddeleny pristup k rozsirene pameti (PORTB bit 4 / bit 5)
+OK     self-test ROM $5000-$57FF (PORTB bit 7) vidi procesor i ANTIC
+                                        
+  READY                                 
+  LIST 10                               
+                                        
+  10 FOR B=0 TO 3:POKE 54017,225+B*4:POK
+  E 16384,B+10:NEXT B                   
+                                        
+  READY                                 
+  ? PEEK(54017)                         
+  253                                   
+                                        
+  READY                                 
+                                        
+                                        
+                                        
+                                        
+                                        
+                                        
+                                        
+                                        
+                                        
+                                        
+                                        
+                                        
+OK     po RESET (130XE: reset i PIA/MMU) program v pameti zustal (teply start)
+OK     po RESET OS znovu zapnul BASIC (PORTB bit 1 = 0)
+OK     pamet po zapnuti = vzor DRAM 130XE (80 FF.. / 00 7F.. po 64 B)
+
+VYSLEDEK 130XE: 9 kontrol, 0 chyb

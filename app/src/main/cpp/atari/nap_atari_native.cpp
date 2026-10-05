@@ -316,7 +316,8 @@ Java_eu_atarihelp_emu10_NativeAtariCoreBridge_bootNative(JNIEnv *env, jclass, ji
   // Machine()` sama o sobe NEZARUCUJE vynulovanou pamet (na rozdil od
   // polí s '={}'), takze rucni vycisteni tu porad musi zustat, i kdyz
   // uz mame cerstvy objekt.
-  std::memset(g_stroj->mem.ram, 0, sizeof(g_stroj->mem.ram));
+  // B292: pamet uz po zapnuti obsahuje vzor DRAM skutecneho 130XE
+  // (Machine::coldInit - dram130xe), ne nuly.
   // BUILD2SB61: KRITICKA CHYBA Z B255 - pri prepisu na "smaz a postav
   // znovu" jsem omylem VYNECHAL tenhle radek. `new Machine()` SAMA
   // O SOBE nenacte reset vektor ($FFFC/$FFFD) a neskoci tam - to dela
@@ -756,8 +757,7 @@ static void studenyStartLocked(int consol) {
   if (g_stroj) paska = std::move(g_stroj->tape);
   delete g_stroj; g_stroj = nullptr;
   delete g_view;  g_view  = nullptr;
-  zaloz();
-  std::memset(g_stroj->mem.ram, 0, sizeof(g_stroj->mem.ram));
+  zaloz();                       // novy stroj: pamet = vzor DRAM 130XE po zapnuti
   g_stroj->reset();
   g_stroj->consol = consol & 7;
   g_stroj->tape = std::move(paska);
@@ -1023,6 +1023,15 @@ Java_eu_atarihelp_emu10_NativeAtariCoreBridge_devStartNative(JNIEnv *, jclass, j
       studenyStartLocked(7);
       devLog(studeny ? "B291 HELP otevren - pristroj ZAPNUT, studeny start Atari"
                      : "B291 HELP - stroj neexistoval, studeny start");
+      // B293: co presne se emuluje - at je to v logu cerne na bilem
+      char b[400];
+      const unsigned osSum = (unsigned)NAP_OS_ROM[0] | ((unsigned)NAP_OS_ROM[1] << 8);
+      snprintf(b, sizeof(b),
+               "B293 JADRO = ATARI 130XE PAL: RAM 64 kB + rozsirena 4x16 kB (PORTB bity 2-3, procesor bit 4, ANTIC bit 5), "
+               "OS XL/XE rev.%u (soucet $%04X), BASIC rev.C vestaveny, self-test ROM $5000, TRIG3=0 (bez cartridge), "
+               "RESET = reset CPU+ANTIC+PIA/MMU, plovouci datova sbernice, ANTIC/GTIA PAL 312 radku, POKEY 1,773 MHz",
+               (unsigned)NAP_OS_ROM[0x3FF7], osSum);
+      devLog(b);
     }
     g_strojBezi = zapnuto;
   }

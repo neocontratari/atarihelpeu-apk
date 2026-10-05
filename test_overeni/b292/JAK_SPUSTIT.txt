@@ -10,6 +10,9 @@ Spoustet z adresare test_overeni/b292. Prekladaji se jen hlavicky jadra
    ./test_core acid acid800.atr             -> Acid800 (DETAIL=1 / TEXTLOG=1)
    ./test_core xex hra.xex 1500 prefix 300,600  -> snimky obrazu (*.idx 384x240)
    ./test_core kazeta [vystup.wav] [vstup.wav]  -> CSAVE -> WAV -> CLOAD -> LIST
+   ./test_core xe130                        -> B293: kontrola veci, ktere ma 130XE
+                                               jinak nez Atari 800 (banky, ANTIC/CPU
+                                               pristup, TRIG3, RESET, self-test ROM...)
    acid800.atr je v repozitari emulatoru atari800 (test/acid800.atr).
 
 2) Procesor proti SingleStepTests (github.com/SingleStepTests/65x02, 6502/v1):

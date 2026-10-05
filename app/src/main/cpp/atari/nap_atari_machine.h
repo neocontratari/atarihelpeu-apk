@@ -166,7 +166,12 @@ public:
 
   // ---------------- vstupy (konzole, joysticky) ----------------
   int consol = 7;                     // stisknuto = 0 v bitu (START=1, SELECT=2, OPTION=4)
-  int trig[4] = {1, 1, 1, 1};
+  // TRIG0/1 = tlacitka joysticku 1/2. 130XE ma jen 2 porty: TRIG2 = 1 (nic),
+  // TRIG3 = SNIMANI CARTRIDGE (linka RD5): 0 = ve slotu neni cartridge
+  // (vestaveny BASIC se nepocita). Na Atari 800 byl TRIG3 tlacitko 4.
+  // joysticku - s hodnotou 1 si programy mysli, ze je zasunuta cartridge
+  // (napr. M.U.L.E. pak nefunguje).
+  int trig[4] = {1, 1, 1, 0};
   int porta = 0xFF;                   // joysticky (1 = nestisknuto)
 
   // ---------------- kompatibilita se starym API ----------------
@@ -215,9 +220,21 @@ public:
   // =================================================================
   //  START / RESET
   // =================================================================
+  // Obsah DRAM po zapnuti 130XE (zmereno na skutecnem 130XE - Altirra
+  // "DRAM pattern B"): bloky po 64 bajtech se stridaji 80 FF 80 FF... a
+  // 00 7F 00 7F... - plati pro zakladni i rozsirenou pamet. (800XL ma jiny
+  // vzor FF 00 FF 00.)
+  static void dram130xe(uint8_t *d, size_t n) {
+    for (size_t i = 0; i < n; i++) {
+      const bool faze = ((i >> 6) & 1) != 0;
+      d[i] = (i & 1) ? (faze ? 0x7F : 0xFF) : (faze ? 0x00 : 0x80);
+    }
+  }
   void coldInit() {
     cyc = 0; x = 0; line = 0; frame = 0;
-    std::memset(&mem.pia, 0, sizeof mem.pia);
+    dram130xe(mem.ram, sizeof mem.ram);
+    dram130xe(mem.ext, sizeof mem.ext);
+    mem.pia = Pia();
     // ANTIC
     dmactlReg = 0; chactl = 0; dlist = 0; hscrol = 0; vscrol = 0; pmbase = 0; chbase = 0; chbaseReg = 0;
     nmien = 0; nmist = 0x1F; nmiLatch = false;
@@ -242,12 +259,16 @@ public:
     irqLine = false;
   }
 
-  // Studeny start (POWER) - volajici uz nastavil mem.os/mem.bas
+  // RESET (tlacitko RESET; po POWER ho vola volajici po nastaveni ROM).
+  // 130XE: tlacitko RESET je primo na resetovaci lince - resetuje procesor,
+  // ANTIC (DMACTL, NMIEN), PIA a tim i MMU (FREDDIE): PORTB je po resetu
+  // vstup = $FF -> OS ROM zapnuta, BASIC a rozsirena pamet vypnute, OS si je
+  // pri teplem startu znovu nastavi (BASICF). (Atari 400/800 to delaly jinak:
+  // RESET tam byl jen NMI pres ANTIC a PIA zustavala.)
   void reset() {
-    // RESET na XL: procesor + ANTIC (DMACTL, NMIEN, citace paprsku).
-    // PIA (PORTB) zustava - na skutecnem stroji ji RESET nemaze.
     dmactlReg = 0; nmien = 0; updatePlayfieldTiming();
     wsyncPending = 0; rdyHalt = false; nmiLatch = false;
+    mem.pia = Pia();
     cpu.reset();
   }
 
@@ -1040,14 +1061,20 @@ public:
     if (a >= 0xC000) { if ((pb & 1) && mem.os) return mem.os[a - 0xC000]; return mem.ram[a]; }
     if (a >= 0xA000) { if (!(pb & 2) && mem.bas) return mem.bas[a - 0xA000]; return mem.ram[a]; }
     if (a >= 0x4000 && a < 0x8000) {
-      if (!antic && a >= 0x5000 && a < 0x5800 && !(pb & 0x80) && (pb & 1) && mem.os) return mem.os[a - 0x5000 + 0x1000];
+      // self-test ROM ($5000-$57FF, PORTB bit 7 = 0, jen se zapnutou OS ROM):
+      // MMU dekoduje adresu bez ohledu na to, kdo je na sbernici - vidi ji
+      // procesor i ANTIC a ma prednost pred rozsirenou pameti
+      if (a >= 0x5000 && a < 0x5800 && !(pb & 0x80) && (pb & 1) && mem.os) return mem.os[a - 0x5000 + 0x1000];
       if (!(pb & (antic ? 0x20 : 0x10))) return mem.ext[((pb >> 2) & 3) * 0x4000 + (a - 0x4000)];
     }
     return mem.ram[a];
   }
   inline uint8_t anticRead(uint16_t a) {
-    if ((a & 0xF800) == 0xD000) return 0xFF;
-    return memRead(a, true);
+    // DMA ANTIC jde po stejne datove sbernici - posledni hodnota na ni zustane
+    // (130XE ma "plovouci" sbernici, viz ioRead)
+    const uint8_t v = ((a & 0xF800) == 0xD000) ? 0xFF : memRead(a, true);
+    busData = v;
+    return v;
   }
   inline void memWrite(uint16_t a, uint8_t v) {
     const int pb = mem.portB();
@@ -1066,7 +1093,11 @@ public:
       case 0xD200: return pokeyRead(a & 0x0F);
       case 0xD300: return piaRead(a & 3);
       case 0xD400: return anticRegRead(a & 0x0F);
-      default: return 0xFF;
+      // $D100 (PBI), $D500 (cartridge), $D600-$D7FF: na 130XE tam bez
+      // pripojenych zarizeni nic neodpovida a datova sbernice "plave" - cte
+      // se posledni hodnota, ktera na ni byla (typicky horni bajt adresy z
+      // predchoziho cyklu, napr. LDA $D5xx -> $D5). 800XL ma pull-upy ($FF).
+      default: return busData;
     }
   }
   void ioWrite(uint16_t a, uint8_t v) {

@@ -110,7 +110,6 @@ inline double speed(const uint8_t *osRom, const uint8_t *basRom, long long *outI
   Machine &m = *mp;
   m.coldInit();
   m.mem.os = osRom; m.mem.bas = basRom;
-  std::memset(m.mem.ram, 0, sizeof m.mem.ram);
   m.consol = 7;
   m.reset();
   const uint64_t i0 = m.cpu.instr;

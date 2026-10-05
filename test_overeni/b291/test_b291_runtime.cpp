@@ -39,7 +39,6 @@ static std::string obrazovka(Machine &m) {
 int main() {
   Machine *m = new Machine(); AnticView *v = new AnticView();
   m->mem.os = NAP_OS_ROM; m->mem.bas = NAP_BASIC_ROM; m->view = v;
-  std::memset(m->mem.ram, 0, sizeof(m->mem.ram));
   m->reset(); m->consol = 7;
   std::vector<float> a(882);
   CsaveRecorder rec;
