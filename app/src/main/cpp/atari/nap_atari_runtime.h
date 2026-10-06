@@ -338,4 +338,374 @@ struct XexLoader {
   }
 };
 
+// ---------------------------------------------------------------------
+//  B299: pomocne veci pro diagnostiku (LOG/CHYBA) a psani programu
+// ---------------------------------------------------------------------
+inline uint32_t napCrc32(const uint8_t *d, size_t n, uint32_t crc = 0) {
+  crc = ~crc;
+  for (size_t i = 0; i < n; i++) {
+    crc ^= d[i];
+    for (int k = 0; k < 8; k++) crc = (crc >> 1) ^ (0xEDB88320u & (0u - (crc & 1u)));
+  }
+  return ~crc;
+}
+
+// Radky programu BASIC / Turbo-BASIC XL v pameti (STMTAB $88): pocet a cisla
+// radku s chybou syntaxe (BASIC je ulozi jako prikaz "ERROR-" = token $37).
+inline int napRadkyProgramu(const Machine &m, std::vector<int> *sChybou) {
+  int p = m.mem.ram[0x88] | (m.mem.ram[0x89] << 8), n = 0;
+  for (int i = 0; i < 6000; i++) {
+    const int ln = m.mem.ram[p & 0xFFFF] | (m.mem.ram[(p + 1) & 0xFFFF] << 8);
+    const int len = m.mem.ram[(p + 2) & 0xFFFF];
+    if (ln >= 32768 || len < 4) break;
+    n++;
+    if (sChybou && m.mem.ram[(p + 4) & 0xFFFF] == 0x37) sChybou->push_back(ln);
+    p += len;
+  }
+  return n;
+}
+
+// Ukazatele BASICu / TBXL a kontrolni soucty oblasti pameti (LOG/CHYBA, "B299 PAMET");
+// stejna funkce bezi v testu na PC, takze se cisla z telefonu daji porovnat.
+inline std::string napDiagPameti(const Machine &m) {
+  const uint8_t *r = m.mem.ram;
+  auto w = [&](int a) { return r[a] | (r[a + 1] << 8); };
+  auto crc = [&](int od, int doo) { return napCrc32(r + od, (size_t)(doo - od + 1)); };
+  char b[900];
+  std::string out;
+  const int vntp = w(0x82), starp = w(0x8C);
+  const uint32_t crcProg = (vntp > 0 && vntp < starp && starp - vntp < 0xB000) ? napCrc32(r + vntp, (size_t)(starp - vntp)) : 0;
+  std::vector<int> chyby;
+  const int radku = napRadkyProgramu(m, &chyby);
+  std::snprintf(b, sizeof(b), "B299 PAMET BASIC: LOMEM $%04X VNTP $%04X VNTD $%04X VVTP $%04X STMTAB $%04X STMCUR $%04X STARP $%04X MEMTOP $%04X; "
+                "program VNTP..STARP %d B crc32 %08X, radku %d, s chybou syntaxe %d",
+                w(0x80), vntp, w(0x84), w(0x86), w(0x88), w(0x8A), starp, w(0x90), starp - vntp, crcProg, radku, (int)chyby.size());
+  out += b; out += "\n";
+  std::snprintf(b, sizeof(b), "B299 PAMET CRC32: $00-$7F %08X, $80-$FF %08X, $0100-$01FF %08X, $0200-$03FF %08X, $0400-$06FF %08X, "
+                "$0700-$1FFF %08X, $2000-$3FFF %08X, $4000-$7FFF %08X, $8000-$BFFF %08X, RAM pod ROM $C000-$CFFF %08X, $D800-$FFFF %08X, "
+                "rozsirena 64 kB %08X; VBXE MEMAC A $%02X/$%02X B $%02X",
+                crc(0x00, 0x7F), crc(0x80, 0xFF), crc(0x100, 0x1FF), crc(0x200, 0x3FF), crc(0x400, 0x6FF), crc(0x700, 0x1FFF),
+                crc(0x2000, 0x3FFF), crc(0x4000, 0x7FFF), crc(0x8000, 0xBFFF), crc(0xC000, 0xCFFF), crc(0xD800, 0xFFFF),
+                napCrc32(m.mem.ext, sizeof(m.mem.ext)), m.vbx.memacCtl, m.vbx.memacBankA, m.vbx.memacBankB);
+  out += b;
+  return out;
+}
+
+// Scankod (+ $40 SHIFT, $80 CONTROL) -> text pro log (co clovek napsal)
+inline std::string napScanText(int kod) {
+  const int sc = kod & 0x3F;
+  switch (sc) {
+    case 12: return "<RETURN>";
+    case 52: return (kod & 0x40) ? "<SMAZ.RADEK>" : (kod & 0x80) ? "<DEL>" : "<BKSP>";
+    case 28: return "<ESC>";
+    case 44: return "<TAB>";
+    case 60: return "<CAPS>";
+    case 39: return "<INVERZE>";
+    case 17: return "<HELP>";
+    default: break;
+  }
+  static const char *zaklad = "abcdefghijklmnopqrstuvwxyz0123456789,. ;+*-=/<>";
+  for (const char *c = zaklad; *c; c++) {
+    if (scanZakladni(*c) != sc) continue;
+    std::string s;
+    if (kod & 0x80) s += "^";
+    char ch = *c;
+    if (kod & 0x40) {
+      const char *SH = "!\"#$%&'@():?^_|\\[]", *BASE = "1234567890;/*-=+,.";
+      const char *p = std::strchr(BASE, ch);
+      if (p) ch = SH[p - BASE];
+      else if (ch == '<') { return s + "<CLEAR>"; }
+      else if (ch == '>') { return s + "<INSERT>"; }
+    }
+    if (ch >= 'a' && ch <= 'z') ch = (char)(ch - 'a' + 'A');       // OS po startu pise velka (CAPS)
+    return s + ch;
+  }
+  char b[12]; std::snprintf(b, sizeof(b), "<%02X>", kod & 0xFF);
+  return b;
+}
+
+// ---------------------------------------------------------------------
+//  B299: PROGRAM Z TXT SOUBORU -> ATARI BASIC / TURBO-BASIC XL
+//  (tlacitko BASIC/TBXL TXT -> TXT SOUBOR). Rene: "abych si mohl vybrat txt
+//  soubor s kodem jak pro turbobasic tak pro basic a aby ho aplikace
+//  automaticky prepsala do obrazovky, kde sel spustit a pote i ulozit a nahrat".
+//
+//  Dela to, co clovek u klavesnice, jen rychle:
+//   - pocka na READY (BASIC / TBXL ceka na radek),
+//   - napise NEW a pak radek po radku - jen radky s cislem (ostatni se
+//     preskoci a reknou se v logu),
+//   - klavesy jdou do CH ($02FC) - tam, kam je dava klavesnicove preruseni;
+//     OS je cte stejne (K: -> E: -> BASIC) a BASIC kazdy radek zpracuje, jako
+//     by ho nekdo napsal. Dalsi klavesa az kdyz OS predchozi prevzal (CH=$FF),
+//   - behem psani: LMARGN = 0 (radek az 120 znaku, jako POKE 82,0), bez
+//     klapani klaves (NOCLIK), mala/velka pismena presne podle souboru
+//     (SHFLOK), inverzni znaky (INVFLG), ridici znaky v retezcich s ESC -
+//     jako to pise clovek. Pak se vse vrati.
+//   - nakonec projde program v pameti: radky s chybou syntaxe vypise cislem.
+// ---------------------------------------------------------------------
+struct PsaniProgramu {
+  enum Stav { NIC, CEKA_READY, PISE, DOBEH, HOTOVO, CHYBA } stav = NIC;
+  struct Klav { uint8_t kod; int8_t inv; };   // kod: scankod | $40 SHIFT | $80 CONTROL; inv 1/0 = INVFLG, -1 = jedno
+  std::deque<Klav> q;
+  bool tbxl = false, rychlyTimeoutVypnout = false;
+  std::string jmeno;
+  int radku = 0, prazdnych = 0, bezCisla = 0, dlouhych = 0, znakuNelze = 0, klaves = 0;
+  std::vector<int> dlouhe;
+  std::vector<std::string> bezCislaUkazka;
+  int snimku = 0, klid = 0, cekaInv = 0, snimkuPsani = 0;
+  uint8_t puvLmargn = 2, puvShflok = 0x40, puvNoclik = 0;
+  std::vector<std::string> log;
+  std::string status; int statusMs = 0;        // zprava pod pristroj (vyzvedne vlakno emulace)
+  bool aktivni() const { return stav == CEKA_READY || stav == PISE || stav == DOBEH; }
+  bool pise() const { return stav == PISE; }
+  void zrus() {
+    if (aktivni()) log.push_back("B299 TXT PROGRAM: psani preruseno (POWER / RESET / jiny program)");
+    stav = NIC; q.clear();
+  }
+
+  // ATASCII znak -> klavesy Atari. false = na klavesnici Atari nejde napsat.
+  static bool klavesy(int c, std::vector<Klav> &out) {
+    const int ESC = 28;
+    auto k = [&](int kod, int inv = 0) { out.push_back({(uint8_t)kod, (int8_t)inv}); };
+    if (c < 0 || c > 0xFF) return false;
+    if (c >= 0x80) {
+      switch (c) {                                       // editacni kody (v retezci s ESC)
+        case 0x9B: return false;                         // EOL = konec radku
+        case 0x9C: k(ESC, -1); k(52 | 0x40); return true;  // smazat radek
+        case 0x9D: k(ESC, -1); k(55 | 0x40); return true;  // vlozit radek
+        case 0x9E: k(ESC, -1); k(44 | 0x80); return true;  // CTRL-TAB
+        case 0x9F: k(ESC, -1); k(44 | 0x40); return true;  // SHIFT-TAB
+        case 0xFD: k(ESC, -1); k(30 | 0x80); return true;  // zvonek
+        case 0xFE: k(ESC, -1); k(52 | 0x80); return true;  // smazat znak
+        case 0xFF: k(ESC, -1); k(55 | 0x80); return true;  // vlozit znak
+        default: break;
+      }
+      std::vector<Klav> z;                               // inverzni znak = zakladni znak s INVFLG
+      if (!klavesy(c & 0x7F, z)) return false;
+      for (auto &x : z) { if (x.inv >= 0) x.inv = 1; out.push_back(x); }
+      return true;
+    }
+    if (c >= 'a' && c <= 'z') { k(scanZakladni(c)); return true; }                    // SHFLOK=0: mala
+    if (c >= 'A' && c <= 'Z') { k(scanZakladni(c - 'A' + 'a') | 0x40); return true; } // SHIFT: velka
+    switch (c) {
+      case 0x00: k(32 | 0x80); return true;              // srdce = CTRL-,
+      case 0x1B: k(ESC, -1); k(ESC, -1); return true;     // ESC v retezci
+      case 0x1C: k(ESC, -1); k(14 | 0x80); return true;   // kurzor nahoru
+      case 0x1D: k(ESC, -1); k(15 | 0x80); return true;   // kurzor dolu
+      case 0x1E: k(ESC, -1); k(6 | 0x80); return true;    // kurzor vlevo
+      case 0x1F: k(ESC, -1); k(7 | 0x80); return true;    // kurzor vpravo
+      case 0x60: k(34 | 0x80); return true;              // kara = CTRL-.
+      case 0x7B: k(2 | 0x80); return true;               // pika = CTRL-;
+      case 0x7C: k(15 | 0x40); return true;              // |
+      case 0x7D: k(ESC, -1); k(54 | 0x40); return true;   // CLEAR (smazani obrazovky) v retezci
+      case 0x7E: k(ESC, -1); k(52); return true;          // BACKSPACE v retezci
+      case 0x7F: k(ESC, -1); k(44); return true;          // TAB v retezci
+      default: break;
+    }
+    if (c >= 0x01 && c <= 0x1A) { k(scanZakladni('a' + c - 1) | 0x80); return true; }   // CTRL-A..Z (grafika)
+    const int s = asciiNaScan(c);                        // cislice, mezera, interpunkce
+    if (s < 0) return false;
+    k(s); return true;
+  }
+
+  // soubor -> radky jako ATASCII kody (-1 = znak, ktery v ATASCII neni)
+  static std::vector<std::vector<int>> radkySouboru(const uint8_t *d, size_t n, bool &atascii) {
+    std::vector<std::vector<int>> out;
+    atascii = false;
+    for (size_t i = 0; i < n; i++) if (d[i] == 0x9B) { atascii = true; break; }
+    size_t i = 0;
+    if (!atascii && n >= 3 && d[0] == 0xEF && d[1] == 0xBB && d[2] == 0xBF) i = 3;   // UTF-8 BOM
+    // platne UTF-8? (jinak 8bitove ATASCII s PC konci radku)
+    bool utf8 = !atascii;
+    for (size_t j = i; utf8 && j < n; ) {
+      const uint8_t b = d[j];
+      int dl = b < 0x80 ? 1 : (b & 0xE0) == 0xC0 ? 2 : (b & 0xF0) == 0xE0 ? 3 : (b & 0xF8) == 0xF0 ? 4 : 0;
+      if (!dl || j + dl > n) { utf8 = false; break; }
+      for (int k = 1; k < dl; k++) if ((d[j + k] & 0xC0) != 0x80) { utf8 = false; break; }
+      j += dl;
+    }
+    std::vector<int> r;
+    auto konec = [&]() { out.push_back(r); r.clear(); };
+    while (i < n) {
+      const uint8_t b = d[i];
+      if (atascii) { if (b == 0x9B) konec(); else r.push_back(b); i++; continue; }
+      if (b == '\r') { konec(); i++; if (i < n && d[i] == '\n') i++; continue; }
+      if (b == '\n') { konec(); i++; continue; }
+      if (b == '\t') { r.push_back(' '); i++; continue; }
+      if (b < 0x80 || !utf8) { r.push_back(b); i++; continue; }
+      int dl = (b & 0xE0) == 0xC0 ? 2 : (b & 0xF0) == 0xE0 ? 3 : 4;
+      r.push_back(-1); i += dl;                          // ceske znaky, emoji... na Atari nejsou
+    }
+    if (!r.empty()) konec();
+    return out;
+  }
+
+  // velka pismena mimo uvozovky (BASIC zna jen velke prikazy a promenne),
+  // ale za REM / DATA zustane text tak, jak je
+  static void velkaPismena(std::vector<int> &r, size_t od) {
+    bool uvoz = false, zacatek = true;
+    for (size_t i = od; i < r.size(); i++) {
+      const int c = r[i];
+      if (c == '"') { uvoz = !uvoz; zacatek = false; continue; }
+      if (uvoz) continue;
+      if (c == ':') { zacatek = true; continue; }
+      if (zacatek && c == ' ') continue;
+      if (zacatek) {
+        zacatek = false;
+        auto slovo = [&](const char *w) {
+          size_t k = 0;
+          for (; w[k]; k++) {
+            if (i + k >= r.size()) return false;
+            int x = r[i + k]; if (x >= 'a' && x <= 'z') x -= 32;
+            if (x != w[k]) return false;
+          }
+          return true;
+        };
+        const char *kom[] = {"REM", "DATA", "R.", "D.", "."};
+        for (const char *w : kom) {
+          if (!slovo(w)) continue;
+          for (size_t k = 0; w[k]; k++) if (r[i + k] >= 'a' && r[i + k] <= 'z') r[i + k] -= 32;
+          return;                                          // zbytek radku beze zmeny
+        }
+      }
+      if (c >= 'a' && c <= 'z') r[i] = c - 32;
+    }
+  }
+
+  // pripravi frontu klaves; tbxl jen do logu (TBXL nahrava volajici pres XexLoader)
+  void start(const uint8_t *d, size_t n, bool tb, const std::string &nm, bool rychlyTimeout) {
+    q.clear(); log.clear(); status.clear();
+    tbxl = tb; jmeno = nm; rychlyTimeoutVypnout = rychlyTimeout;
+    radku = prazdnych = bezCisla = dlouhych = znakuNelze = klaves = 0;
+    dlouhe.clear(); bezCislaUkazka.clear();
+    snimku = klid = cekaInv = snimkuPsani = 0;
+    bool atascii = false;
+    std::vector<std::vector<int>> radky = radkySouboru(d, n, atascii);
+    std::vector<Klav> k;
+    auto pridej = [&](const std::vector<Klav> &v) { for (const auto &x : v) q.push_back(x); };
+    // NEW
+    k.clear(); for (int c : {'N', 'E', 'W'}) klavesy(c, k); k.push_back({12, -1}); pridej(k);
+    for (auto &r : radky) {
+      size_t a = 0; while (a < r.size() && r[a] == ' ') a++;
+      size_t b = r.size();
+      int uvozovek = 0; for (int c : r) if (c == '"') uvozovek++;
+      if (uvozovek % 2 == 0) while (b > a && r[b - 1] == ' ') b--;
+      std::vector<int> t(r.begin() + (long)a, r.begin() + (long)b);
+      if (t.empty()) { prazdnych++; continue; }
+      if (t[0] < '0' || t[0] > '9') {
+        bezCisla++;
+        if (bezCislaUkazka.size() < 3) {
+          std::string s; for (size_t x = 0; x < t.size() && x < 30; x++) s.push_back(t[x] >= 32 && t[x] < 127 ? (char)t[x] : '?');
+          bezCislaUkazka.push_back(s);
+        }
+        continue;
+      }
+      long cislo = 0; size_t p = 0;
+      while (p < t.size() && t[p] >= '0' && t[p] <= '9') { cislo = cislo * 10 + (t[p] - '0'); p++; if (cislo > 99999) break; }
+      if (cislo > 32767) { bezCisla++; continue; }
+      velkaPismena(t, p);
+      k.clear();
+      for (int c : t) if (!klavesy(c, k)) znakuNelze++;
+      int viditelnych = 0; for (int c : t) if (c >= 0) viditelnych++;
+      if (viditelnych > 120) { dlouhych++; if (dlouhe.size() < 8) dlouhe.push_back((int)cislo); continue; }
+      k.push_back({12, -1});
+      pridej(k);
+      radku++;
+    }
+    klaves = (int)q.size();
+    stav = CEKA_READY;
+    char b[260];
+    std::snprintf(b, sizeof(b), "B299 TXT PROGRAM %s -> %s: %d radku programu, %d stisku klaves (%s soubor); cekam na READY",
+                  nm.c_str(), tb ? "TURBO-BASIC XL" : "ATARI BASIC", radku, klaves, atascii ? "ATASCII" : "textovy");
+    log.push_back(b);
+    status = tb ? "NAČÍTÁM TURBO-BASIC, PAK PÍŠU PROGRAM" : "ATARI BASIC - PAK PÍŠU PROGRAM"; statusMs = 6000;
+  }
+
+  // "READY" na radku nad kurzorem textove obrazovky a OS ceka na klavesu
+  static bool ready(const Machine &m) {
+    if (m.mem.ram[0x57] != 0 || m.mem.ram[0x2FC] != 0xFF) return false;   // DINDEX = textova obrazovka, CH prazdne
+    const int sav = m.mem.ram[0x58] | (m.mem.ram[0x59] << 8);
+    const int row = m.mem.ram[0x54];
+    if (row < 1 || row > 23) return false;
+    static const uint8_t R[5] = {0x32, 0x25, 0x21, 0x24, 0x39};             // READY ve vnitrnim kodu
+    const int a = sav + (row - 1) * 40;
+    for (int c = 0; c + 5 <= 40; c++) {
+      int i = 0;
+      while (i < 5 && (m.mem.ram[(a + c + i) & 0xFFFF] & 0x7F) == R[i]) i++;
+      if (i == 5) return true;
+    }
+    return false;
+  }
+
+  // vola se na zacatku kazdeho radku obrazu behem psani (PISE)
+  void radek(Machine &m) {
+    if (stav != PISE || q.empty()) return;
+    if (m.mem.ram[0x2FC] != 0xFF) { cekaInv = 0; return; }   // OS predchozi klavesu jeste nevzal
+    const Klav k = q.front();
+    if (k.inv >= 0 && ((m.mem.ram[0x2B6] & 0x80) != 0) != (k.inv != 0)) {
+      // INVFLG prepnout az OS predchozi klavesu cele zpracuje (snimek pockat)
+      if (++cekaInv < 312) return;
+      m.mem.ram[0x2B6] = k.inv ? 0x80 : 0x00;
+    }
+    cekaInv = 0;
+    m.mem.ram[0x2FC] = k.kod;      // CH - jako klavesnicove preruseni
+    m.mem.ram[0x4D] = 0;           // ATRACT (setric obrazovky) vynulovat jako pri stisku
+    q.pop_front();
+  }
+
+  // vola se po kazdem snimku
+  void poSnimku(Machine &m) {
+    if (!aktivni()) return;
+    snimku++;
+    char b[400];
+    if (stav == CEKA_READY) {
+      klid = ready(m) ? klid + 1 : 0;
+      if (klid >= 8) {
+        if (rychlyTimeoutVypnout) m.sioRychlyTimeout = false;
+        puvLmargn = m.mem.ram[0x52]; puvShflok = m.mem.ram[0x2BE]; puvNoclik = m.mem.ram[0x2DB];
+        m.mem.ram[0x52] = 0;       // LMARGN 0: radek az 120 znaku
+        m.mem.ram[0x2BE] = 0x00;   // SHFLOK: mala pismena, velka se pisou se SHIFT
+        m.mem.ram[0x2DB] = 0xFF;   // NOCLIK: bez klapani klaves (rychleji)
+        stav = PISE; snimkuPsani = 0; klid = 0;
+        std::snprintf(b, sizeof(b), "B299 TXT PROGRAM: READY po %d snimcich - pisu NEW a %d radku", snimku, radku);
+        log.push_back(b);
+        status = "PÍŠU PROGRAM: " + std::to_string(radku) + " ŘÁDKŮ"; statusMs = 60000;
+      } else if (snimku > 50 * 45) {
+        stav = CHYBA;
+        log.push_back("B299 TXT PROGRAM: Atari do 45 s neukazalo READY - nic se nepise (bezi hra nebo jiny program?)");
+        status = "ATARI NEUKÁZALO READY - NIC NEPÍŠU"; statusMs = 8000;
+      }
+      return;
+    }
+    if (stav == PISE) {
+      snimkuPsani++;
+      if (q.empty()) { stav = DOBEH; klid = 0; }
+      return;
+    }
+    // DOBEH: posledni RETURN si OS vzal (CH = $FF) a BASIC radek zpracoval,
+    // pak kontrola programu v pameti
+    klid = (m.mem.ram[0x2FC] == 0xFF) ? klid + 1 : 0;
+    if (klid >= 15 || ++snimkuPsani > 50 * 600) {
+      m.mem.ram[0x52] = puvLmargn; m.mem.ram[0x2BE] = puvShflok; m.mem.ram[0x2DB] = puvNoclik; m.mem.ram[0x2B6] = 0;
+      std::vector<int> chyby;
+      const int vPameti = napRadkyProgramu(m, &chyby);
+      std::string ch;
+      for (size_t i = 0; i < chyby.size() && i < 12; i++) ch += (i ? "," : " ") + std::to_string(chyby[i]);
+      std::string dl;
+      for (size_t i = 0; i < dlouhe.size(); i++) dl += (i ? "," : " ") + std::to_string(dlouhe[i]);
+      std::string bc;
+      for (size_t i = 0; i < bezCislaUkazka.size(); i++) bc += (i ? " | " : " (napr. ") + bezCislaUkazka[i] + (i + 1 == bezCislaUkazka.size() ? ")" : "");
+      std::snprintf(b, sizeof(b), "B299 TXT PROGRAM HOTOVO za %.1f s: napsano %d radku, v pameti %d radku, s chybou syntaxe %d%s; "
+                    "preskoceno: prazdnych %d, bez cisla radku %d%s, delsich nez 120 znaku %d%s; znaku, ktere na Atari nejsou: %d",
+                    snimkuPsani / 50.0, radku, vPameti, (int)chyby.size(), ch.c_str(), prazdnych, bezCisla, bc.c_str(),
+                    dlouhych, dl.c_str(), znakuNelze);
+      log.push_back(b);
+      if (!chyby.empty()) status = "NAPSÁNO, CHYBA V " + std::to_string(chyby.size()) + " ŘÁDCÍCH (LIST)";
+      else status = "HOTOVO " + std::to_string(vPameti) + " ŘÁDKŮ - RUN / CSAVE";
+      statusMs = 9000;
+      stav = HOTOVO;
+    }
+  }
+};
+
 }  // namespace nap

@@ -2,7 +2,11 @@ OK     AIA: adresa vydavatele prectena z certifikatu
 OK     system sam neuplny retez (jen list) odmitne - jako Android 9 v Reneho logu
 OK     AtarihelpTls: mezilehly dohledan podle AIA a retez prijat
 OK     list od cizi CA (stejne jmeno vydavatele, jiny klic) je odmitnut i po dohledani
+OK     B299: cizi CA s CN atarihelp.eu se nehlasi jako mistni server (neni localhost/OSPanel)
+OK     B299: certifikat localhost <- ospanel (jako v Reneho logu) odmitnut a hlasen jako MISTNI server: certifik?t localhost od ospanel
 OK     uplny retez od serveru projde rovnou (beze zmeny)
 B298 TLS atarihelp.eu: server poslal neuplny retez (1 cert.: atarihelp.eu <- Test Inter R11) - doplnen +Test Inter R11 z http://127.0.0.1:18765/inter.der -> DUVERYHODNY (system telefonu)
 B298 TLS odmitnuto: PKIX path building failed: sun.security.provider.certpath.SunCertPathBuilderException: unable to find valid certification path to requested target | server poslal 1 cert.: atarihelp.eu <- Test Inter R11 +Test Inter R11 z http://127.0.0.1:18765/inter.der
-VYSLEDEK: 5 kontrol, 0 chyb
+B298 TLS odmitnuto: PKIX path building failed: sun.security.provider.certpath.SunCertPathBuilderException: unable to find valid certification path to requested target | server poslal 1 cert.: localhost <- ospanel
+B299 TLS: misto atarihelp.eu odpovedel JINY server (certifik?t localhost od ospanel) - sit telefonu (Wi-Fi/DNS) vede atarihelp.eu jinam, napr. na mistni OSPanel na PC. Na mobilnich datech jde skutecny web.
+VYSLEDEK: 7 kontrol, 0 chyb

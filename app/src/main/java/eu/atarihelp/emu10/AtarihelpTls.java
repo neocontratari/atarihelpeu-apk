@@ -47,6 +47,17 @@ final class AtarihelpTls {
     private static volatile Log logger;
     private static final Map<String, List<X509Certificate>> stazene = new ConcurrentHashMap<>();
     private static final Map<String, Boolean> hlaseno = new ConcurrentHashMap<>();
+    // B299: posledni odmitnuty certifikat, ktery NENI atarihelp.eu (napr. "localhost <- ospanel"
+    // z Reneho logu = na jeho Wi-Fi vede atarihelp.eu na mistni server OSPanel na PC)
+    private static volatile String mistniServer = null;
+    private static volatile long mistniServerCas = 0;
+
+    /** B299: popis ciziho serveru, ktery se v poslednich "ms" ozval misto atarihelp.eu, nebo null. */
+    static String mistniServer(long ms) {
+        String s = mistniServer;
+        if (s == null || System.currentTimeMillis() - mistniServerCas > ms) return null;
+        return s;
+    }
 
     private AtarihelpTls() {}
 
@@ -221,6 +232,17 @@ final class AtarihelpTls {
                 String klic = "bad:" + popis(chain);
                 if (hlaseno.putIfAbsent(klic, Boolean.TRUE) == null)
                     loguj("B298 TLS odmitnuto: " + e.getMessage() + " | server poslal " + popis(chain) + zdroj);
+                // B299: certifikat vubec neni na atarihelp.eu (localhost, OSPanel, vlastni podpis)
+                // -> neni to chyba webu ani appky, ale sit telefonu vede jinam
+                String jmeno = cn(chain[0].getSubjectX500Principal()).toLowerCase(java.util.Locale.US);
+                String vydal = cn(chain[0].getIssuerX500Principal()).toLowerCase(java.util.Locale.US);
+                if (!jmeno.contains("atarihelp") || vydal.contains("ospanel") || chain[0].getSubjectX500Principal().equals(chain[0].getIssuerX500Principal())) {
+                    mistniServer = "certifikát " + cn(chain[0].getSubjectX500Principal()) + " od " + cn(chain[0].getIssuerX500Principal());
+                    mistniServerCas = System.currentTimeMillis();
+                    if (hlaseno.putIfAbsent("mistni:" + mistniServer, Boolean.TRUE) == null)
+                        loguj("B299 TLS: misto atarihelp.eu odpovedel JINY server (" + mistniServer + ") - sit telefonu (Wi-Fi/DNS) "
+                                + "vede atarihelp.eu jinam, napr. na mistni OSPanel na PC. Na mobilnich datech jde skutecny web.");
+                }
                 throw e;
             }
         }

@@ -9,8 +9,8 @@ android {
         applicationId "eu.atarihelp.emu10.test"  // TEST vedle prave apky (neprepise ji)
         minSdk 24
         targetSdk 34
-        versionCode 341
-        versionName "EMU10-B298-ATARI-KAZETA-DISKETA-NET"
+        versionCode 342
+        versionName "EMU10-B299-ATARI-TXT-PROGRAM-TBXL-NET"
         // B291: Rene po B290 - "to preved v helpu presne tak vcetne kazetaku a
         // obrazovky - podle toho navrhu na kterem jsme se dohodli". Cele Atari
         // 130XE ze schvaleneho navrhu (obrazovka, klavesnice, konzole, kazetak,

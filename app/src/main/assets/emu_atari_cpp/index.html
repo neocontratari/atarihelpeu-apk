@@ -113,6 +113,11 @@ Tenhle test pousti jadro na desetitisicich nahodnych stavu a porovnava vysledek
 s cislem, ktere vyslo na pocitaci. Delam to proto, ze pocitac je x86 a telefon
 ARM - a na ARM se nektere veci chovaji jinak. Kdyz se to rozejde, ma se to
 poznat ted, a ne az podle spatneho obrazu.<br><br>
+B299: BASIC/TBXL TXT - TXT SOUBOR s programem (z telefonu) appka sama napise
+do ATARI BASICu nebo TURBO-BASICu XL (NEW, radek po radku), pak RUN / CSAVE /
+CLOAD. LOG/CHYBA prilozi k logu i pamet Atari. Turbo-BASIC s disketou v D1:
+se uz nerozsype. NET/HRY: kdyz na Wi-Fi vede atarihelp.eu na mistni server
+(OSPanel), appka to rovnou rekne.
 B298: HRY NA KAZETE (WAV s bootem) se nahraji samy - Atari se zapne s
 drzenym START+OPTION a po pipnuti stiskne RETURN. Zvuk pri CLOAD jako na
 skutecnem 130XE (bez piskotu), u stereo WAV hraje i zvukova stopa kazety.
@@ -138,41 +143,35 @@ try{ if(window.AHATARICPP && !AHATARICPP.jeNactene()){
 } }catch(e){}
 function set(id,t,cls){var e=$(id); if(!e)return; e.textContent=t; if(cls)e.className='v '+cls;}
 var KROKY=[
- // B298: kazeta (boot, zvuk, CLOAD s disketou), disketa (vysunout/vymenit), hry z netu
+ // B299: TXT soubor -> BASIC / TBXL, TBXL LIST s Reneho WAV, pamet v logu, NET na Wi-Fi
  {n:1,co:'TEST JADRA (tlacitko SPUSTIT TEST JADRA nize)',
   ok:'Procesor i Pamet = SEDI (29C55806 / D3949DC5), Rychlost aspon 2x realny cas.',
   ne:'NESEDI, nebo rychlost pod 1x (Atari by se zpomalovalo).'},
- {n:2,co:'CLOAD - ZVUK: EJECT, vyber WAV s BASIC programem, CLOAD, RETURN, po pipnuti RETURN',
-  ok:'Behem nahravani bzucivy ton po kazdem zaznamu (jako skutecne 130XE), ZADNY vysoky piskot. Program se nahraje, READY.',
-  ne:'Porad piskot, nebo zvuk jiny nez na skutecnem Atari (popis jak).'},
- {n:3,co:'TVUJ DLOUHY PROGRAM Z WAV (WALLS ULTIMATE): CLOAD a hned LIST (pred RUN)',
-  ok:'Vypis je cely a spravne. (Na PC jsem overil dlouhe programy v BASICu i TBXL - vypis sedi znak po znaku.)',
-  ne:'Vypis se rozsype - pak mi prosim posli ten WAV (WALLSULTIMATED...wav), rozeberu ho bajt po bajtu.'},
- {n:4,co:'HRA NA KAZETE (WAV, ktery potreboval START+OPTION): EJECT a vyber ji',
-  ok:'Atari se samo zapne s drzenym START+OPTION, pipne, samo stiskne RETURN, bezi motor a hra se nahraje a spusti. Pod pristrojem HRA Z KAZETY... V logu B298 KAZETA BOOT: OS pipnul.',
-  ne:'Nic se nedeje, nebo nahravani skonci chybou (v logu radek B292 KAZETA VLOZENA - posli ho).'},
- {n:5,co:'Totez rucne jako na 130XE: POWER vypnout, drzet START a OPTION (dva prsty), POWER zapnout',
-  ok:'Boot z kazety jako na skutecnem 130XE (po pipnuti RETURN stiskne appka sama).',
-  ne:'Atari nabehne do BASICu.'},
- {n:6,co:'POWER vyp/zap BEZ START (kazeta s hrou porad v magnetofonu)',
-  ok:'Atari nabehne normalne do BASICu (READY) - kazeta sama nebootuje, jako na skutecnem 130XE.',
-  ne:'Hra se nahrava znovu.'},
- {n:7,co:'Wolfenstein 3D (ATR) a pak ATR/DISK',
-  ok:'Nabidka MECHANIKA D1: wolf3d.atr - VYSUNOUT DISKETU (Atari znovu s BASICem, READY), VYMENIT BEZ RESTARTU, JINA DISKETA. Po POWER vyp/zap s disketou pod pristrojem V D1: JE ... - VYSUNOUT: ATR/DISK.',
-  ne:'Po VYSUNOUT se W3D nahrava dal.'},
- {n:8,co:'S disketou v D1: zkus CLOAD z kazety',
-  ok:'CLOAD funguje (drive s disketou v D1: koncil chybou).',
-  ne:'ERROR 138 nebo jina chyba.'},
- {n:9,co:'NET/HRY - nekolik her za sebou (i rychle po sobe)',
-  ok:'Spusti se vzdy ta POSLEDNI vybrana. Kdyz telefon nejdriv odmitne certifikat, v logu B298 TLS ... doplnen ... DUVERYHODNY a hra se stahne.',
-  ne:'Spusti se jina hra, nez jsi vybral, nebo stahovani selze (v logu radek B298 TLS odmitnuto - posli ho).'},
- {n:10,co:'Na sirku: kolecko - KAZETA (WAV) a ATR/DISK',
-  ok:'Obe nabidky jdou otevrit i na sirku.',
-  ne:'Polozka chybi nebo nic nedela.'},
- {n:11,co:'Popeye / W3D / hry z NET jako minule (na vysku i na sirku)',
-  ok:'Bezi stejne jako v B297, zvuk her je cisty (bez praskani a bez piskotu).',
-  ne:'Cokoli horsi nez v B297.'},
- {n:12,co:'ATARI 130XE EMULATOR, PS1 a SEGA v hlavni nabidce',
+ {n:2,co:'BASIC/TBXL TXT - TXT SOUBOR -> ATARI BASIC (vyber TXT s programem v BASICu)',
+  ok:'Atari nabehne s BASICem a program se samo napise (NEW, radek po radku). Pod pristrojem HOTOVO ... RADKU - RUN / CSAVE. LIST ukaze program, RUN ho spusti.',
+  ne:'Nic se nenapise, nebo chyby (v logu radek B299 TXT PROGRAM HOTOVO ... - posli ho).'},
+ {n:3,co:'BASIC/TBXL TXT - TXT SOUBOR -> TURBO-BASIC XL (TXT s programem pro TBXL, treba WALLS)',
+  ok:'Nejdriv se nahraje Turbo-BASIC XL, pak se program samo napise. LIST a RUN funguji.',
+  ne:'Program se nenapise nebo ma chyby (radky s chybou jsou v logu B299 TXT PROGRAM HOTOVO).'},
+ {n:4,co:'Napsany program: CSAVE (ulozi WAV) a pak CLOAD toho WAV a LIST',
+  ok:'Program se ulozi i nahraje zpet a vypis je stejny.',
+  ne:'CSAVE/CLOAD selze nebo je vypis jiny.'},
+ {n:5,co:'TURBO BASIC + tvuj WAV (WALLS ULTIMATE): CLOAD a hned LIST',
+  ok:'Vypis je cely a spravne.',
+  ne:'Kdyz se vypis zase rozsype: NEMACKEJ RESET, hned LOG/CHYBA a posli log (je v nem i pamet Atari) a napis, ktery radek byl posledni spravny.'},
+ {n:6,co:'NET/HRY na Wi-Fi a pak na mobilnich datech',
+  ok:'Na datech se hra stahne. Kdyz na Wi-Fi ne, appka napise, ze atarihelp.eu vede na MISTNI server (OSPanel) - to je sit, ne appka.',
+  ne:'Hra se nestahne ani na mobilnich datech (posli log).'},
+ {n:7,co:'HRA NA KAZETE (WAV, ktery potreboval START+OPTION) a CLOAD - zvuk',
+  ok:'Jako v B298: boot hry sam, pri CLOAD bzuceni po zaznamech, bez piskotu.',
+  ne:'Cokoli horsi nez v B298.'},
+ {n:8,co:'Wolfenstein 3D (ATR) a ATR/DISK - VYSUNOUT / VYMENIT',
+  ok:'Jako v B298.',
+  ne:'Cokoli horsi nez v B298.'},
+ {n:9,co:'Popeye / W3D / hry z NET jako minule (na vysku i na sirku)',
+  ok:'Bezi stejne jako v B298.',
+  ne:'Cokoli horsi nez v B298.'},
+ {n:10,co:'ATARI 130XE EMULATOR, PS1 a SEGA v hlavni nabidce',
   ok:'Bezi UPLNE STEJNE jako dosud.',
   ne:'Jakakoli zmena proti minule verzi.'}
 ];

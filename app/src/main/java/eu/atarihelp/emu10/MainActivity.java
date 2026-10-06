@@ -101,6 +101,7 @@ public class MainActivity extends Activity {
     private static final int PICK_TV_WEB_SCREEN = 13; // BUILD2SA13C9: whole-phone MediaProjection mirror
     private static final int PICK_ATARI_CPP_XEX = 21; // B291: XEX/MOBIL na pristroji Atari 130XE v HELP
     private static final int PICK_ATARI_CPP_WAV = 22; // B292: EJECT -> kazeta (WAV) z telefonu pro CLOAD
+    private static final int PICK_ATARI_CPP_TXT = 23; // B299: BASIC/TBXL TXT -> TXT soubor s programem
     private static final String ATARIHELP_BROWSER_UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36"; // BUILD2SA5K
     private static final long ATARIHELP_MIN_REQUEST_GAP_MS = 30000L; // BUILD2SA5M: no accidental hammering.
     private static final long ATARIHELP_FAIL_COOLDOWN_MS = 15L * 60L * 1000L;
@@ -4475,6 +4476,9 @@ public class MainActivity extends Activity {
                     File f = new File(dir, jmeno);
                     try (FileOutputStream fos = new FileOutputStream(f, false)) {
                         fos.write(t.getBytes("UTF-8"));
+                        // B299: cela pamet Atari z LOG/CHYBA (zlib + base64) - jen do souboru
+                        String pamet = atariCppPametBlok();
+                        if (pamet != null) fos.write(pamet.getBytes("UTF-8"));
                         fos.flush();
                     }
                     cil = f;
@@ -6355,8 +6359,10 @@ public class MainActivity extends Activity {
             appendNativeLog("BUILD2SB44 PROVIDER_DIRECT_FIRST_FAIL reason=" + reason + " err=" + safeMsg(ex0) + " target=" + compactUrl(url));
         }
         // B298: proxy.cors.sh (rezim 0) uz neexistuje - v Reneho logu pokazde
-        // "Unable to resolve host" a jen zdrzoval; zustavaji allorigins a corsproxy.io
-        for (int i = 1; i < 3; i++) {
+        // "Unable to resolve host" a jen zdrzoval.
+        // B299: corsproxy.io (rezim 2) uz bez klice vraci jen HTTP 401 - taky pryc.
+        // Zustava allorigins (v Reneho logu stranky i hry obcas stahl).
+        for (int i = 1; i < 2; i++) {
             String relay = providerRelayUrl(url, i);
             HttpURLConnection c = null;
             try {
@@ -6775,11 +6781,15 @@ public class MainActivity extends Activity {
                     atariCppSpustProgram(tb, "turbo_basic_xl.xex", "TURBO_BASIC");
                     break;
                 }
-                case 5:   // BASIC/TBXL TXT
-                    atariCppTxtDialog();
+                case 5:   // BASIC/TBXL TXT - B299: TXT soubor -> program napise appka sama
+                    atariCppTxtMenu();
                     break;
                 case 6:   // LOG / CHYBA
                     appendNativeLog(NativeAtariCoreBridge.devInfoSafe());
+                    // B299: stav pameti a cela RAM Atari k logu (chyby, ktere na PC nejdou zopakovat)
+                    for (String radek : NativeAtariCoreBridge.devDiagSafe().split("\n")) appendNativeLog(radek);
+                    atariCppPamet = NativeAtariCoreBridge.devRamDumpSafe();
+                    if (atariCppPamet != null) appendNativeLog("B299 PAMET ATARI zachycena (" + atariCppPamet.length + " B) - prida se k ulozenemu logu");
                     atariZarizeniSkryj(true);
                     break;
                 case 7:   // HELP
@@ -7128,6 +7138,84 @@ public class MainActivity extends Activity {
         if (!ok) NativeAtariCoreBridge.devStatusSafe("NENI XEX: " + n, 6000);
     }
 
+    // ===================================================================
+    //  B299: BASIC/TBXL TXT - Rene: "abych si mohl vybrat txt soubor s kodem jak
+    //  pro turbobasic tak pro basic a aby ho aplikace automaticky prepsala do
+    //  obrazovky, kde sel spustit a pote i ulozit a nahrat". Program napise
+    //  C++ (nap::PsaniProgramu) klavesnici Atari: NEW, radek po radku, pak
+    //  kontrola chyb syntaxe. Potom RUN, CSAVE, CLOAD jako obvykle.
+    // ===================================================================
+    private int atariCppTxtRezim = 0;                 // 0 = ATARI BASIC, 1 = Turbo-BASIC XL
+    private volatile byte[] atariCppPamet = null;     // B299: RAM Atari z LOG/CHYBA (prida se k ulozenemu logu)
+
+    private void atariCppTxtMenu() {
+        final String[] polozky = {
+                "TXT SOUBOR → ATARI BASIC\n(appka program sama napíše, pak RUN / CSAVE)",
+                "TXT SOUBOR → TURBO-BASIC XL\n(nejdřív se nahraje Turbo-BASIC, pak program)",
+                "NAPSAT / VLOŽIT TEXT RUČNĚ"
+        };
+        new android.app.AlertDialog.Builder(this)
+                .setTitle("BASIC / TBXL TXT → Atari 130XE")
+                .setItems(polozky, (dlg, w) -> {
+                    if (w == 2) { atariCppTxtDialog(); return; }
+                    atariCppTxtRezim = w;
+                    try {
+                        Intent i = new Intent(Intent.ACTION_GET_CONTENT);
+                        i.addCategory(Intent.CATEGORY_OPENABLE);
+                        i.setType("*/*");
+                        startActivityForResult(Intent.createChooser(i, w == 1 ? "TXT program pro TURBO-BASIC XL"
+                                : "TXT program pro ATARI BASIC"), PICK_ATARI_CPP_TXT);
+                    } catch (Throwable t) {
+                        appendNativeLog("B299 TXT_SOUBOR vyber nejde otevrit: " + safeMsg(t));
+                    }
+                })
+                .setNegativeButton("ZAVŘÍT", null)
+                .show();
+    }
+
+    /** B299: obsah TXT souboru -> C++ ho napise do ATARI BASICu / Turbo-BASICu XL. */
+    private void atariCppTxtProgram(byte[] data, String jmeno, int rezim) {
+        if (data == null || data.length == 0) {
+            NativeAtariCoreBridge.devStatusSafe("SOUBOR JE PRÁZDNÝ", 5000);
+            appendNativeLog("B299 TXT_SOUBOR " + jmeno + " je prazdny");
+            return;
+        }
+        // ulozeny (tokenizovany) program .BAS neni text - ten patri na kazetu / disketu
+        if (data.length >= 14 && data[0] == 0 && data[1] == 0) {
+            NativeAtariCoreBridge.devStatusSafe("TO NENÍ TEXT - ULOŽENÝ PROGRAM (.BAS)", 7000);
+            appendNativeLog("B299 TXT_SOUBOR " + jmeno + " neni text, ale ulozeny program BASICu (SAVE/.BAS, hlavicka 00 00) - nic se nepise");
+            return;
+        }
+        if (rezim == 1) {
+            byte[] tb = atariCppAsset("emu_atari_cpp/turbo_basic_xl.xex");
+            boolean ok = NativeAtariCoreBridge.devLoadXexSafe(tb, "turbo_basic_xl.xex");
+            appendNativeLog("B299 TXT_SOUBOR -> nejdriv TURBO-BASIC XL: " + (ok ? "zavadim" : "NEJDE ZAVEST"));
+            if (!ok) { NativeAtariCoreBridge.devStatusSafe("TURBO-BASIC NEJDE ZAVÉST", 6000); return; }
+        }
+        String r = NativeAtariCoreBridge.devProgramSafe(data, jmeno, rezim);
+        appendNativeLog("B299 TXT_SOUBOR " + jmeno + " bajtu=" + data.length + " -> " + r);
+    }
+
+    /** B299: RAM Atari z posledniho LOG/CHYBA jako text do souboru logu (zlib + base64), nebo null. */
+    String atariCppPametBlok() {
+        byte[] p = atariCppPamet;
+        if (p == null) return null;
+        try {
+            java.util.zip.Deflater def = new java.util.zip.Deflater(9);
+            def.setInput(p);
+            def.finish();
+            ByteArrayOutputStream bo = new ByteArrayOutputStream();
+            byte[] b = new byte[16384];
+            while (!def.finished()) { int n = def.deflate(b); bo.write(b, 0, n); }
+            def.end();
+            String b64 = android.util.Base64.encodeToString(bo.toByteArray(), android.util.Base64.DEFAULT);
+            return "\n\nB299 PAMET_ATARI zlib+base64, puvodne " + p.length + " B, zabaleno " + bo.size()
+                    + " B (hlavicka NAP130XE-B299, registry, RAM 64 kB, rozsirena RAM 64 kB)\n" + b64 + "B299 PAMET_ATARI_KONEC\n";
+        } catch (Throwable t) {
+            return "\n\nB299 PAMET_ATARI chyba " + t + "\n";
+        }
+    }
+
     private void atariCppTxtDialog() {
         final android.widget.EditText et = new android.widget.EditText(this);
         et.setMinLines(8);
@@ -7186,7 +7274,10 @@ public class MainActivity extends Activity {
               + "a prepni POWER. Na sirku je vyber kazety v kolecku (KAZETA).\n\n"
               + "XEX/MOBIL - spusti XEX nebo ZIP z telefonu. TURBO/BASIC - Turbo-BASIC XL 1.5. "
               + "NET/HRY - hry z atarihelp.eu (spusti se tady v C++).\n\n"
-              + "BASIC/TBXL TXT - vlozeni vypisu programu (pise se klavesnici Atari).\n\n"
+              + "BASIC/TBXL TXT - TXT SOUBOR s programem (z telefonu): appka zapne ATARI BASIC nebo nahraje "
+              + "TURBO-BASIC XL a program sama napise klavesnici Atari (NEW, radek po radku). Pak RUN, CSAVE, CLOAD. "
+              + "Pise jen radky s cislem, mala pismena v retezcich a REM zustanou, prikazy velkymi. Radky s chybou "
+              + "syntaxe a preskocene radky jsou v logu. Nebo NAPSAT / VLOZIT TEXT rucne.\n\n"
               + "LOG/CHYBA - log a testy (zpet tlacitkem ZPET NA ATARI 130XE nebo sipkou zpet).\n\n"
               + "ATR/DISK - disketa (ATR, i v ZIP) do mechaniky D1: a start z diskety (OPTION drzene = BASIC vypnuty). "
               + "Disketa v mechanice zustava i po vypnuti/zapnuti POWER (jako u skutecne mechaniky - proto se hra "
@@ -8504,6 +8595,14 @@ public class MainActivity extends Activity {
             return;
         }
         String target = url.trim();
+        // B299: stranka obcas posle rovnou odkaz mostu "ahgame://run?url=..." - v logu pak
+        // "unknown protocol: ahgame". Skutecna adresa hry je v parametru url.
+        if (isAhGameBridgeUrl(target)) {
+            String vnitrni = ahGameBridgeTarget(target);
+            appendNativeLog("B299 ROUTE_GAME ahgame:// rozbaleno -> " + compactUrl(vnitrni));
+            if (vnitrni.length() == 0) return;
+            target = vnitrni;
+        }
         appendNativeLog("BUILD2SA5AQ ROUTE_GAME source=" + source + " url=" + compactUrl(target));
         if (shouldRouteAsSegaDownload(target)) downloadAndRunSegaArchive(target); // BUILD2SA5AQ: Sega ZIP ma prednost pred PS1 ZIP.
         else if (shouldRouteAsPs1Download(target, source)) downloadAndRunPs1Remote(target, source);
@@ -11104,6 +11203,17 @@ public class MainActivity extends Activity {
                 ui.post(() -> {
                     try {
                         appendNativeLog("BUILD2SA5AF WEB_GAME_DOWNLOAD_FAIL noEmuFallback " + safeMsg(ex));
+                        // B299: srozumitelne i v HELP (Atari C++) - driv chyba nebyla nikde videt
+                        if (atariCppNetCil) {
+                            String mistni = AtarihelpTls.mistniServer(10 * 60 * 1000L);
+                            String zprava = mistni != null
+                                    ? "Hra se nestáhla: na této Wi-Fi vede atarihelp.eu na MÍSTNÍ server (" + mistni
+                                      + "), ne na skutečný web. Zkus mobilní data, nebo vypni OSPanel / oprav DNS v routeru."
+                                    : "Hra se nestáhla z atarihelp.eu: " + safeMsg(ex) + ". Zkus to znovu nebo přes mobilní data.";
+                            appendNativeLog("B299 NET_HRY " + (mistni != null ? "MISTNI SERVER misto atarihelp.eu (" + mistni + ")" : "stazeni selhalo"));
+                            android.widget.Toast.makeText(MainActivity.this, zprava, android.widget.Toast.LENGTH_LONG).show();
+                            NativeAtariCoreBridge.devStatusSafe(mistni != null ? "WI-FI: ATARIHELP.EU = MÍSTNÍ SERVER" : "HRA SE NESTÁHLA (SÍŤ)", 8000);
+                        }
                         final String msg = ex.getMessage() == null ? "neznamá chyba" : ex.getMessage();
                         String curErr = web == null ? null : web.getUrl();
                         if (curErr != null && curErr.startsWith(EMU_URL)) {
@@ -11372,6 +11482,25 @@ public class MainActivity extends Activity {
                     NativeAtariCoreBridge.devStatusSafe("KAZETU NELZE PRECIST: " + nm, 6000);
                 }
             }, "b292-kazeta-wav").start();
+            return;
+        }
+        if (req == PICK_ATARI_CPP_TXT) { // B299: TXT soubor s programem -> BASIC / TBXL
+            if (res != RESULT_OK || data == null || data.getData() == null) {
+                appendNativeLog("B299 TXT_SOUBOR vyber zrusen");
+                return;
+            }
+            final Uri uri = data.getData();
+            final String nm = safeFileName(getDisplayName(uri));
+            final int rezim = atariCppTxtRezim;
+            new Thread(() -> {
+                try {
+                    final byte[] d = readUriBytes(uri, 1024 * 1024);
+                    ui.post(() -> atariCppTxtProgram(d, nm, rezim));
+                } catch (Throwable t) {
+                    appendNativeLog("B299 TXT_SOUBOR_CHYBA cteni " + nm + ": " + safeMsg(t));
+                    NativeAtariCoreBridge.devStatusSafe("SOUBOR NELZE PŘEČÍST", 5000);
+                }
+            }, "b299-txt-program").start();
             return;
         }
         if (req == PICK_ATARI_CPP_XEX) { // B291: XEX/MOBIL na pristroji v HELP

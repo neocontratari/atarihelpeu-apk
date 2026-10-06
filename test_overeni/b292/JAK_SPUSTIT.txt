@@ -22,6 +22,29 @@ nap_atari_runtime.h).
                                                START+OPTION pri zapnuti, RETURN po
                                                pipnuti (KazetaBoot jako v appce);
                                                synt = kazeta ze syntaz_kazeta.h
+   ./test_core txt-program zkouska basic|tbxl  -> B299: TXT soubor -> klavesy do Atari
+   ./test_core txt-program x.txt basic|tbxl [list.txt]    (nap::PsaniProgramu jako v appce),
+                                               pak LIST a srovnani se souborem
+                                               (VYSTUP_test_core_b299_txt_basic/tbxl.txt)
+   ./test_core tbxl-disketa [stary]         -> B299: Turbo-BASIC XL + disketa v D1:.
+                                               TBXL ma v RAM pod ROM na $E459 vlastni kod;
+                                               "stary" = SIO zkratka i bez ROM (chyba do
+                                               B298: LIST i RUN rozsypane), bez = B299
+                                               (VYSTUP_test_core_b299_tbxl_disketa*.txt)
+   ./test_core kazeta-list x.wav basic|tbxl out.txt    -> B299: CLOAD ciziho WAV a cely LIST
+   ./test_core kazeta-run-list x.wav break|reset N out -> CLOAD, RUN, po N snimcich BREAK/RESET, LIST
+   ./test_core kazeta-fuzz x.wav pokusu seed           -> stav po CLOAD (TBXL), LIST v nahodnem
+                                               okamziku s nahodne drzenymi klavesami
+   ./test_core kazeta-fuzz-cload x.wav pokusu seed vzor.txt -> cely postup jako na telefonu
+                                               (TBXL, CLOAD, kazeta po pipnuti, RETURN,
+                                               STOP, LIST) s nahodnym casovanim
+   ./test_core kazeta-trace x.wav "LIST 1000"  -> kudy jde TBXL pri LIST (adresy, volani E:)
+   ./test_core kazeta-dump x.wav tbxl ram.bin  -> CLOAD, LIST a cela RAM (vc. RAM pod ROM)
+   ./test_core kazeta-diag x.wav tbxl          -> radky "B299 PAMET" jako LOG/CHYBA v appce.
+                                               Reneho WALLS (TBXL po CLOAD) na PC:
+                                               program VNTP..STARP 4417 B crc32 FD64788B,
+                                               RAM pod ROM $C000-$CFFF B12E07AB,
+                                               $D800-$FFFF FDEB45A2, $2000-$3FFF 8796F47A
    ./test_core xe130                        -> B293: kontrola veci, ktere ma 130XE
                                                jinak nez Atari 800 (banky, ANTIC/CPU
                                                pristup, TRIG3, RESET, self-test ROM...)
@@ -52,6 +75,8 @@ nap_atari_runtime.h).
    ./test_b292_jni_host                     -> VYSTUP_test_b292_jni_host.txt
    (B296: i joystick dotykem / ovladacem a VBXE - Popeye a Wolfenstein 3D
    z test_assets/ az do hry; bezi v realnem case, cca 4 minuty)
+   (B299: TXT soubor -> ATARI BASIC / Turbo-BASIC XL pres devProgramNative,
+   klavesy pristroje v logu, devDiagNative a devRamDumpNative pro LOG/CHYBA)
    (B298: vysunuti / vymena diskety bez restartu, CLOAD s disketou v D1:,
    hra z kazety s bootem - synteticka kazeta ze syntaz_kazeta.h, stereo)
 

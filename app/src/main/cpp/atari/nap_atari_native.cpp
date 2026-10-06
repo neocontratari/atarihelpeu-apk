@@ -697,6 +697,9 @@ static nap::CsaveRecorder g_rec;                   // pod g_mStroj
 static nap::XexLoader g_xex;                       // pod g_mStroj
 static nap::KazetaBoot g_kazBoot;                  // B298: boot z kazety (START+OPTION, RETURN po pipnuti) - pod g_mStroj
 static bool g_atrVymena = false;                   // B298: dalsi ATR jen vymenit v D1: (bez restartu) - pod g_mStroj
+static nap::PsaniProgramu g_psani;                 // B299: program z TXT souboru -> BASIC / TBXL - pod g_mStroj
+static std::string g_klavLog;                      // B299: co uzivatel napsal na klavesnici pristroje (do logu po RETURN) - pod g_mStroj
+static int g_klavPrazdnych = 0;                    // B299: prazdne RETURN po sobe (do logu jen prvni 3)
 static std::mutex g_mFrame;
 static std::vector<uint32_t> g_sdilenySnimek;      // posledni snimek Atari pro kresleni
 static std::atomic<unsigned long long> g_snimekSeq{0};
@@ -792,6 +795,8 @@ static void studenyStartLocked(int consol) {
   g_typeQ.clear();
   g_rec.reset();
   g_kazBoot.zrus();
+  g_psani.zrus();                // B299: novy stroj = psani programu z TXT konci
+  g_klavLog.clear();
 }
 static void vyzvednoutVystupyLocked() {
   for (auto &s : g_rec.log) devLog(s);
@@ -800,6 +805,8 @@ static void vyzvednoutVystupyLocked() {
   g_xex.log.clear();
   for (auto &s : g_kazBoot.log) devLog(s);
   g_kazBoot.log.clear();
+  for (auto &s : g_psani.log) devLog(s);
+  g_psani.log.clear();
   if (g_rec.maHotovo) {
     std::lock_guard<std::mutex> o(g_mOut);
     g_wavOut.swap(g_rec.hotovo);
@@ -855,12 +862,25 @@ static void emuVlaknoMain() {
             break;
           }
           case nap::dev::Ev::POWER_OFF:
-            g_strojBezi = false; g_typeQ.clear(); g_rec.reset(); g_xex.zrus(); g_atariRing.clear();
+            g_strojBezi = false; g_typeQ.clear(); g_rec.reset(); g_xex.zrus(); g_atariRing.clear(); g_psani.zrus();
             devLog("B291 POWER VYPNUTO");
             break;
           case nap::dev::Ev::KEY:
             // B292: klavesa drzena, dokud je na ni prst (OS ji pak opakuje)
-            if (g_stroj && g_strojBezi) g_stroj->klavesa(e.v, true);
+            if (g_stroj && g_strojBezi) {
+              g_stroj->klavesa(e.v, true);
+              // B299: co presne uzivatel napsal (radek do logu po RETURN) - kvuli chybam, ktere
+              // na PC nejdou zopakovat (TBXL LIST u Reneho)
+              const bool ret = (e.v & 0x3F) == 12;
+              if (!ret) g_klavLog += nap::napScanText(e.v);
+              if (ret || g_klavLog.size() > 160) {
+                // prazdny RETURN (hry, potvrzovani) jen 3x po sobe, at log nezahlti
+                if (!g_klavLog.empty()) g_klavPrazdnych = 0;
+                if (!g_klavLog.empty() || ++g_klavPrazdnych <= 3)
+                  devLog("B299 KLAVESY: " + g_klavLog + (ret ? (g_klavLog.empty() ? "<RETURN>" : " <RETURN>") : " ..."));
+                g_klavLog.clear();
+              }
+            }
             break;
           case nap::dev::Ev::KEYUP:
             if (g_stroj) g_stroj->klavesaPustena();
@@ -907,11 +927,16 @@ static void emuVlaknoMain() {
             if (g_stroj && g_strojBezi) {
               g_stroj->reset(); g_stroj->consol = 7;
               g_kazBoot.zrus();          // B298: teply start boot z kazety nedela
+              g_psani.zrus();
               devLog("B291 RESET (tlacitko RESET na pristroji - pamet zustava)");
             }
             break;
           case nap::dev::Ev::BREAK:
-            if (g_stroj && g_strojBezi) g_stroj->breakKey();
+            if (g_stroj && g_strojBezi) {
+              g_stroj->breakKey();
+              devLog("B299 KLAVESY: " + g_klavLog + "<BREAK>");
+              g_klavLog.clear();
+            }
             break;
           case nap::dev::Ev::JOY:
             g_joyDotyk = e.v & 31;
@@ -973,7 +998,11 @@ static void emuVlaknoMain() {
       if (!g_xex.aktivni()) g_stroj->consol = consolEfektivni();   // pri zavadeni XEX drzi OPTION zavadec
       if (g_kazBoot.aktivni()) g_stroj->consol = nap::KazetaBoot::konzole(g_stroj->consol);   // B298: boot z kazety
       g_typeQ.step(*g_stroj);
-      if (!g_stroj->cpu.jam) g_stroj->runFrame();
+      // B299: pri psani programu z TXT jde dalsi klavesa hned, jak ji OS prevezme
+      if (!g_stroj->cpu.jam) {
+        if (g_psani.pise()) g_stroj->runFrameRadky([](Machine &m) { g_psani.radek(m); });
+        else g_stroj->runFrame();
+      }
       if (g_stroj->cpu.jam) std::fill(zvuk.begin(), zvuk.end(), 0.f);
       else g_stroj->genAudio(zvuk.data(), 882, 44100.0);
       nap_atari_audio_push(zvuk.data(), 882);
@@ -984,6 +1013,8 @@ static void emuVlaknoMain() {
       g_rec.snimek(*g_stroj, pasek.data(), 882);
       g_xex.poSnimku(*g_stroj);
       if (g_kazBoot.poSnimku(*g_stroj)) { g_statusText = "NAHRÁVÁ SE Z KAZETY..."; g_statusMs = 15000; }
+      g_psani.poSnimku(*g_stroj);
+      if (!g_psani.status.empty()) { g_statusText = g_psani.status; g_statusMs = g_psani.statusMs; g_psani.status.clear(); }
       // B296: VBXE - do logu, kdyz ho program najde / zapne XDL / zmeni rezim
       {
         static int hlaseni = 0;
@@ -1183,6 +1214,9 @@ Java_eu_atarihelp_emu10_NativeAtariCoreBridge_devStartNative(JNIEnv *, jclass, j
       devLog("B298 ZVUK s pasmem jako TV (FIR 16 kHz, bez prekladu ultrazvuku do slysitelna), asynchronni prijem POKEY "
              "restartuje casovace 3+4 start bitem; KAZETA: hra (boot) = START+OPTION a RETURN samo, stereo WAV = zvukova "
              "stopa do TV, CLOAD i s disketou v D1:; DISKETA: ATR/DISK = vysunout / vymenit bez restartu.");
+      devLog("B299 BASIC/TBXL TXT: TXT soubor s programem napise appka sama do ATARI BASICu / Turbo-BASICu XL; "
+             "klavesy z pristroje do logu (B299 KLAVESY); LOG/CHYBA = stav a cela pamet Atari v logu; "
+             "SIO zkratka jen se zapnutou ROM OS (Turbo-BASIC XL ma na $E459 vlastni kod).");
     }
     g_strojBezi = zapnuto;
   }
@@ -1380,6 +1414,98 @@ Java_eu_atarihelp_emu10_NativeAtariCoreBridge_devTypeTextNative(JNIEnv *env, jcl
            n, runPotom ? " + RUN" : "", preskoceno);
   devLog(b);
   return n;
+}
+
+/** B299: program z TXT souboru (tlacitko BASIC/TBXL TXT -> TXT SOUBOR).
+ *  rezim 0 = ATARI BASIC (studeny start s BASICem, disketa z D1: ven),
+ *  rezim 1 = Turbo-BASIC XL (ten uz zavedla Java pres devLoadXexNative).
+ *  Psani zacne, az Atari ukaze READY (nap::PsaniProgramu). Vraci text pro log. */
+extern "C" JNIEXPORT jstring JNICALL
+Java_eu_atarihelp_emu10_NativeAtariCoreBridge_devProgramNative(JNIEnv *env, jclass, jbyteArray data, jstring jmeno, jint rezim) {
+  if (!data) return env->NewStringUTF("CHYBA zadna data");
+  const jsize n = env->GetArrayLength(data);
+  std::vector<uint8_t> buf((size_t)n);
+  if (n > 0) env->GetByteArrayRegion(data, 0, n, (jbyte *)buf.data());
+  std::string nm = "program.txt";
+  if (jmeno) { const char *c = env->GetStringUTFChars(jmeno, nullptr); if (c) { nm = c; env->ReleaseStringUTFChars(jmeno, c); } }
+  for (auto &ch : nm) if ((unsigned char)ch >= 0x80) ch = '?';
+  std::string vysl;
+  bool odpojena = false;
+  {
+    std::lock_guard<std::mutex> l(g_mStroj);
+    if (!g_stroj) zaloz();
+    if (rezim == 0) {
+      g_xex.zrus();
+      if (g_stroj->disk.mounted) { odpojena = true; g_stroj->disk = nap::AtrDisk(); }
+      studenyStartLocked(7);                       // ATARI BASIC
+      g_stroj->sioRychlyTimeout = true;            // D1: je prazdna - OS nema na co cekat
+      g_strojBezi = true;
+      g_consolChtene = 7; g_consolDrzetDo[0] = g_consolDrzetDo[1] = g_consolDrzetDo[2] = 0;
+    }
+    g_psani.start(buf.data(), buf.size(), rezim == 1, nm, rezim == 0);
+    vysl = g_psani.log.empty() ? std::string("OK") : g_psani.log.back();
+    vyzvednoutVystupyLocked();
+  }
+  if (odpojena) devLog("B299 TXT PROGRAM: disketa vyjmuta z D1: (Atari se zapina s ATARI BASICem)");
+  {
+    std::lock_guard<std::mutex> dl(g_mDev);
+    nap::dev::Device &d = devGet();
+    if (!d.power) { d.power = true; d.powerAt = nap_ted_ms(); }
+    d.atariValid = false; d.markScreen(); d.markLegend();
+  }
+  pokeRender();
+  return env->NewStringUTF(vysl.c_str());
+}
+
+/** B299: diagnostika pameti pro LOG/CHYBA - stav procesoru a MMU, ukazatele
+ *  BASICu a kontrolni soucty oblasti pameti (porovnam se stejnym postupem na PC). */
+extern "C" JNIEXPORT jstring JNICALL
+Java_eu_atarihelp_emu10_NativeAtariCoreBridge_devDiagNative(JNIEnv *env, jclass) {
+  std::string out;
+  {
+    std::lock_guard<std::mutex> l(g_mStroj);
+    if (!g_stroj) return env->NewStringUTF("B299 PAMET: stroj neexistuje");
+    const Machine &m = *g_stroj;
+    const uint8_t *r = m.mem.ram;
+    auto w = [&](int a) { return r[a] | (r[a + 1] << 8); };
+    const int pb = m.mem.portB();
+    char b[900];
+    snprintf(b, sizeof(b), "B299 PAMET STAV: PC=$%04X A=$%02X X=$%02X Y=$%02X S=$%02X P=$%02X%s, PORTB=$%02X (ROM OS %s, BASIC %s, "
+             "rozsirena pamet pro CPU %s banka %d), NMIEN=$%02X, DLIST=$%04X, SAVMSC=$%04X, DDEVIC=$%02X, D1: %s, rychly timeout SIO %s, "
+             "XEX stav %d, psani TXT stav %d, snimek %lld",
+             m.cpu.pc, m.cpu.a, m.cpu.x, m.cpu.y, m.cpu.s, m.cpu.p, m.cpu.jam ? " JAM" : "", pb, (pb & 1) ? "zap" : "VYP",
+             (pb & 2) ? "vyp" : "ZAP", (pb & 0x10) ? "vyp" : "ZAP", (pb >> 2) & 3, m.nmien, w(0x230), w(0x58), r[0x300],
+             m.disk.mounted ? m.disk.name.c_str() : "prazdna", m.sioRychlyTimeout ? "ANO" : "ne", (int)g_xex.stav, (int)g_psani.stav,
+             (long long)m.frame);
+    out += b; out += "\n";
+    out += nap::napDiagPameti(m);
+  }
+  return env->NewStringUTF(out.c_str());
+}
+
+/** B299: cela pamet Atari (64 kB + rozsirenych 64 kB + registry) pro LOG/CHYBA -
+ *  Java ji prilozi k logu. Hlavicka 16 B "NAP130XE-B299", 64 B registru. */
+extern "C" JNIEXPORT jbyteArray JNICALL
+Java_eu_atarihelp_emu10_NativeAtariCoreBridge_devRamDumpNative(JNIEnv *env, jclass) {
+  std::vector<uint8_t> d(16 + 64 + 65536 + 65536, 0);
+  {
+    std::lock_guard<std::mutex> l(g_mStroj);
+    if (!g_stroj) return nullptr;
+    const Machine &m = *g_stroj;
+    std::memcpy(d.data(), "NAP130XE-B299", 13);
+    uint8_t *g = d.data() + 16;
+    g[0] = m.cpu.pc & 0xFF; g[1] = m.cpu.pc >> 8; g[2] = m.cpu.a; g[3] = m.cpu.x; g[4] = m.cpu.y; g[5] = m.cpu.s; g[6] = m.cpu.p;
+    g[7] = (uint8_t)m.mem.portB(); g[8] = (uint8_t)m.mem.pia.ctlB; g[9] = (uint8_t)m.mem.pia.ddrB; g[10] = (uint8_t)m.mem.pia.orB;
+    g[11] = m.cpu.jam ? 1 : 0;
+    for (int i = 0; i < 8; i++) g[12 + i] = (uint8_t)((unsigned long long)m.frame >> (8 * i));
+    g[20] = (uint8_t)m.consol; g[21] = m.disk.mounted ? 1 : 0; g[22] = m.sioRychlyTimeout ? 1 : 0; g[23] = (uint8_t)g_xex.stav;
+    g[24] = m.vbx.memacCtl; g[25] = m.vbx.memacBankA; g[26] = m.vbx.memacBankB; g[27] = m.nmien;
+    std::memcpy(d.data() + 80, m.mem.ram, 65536);
+    std::memcpy(d.data() + 80 + 65536, m.mem.ext, 65536);
+  }
+  jbyteArray a = env->NewByteArray((jsize)d.size());
+  if (a) env->SetByteArrayRegion(a, 0, (jsize)d.size(), (const jbyte *)d.data());
+  return a;
 }
 
 /** Spustit XEX (XEX/MOBIL, TURBO/BASIC, NET HRY). */

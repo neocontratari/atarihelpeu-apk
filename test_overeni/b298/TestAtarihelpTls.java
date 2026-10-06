@@ -63,6 +63,14 @@ public class TestAtarihelpTls {
         try { tm.checkServerTrusted(new X509Certificate[]{eleaf}, "RSA"); } catch (CertificateException e) { cizi = true; }
         over(cizi, "list od cizi CA (stejne jmeno vydavatele, jiny klic) je odmitnut i po dohledani");
 
+        over(AtarihelpTls.mistniServer(60000L) == null, "B299: cizi CA s CN atarihelp.eu se nehlasi jako mistni server (neni localhost/OSPanel)");
+
+        boolean osp = false;
+        try { tm.checkServerTrusted(new X509Certificate[]{cert(d + "/localhost.pem")}, "RSA"); } catch (CertificateException e) { osp = true; }
+        String ms = AtarihelpTls.mistniServer(60000L);
+        over(osp && ms != null && ms.contains("localhost") && ms.contains("ospanel"),
+                "B299: certifikat localhost <- ospanel (jako v Reneho logu) odmitnut a hlasen jako MISTNI server: " + ms);
+
         boolean uplny = true;
         try { tm.checkServerTrusted(new X509Certificate[]{leaf, cert(d + "/inter.pem")}, "RSA"); } catch (CertificateException e) { uplny = false; }
         over(uplny, "uplny retez od serveru projde rovnou (beze zmeny)");

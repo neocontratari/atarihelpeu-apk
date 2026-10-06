@@ -1,0 +1,42 @@
+B299 TXT PROGRAM zkouska.txt -> TURBO-BASIC XL: 10 radku programu, 335 stisku klaves (textovy soubor); cekam na READY
+B299 TXT PROGRAM: READY po 8 snimcich - pisu NEW a 10 radku
+B299 TXT PROGRAM HOTOVO za 1.8 s: napsano 10 radku, v pameti 10 radku, s chybou syntaxe 1 60; preskoceno: prazdnych 1, bez cisla radku 1 (napr. Program pro zkousku B299), delsich nez 120 znaku 1 90; znaku, ktere na Atari nejsou: 0
+--- LIST (348 znaku) ---
+
+10 REM Tady je komentar s malymi pismeny
+20 DIM A$(40):A$="Ahoj Atari 130xe!":PRINT "}";A$
+30 FOR I=1 TO 3:PRINT I;" ";:NEXT I:PRINT 
+40 PRINT "PRVNI ","druhy";"|{`~"
+50 X=5:IF X>3 THEN PRINT "VETSI NEZ 3"
+60 ERROR-   PRIMT ¢tady je chyba"
+70 DATA abc,Def,12
+80 READ B$:PRINT B$
+100 END 
+110 TEXT 20,25,"Tbxl":DPOKE 1536,1234:? DPEEK(1536)
+
+READY
+80 READ B$:PRINT B$                     
+100 END                                 
+110 TEXT 20,25,"Tbxl":DPOKE 1536,1234:? 
+DPEEK(1536)            POKE 1536,1234:? 
+DPEEK(1536)                             
+LIST                                    
+                                        
+  10 REM Tady je komentar s malymi pisme
+  ny                                    
+  20 DIM A$(40):A$="Ahoj Atari 130xe!":P
+  RINT "}";A$                           
+  30 FOR I=1 TO 3:PRINT I;" ";:NEXT I:PR
+  INT                                   
+  40 PRINT "PRVNI ","druhy";"|{`~"      
+  50 X=5:IF X>3 THEN PRINT "VETSI NEZ 3"
+                                        
+  60 ERROR-   PRIMT "tady je chyba"     
+  70 DATA abc,Def,12                    
+  80 READ B$:PRINT B$                   
+  100 END                               
+  110 TEXT 20,25,"Tbxl":DPOKE 1536,1234:
+  ? DPEEK(1536)                         
+                                        
+  READY                                 
+LMARGN=2 SHFLOK=$40 NOCLIK=$00 INVFLG=$00, snimku 98, stav 4

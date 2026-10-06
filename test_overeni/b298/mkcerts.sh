@@ -19,4 +19,9 @@ openssl req -x509 -newkey rsa:2048 -nodes -keyout evil.key -out evil.pem -days 3
   -addext "basicConstraints=critical,CA:TRUE" 2>/dev/null
 openssl req -newkey rsa:2048 -nodes -keyout eleaf.key -out eleaf.csr -subj "/CN=atarihelp.eu" 2>/dev/null
 openssl x509 -req -in eleaf.csr -CA evil.pem -CAkey evil.key -CAcreateserial -out eleaf.pem -days 365 -extfile leaf.ext 2>/dev/null
+# B299: jako OSPanel na PC (na Reneho Wi-Fi misto atarihelp.eu): CA "ospanel" -> list "localhost"
+openssl req -x509 -newkey rsa:2048 -nodes -keyout osp.key -out osp.pem -days 3650 -subj "/CN=ospanel" \
+  -addext "basicConstraints=critical,CA:TRUE" 2>/dev/null
+openssl req -newkey rsa:2048 -nodes -keyout lh.key -out lh.csr -subj "/CN=localhost" 2>/dev/null
+openssl x509 -req -in lh.csr -CA osp.pem -CAkey osp.key -CAcreateserial -out localhost.pem -days 365 2>/dev/null
 echo hotovo

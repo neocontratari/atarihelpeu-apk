@@ -1,0 +1,6 @@
+TBXL: DDEVIC=$4F, disketa v D1: ano, PORTB=$FF (STARY patch jako B298)
+--- LIST ---
+
+10 A=5:--- RUN ---
+
+tbxl-disketa: LIST CHYBA, RUN CHYBA, zkratek SIO 517772

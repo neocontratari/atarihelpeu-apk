@@ -395,6 +395,67 @@ int main() {
     }
   }
 
+  // 11) B299: TXT soubor -> ATARI BASIC / Turbo-BASIC XL (appka program sama napise),
+  //     klavesy z pristroje do logu, diagnostika pameti a vypis RAM pro LOG/CHYBA
+  {
+    auto stavPsani = []() { std::lock_guard<std::mutex> l(g_mStroj); return (int)g_psani.stav; };
+    auto program = [&](const char *txt, const char *jm, int rezim) {
+      FakeArr ta; ta.b.assign(txt, txt + std::strlen(txt));
+      FakeStr tn{jm};
+      jstring r = Java_eu_atarihelp_emu10_NativeAtariCoreBridge_devProgramNative(&g_env, nullptr, (jbyteArray)&ta, (jstring)&tn, rezim);
+      printf("devProgram (%s): %s\n", rezim ? "TBXL" : "BASIC", ((FakeStr *)r)->s.c_str());
+      bool hotovo = false;
+      for (int i = 0; i < 400 && !hotovo; i++) { spi(100); hotovo = stavPsani() == nap::PsaniProgramu::HOTOVO; }
+      vypisLog();
+      return hotovo;
+    };
+    // a) ATARI BASIC: mala pismena, CRLF, radek bez cisla (preskoci se)
+    bool h1 = program("Muj program B299\r\n10 rem zkouska b299\r\n20 for i=1 to 3:print \"Ahoj \";i:next i\r\n30 end\r\n", "muj.txt", 0);
+    napis("LIST\n"); spi(2500);
+    std::string sc = obrazovka();
+    printf("--- TXT -> ATARI BASIC, LIST ---\n%s---\n", sc.c_str());
+    over(h1 && sc.find("10 REM zkouska b299") != std::string::npos && sc.find("20 FOR I=1 TO 3:PRINT \"Ahoj \";I:NEXT I") != std::string::npos &&
+         sc.find("ERROR") == std::string::npos,
+         "B299: TXT -> ATARI BASIC - program napsany (prikazy velkymi, retezec a REM jak v souboru)");
+    napis("RUN\n"); spi(2500);
+    over(obrazovka().find("Ahoj 3") != std::string::npos, "B299: napsany program jde spustit (RUN)");
+    // b) Turbo-BASIC XL: Java nejdriv zavede TBXL (devLoadXex), pak devProgram rezim 1
+    {
+      FakeArr tb; FILE *f = fopen("../../app/src/main/assets/emu_atari_cpp/turbo_basic_xl.xex", "rb");
+      if (f) { int c; while ((c = fgetc(f)) != EOF) tb.b.push_back((uint8_t)c); fclose(f); }
+      FakeStr tbn{"turbo_basic_xl.xex"};
+      Java_eu_atarihelp_emu10_NativeAtariCoreBridge_devLoadXexNative(&g_env, nullptr, (jbyteArray)&tb, (jstring)&tbn);
+      bool h2 = program("10 dpoke 1536,4660:? dpeek(1536)\n20 TEXT 20,25,\"Tbxl\"\n", "tbxl.txt", 1);
+      napis("LIST\n"); spi(2500);
+      std::string s2 = obrazovka();
+      printf("--- TXT -> TURBO-BASIC XL, LIST ---\n%s---\n", s2.c_str());
+      napis("RUN\n"); spi(2500);
+      const std::string s3 = obrazovka();
+      over(h2 && s2.find("10 DPOKE 1536,4660:? DPEEK(1536)") != std::string::npos && s2.find("20 TEXT 20,25,\"Tbxl\"") != std::string::npos &&
+           s3.find("4660") != std::string::npos,
+           "B299: TXT -> TURBO-BASIC XL - program napsany v TBXL a jde spustit (DPOKE/DPEEK = 4660)");
+    }
+    // c) co uzivatel napise na klavesnici pristroje, je v logu (radek po RETURN)
+    for (const char *k : {"L", "I", "S", "T"}) klavesa(k);
+    klavesa("Return");
+    spi(2000);
+    std::string lg;
+    { jstring s = Java_eu_atarihelp_emu10_NativeAtariCoreBridge_devPollLogNative(&g_env, nullptr); if (s) lg = ((FakeStr *)s)->s; }
+    printf("%s", lg.c_str());
+    over(lg.find("B299 KLAVESY: LIST <RETURN>") != std::string::npos, "B299: klavesy z pristroje jsou v logu (B299 KLAVESY: LIST <RETURN>)");
+    // d) LOG/CHYBA: diagnostika pameti a cela RAM
+    {
+      jstring d = Java_eu_atarihelp_emu10_NativeAtariCoreBridge_devDiagNative(&g_env, nullptr);
+      const std::string ds = ((FakeStr *)d)->s;
+      printf("%s\n", ds.c_str());
+      jbyteArray ram = Java_eu_atarihelp_emu10_NativeAtariCoreBridge_devRamDumpNative(&g_env, nullptr);
+      const FakeArr *ra = (const FakeArr *)ram;
+      over(ds.find("B299 PAMET STAV: PC=$") != std::string::npos && ds.find("STMTAB $") != std::string::npos && ds.find("radku 2,") != std::string::npos &&
+           ra && ra->b.size() == 16 + 64 + 65536 + 65536 && std::memcmp(ra->b.data(), "NAP130XE-B299", 13) == 0,
+           "B299: LOG/CHYBA - diagnostika pameti (stav, ukazatele BASICu, kontrolni soucty) a vypis cele RAM");
+    }
+  }
+
   }   // !jenSirka
 
   // 9) B297: na sirku - D-pad a tlacitka jako u Segy, uprava rozlozeni, nastaveni

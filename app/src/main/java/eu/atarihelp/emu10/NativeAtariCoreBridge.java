@@ -117,6 +117,11 @@ public final class NativeAtariCoreBridge {
     // B297: ovladani na sirku (D-pad a tlacitka jako u Segy): "get", "set:<nastaveni>",
     //  "edit", "mirror", "reset", "done", "stav" -> vraci nastaveni (pro SharedPreferences)
     private static native String  devCtlNative(String prikaz);
+    // B299: program z TXT souboru (rezim 0 = ATARI BASIC, 1 = Turbo-BASIC XL - ten zavede Java
+    //  pred tim pres devLoadXexNative); diagnostika pameti a cela RAM pro LOG/CHYBA
+    private static native String  devProgramNative(byte[] data, String jmeno, int rezim);
+    private static native String  devDiagNative();
+    private static native byte[]  devRamDumpNative();
 
     // B287: Rene - "chci ciste jadro atari emu v c++ - Java odhaduje a to
     // je problem... vyzaduji aby... bylo opravdu emu atari pod tlacitkem
@@ -292,6 +297,25 @@ public final class NativeAtariCoreBridge {
     public static String devCtlSafe(String prikaz) {
         if (!loaded || prikaz == null) return "";
         try { String r = devCtlNative(prikaz); return r == null ? "" : r; } catch (Throwable t) { return ""; }
+    }
+
+    /** B299: TXT soubor -> program v ATARI BASICu (rezim 0) nebo Turbo-BASICu XL (rezim 1). */
+    public static String devProgramSafe(byte[] data, String jmeno, int rezim) {
+        if (!loaded) return "CHYBA knihovna napatari neni nactena";
+        if (data == null) return "CHYBA zadna data";
+        try { String r = devProgramNative(data, jmeno, rezim); return r == null ? "CHYBA nic" : r; }
+        catch (Throwable t) { return "CHYBA " + t.getMessage(); }
+    }
+    /** B299: diagnostika pameti (stav, ukazatele BASICu, kontrolni soucty) pro log. */
+    public static String devDiagSafe() {
+        if (!loaded) return "B299 PAMET: knihovna napatari neni nactena";
+        try { String r = devDiagNative(); return r == null ? "B299 PAMET: nic" : r; }
+        catch (Throwable t) { return "B299 PAMET: chyba " + t.getMessage(); }
+    }
+    /** B299: cela pamet Atari (hlavicka + registry + 64 kB + rozsirenych 64 kB) nebo null. */
+    public static byte[] devRamDumpSafe() {
+        if (!loaded) return null;
+        try { return devRamDumpNative(); } catch (Throwable t) { return null; }
     }
 
     /** Vrati vysledek jako JSON. Nikdy nehodi vyjimku. */

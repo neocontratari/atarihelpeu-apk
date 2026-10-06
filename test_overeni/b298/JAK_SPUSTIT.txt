@@ -15,9 +15,13 @@ Spousteni (z adresare test_overeni/b298):
    javac -d out ../../app/src/main/java/eu/atarihelp/emu10/AtarihelpTls.java TestAtarihelpTls.java
    java -Dhttp.nonProxyHosts="127.0.0.1|localhost" -cp out eu.atarihelp.emu10.TestAtarihelpTls certs
 
-Ocekavany vystup: VYSTUP_TestAtarihelpTls.txt (5 kontrol, 0 chyb):
+Ocekavany vystup: VYSTUP_TestAtarihelpTls.txt (7 kontrol, 0 chyb):
  - adresa vydavatele se precte z certifikatu,
  - system sam neuplny retez odmitne (jako telefon v Reneho logu),
  - AtarihelpTls ho doplni a prijme,
  - list od cizi CA se odmitne i po doplneni,
+ - B299: cizi CA s CN atarihelp.eu se nehlasi jako "mistni server",
+ - B299: certifikat "localhost <- ospanel" (presne ten z Reneho logu po B298 -
+   na jeho Wi-Fi vede atarihelp.eu na mistni OSPanel) se odmitne a hlasi jako
+   MISTNI server (appka to pak rekne v HELP i v logu),
  - uplny retez projde beze zmeny.

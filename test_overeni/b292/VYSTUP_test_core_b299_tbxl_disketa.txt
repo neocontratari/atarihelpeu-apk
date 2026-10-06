@@ -1,0 +1,16 @@
+TBXL: DDEVIC=$4F, disketa v D1: ano, PORTB=$FF (patch jen se zapnutou ROM (B299))
+--- LIST ---
+
+10 A=5:IF A>3 THEN PRINT "VELKE";A*2
+20 FOR I=1 TO 3:PRINT I*10;:NEXT I:PRINT 
+30 TEXT 20,25,"BODY":DIM B$(5):B$="OK":PRINT B$
+
+READY
+--- RUN ---
+VELKE10
+102030
+OK
+
+READY
+
+tbxl-disketa: LIST OK, RUN OK, zkratek SIO 6

@@ -8,6 +8,8 @@
 #include <string>
 #include <vector>
 #include <set>
+#include <map>
+#include <algorithm>
 #include "nap_atari_machine.h"
 #include "nap_atari_roms.h"
 #include "nap_atari_runtime.h"
@@ -93,13 +95,16 @@ static void vstupy(Machine &m, int f) {
 }
 
 // ---- B298: dlouhy program a zachyceni vystupu LIST (vse, co jde pres E: PUT) ----
-struct PutHook { int put = -1; bool on = false; std::string out; };
+static bool g_staryPatch = false;   // B299: true = SIO patch i v RAM pod ROM (chyba do B298)
+struct PutHook { int put = -1; bool on = false; std::string out; long long pcPage1 = 0, pcPark = 0; };
 static void snimekH(Machine &m, PutHook &h) {
   const long long f = m.frame;
   while (m.frame == f) {
     if (h.on && m.cpu.pc == h.put && !m.cpu.takeNmi && !m.cpu.takeIrq) h.out.push_back((char)m.cpu.a);
+    if (m.cpu.pc >= 0x100 && m.cpu.pc < 0x200) { h.pcPage1++; if (m.cpu.pc == 0x100) h.pcPark++; }
     // presne jako Machine::runFrame (SIO patch jen disk, kazeta $60 nikdy)
-    if (m.cpu.pc == 0xE459 && !m.cpu.jam && (m.disk.mounted || m.sioRychlyTimeout) && m.mem.ram[0x300] != 0x60 && !m.cpu.takeNmi && !m.cpu.takeIrq) { m.sioPatch(); continue; }
+    // B299: jen se zapnutou ROM OS (g_staryPatch = chovani B298 pro dukaz chyby TBXL + disketa)
+    if (m.cpu.pc == 0xE459 && !m.cpu.jam && (g_staryPatch || (m.mem.portB() & 1)) && (m.disk.mounted || m.sioRychlyTimeout) && m.mem.ram[0x300] != 0x60 && !m.cpu.takeNmi && !m.cpu.takeIrq) { m.sioPatch(); continue; }
     m.cpu.step();
   }
   if (m.keyHoldFrames > 0 && --m.keyHoldFrames == 0) m.skstat |= 0x04;
@@ -184,8 +189,343 @@ static std::string normalizuj(const std::string &s) {
   return out;
 }
 
+static PutHook g_hookStat;
+// B299: CLOAD ciziho WAV v BASICu / Turbo-BASICu a zachyceny vystup LIST
+static std::string cloadList(const std::vector<uint8_t> &wav, bool tbxl, Machine **ven) {
+  TapeImage img; std::string err;
+  if (!napTapeFromWav(wav.data(), wav.size(), img, err)) return "WAV: " + err;
+  PutHook h;
+  Machine *b = startBasic(tbxl, h);
+  b->tape.img = img; b->tape.loaded = true; b->tape.pos = 0; b->tape.play = true; b->tape.name = "wav";
+  h.pcPage1 = h.pcPark = 0;
+  TypeQueue tq; tq.addText("CLOAD");
+  bool enter = false; int cekej = 0;
+  for (int f = 0; f < 50 * 900; f++) {
+    tq.step(*b); snimekH(*b, h);
+    if (tq.empty() && !enter && ++cekej == 100) { b->klavesa(12); enter = true; cekej = 0; }
+    if (enter && !b->motorOn() && ++cekej > 100) {
+      const std::string sc = obrazovka(*b);
+      if (sc.find("READY", sc.rfind("CLOAD")) != std::string::npos || sc.find("ERROR") != std::string::npos) break;
+    }
+  }
+  std::string l = listH(*b, h);
+  if (ven) *ven = b;
+  g_hookStat = h;
+  return l;
+}
+
 int main(int argc, char **argv) {
   std::string mode = argc > 1 ? argv[1] : "boot";
+  if (mode == "kazeta-run-list") {
+    // B299: CLOAD (TBXL), RUN, po N snimcich BREAK nebo RESET, pak LIST
+    std::vector<uint8_t> wav = nacti(argv[2]);
+    const std::string jak = argc > 3 ? argv[3] : "break";
+    const int snimku = argc > 4 ? atoi(argv[4]) : 500;
+    Machine *b = nullptr;
+    cloadList(wav, true, &b);   // CLOAD + LIST (ok)
+    PutHook h; h.put = (b->peek(0xE406) | (b->peek(0xE407) << 8)) + 1;
+    pisH(*b, h, "RUN", 0);
+    for (int k = 0; k < snimku; k++) snimekH(*b, h);
+    if (jak == "reset") { b->reset(); b->consol = 7; } else b->breakKey();
+    for (int k = 0; k < 200; k++) snimekH(*b, h);
+    std::string l = listH(*b, h);
+    if (argc > 5) { FILE *o = fopen(argv[5], "wb"); fputs(l.c_str(), o); fclose(o); }
+    printf("po RUN + %s: LIST %zu znaku, radku %d\n%s", jak.c_str(), l.size(), (int)std::count(l.begin(), l.end(), '\n'), obrazovka(*b).c_str());
+    return 0;
+  }
+  if (mode == "txt-program") {
+    // B299: ./test_core txt-program soubor.txt|zkouska basic|tbxl [vystup_list.txt]
+    // TXT soubor -> klavesy do Atari (nap::PsaniProgramu jako v appce), pak LIST a srovnani
+    const bool tbxl = argc > 3 && std::string(argv[3]) == "tbxl";
+    std::string text;
+    const bool zkouska = std::string(argv[2]) == "zkouska";
+    if (zkouska) {
+      // schvalne zlobive veci: mala pismena, CRLF, prazdne radky, radek bez cisla, retezce s malymi
+      // pismeny a ridicimi znaky, REM s malymi pismeny, dlouhy radek (>120), chyba syntaxe
+      text = "Program pro zkousku B299\r\n"
+             "10 rem Tady je komentar s malymi pismeny\r\n"
+             "\r\n"
+             "20 dim a$(40):a$=\"Ahoj Atari 130xe!\":print \"}\";a$\r\n"
+             "30 for i=1 to 3:print i;\" \";:next i:print\r\n"
+             "   40 PRINT \"PRVNI \",\"druhy\";\"|{`~\"\r\n"
+             "50 x=5:IF X>3 THEN PRINT \"VETSI NEZ 3\"\r\n"
+             "60 PRIMT \"tady je chyba\"\r\n"
+             "70 data abc,Def,12\r\n"
+             "80 read b$:print b$\r\n";
+      text += "90 PRINT \"" + std::string(130, 'X') + "\"\r\n";
+      text += "100 END";
+      if (tbxl) text += "\r\n110 TEXT 20,25,\"Tbxl\":DPOKE 1536,1234:? DPEEK(1536)";
+    } else {
+      std::vector<uint8_t> v = nacti(argv[2]);
+      text.assign(v.begin(), v.end());
+    }
+    PutHook h;
+    Machine *m;
+    if (tbxl) m = startBasic(true, h);
+    else {
+      m = novy(true);
+      m->sioRychlyTimeout = true;
+      h.put = -1;
+    }
+    PsaniProgramu ps;
+    ps.start((const uint8_t *)text.data(), text.size(), tbxl, zkouska ? "zkouska.txt" : argv[2], !tbxl);
+    int f = 0;
+    for (; f < 50 * 900 && (ps.aktivni() || f < 2); f++) {
+      if (ps.pise()) m->runFrameRadky([&](Machine &mm) { ps.radek(mm); });
+      else snimekH(*m, h);
+      ps.poSnimku(*m);
+    }
+    for (auto &s : ps.log) printf("%s\n", s.c_str());
+    h.put = (m->peek(0xE406) | (m->peek(0xE407) << 8)) + 1;
+    const std::string l = listH(*m, h);
+    if (argc > 4) { FILE *o = fopen(argv[4], "wb"); fputs(l.c_str(), o); fclose(o); }
+    printf("--- LIST (%zu znaku) ---\n%s", l.size(), l.size() < 4000 ? l.c_str() : (l.substr(0, 1500) + "\n...\n").c_str());
+    printf("%s", obrazovka(*m).c_str());
+    printf("LMARGN=%d SHFLOK=$%02X NOCLIK=$%02X INVFLG=$%02X, snimku %d, stav %d\n", m->mem.ram[0x52], m->mem.ram[0x2BE],
+           m->mem.ram[0x2DB], m->mem.ram[0x2B6], f, (int)ps.stav);
+    if (!zkouska) {
+      // srovnat s puvodnim textem (radky s cislem, mezery sjednocene, mala pismena mimo uvozovky velka)
+      const std::string a = normalizuj(l);
+      std::string ocek; { std::string t2; for (char c : text) if (c != '\r') t2.push_back(c); ocek = normalizuj(t2); }
+      const bool shoda = a == ocek;
+      printf("txt-program: LIST %s s puvodnim souborem (%zu / %zu znaku)\n", shoda ? "SOUHLASI" : "NESOUHLASI", a.size(), ocek.size());
+      if (!shoda) {
+        size_t d = 0; while (d < a.size() && d < ocek.size() && a[d] == ocek[d]) d++;
+        printf("rozdil na znaku %zu:\n--- ocekavano ---\n%.200s\n--- LIST ---\n%.200s\n", d, ocek.substr(d > 60 ? d - 60 : 0).c_str(), a.substr(d > 60 ? d - 60 : 0).c_str());
+      }
+      return shoda && ps.stav == PsaniProgramu::HOTOVO ? 0 : 1;
+    }
+    return ps.stav == PsaniProgramu::HOTOVO ? 0 : 1;
+  }
+  if (mode == "tbxl-disketa") {
+    // B299: ./test_core tbxl-disketa [stary] - Turbo-BASIC XL a disketa v D1: (DDEVIC $31).
+    // TBXL bezi s vypnutou ROM a na $E459 (v RAM pod ROM) ma vlastni kod; SIO patch
+    // ho do B298 "prepadal" -> LIST/RUN rozsypane. "stary" = chovani B298 (dukaz chyby).
+    g_staryPatch = argc > 2 && std::string(argv[2]) == "stary";
+    PutHook h;
+    Machine *m = startBasic(true, h);
+    std::vector<uint8_t> atr(16 + 720 * 128, 0);
+    atr[0] = 0x96; atr[1] = 0x02; const int par = 720 * 128 / 16;
+    atr[2] = par & 0xFF; atr[3] = (par >> 8) & 0xFF; atr[4] = 128; atr[6] = (par >> 16) & 0xFF;
+    m->disk.load(atr.data(), atr.size(), "prazdna.atr");
+    printf("TBXL: DDEVIC=$%02X, disketa v D1: %s, PORTB=$%02X (%s)\n", m->mem.ram[0x300], m->disk.mounted ? "ano" : "ne",
+           m->mem.portB(), g_staryPatch ? "STARY patch jako B298" : "patch jen se zapnutou ROM (B299)");
+    auto pis = [&](const std::string &t, int dobeh) {     // jako pisH, ale s limitem (rozsypany TBXL klavesy nebere)
+      TypeQueue tq; tq.addText(t);
+      for (int f = 0; f < 3000 && !tq.empty(); f++) { tq.step(*m); snimekH(*m, h); }
+      for (int k = 0; k < dobeh; k++) snimekH(*m, h);
+    };
+    pis("10 A=5:IF A>3 THEN PRINT \"VELKE\";A*2\n20 FOR I=1 TO 3:PRINT I*10;:NEXT I:PRINT\n30 TEXT 20,25,\"BODY\":DIM B$(5):B$=\"OK\":PRINT B$", 100);
+    h.out.clear(); h.on = true;
+    pis("LIST", 400);
+    h.on = false;
+    std::string l; for (char c : h.out) l.push_back(c == (char)0x9B ? '\n' : c);
+    h.out.clear(); h.on = true;
+    pis("RUN", 300);
+    h.on = false;
+    std::string r; for (char c : h.out) r.push_back(c == (char)0x9B ? '\n' : c);
+    printf("--- LIST ---\n%s--- RUN ---\n%s\n", l.c_str(), r.c_str());
+    const bool okL = l.find("10 A=5:IF A>3 THEN PRINT \"VELKE\";A*2") != std::string::npos && l.find("20 FOR I=1 TO 3:PRINT I*10;:NEXT I:PRINT") != std::string::npos;
+    const bool okR = r.find("VELKE10") != std::string::npos && r.find("102030") != std::string::npos && r.find("\nOK") != std::string::npos && r.find("ERROR") == std::string::npos;
+    printf("tbxl-disketa: LIST %s, RUN %s, zkratek SIO %lld\n", okL ? "OK" : "CHYBA", okR ? "OK" : "CHYBA", m->sioZkratek + m->sioPrikazu);
+    return okL && okR ? 0 : 1;
+  }
+  if (mode == "kazeta-fuzz-cload") {
+    // B299: ./test_core kazeta-fuzz-cload program.wav pokusu seed vzor.txt - cely postup jako na telefonu
+    // (TBXL, CLOAD napsany v nahodnem okamziku, nahodne drzeni klaves, kazeta vlozena az po pipnuti,
+    // RETURN, nahravani, LIST) a srovnani s vypisem vzor.txt
+    std::vector<uint8_t> wav = nacti(argv[2]);
+    const int pokusu = argc > 3 ? atoi(argv[3]) : 5;
+    unsigned long long seed = argc > 4 ? strtoull(argv[4], nullptr, 10) : 1;
+    std::string vzor; { std::vector<uint8_t> v = nacti(argv[5]); vzor.assign(v.begin(), v.end()); }
+    TapeImage img; std::string err;
+    if (!napTapeFromWav(wav.data(), wav.size(), img, err)) { printf("WAV: %s\n", err.c_str()); return 1; }
+    auto rnd = [&](int n) { seed = seed * 6364136223846793005ULL + 1442695040888963407ULL; return (int)((seed >> 33) % (unsigned long long)n); };
+    int chyb = 0;
+    for (int t = 0; t < pokusu; t++) {
+      PutHook h;
+      Machine *m = startBasic(true, h);
+      const int put = h.put;
+      std::string out; bool zapis = false;
+      auto krok = [&](int snimku) {
+        for (int s = 0; s < snimku; s++) {
+          const long long fr = m->frame;
+          while (m->frame == fr) {
+            if (zapis && m->cpu.pc == put && !m->cpu.takeNmi && !m->cpu.takeIrq) out.push_back((char)m->cpu.a);
+            m->cpu.step();
+          }
+          if (m->keyHoldFrames > 0 && --m->keyHoldFrames == 0) m->skstat |= 0x04;
+        }
+      };
+      auto klav = [&](int kod, int drz) { m->klavesa(kod, true); krok(drz); m->klavesaPustena(); };
+      krok(rnd(300));
+      for (int c = rnd(30000); c > 0; c--) m->cpu.step();
+      const int cload[5] = {18 /*C*/, 0 /*L*/, 8 /*O*/, 63 /*A*/, 58 /*D*/};
+      for (int k = 0; k < 5; k++) { krok(2 + rnd(25)); for (int c = rnd(30000); c > 0; c--) m->cpu.step(); klav(cload[k], 1 + rnd(15)); }
+      krok(2 + rnd(25)); klav(12, 1 + rnd(150));                       // RETURN (CLOAD)
+      krok(50 + rnd(400));                                             // pipnuti, EJECT, vyber kazety
+      m->tape.img = img; m->tape.loaded = true; m->tape.pos = 0; m->tape.play = true; m->tape.name = "wav";
+      krok(rnd(100)); for (int c = rnd(30000); c > 0; c--) m->cpu.step();
+      klav(12, 1 + rnd(150));                                          // RETURN po pipnuti -> motor
+      bool motor = false;
+      for (int f = 0; f < 50 * 200; f++) { krok(1); if (m->motorOn()) motor = true; if (motor && !m->motorOn()) break; }
+      krok(100 + rnd(300));
+      m->tape.play = false;                                            // STOP
+      krok(rnd(200)); for (int c = rnd(30000); c > 0; c--) m->cpu.step();
+      const int kody[4] = {0x00, 0x0D, 0x3E, 0x2D};
+      for (int k = 0; k < 4; k++) { krok(2 + rnd(25)); klav(kody[k], 1 + rnd(15)); }
+      krok(2 + rnd(25)); zapis = true; klav(12, 1 + rnd(150));
+      for (int f = 0; f < 50 * 40; f++) { krok(1); const size_t r = out.rfind("READY"); if (r != std::string::npos && r > 10) break; }
+      std::string s; for (char c : out) s.push_back(c == (char)0x9B ? '\n' : c);
+      const size_t z1 = s.find("1 GOTO"), z2 = vzor.find("1 GOTO");
+      const std::string a = z1 == std::string::npos ? s : s.substr(z1);
+      const std::string e = z2 == std::string::npos ? vzor : vzor.substr(z2);
+      const size_t n = std::min(a.size(), e.size());
+      const bool ok = a.substr(0, n) == e.substr(0, n) && a.size() + 2 >= e.size();
+      printf("POKUS %d: %s (motor %s, LIST %zu znaku)\n", t, ok ? "OK" : "ROZDIL", motor ? "jel" : "NEJEL", a.size());
+      if (!ok) {
+        chyb++;
+        size_t d = 0; while (d < a.size() && d < e.size() && a[d] == e[d]) d++;
+        printf("--- ocekavano od znaku %zu ---\n%.200s\n--- dostal ---\n%.300s\n", d, e.substr(d > 80 ? d - 80 : 0).c_str(), a.substr(d > 80 ? d - 80 : 0).c_str());
+      }
+      fflush(stdout);
+      delete m;
+    }
+    printf("kazeta-fuzz-cload: %d pokusu, chyb %d\n", pokusu, chyb);
+    return chyb ? 1 : 0;
+  }
+  if (mode == "kazeta-fuzz") {
+    // B299: ./test_core kazeta-fuzz program.wav pokusu [seed] - stav po CLOAD (TBXL), pak LIST
+    // v nahodnem okamziku a s nahodnym drzenim klaves (jako prst na displeji telefonu)
+    std::vector<uint8_t> wav = nacti(argv[2]);
+    const int pokusu = argc > 3 ? atoi(argv[3]) : 100;
+    unsigned long long seed = argc > 4 ? strtoull(argv[4], nullptr, 10) : 1;
+    Machine *b = nullptr;
+    const std::string vzor = cloadList(wav, true, &b);
+    const int put = (b->peek(0xE406) | (b->peek(0xE407) << 8)) + 1;
+    auto rnd = [&](int n) { seed = seed * 6364136223846793005ULL + 1442695040888963407ULL; return (int)((seed >> 33) % (unsigned long long)n); };
+    int chyb = 0;
+    for (int t = 0; t < pokusu; t++) {
+      Machine *m = new Machine(*b); m->cpu.bus = m;
+      std::string out; bool zapis = false;
+      auto krok = [&](int snimku) {
+        for (int s = 0; s < snimku; s++) {
+          const long long fr = m->frame;
+          while (m->frame == fr) {
+            if (zapis && m->cpu.pc == put && !m->cpu.takeNmi && !m->cpu.takeIrq) out.push_back((char)m->cpu.a);
+            m->cpu.step();
+          }
+          if (m->keyHoldFrames > 0 && --m->keyHoldFrames == 0) m->skstat |= 0x04;
+        }
+      };
+      // nahodna faze: 0..1 s po READY, pak jeste nahodny pocet cyklu
+      krok(rnd(50));
+      for (int c = rnd(30000); c > 0; c--) m->cpu.step();
+      const int kody[5] = {0x00 /*L*/, 0x0D /*I*/, 0x3E /*S*/, 0x2D /*T*/, 12 /*RETURN*/};
+      for (int k = 0; k < 5; k++) {
+        krok(2 + rnd(25));
+        for (int c = rnd(30000); c > 0; c--) m->cpu.step();
+        if (k == 4) zapis = true;
+        m->klavesa(kody[k], true);
+        krok(1 + rnd(k == 4 ? 150 : 15));             // RETURN nekdy dlouho (opakovani klavesy)
+        m->klavesaPustena();
+      }
+      for (int f = 0; f < 50 * 40; f++) {
+        krok(1);
+        const size_t r = out.rfind("READY");
+        if (r != std::string::npos && r > 10) break;
+      }
+      std::string s; for (char c : out) s.push_back(c == (char)0x9B ? '\n' : c);
+      // porovnat od prvniho cisla radku
+      const size_t z1 = s.find("1 GOTO"), z2 = vzor.find("1 GOTO");
+      const std::string a = z1 == std::string::npos ? s : s.substr(z1);
+      const std::string e = z2 == std::string::npos ? vzor : vzor.substr(z2);
+      const bool ok = a.substr(0, std::min(a.size(), e.size())) == e.substr(0, std::min(a.size(), e.size())) && a.size() + 2 >= e.size();
+      if (!ok) {
+        chyb++;
+        size_t d = 0; while (d < a.size() && d < e.size() && a[d] == e[d]) d++;
+        printf("POKUS %d: ROZDIL na znaku %zu (delka %zu / %zu)\n--- ocekavano ---\n%.200s\n--- dostal ---\n%.300s\n", t, d, a.size(), e.size(),
+               e.substr(d > 80 ? d - 80 : 0).c_str(), a.substr(d > 80 ? d - 80 : 0).c_str());
+        if (chyb > 3) break;
+      }
+      delete m;
+    }
+    printf("kazeta-fuzz: %d pokusu, chyb %d\n", pokusu, chyb);
+    return chyb ? 1 : 0;
+  }
+  if (mode == "kazeta-trace") {
+    // B299: ./test_core kazeta-trace program.wav "LIST 1000" - kudy jde TBXL pri LIST (adresy mimo ROM OS, volani E: PUT)
+    std::vector<uint8_t> wav = nacti(argv[2]);
+    Machine *b = nullptr;
+    cloadList(wav, true, &b);
+    const std::string prikaz = argc > 3 ? argv[3] : "LIST 1000";
+    const int put = (b->peek(0xE406) | (b->peek(0xE407) << 8)) + 1;
+    std::map<int, long long> pcs;
+    std::string out;
+    TypeQueue tq; tq.addText(prikaz);
+    bool zapis = false;
+    for (int f = 0; f < 3000; f++) {
+      tq.step(*b);
+      const long long fr = b->frame;
+      while (b->frame == fr) {
+        const int pc = b->cpu.pc;
+        if (tq.empty() && !zapis) zapis = true;
+        if (zapis) {
+          const bool rom = (b->mem.portB() & 1) && pc >= 0xC000 && !(pc >= 0xD000 && pc < 0xD800);
+          if (!rom && !(pc >= 0x5000 && pc < 0x5800 && !(b->mem.portB() & 0x80))) pcs[pc]++;
+          if (pc == put && !b->cpu.takeNmi && !b->cpu.takeIrq) {
+            char t[200]; int s = b->cpu.s;
+            std::string st;
+            for (int k = 1; k <= 12 && s + k <= 0xFF; k++) { snprintf(t, sizeof t, "%02X ", b->mem.ram[0x100 + s + k]); st += t; }
+            snprintf(t, sizeof t, "PUT %02X '%c' S=%02X stack: %s\n", b->cpu.a, (b->cpu.a >= 32 && b->cpu.a < 127) ? b->cpu.a : '.', s, st.c_str());
+            out += t;
+          }
+        }
+        b->cpu.step();
+      }
+      if (b->keyHoldFrames > 0 && --b->keyHoldFrames == 0) b->skstat |= 0x04;
+      if (zapis && f > 50 && obrazovka(*b).rfind("READY") != std::string::npos && obrazovka(*b).rfind("READY") > obrazovka(*b).rfind(prikaz)) break;
+    }
+    printf("%s", out.c_str());
+    printf("--- PC mimo ROM OS (pocet) ---\n");
+    for (auto &kv : pcs) printf("%04X %lld\n", kv.first, kv.second);
+    printf("%s", obrazovka(*b).c_str());
+    return 0;
+  }
+  if (mode == "kazeta-diag") {
+    // B299: ./test_core kazeta-diag program.wav basic|tbxl - CLOAD + LIST a radky "B299 PAMET" (jako LOG/CHYBA
+    // v appce) - cisla pro srovnani s logem z telefonu
+    std::vector<uint8_t> wav = nacti(argv[2]);
+    const bool tbxl = argc > 3 && std::string(argv[3]) == "tbxl";
+    Machine *b = nullptr;
+    std::string l = cloadList(wav, tbxl, &b);
+    printf("LIST %zu znaku\n%s\n", l.size(), napDiagPameti(*b).c_str());
+    return 0;
+  }
+  if (mode == "kazeta-dump") {
+    // B299: ./test_core kazeta-dump program.wav basic|tbxl ram.bin - CLOAD, LIST a vypis RAM (64 kB vcetne RAM pod ROM)
+    std::vector<uint8_t> wav = nacti(argv[2]);
+    const bool tbxl = argc > 3 && std::string(argv[3]) == "tbxl";
+    Machine *b = nullptr;
+    std::string l = cloadList(wav, tbxl, &b);
+    if (argc > 4) { FILE *o = fopen(argv[4], "wb"); fwrite(b->mem.ram, 1, 65536, o); fclose(o); }
+    printf("LIST %zu znaku; LOMEM $%04X VNTP $%04X VNTD $%04X VVTP $%04X STMTAB $%04X STMCUR $%04X STARP $%04X MEMTOP $%04X PORTB $%02X\n",
+           l.size(), b->peek(0x80) | b->peek(0x81) << 8, b->peek(0x82) | b->peek(0x83) << 8, b->peek(0x84) | b->peek(0x85) << 8,
+           b->peek(0x86) | b->peek(0x87) << 8, b->peek(0x88) | b->peek(0x89) << 8, b->peek(0x8A) | b->peek(0x8B) << 8,
+           b->peek(0x8C) | b->peek(0x8D) << 8, b->peek(0x90) | b->peek(0x91) << 8, b->mem.portB());
+    return 0;
+  }
+  if (mode == "kazeta-list") {
+    // B299: ./test_core kazeta-list program.wav basic|tbxl vystup.txt - CLOAD a LIST (cely vystup E:)
+    std::vector<uint8_t> wav = nacti(argv[2]);
+    const bool tbxl = argc > 3 && std::string(argv[3]) == "tbxl";
+    Machine *b = nullptr;
+    std::string l = cloadList(wav, tbxl, &b);
+    if (argc > 4) { FILE *o = fopen(argv[4], "wb"); fputs(l.c_str(), o); fclose(o); }
+    printf("%s: LIST %zu znaku, radku %d\n%s", tbxl ? "TURBO-BASIC XL" : "ATARI BASIC", l.size(), (int)std::count(l.begin(), l.end(), '\n'), b ? obrazovka(*b).c_str() : "");
+    printf("instrukci v page 1: %lld, z toho PC=$0100: %lld\n", g_hookStat.pcPage1, g_hookStat.pcPark);
+    return 0;
+  }
   if (mode == "kazeta-dlouha") {
     // B298: ./test_core kazeta-dlouha [basic|tbxl] [bloku]
     // dlouhy program se napise na klavesnici -> LIST (porovnani se zdrojem) ->

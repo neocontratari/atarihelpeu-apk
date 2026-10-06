@@ -321,13 +321,33 @@ public:
   // =================================================================
   //  BEH
   // =================================================================
+  // B298: kazeta (DDEVIC $60) NIKDY pres patch - tu obsluhuje OS sam pres
+  // POKEY (CLOAD/CSAVE/boot z kazety). Drive s disketou v D1: dostal i
+  // CLOAD "timeout" (ERROR 138).
+  // B299: jen kdyz je na $E459 opravdu ROM OS (PORTB bit 0 = 1). Turbo-BASIC
+  // XL bezi s vypnutou ROM a v RAM pod ni ma na $E459 vlastni kod (cteni
+  // cisel a promennych z programu - pouziva ho RUN, LIST, IF ...). Patch by
+  // mu tam "vratil SIO" a TBXL by se s disketou v D1: rozsypal.
+  inline bool sioPatchTed() const {
+    return cpu.pc == 0xE459 && !cpu.jam && (mem.portB() & 1) && (disk.mounted || sioRychlyTimeout) &&
+           mem.ram[0x300] != 0x60 && !cpu.takeNmi && !cpu.takeIrq;
+  }
   void runFrame() {
     const long long f = frame;
     while (frame == f) {
-      // B298: kazeta (DDEVIC $60) NIKDY pres patch - tu obsluhuje OS sam pres
-      // POKEY (CLOAD/CSAVE/boot z kazety). Drive s disketou v D1: dostal i
-      // CLOAD "timeout" (ERROR 138).
-      if (cpu.pc == 0xE459 && !cpu.jam && (disk.mounted || sioRychlyTimeout) && mem.ram[0x300] != 0x60 && !cpu.takeNmi && !cpu.takeIrq) { sioPatch(); continue; }
+      if (sioPatchTed()) { sioPatch(); continue; }
+      cpu.step();
+    }
+    if (keyHoldFrames > 0 && --keyHoldFrames == 0) skstat |= 0x04;
+  }
+  // B299: jako runFrame, ale na zacatku kazdeho radku obrazu zavola f(*this)
+  // (psani programu z TXT: dalsi klavesa jde hned, jak ji OS prevezme)
+  template <class F> void runFrameRadky(F &&f) {
+    const long long fr = frame;
+    int l = -1;
+    while (frame == fr) {
+      if (line != l) { l = line; f(*this); }
+      if (sioPatchTed()) { sioPatch(); continue; }
       cpu.step();
     }
     if (keyHoldFrames > 0 && --keyHoldFrames == 0) skstat |= 0x04;
