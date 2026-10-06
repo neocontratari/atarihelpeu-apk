@@ -2869,6 +2869,75 @@ public class MainActivity extends Activity {
         String znak = napTvWebQueryText(fullPath, "znak", "");
         boolean dolu = napTvWebQueryLong(fullPath, "dolu", 1) != 0;
         boolean ctrl = napTvWebQueryLong(fullPath, "ctrl", 0) != 0;
+        long modL = napTvWebQueryLong(fullPath, "mod", -1);
+        String v = napTvWebJednaKlavesa(code, znak, dolu, ctrl, modL);
+        byte[] odp = v.getBytes("UTF-8");
+        napTvWebHeader(out, "200 OK", "text/plain", odp.length, true);
+        out.write(odp);
+    }
+
+    /**
+     * B302: VIC KLAVES V JEDNOM POZADAVKU.
+     *
+     * Prohlizec posila klavesy jednu po druhe (kvuli poradi) - a kdyz Wi-Fi
+     * telefonu na chvili zpomali (usporny rezim: 100-200 ms na pozadavek),
+     * rychly pisar ji predbehne a fronta v prohlizeci rostla. Pri 25
+     * cekajicich se zahodila a s ni i klavesy: test v Chromiu psal
+     * "30 ? 7X" + Backspace + Enter + "40 REM BALL 1001 ZZZ" rychle za sebou
+     * a do Atari doslo "30 ? 7X 1001 ZZZ". Ted jde vsechno, co se mezitim
+     * nahromadilo, v JEDNOM pozadavku a nic se nezahazuje.
+     * /klavesy?d=code,znak,dolu,ctrl,mod;code,znak,...  (kazde pole zvlast
+     * URL-kodovane, takze "," a ";" uvnitr nejsou). Odpovedi po radcich.
+     */
+    private void napTvWebKlavesy(String fullPath, java.io.OutputStream out) throws Exception {
+        StringBuilder odp = new StringBuilder();
+        int q = fullPath.indexOf('?');
+        String d = "";
+        if (q >= 0) {
+            for (String par : fullPath.substring(q + 1).split("&")) {
+                if (par.startsWith("d=")) { d = par.substring(2); break; }
+            }
+        }
+        int pocet = 0;
+        for (String kus : d.split(";")) {
+            if (kus.isEmpty() || pocet >= 64) continue;
+            String[] f = kus.split(",", -1);
+            if (f.length < 5) continue;
+            try {
+                String code = java.net.URLDecoder.decode(f[0], "UTF-8");
+                String znak = java.net.URLDecoder.decode(f[1], "UTF-8");
+                boolean dolu = !"0".equals(f[2]);
+                boolean ctrl = "1".equals(f[3]);
+                long modL = Long.parseLong(f[4]);
+                if (odp.length() > 0) odp.append('\n');
+                odp.append(napTvWebJednaKlavesa(code, znak, dolu, ctrl, modL));
+                pocet++;
+            } catch (Throwable t) {
+                appendNativeLog("B302 KLAVESY_CHYBA " + safeMsg(t));
+            }
+        }
+        byte[] b = odp.toString().getBytes("UTF-8");
+        napTvWebHeader(out, "200 OK", "text/plain", b.length, true);
+        out.write(b);
+    }
+
+    /** Jedna klavesa z prohlizece -> Atari (C++ v HELP, nebo stranka stareho Atari / Segy).
+     *  Vraci odpoved pro prohlizec. modL < 0 = stary prohlizec bez "mod" (jen ctrl). */
+    private String napTvWebJednaKlavesa(final String code, String znak, final boolean dolu, boolean ctrl, long modL) {
+        // B302: ATARI 130XE V HELP (C++). Rene: "udelej klavesnici - a mysli na to, ze vse
+        // v C++ pokud mozno". Klavesa jde primo do jadra: co udela (klavesa Atari, joystick,
+        // START/SELECT/OPTION, BREAK), rezim PSANI/HRANI i drzene klavesy resi C++
+        // (nap_atari_pc_klavesnice.h). Java ji jen preda a vrati prohlizeci odpoved.
+        if (atariCppNaObrazovce) {
+            int mod = modL >= 0 ? (int) (modL & 0xFF) : (ctrl ? 2 : 0);
+            String v = NativeAtariCoreBridge.devPcKlavesaSafe(code, znak, mod, dolu);
+            if (v == null) {
+                v = "CHYBA_JADRA";
+                long ted = System.currentTimeMillis();
+                if (ted - klavesLogMs > 3000) { klavesLogMs = ted; appendNativeLog("B302 KLAVESA " + code + " -> jadro Atari neodpovida (knihovna napatari?)"); }
+            }
+            return v;
+        }
 
         // BUILD2SA56: JEDEN VSTUPNI BOD A ZPETNA VAZBA.
         //
@@ -2911,9 +2980,7 @@ public class MainActivity extends Activity {
                 appendNativeLog("BUILD2SA56 KLAVESA_CHYBA " + safeMsg(t));
             }
         });
-        byte[] ok = "OK".getBytes("UTF-8");
-        napTvWebHeader(out, "200 OK", "text/plain", ok.length, true);
-        out.write(ok);
+        return "OK";
     }
 
     /**
@@ -3266,6 +3333,9 @@ public class MainActivity extends Activity {
                 // sem a Java ho preda strance Atari uplne stejne, jako kdyz
                 // se zmackne na dotykove klavesnici v telefonu.
                 napTvWebKlavesa(fullPath, out);
+            } else if ("/klavesy".equals(path)) {
+                // B302: vic klaves naraz (co se nahromadilo, kdyz Wi-Fi zpomalila)
+                napTvWebKlavesy(fullPath, out);
             } else if ("/quality".equals(path)) {
                 long t = napTvWebQueryLong(fullPath, "tier", napTvWebQualityTier);
                 byte[] body = ("tier=" + napTvWebSetQualityTier(t)).getBytes("UTF-8");
@@ -3276,11 +3346,17 @@ public class MainActivity extends Activity {
                 // BUILD2SA61: rovnou rekneme, jestli je uzivatel v Atari.
                 // Stranka se na /status pta kazdou vterinu uz ted, takze
                 // se na nic navic ptat nemusi a klavesnice se zapne SAMA.
-                boolean vAtari = (curUrl3 != null) && curUrl3.contains("emu_vbxe");
+                // B302: i Atari 130XE v HELP (C++) - klavesnice se v prohlizeci zapne sama
+                final boolean atariCpp = atariCppNaObrazovce;
+                boolean vAtari = ((curUrl3 != null) && curUrl3.contains("emu_vbxe")) || atariCpp;
                 // BUILD2SA76: klavesnice ted funguje i v Seze
                 boolean vSeze  = (curUrl3 != null) && curUrl3.contains("emu_sega");
+                String klavRezim = null;
+                if (atariCpp) klavRezim = NativeAtariCoreBridge.devPcKlavesaSafe("STAV", "", 0, true);
                 byte[] body = ("running=" + napTvWebRunning
                         + " atari=" + (vAtari ? 1 : 0)
+                        + " atariCpp=" + (atariCpp ? 1 : 0)
+                        + (klavRezim != null ? " klavRezim=" + klavRezim : "")
                         + " sega=" + (vSeze ? 1 : 0)
                         + " seq=" + napTvWebSeq
                         + " mirror=" + (napTvWebSystemMirrorActive ? "SCREEN" : "APP")
@@ -3445,16 +3521,16 @@ public class MainActivity extends Activity {
                 + "function startAudio(){if(aon)return;try{var C=window.AudioContext||window.webkitAudioContext;if(!C){a.textContent='AUDIO NENI';return;}ac=new C({latencyHint:'interactive'});if(ac.resume)ac.resume();g=ac.createGain();g.gain.value=1;g.connect(ac.destination);next=ac.currentTime+AVD;aon=true;a.textContent='AUDIO ON';pollAudio();label(fb?'JPEG':'MJPEG');}catch(e){a.textContent='AUDIO ERR';}}" // BUILD2SB1: jitter polstar 350 ms + master gain pro fady
                 + "function cutover(){if(!ac||!g)return;var t=ac.currentTime;try{g.gain.cancelScheduledValues(t);g.gain.setValueAtTime(g.gain.value,t);g.gain.linearRampToValueAtTime(0,t+0.01);}catch(e){}for(var i=0;i<active.length;i++){try{active[i].stop(t+0.012);}catch(e){}}active=[];next=t+AVD;try{g.gain.setValueAtTime(0,next-0.012);g.gain.linearRampToValueAtTime(1,next);}catch(e){}}" // BUILD2SB1: 10ms fade-out/in misto lepeni
                 + "async function pollAudio(){if(!aon||!ac)return;try{var r=await fetch('/audio.raw?after='+aseq+'&t='+Date.now(),{cache:'no-store'});var sq=parseInt(r.headers.get('x-nap-audio-seq')||aseq,10);var st=parseInt(r.headers.get('x-nap-audio-start')||aseq,10);var rate=parseInt(r.headers.get('x-nap-audio-rate')||'44100',10);var dis=(r.headers.get('x-nap-audio-discontinuity')||'0')==='1';var ab=await r.arrayBuffer();var expected=aseq;if(!isNaN(sq))aseq=sq;if(ab.byteLength>=4){var now=ac.currentTime;if(dis||next<now+0.04||next>now+AVD+0.5)cutover();var dv=new DataView(ab),frames=Math.floor(ab.byteLength/4),buf=ac.createBuffer(2,frames,rate),L=buf.getChannelData(0),R=buf.getChannelData(1);for(var i=0,p=0;i<frames;i++,p+=4){L[i]=dv.getInt16(p,true)/32768;R[i]=dv.getInt16(p+2,true)/32768;}var src=ac.createBufferSource();src.buffer=buf;src.connect(g);if(next<ac.currentTime+0.02)next=ac.currentTime+AVD;src.start(next);next+=frames/rate;active.push(src);src.onended=function(){var k=active.indexOf(src);if(k>=0)active.splice(k,1);};if(active.length>60)active.splice(0,active.length-60);}}catch(e){}setTimeout(pollAudio,20);}" // BUILD2SB1: planovane buffery (jitter buffer), zadne tvrde resety next, cutover s fadem
-                + "a.onclick=startAudio;function toggleFs(){var el=document.documentElement;try{if(!(document.fullscreenElement||document.webkitFullscreenElement)){(el.requestFullscreen||el.webkitRequestFullscreen||el.msRequestFullscreen).call(el);}else{(document.exitFullscreen||document.webkitExitFullscreen||document.msExitFullscreen).call(document);}}catch(e){}}document.addEventListener('click',toggleFs,true);document.addEventListener('keydown',function(e){if(e.key==='ArrowUp'){setAvd(AVD+0.05);e.preventDefault();}else if(e.key==='ArrowDown'){setAvd(AVD-0.05);e.preventDefault();}else if(e.key==='0'){setAvd(0.30);e.preventDefault();}},true);setTimeout(function(){try{startAudio();}catch(e){}},80);var aTry=setInterval(function(){if(aon){clearInterval(aTry);return;}try{startAudio();if(ac&&ac.state==='suspended'&&ac.resume)ac.resume();}catch(e){}},1000);"
+                + "a.onclick=startAudio;function toggleFs(){var el=document.documentElement;try{if(!(document.fullscreenElement||document.webkitFullscreenElement)){(el.requestFullscreen||el.webkitRequestFullscreen||el.msRequestFullscreen).call(el);}else{(document.exitFullscreen||document.webkitExitFullscreen||document.msExitFullscreen).call(document);}}catch(e){}}document.addEventListener('click',toggleFs,true);document.addEventListener('keydown',function(e){if(window.napVAtari||window.napVSeze)return;if(e.key==='ArrowUp'){setAvd(AVD+0.05);e.preventDefault();}else if(e.key==='ArrowDown'){setAvd(AVD-0.05);e.preventDefault();}else if(e.key==='0'){setAvd(0.30);e.preventDefault();}},true);setTimeout(function(){try{startAudio();}catch(e){}},80);var aTry=setInterval(function(){if(aon){clearInterval(aTry);return;}try{startAudio();if(ac&&ac.state==='suspended'&&ac.resume)ac.resume();}catch(e){}},1000);"
                 + "(function(){var qs=document.querySelectorAll('#q button');function mark(t){for(var i=0;i<qs.length;i++)qs[i].classList.toggle('on',qs[i].getAttribute('data-t')===(''+t));}"
                 + "fetch('/quality').then(function(r){return r.text();}).then(function(t){var m=/tier=(\\d)/.exec(t);mark(m?m[1]:'0');}).catch(function(){});"
                 + "for(var i=0;i<qs.length;i++){qs[i].onclick=function(e){var t=e.target.getAttribute('data-t');fetch('/quality?tier='+t).then(function(){mark(t);}).catch(function(){});};}})();"
                 + "(function(){var fb=document.getElementById('fs');function isFs(){return !!(document.fullscreenElement||document.webkitFullscreenElement||document.msFullscreenElement);}"
-                + "function upd(){fb.textContent=isFs()?'⛶ EXIT':'⛶ FULL';}"
+                + "function upd(){fb.textContent=isFs()?'⛶ EXIT':'⛶ FULL';try{var kb=navigator.keyboard;if(kb&&kb.lock){if(isFs()&&(window.napVAtari||window.napVSeze)){var pr=kb.lock();if(pr&&pr.catch)pr.catch(function(){});}else if(!isFs()&&kb.unlock)kb.unlock();}}catch(e){}}"
                 + "fb.onclick=function(){var el=document.documentElement;try{if(!isFs()){(el.requestFullscreen||el.webkitRequestFullscreen||el.msRequestFullscreen).call(el);}else{(document.exitFullscreen||document.webkitExitFullscreen||document.msExitFullscreen).call(document);}}catch(e){}};"
                 + "document.addEventListener('fullscreenchange',upd);document.addEventListener('webkitfullscreenchange',upd);document.addEventListener('msfullscreenchange',upd);upd();})();"
                 + "v.onerror=function(){if(!fb)fallback();};v.src='/stream.mjpg?'+Date.now();label('MJPEG');"
-                + "function pollFps(){fetch('/status').then(function(r){return r.text();}).then(function(t){var m=/seq=(\\d+)/.exec(t);var m2=/h264Seq=(\\d+)/.exec(t);if(!h264Active&&!h264Loading){clog('pollFps calling startH264 (universal)');startH264();}var useM=h264Active&&m2?m2:m;if(useM){var sq=parseInt(useM[1],10),now=Date.now();if(lastSeqT>0){var dt=(now-lastSeqT)/1000;if(dt>0)curFps=Math.round((sq-lastSeq)/dt*10)/10;}if(sq===lastSeq&&sq>0){staleTicks++;}else{staleTicks=0;}lastSeq=sq;lastSeqT=now;if(staleTicks>=4&&!fb&&!h264Active){staleTicks=0;v.src='/stream.mjpg?'+Date.now();}}var ma=/atari=(\\d)/.exec(t), ms=/sega=(\\d)/.exec(t);var vA=!!(ma&&ma[1]==='1'), vS=!!(ms&&ms[1]==='1');window.napVAtari=vA;window.napVSeze=vS;if(window.napKlavesnicePopis)window.napKlavesnicePopis(vA||vS);label(h264Active?'H264':(fb?'JPEG':'MJPEG'));}).catch(function(e){clog('pollFps fetch err '+e);label(h264Active?'H264':(fb?'JPEG':'MJPEG'));});}" // BUILD2SK45+SK57+SK59: stale-reconnect jen v MJPEG rezimu; "seq" v /status je porad ta sama zachytavaci sekvence i v H264 rezimu
+                + "function pollFps(){fetch('/status').then(function(r){return r.text();}).then(function(t){var m=/seq=(\\d+)/.exec(t);var m2=/h264Seq=(\\d+)/.exec(t);if(!h264Active&&!h264Loading){clog('pollFps calling startH264 (universal)');startH264();}var useM=h264Active&&m2?m2:m;if(useM){var sq=parseInt(useM[1],10),now=Date.now();if(lastSeqT>0){var dt=(now-lastSeqT)/1000;if(dt>0)curFps=Math.round((sq-lastSeq)/dt*10)/10;}if(sq===lastSeq&&sq>0){staleTicks++;}else{staleTicks=0;}lastSeq=sq;lastSeqT=now;if(staleTicks>=4&&!fb&&!h264Active){staleTicks=0;v.src='/stream.mjpg?'+Date.now();}}var ma=/atari=(\\d)/.exec(t), ms=/sega=(\\d)/.exec(t);var vA=!!(ma&&ma[1]==='1'), vS=!!(ms&&ms[1]==='1');window.napVAtari=vA;window.napVSeze=vS;var mc=/atariCpp=(\\d)/.exec(t), mr=/klavRezim=(\\w+)/.exec(t);window.napVAtariCpp=!!(mc&&mc[1]==='1');if(window.napVAtariCpp&&mr)window.napRezim=mr[1];if(window.napKlavesnicePopis)window.napKlavesnicePopis(vA||vS);label(h264Active?'H264':(fb?'JPEG':'MJPEG'));}).catch(function(e){clog('pollFps fetch err '+e);label(h264Active?'H264':(fb?'JPEG':'MJPEG'));});}" // BUILD2SK45+SK57+SK59: stale-reconnect jen v MJPEG rezimu; "seq" v /status je porad ta sama zachytavaci sekvence i v H264 rezimu
                 + "setInterval(pollFps,1000);"
                 + "})();</script>"
                 // ===== BUILD2SA54: KLAVESNICE Z POCITACE =====
@@ -3481,10 +3557,13 @@ public class MainActivity extends Activity {
                 // BUILD2SA71: kdyz okno ztrati zamereni nebo se prepne
                 // jinam, VSECHNO PUSTIT. Jinak zustane paka drzena
                 // a Mario jde porad doleva.
-                + "function pustVse(){ try{"
+                + "var drzim={};"   // B302: co je na PC prave drzene (hlidani spojeni)
+                + "function pustVse(){ try{ drzim={};"
+                // B302: Atari v C++ si drzene klavesy pamatuje samo - staci jedna zprava
+                + "  if(window.napVAtariCpp){ posli('PustVse','',false,false,0); return; }"
                 + "  ['KeyW','KeyA','KeyS','KeyD','ArrowUp','ArrowDown','ArrowLeft',"
                 + "   'ArrowRight','ControlLeft','AltLeft','Space'].forEach(function(c){"
-                + "    posli(c,'',false,false); }); }catch(e){} }"
+                + "    posli(c,'',false,false,0); }); }catch(e){} }"
                 + "window.addEventListener('blur',pustVse);"
                 + "document.addEventListener('visibilitychange',function(){"
                 + "  if(document.hidden) pustVse(); });"
@@ -3508,36 +3587,62 @@ public class MainActivity extends Activity {
                 // dokola, dokud nezmackl F9.
                 //
                 // Ted je jedna fronta a posila se JEDNA PO DRUHE.
+                //
+                // B302: ...ale VSECHNO, co se mezitim nahromadilo, jde v JEDNOM
+                // pozadavku (/klavesy). Kdyz Wi-Fi telefonu zpomali, rychly
+                // pisar ji predbehl, fronta pretekla a klavesy se zahodily.
                 + "var klavFronta=[], klavLeti=false;"
+                + "function klavPole(e){ return encodeURIComponent(e.c)+','+encodeURIComponent(e.z)"
+                + "  +','+(e.d?1:0)+','+(e.k?1:0)+','+(e.m|0); }"
                 + "function klavDalsi(){"
                 + "  if(klavLeti||klavFronta.length===0) return;"
-                + "  klavLeti=true; var u=klavFronta.shift();"
-                + "  var x=new XMLHttpRequest(); x.open('GET',u,true);"
+                + "  klavLeti=true; var u, e0;"
+                + "  if(klavFronta.length===1){ e0=klavFronta.shift();"
+                + "    u='/klavesa?code='+encodeURIComponent(e0.c)+'&znak='+encodeURIComponent(e0.z)"
+                + "      +'&dolu='+(e0.d?1:0)+'&ctrl='+(e0.k?1:0)+'&mod='+(e0.m|0);"
+                + "  } else { var kusy=[], delka=0;"
+                // URL do 800 znaku (server cte zacatek pozadavku do 1200 bajtu)
+                + "    while(klavFronta.length && kusy.length<40){ var k=klavPole(klavFronta[0]);"
+                + "      if(kusy.length && delka+k.length>700) break;"
+                + "      kusy.push(k); delka+=k.length+1; klavFronta.shift(); }"
+                + "    u='/klavesy?d='+kusy.join(';'); }"
+                + "  var x=new XMLHttpRequest(); x.open('GET',u,true); x.timeout=4000;"
                 + "  x.onload=function(){ try{"
-                + "    var v=x.responseText||'';"
-                + "    if(v==='HRANI'||v==='PSANI') window.napRezim=v;"
-                + "    if(v==='SKOK'||v==='VYSTREL'||v.indexOf('SMER:')===0"
-                + "       ||v.indexOf('NEZNAMA')===0) window.napPosledni=v;"
+                + "    (x.responseText||'').split('\\n').forEach(function(v){"
+                + "      if(v==='HRANI'||v==='PSANI') window.napRezim=v;"
+                + "      if(v==='SKOK'||v==='VYSTREL'||v.indexOf('SMER:')===0"
+                + "         ||v.indexOf('NEZNAMA')===0) window.napPosledni=v; });"
                 + "  }catch(_){} klavLeti=false; klavDalsi(); };"
-                + "  x.onerror=function(){ klavLeti=false; klavDalsi(); };"
+                // chyba spojeni: co v pozadavku bylo, je pryc (i pusteni) -
+                // proto pak vse pustit a zkusit to znovu az za chvili
+                + "  x.onerror=x.ontimeout=function(){ klavLeti=false;"
+                + "    if(!klavFronta.length||klavFronta[0].c!=='PustVse')"
+                + "      klavFronta.unshift({c:'PustVse',z:'',d:false,k:false,m:0});"
+                + "    setTimeout(klavDalsi,300); };"
                 + "  try{ x.send(); }catch(e){ klavLeti=false; }"
                 + "}"
-                + "function posli(code,znak,dolu,ctrl){"
+                // B302: mod = 1 Shift, 2 Ctrl, 4 Alt, 8 AltGr, 16 opakovani (drzena
+                // klavesa) - co s tim, rozhoduje C++ (nap_atari_pc_klavesnice.h)
+                + "function posli(code,znak,dolu,ctrl,mod){"
                 + "  if(!window.napVAtari && !window.napVSeze) return;"
                 + "  try{"
-                + "    if(klavFronta.length>24) klavFronta.length=0;"   // pojistka
-                + "    klavFronta.push('/klavesa?code='+encodeURIComponent(code)"
-                + "      +'&znak='+encodeURIComponent(znak||'')"
-                + "      +'&dolu='+(dolu?1:0)+'&ctrl='+(ctrl?1:0));"
+                // pojistka (server nebezi): fronta se zahodi, ale pak VSECHNO
+                // pustit - zahozene pusteni by jinak nechalo klavesu drzenou
+                + "    if(klavFronta.length>400){ klavFronta.length=0;"
+                + "      klavFronta.push({c:'PustVse',z:'',d:false,k:false,m:0}); }"
+                + "    klavFronta.push({c:String(code),z:String(znak||''),d:!!dolu,k:!!ctrl,m:mod|0});"
                 + "    klavDalsi();"
                 + "  }catch(e){}"
                 + "}"
                 + "document.addEventListener('keydown',function(e){"
                 + "  var t=e.target;"
                 + "  if(t&&(t.tagName==='INPUT'||t.tagName==='TEXTAREA')) return;"
-                + "  if(e.key==='F5'||e.key==='F12') return;"
+                + "  if(e.key==='F5'||e.key==='F11'||e.key==='F12') return;"
                 // BUILD2SA69: F1-F4 a F9 patri Atari, ne prohlizeci
-                + "  if(/^F[1349]$/.test(e.key)) e.preventDefault();"
+                // B302: i F6 (HELP), F7, F8 (INVERZE); F11 = cela obrazovka prohlizece
+                + "  if(/^F([1-46-9])$/.test(e.key)) e.preventDefault();"
+                + "  var md=(e.shiftKey?1:0)|(e.ctrlKey?2:0)|(e.altKey?4:0)"
+                + "    |((e.getModifierState&&e.getModifierState('AltGraph'))?8:0)|(e.repeat?16:0);"
                 // BUILD2SA75: ALT A CTRL SI BERE PROHLIZEC.
                 //
                 // Alt otevira nabidku okna a Ctrl je zkratka - Chrome je
@@ -3545,17 +3650,27 @@ public class MainActivity extends Activity {
                 // nez se rozhodne, co s nimi.
                 // BUILD2SA76: Alt a Ctrl uz neresime - prohlizec si je bral
                 // pro sebe a nestalo to za to. Skok je K, vystrel L.
-                + "  if(e.key==='F2'){ posli('Break','',true,false); e.preventDefault(); return; }"
-                + "  if(PREHAZOVACE[e.key]) return;"
-                + "  posli(e.code,e.key,true,e.ctrlKey);"
+                + "  if(e.key==='F2'){ posli('Break','',true,false,md); e.preventDefault(); return; }"
+                // B302: CapsLock = klavesa CAPS na Atari 130XE (C++)
+                + "  if(PREHAZOVACE[e.key] && !(window.napVAtariCpp && e.key==='CapsLock')) return;"
+                + "  drzim[e.code]=1;"
+                + "  posli(e.code,e.key,true,e.ctrlKey,md);"
                 + "  e.preventDefault();"
                 + "},true);"
                 + "document.addEventListener('keyup',function(e){"
                 + "  var t=e.target;"
                 + "  if(t&&(t.tagName==='INPUT'||t.tagName==='TEXTAREA')) return;"
+                + "  delete drzim[e.code];"
                 + "  if(PREHAZOVACE[e.key]) return;"
-                + "  posli(e.code,e.key,false,false);"
+                + "  posli(e.code,e.key,false,false,0);"
                 + "},true);"
+                // B302: drzi-li se klavesa, Atari (C++) dostava kazdych 0,8 s "jsem tu" -
+                // kdyz se prohlizec odmlci (zavreny panel, spadla Wi-Fi), C++ po 2,5 s
+                // vse pusti a drzena klavesa se neopakuje do nekonecna
+                + "setInterval(function(){ try{"
+                + "  if(!window.napVAtariCpp||klavLeti||klavFronta.length) return;"
+                + "  for(var k in drzim){ posli('Zije','',true,false,0); break; }"
+                + "}catch(e){} },800);"
                 + "var kn=document.createElement('div');"
                 + "kn.style.cssText='position:fixed;right:10px;bottom:8px;padding:4px 7px;"
                 + "background:rgba(0,0,0,.6);border-radius:4px;font:13px monospace;color:#9fdcff;z-index:99999';"
@@ -3563,15 +3678,20 @@ public class MainActivity extends Activity {
                 + "window.napKlavesnicePopis=function(zap){"
                 + "  if(kn.style.display===(zap?'':'none')) return;"   // jen pri zmene
                 + "  kn.style.display=zap?'':'none';"
-                + "  kn.textContent=(window.napRezim==='HRANI')"
-                + "    ? 'HRANI - WASD pohyb, K skok, L vystrel   (F9 = psani)'"
-                + "    : 'PSANI - F9 hrani, F2 BREAK, F1/F3/F4 START/SELECT/OPTION'; };"
-                + "setInterval(function(){ if(kn.style.display==='none') return;"
-                + "  var t=window.napVSeze"
+                + "  kn.textContent=napPopisKlaves(); };"
+                // B302: Atari 130XE v HELP (C++) ma vlastni popis - umi vic klaves
+                + "function napPopisKlaves(){"
+                + "  return window.napVSeze"
                 + "    ? 'SEGA - WASD pohyb, K = A, L = B, O = C, P = START'"
+                + "    : window.napVAtariCpp"
+                + "    ? ((window.napRezim==='HRANI')"
+                + "      ? 'ATARI HRANI - WASD/sipky smer, L = FIRE, K/mezernik skok, F1 START   (F9 = psani)'"
+                + "      : 'ATARI - pis normalne; F1 START, F3 SELECT, F4 OPTION, F2 BREAK, F6 HELP, F8 INVERZE   (F9 = hrani)')"
                 + "    : (window.napRezim==='HRANI')"
                 + "    ? 'HRANI - WASD pohyb, K skok, L vystrel   (F9 = psani)'"
-                + "    : 'PSANI - F9 hrani, F2 BREAK, F1/F3/F4 START/SELECT/OPTION';"
+                + "    : 'PSANI - F9 hrani, F2 BREAK, F1/F3/F4 START/SELECT/OPTION'; }"
+                + "setInterval(function(){ if(kn.style.display==='none') return;"
+                + "  var t=napPopisKlaves();"
                 + "  if(window.napPosledni) t+='   ['+window.napPosledni+']';"
                 + "  if(kn.textContent!==t) kn.textContent=t; },700);"
                 + "document.body.appendChild(kn);"
@@ -6658,6 +6778,9 @@ public class MainActivity extends Activity {
     private static final String ATARI_CPP_URL = "file:///android_asset/emu_atari_cpp/index.html";
     private AtariDeviceView atariZarizeni = null;
     private boolean atariZarizeniSkryte = false;          // LOG/CHYBA: je videt stranka s logem
+    // B302: Atari 130XE (C++) je na obrazovce - klavesnice z prohlizece na TV/PC jde do
+    // jadra (cte ho vlakno webserveru, proto volatile)
+    private volatile boolean atariCppNaObrazovce = false;
     private volatile boolean atariCppNetCil = false;      // NET HRY spustene z pristroje
     // B298: poradi pozadavku na hry z netu - plati jen POSLEDNI vybrana hra.
     // V Reneho logu dobehlo stazeni Donkey Konga (z drivejsiho kliknuti) az
@@ -6711,6 +6834,7 @@ public class MainActivity extends Activity {
                     ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
             atariZarizeni = v;
             atariZarizeniSkryte = false;
+            atariCppNaObrazovce = true;
             v.requestFocus();
             NativeAtariCoreBridge.devStartSafe(true);
             atariCppOvladaniNacti();                       // B297: D-pad / tlacitka na sirku podle uzivatele
@@ -6746,6 +6870,7 @@ public class MainActivity extends Activity {
         final AtariDeviceView v = atariZarizeni;
         atariZarizeni = null;
         atariZarizeniSkryte = false;
+        atariCppNaObrazovce = false;
         atariPadTlacitka = 0; atariPadPacka = 0;           // B296: ovladac pustit
         try { NativeAtariCoreBridge.devPadSafe(0); } catch (Throwable ignored) {}
         ui.removeCallbacks(atariZarizeniTik);
@@ -6760,6 +6885,7 @@ public class MainActivity extends Activity {
     private void atariZarizeniSkryj(boolean skryt) {
         if (atariZarizeni == null) return;
         atariZarizeniSkryte = skryt;
+        atariCppNaObrazovce = !skryt;
         atariZarizeni.setVisibility(skryt ? View.GONE : View.VISIBLE);
         appendNativeLog("B291 PRISTROJ " + (skryt ? "SKRYT - stranka s logem (LOG/CHYBA)" : "ZOBRAZEN"));
         if (skryt && web != null) {

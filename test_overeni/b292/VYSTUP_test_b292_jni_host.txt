@@ -1,5 +1,5 @@
-B292 ATARI_SELFTEST cpu=29C55806 instr=51200 0.00s | mem=D3949DC5 reads=16252928 0.08s | 2.57 MIPS = 5.8x realny cas Atari (cely stroj po cyklech)
-SELFTEST {"cpuHash":"29C55806","cpuInstr":51200,"cpuSec":0.00,"memHash":"D3949DC5","memReads":16252928,"memSec":0.08,"mips":2.57,"realtimeX":5.8,"abi":"jine","charSigned":1}
+B292 ATARI_SELFTEST cpu=29C55806 instr=51200 0.00s | mem=D3949DC5 reads=16252928 0.09s | 3.07 MIPS = 7.0x realny cas Atari (cely stroj po cyklech)
+SELFTEST {"cpuHash":"29C55806","cpuInstr":51200,"cpuSec":0.00,"memHash":"D3949DC5","memReads":16252928,"memSec":0.09,"mips":3.07,"realtimeX":7.0,"abi":"jine","charSigned":1}
 OK     samokontrola probehla (51200 instrukci, 16252928 cteni)
 B291 HELP otevren - pristroj ZAPNUT, studeny start Atari
 B293 JADRO = ATARI 130XE PAL: RAM 64 kB + rozsirena 4x16 kB (PORTB bity 2-3, procesor bit 4, ANTIC bit 5), OS XL/XE rev.2 (soucet $9211), BASIC rev.C vestaveny, self-test ROM $5000, TRIG3=0 (bez cartridge), RESET = reset CPU+ANTIC+PIA/MMU, plovouci datova sbernice, ANTIC/GTIA PAL 312 radku, POKEY 1,773 MHz
@@ -8,12 +8,13 @@ B298 ZVUK s pasmem jako TV (FIR 16 kHz, bez prekladu ultrazvuku do slysitelna), 
 B299 BASIC/TBXL TXT: TXT soubor s programem napise appka sama do ATARI BASICu / Turbo-BASICu XL; klavesy z pristroje do logu (B299 KLAVESY); LOG/CHYBA = stav a cela pamet Atari v logu; SIO zkratka jen se zapnutou ROM OS (Turbo-BASIC XL ma na $E459 vlastni kod).
 B300 POKEY: casovac s AUDF=$FF (perioda 256) tika a dava preruseni - drive stal (Ghostbusters: hudba a rec z preruseni casovace 1, bez nej titulka stala; nejhlubsi tony byly potichu).
 B301 TV/PC (web prohlizec v appce): obraz Atari 130XE primo z jadra (vyrez 336x240 jako na telefonu) a zvuk 44100 Hz stereo - drive bylo na TV videt jen stranku s testy pod pristrojem.
+B302 KLAVESNICE POCITACE (prohlizec na TV/PC) -> Atari 130XE primo v C++: psani podle rozlozeni (cesky: diakritika bez hacku, AltGr znaky), sipky = kurzor, F1/F3/F4 START/SELECT/OPTION, F2 BREAK, F6 HELP, F8 INVERZE, F9 HRANI (WASD/sipky joystick, K skok, L FIRE); klavesy v tempu, ktere OS stihne.
 B291 PRISTROJ plocha nova 1080x2160 -> kresleni 1080x2160
 B291 EMULACE_VLAKNO start (50 snimku/s, zvuk OpenSL, vse v C++)
 B291 EMULACE_VLAKNO priorita nice=-8 nastavena
 B291 KRESLICI_VLAKNO start (pristroj kresli C++ primo na displej)
 B291 KRESLICI_VLAKNO priorita nice=-4 nastavena
-B291 PRISTROJ rozlozen 1080x2160 (displej 1080x2160) za 185 ms
+B291 PRISTROJ rozlozen 1080x2160 (displej 1080x2160) za 183 ms
 OK     Atari nastartovalo do READY
 drzeni A 2,5 s -> 19 znaku A
 OK     drzena klavesa se opakuje jako na skutecnem Atari
@@ -31,12 +32,13 @@ B298 ZVUK s pasmem jako TV (FIR 16 kHz, bez prekladu ultrazvuku do slysitelna), 
 B299 BASIC/TBXL TXT: TXT soubor s programem napise appka sama do ATARI BASICu / Turbo-BASICu XL; klavesy z pristroje do logu (B299 KLAVESY); LOG/CHYBA = stav a cela pamet Atari v logu; SIO zkratka jen se zapnutou ROM OS (Turbo-BASIC XL ma na $E459 vlastni kod).
 B300 POKEY: casovac s AUDF=$FF (perioda 256) tika a dava preruseni - drive stal (Ghostbusters: hudba a rec z preruseni casovace 1, bez nej titulka stala; nejhlubsi tony byly potichu).
 B301 TV/PC (web prohlizec v appce): obraz Atari 130XE primo z jadra (vyrez 336x240 jako na telefonu) a zvuk 44100 Hz stereo - drive bylo na TV videt jen stranku s testy pod pristrojem.
+B302 KLAVESNICE POCITACE (prohlizec na TV/PC) -> Atari 130XE primo v C++: psani podle rozlozeni (cesky: diakritika bez hacku, AltGr znaky), sipky = kurzor, F1/F3/F4 START/SELECT/OPTION, F2 BREAK, F6 HELP, F8 INVERZE, F9 HRANI (WASD/sipky joystick, K skok, L FIRE); klavesy v tempu, ktere OS stihne.
 B291 PRISTROJ plocha nova 1080x2160 -> kresleni 1080x2160
 B291 EMULACE_VLAKNO start (50 snimku/s, zvuk OpenSL, vse v C++)
 B291 EMULACE_VLAKNO priorita nice=-8 nastavena
 B291 KRESLICI_VLAKNO start (pristroj kresli C++ primo na displej)
 B291 KRESLICI_VLAKNO priorita nice=-4 nastavena
-B291 PRISTROJ rozlozen 1080x2160 (displej 1080x2160) za 185 ms
+B291 PRISTROJ rozlozen 1080x2160 (displej 1080x2160) za 183 ms
 B299 KLAVESY: A <RETURN>
 B291 TXT do Atari: 44 stisku klaves pripraveno (0 znaku na Atari klavesnici neni)
 B299 KLAVESY: <RETURN>
@@ -47,9 +49,9 @@ OK     CSAVE: hotovy WAV prisel do Javy (devTakeWav)
 WAV 24.1 s
 OK     EJECT vraci Jave akci VYBER KAZETY
 OK     EJECT otevrel dvirka
-B292 KAZETA VLOZENA OK kazeta_b292.wav: 24.1 s, 44100 Hz, 1 kanal(y) (FSK v kanalu 1), 16 bit; pri 600 Bd 265 bajtu v 2 zaznamech (kontrolni soucet OK 2, spatne 0), chyb ramce v zaznamech 0 (sum v mezerach 0); druh: BASIC program (CLOAD); demodulace 54 ms
+B292 KAZETA VLOZENA OK kazeta_b292.wav: 24.1 s, 44100 Hz, 1 kanal(y) (FSK v kanalu 1), 16 bit; pri 600 Bd 265 bajtu v 2 zaznamech (kontrolni soucet OK 2, spatne 0), chyb ramce v zaznamech 0 (sum v mezerach 0); druh: BASIC program (CLOAD); demodulace 83 ms
 B295 KAZETA PLAY zmacknuto automaticky - ted napis CLOAD, RETURN, a po pipnuti jeste jednou RETURN
-devLoadTape: OK kazeta_b292.wav: 24.1 s, 44100 Hz, 1 kanal(y) (FSK v kanalu 1), 16 bit; pri 600 Bd 265 bajtu v 2 zaznamech (kontrolni soucet OK 2, spatne 0), chyb ramce v zaznamech 0 (sum v mezerach 0); druh: BASIC program (CLOAD); demodulace 54 ms
+devLoadTape: OK kazeta_b292.wav: 24.1 s, 44100 Hz, 1 kanal(y) (FSK v kanalu 1), 16 bit; pri 600 Bd 265 bajtu v 2 zaznamech (kontrolni soucet OK 2, spatne 0), chyb ramce v zaznamech 0 (sum v mezerach 0); druh: BASIC program (CLOAD); demodulace 83 ms
 OK     kazeta vlozena (WAV demodulovan)
 OK     po vlozeni kazety se dvirka zavrela
 OK     B295: po vlozeni kazety je PLAY zmacknute samo
@@ -62,7 +64,7 @@ B292 KAZETA motor ZAPNUT (PACTL bit3=0) - nahravam linku SIO DATA OUT
 B295 KAZETA motor VYPNUT - OS z pasky precetl 129 bajtu (chyb ramce pri cteni 0), pozice 21.7 / 24.1 s
 B292 KAZETA motor VYPNUT (SEROUT bajtu=0, 21.6s) - neni to CSAVE, WAV se nevytvari
 B291 TXT do Atari: 5 stisku klaves pripraveno (0 znaku na Atari klavesnici neni)
-B292 KAZETA VLOZENA OK kazeta_b292.wav: 24.1 s, 44100 Hz, 1 kanal(y) (FSK v kanalu 1), 16 bit; pri 600 Bd 265 bajtu v 2 zaznamech (kontrolni soucet OK 2, spatne 0), chyb ramce v zaznamech 0 (sum v mezerach 0); druh: BASIC program (CLOAD); demodulace 54 ms
+B292 KAZETA VLOZENA OK kazeta_b292.wav: 24.1 s, 44100 Hz, 1 kanal(y) (FSK v kanalu 1), 16 bit; pri 600 Bd 265 bajtu v 2 zaznamech (kontrolni soucet OK 2, spatne 0), chyb ramce v zaznamech 0 (sum v mezerach 0); druh: BASIC program (CLOAD); demodulace 83 ms
 B295 KAZETA PLAY zmacknuto automaticky - ted napis CLOAD, RETURN, a po pipnuti jeste jednou RETURN
 B291 POWER VYPNUTO
 B291 POWER ZAPNUTO - studeny start (pamet i hardware od nuly, jako vypinac na skrini)
@@ -154,17 +156,17 @@ B291 XEX OS nastartovan za 87 snimku (BASIC=VYPNUTY, RAMTOP=$C0) - nahravam segm
 B299 KLAVESY: <RETURN>
 B296 VBXE: program nasel kartu VBXE (registry $D640, FX 1.26) a pouziva ji
 B291 XEX Popeye (VBXE, PAL Version)(2).xex nahrano: 624 segmentu, 59321 bajtu, 267 x INIT -> start $2C59 (RUNAD)
-B296 VBXE: XDL ZAPNUTO, overlay zadny, blitru 237 (seznamu 221), zapisu palety 381, MEMAC A $A8/$9E B $00, snimek 5117
-B296 VBXE: XDL ZAPNUTO, overlay SR 320 bodu, blitru 335 (seznamu 319), zapisu palety 381, MEMAC A $A8/$9E B $00, snimek 5118
+B296 VBXE: XDL ZAPNUTO, overlay zadny, blitru 237 (seznamu 221), zapisu palety 381, MEMAC A $A8/$9E B $00, snimek 5128
+B296 VBXE: XDL ZAPNUTO, overlay SR 320 bodu, blitru 335 (seznamu 319), zapisu palety 381, MEMAC A $A8/$9E B $00, snimek 5129
 Popeye: zapisu do VBXE 2539, snimku s XDL 501, radku z VBXE 240
 OK     B296: Popeye zapnul VBXE (XDL + overlay) a obraz kresli VBXE
 Popeye po START/FIRE: blitu 7992
 OK     B296: Popeye hraje (blitter VBXE kresli postavy - tisice blitu)
 B295 DISKETA VLOZENA OK wolf3d(1).atr: 13061 sektoru po 128 B (1632 kB) -> mechanika D1:, studeny start s OPTION (BASIC vypnuty)
 B296 VBXE: program nasel kartu VBXE (registry $D640, FX 1.26) a pouziva ji
-B296 VBXE: XDL ZAPNUTO, overlay zadny, blitru 2 (seznamu 2), zapisu palety 768, MEMAC A $88/$8B B $00, snimek 6254
-B296 VBXE: XDL ZAPNUTO, overlay LR 160 bodu, blitru 2 (seznamu 2), zapisu palety 768, MEMAC A $88/$8B B $00, snimek 6255
-B296 VBXE: XDL ZAPNUTO, overlay SR 320 bodu, blitru 2 (seznamu 2), zapisu palety 768, MEMAC A $88/$8A B $00, snimek 6348
+B296 VBXE: XDL ZAPNUTO, overlay zadny, blitru 2 (seznamu 2), zapisu palety 768, MEMAC A $88/$8B B $00, snimek 6265
+B296 VBXE: XDL ZAPNUTO, overlay LR 160 bodu, blitru 2 (seznamu 2), zapisu palety 768, MEMAC A $88/$8B B $00, snimek 6266
+B296 VBXE: XDL ZAPNUTO, overlay SR 320 bodu, blitru 2 (seznamu 2), zapisu palety 768, MEMAC A $88/$8A B $00, snimek 6359
 B295 DISKETA VLOZENA OK acid800.atr: 720 sektoru po 128 B (90 kB) -> mechanika D1:, studeny start s OPTION (BASIC vypnuty)
 B291 POWER VYPNUTO
 B291 POWER ZAPNUTO - studeny start (pamet i hardware od nuly, jako vypinac na skrini)
@@ -177,14 +179,14 @@ B291 XEX OS nastartovan za 87 snimku (BASIC=VYPNUTY, RAMTOP=$C0) - nahravam segm
 B299 KLAVESY: <RETURN>
 B296 VBXE: program nasel kartu VBXE (registry $D640, FX 1.26) a pouziva ji
 B291 XEX Popeye (VBXE, PAL Version)(2).xex nahrano: 624 segmentu, 59321 bajtu, 267 x INIT -> start $2C59 (RUNAD)
-B296 VBXE: XDL ZAPNUTO, overlay zadny, blitru 237 (seznamu 221), zapisu palety 381, MEMAC A $A8/$9E B $00, snimek 5117
-B296 VBXE: XDL ZAPNUTO, overlay SR 320 bodu, blitru 335 (seznamu 319), zapisu palety 381, MEMAC A $A8/$9E B $00, snimek 5118
+B296 VBXE: XDL ZAPNUTO, overlay zadny, blitru 237 (seznamu 221), zapisu palety 381, MEMAC A $A8/$9E B $00, snimek 5128
+B296 VBXE: XDL ZAPNUTO, overlay SR 320 bodu, blitru 335 (seznamu 319), zapisu palety 381, MEMAC A $A8/$9E B $00, snimek 5129
 devLoadAtr: OK wolf3d(1).atr: 13061 sektoru po 128 B (1632 kB) -> mechanika D1:, studeny start s OPTION (BASIC vypnuty)
 W3D titulka: snimku s XDL 296, overlay 2
 OK     B296: Wolfenstein 3D nabootoval a titulku kresli VBXE (overlay SR 320 bodu)
-B296 VBXE: XDL ZAPNUTO, overlay LR 160 bodu, blitru 4 (seznamu 4), zapisu palety 768, MEMAC A $88/$8A B $00, snimek 6552
-B296 VBXE: XDL ZAPNUTO, overlay SR 320 bodu, blitru 86 (seznamu 86), zapisu palety 768, MEMAC A $88/$8A B $00, snimek 6553
-B296 VBXE: XDL ZAPNUTO, overlay LR 160 bodu, blitru 1419 (seznamu 1419), zapisu palety 768, MEMAC A $88/$8A B $00, snimek 7079
+B296 VBXE: XDL ZAPNUTO, overlay LR 160 bodu, blitru 4 (seznamu 4), zapisu palety 768, MEMAC A $88/$8A B $00, snimek 6563
+B296 VBXE: XDL ZAPNUTO, overlay SR 320 bodu, blitru 86 (seznamu 86), zapisu palety 768, MEMAC A $88/$8A B $00, snimek 6564
+B296 VBXE: XDL ZAPNUTO, overlay LR 160 bodu, blitru 1417 (seznamu 1417), zapisu palety 768, MEMAC A $88/$8A B $00, snimek 7089
 W3D po menu: overlay 1
 OK     B296: Wolfenstein 3D ve hre (3D pohled = overlay LR 160 bodu)
 W3D: joystick nahoru -> zmenenych bodu 119148 z 184320
@@ -192,12 +194,12 @@ OK     B296: joystick dotykem ve Wolfensteinu - hrac jde dopredu (obraz se zmeni
 B298 DISKETA wolf3d(1).atr vysunuta z D1: - studeny start (BASIC)
 B295 DISKETA VLOZENA OK wolf3d(1).atr: 13061 sektoru po 128 B (1632 kB) -> mechanika D1:, studeny start s OPTION (BASIC vypnuty)
 B296 VBXE: program nasel kartu VBXE (registry $D640, FX 1.26) a pouziva ji
-B296 VBXE: XDL ZAPNUTO, overlay zadny, blitru 2 (seznamu 2), zapisu palety 768, MEMAC A $88/$8B B $00, snimek 6254
-B296 VBXE: XDL ZAPNUTO, overlay LR 160 bodu, blitru 2 (seznamu 2), zapisu palety 768, MEMAC A $88/$8B B $00, snimek 6255
-B296 VBXE: XDL ZAPNUTO, overlay SR 320 bodu, blitru 2 (seznamu 2), zapisu palety 768, MEMAC A $88/$8A B $00, snimek 6348
-B296 VBXE: XDL ZAPNUTO, overlay LR 160 bodu, blitru 4 (seznamu 4), zapisu palety 768, MEMAC A $88/$8A B $00, snimek 6552
-B296 VBXE: XDL ZAPNUTO, overlay SR 320 bodu, blitru 86 (seznamu 86), zapisu palety 768, MEMAC A $88/$8A B $00, snimek 6553
-B296 VBXE: XDL ZAPNUTO, overlay LR 160 bodu, blitru 1419 (seznamu 1419), zapisu palety 768, MEMAC A $88/$8A B $00, snimek 7079
+B296 VBXE: XDL ZAPNUTO, overlay zadny, blitru 2 (seznamu 2), zapisu palety 768, MEMAC A $88/$8B B $00, snimek 6265
+B296 VBXE: XDL ZAPNUTO, overlay LR 160 bodu, blitru 2 (seznamu 2), zapisu palety 768, MEMAC A $88/$8B B $00, snimek 6266
+B296 VBXE: XDL ZAPNUTO, overlay SR 320 bodu, blitru 2 (seznamu 2), zapisu palety 768, MEMAC A $88/$8A B $00, snimek 6359
+B296 VBXE: XDL ZAPNUTO, overlay LR 160 bodu, blitru 4 (seznamu 4), zapisu palety 768, MEMAC A $88/$8A B $00, snimek 6563
+B296 VBXE: XDL ZAPNUTO, overlay SR 320 bodu, blitru 86 (seznamu 86), zapisu palety 768, MEMAC A $88/$8A B $00, snimek 6564
+B296 VBXE: XDL ZAPNUTO, overlay LR 160 bodu, blitru 1417 (seznamu 1417), zapisu palety 768, MEMAC A $88/$8A B $00, snimek 7089
 D1: pred vysunutim = "wolf3d(1).atr"
 OK     B298: VYSUNOUT DISKETU -> D1: prazdna a Atari znovu v BASICu (READY)
 B291 TXT do Atari: 13 stisku klaves pripraveno (0 znaku na Atari klavesnici neni)
@@ -205,7 +207,7 @@ B298 DISKETA: dalsi ATR se jen vymeni v D1: (bez restartu, napr. druha strana hr
 B298 DISKETA OK acid800.atr -> mechanika D1: VYMENENA bez restartu (program bezi dal)
 devLoadAtr (vymena): OK acid800.atr -> mechanika D1: VYMENENA bez restartu (program bezi dal)
 OK     B298: VYMENIT DISKETU bez restartu - v D1: je nova, program/pamet bezi dal (POKE zustal)
-B292 KAZETA VLOZENA OK kazeta_b292.wav: 24.1 s, 44100 Hz, 1 kanal(y) (FSK v kanalu 1), 16 bit; pri 600 Bd 265 bajtu v 2 zaznamech (kontrolni soucet OK 2, spatne 0), chyb ramce v zaznamech 0 (sum v mezerach 0); druh: BASIC program (CLOAD); demodulace 40 ms
+B292 KAZETA VLOZENA OK kazeta_b292.wav: 24.1 s, 44100 Hz, 1 kanal(y) (FSK v kanalu 1), 16 bit; pri 600 Bd 265 bajtu v 2 zaznamech (kontrolni soucet OK 2, spatne 0), chyb ramce v zaznamech 0 (sum v mezerach 0); druh: BASIC program (CLOAD); demodulace 41 ms
 B295 KAZETA PLAY zmacknuto automaticky - ted napis CLOAD, RETURN, a po pipnuti jeste jednou RETURN
 B291 TXT do Atari: 10 stisku klaves pripraveno (0 znaku na Atari klavesnici neni)
 B295 KAZETA motor ZAPNUT - kazeta kazeta_b292.wav, PLAY=ano (pasek bezi), pozice 0.0 / 24.1 s
@@ -252,7 +254,7 @@ B298 DISKETA wolf3d(1).atr vysunuta z D1: - studeny start (BASIC)
 B291 TXT do Atari: 13 stisku klaves pripraveno (0 znaku na Atari klavesnici neni)
 B298 DISKETA: dalsi ATR se jen vymeni v D1: (bez restartu, napr. druha strana hry)
 B298 DISKETA OK acid800.atr -> mechanika D1: VYMENENA bez restartu (program bezi dal)
-B292 KAZETA VLOZENA OK kazeta_b292.wav: 24.1 s, 44100 Hz, 1 kanal(y) (FSK v kanalu 1), 16 bit; pri 600 Bd 265 bajtu v 2 zaznamech (kontrolni soucet OK 2, spatne 0), chyb ramce v zaznamech 0 (sum v mezerach 0); druh: BASIC program (CLOAD); demodulace 40 ms
+B292 KAZETA VLOZENA OK kazeta_b292.wav: 24.1 s, 44100 Hz, 1 kanal(y) (FSK v kanalu 1), 16 bit; pri 600 Bd 265 bajtu v 2 zaznamech (kontrolni soucet OK 2, spatne 0), chyb ramce v zaznamech 0 (sum v mezerach 0); druh: BASIC program (CLOAD); demodulace 41 ms
 B295 KAZETA PLAY zmacknuto automaticky - ted napis CLOAD, RETURN, a po pipnuti jeste jednou RETURN
 B291 TXT do Atari: 10 stisku klaves pripraveno (0 znaku na Atari klavesnici neni)
 B295 KAZETA motor ZAPNUT - kazeta kazeta_b292.wav, PLAY=ano (pasek bezi), pozice 0.0 / 24.1 s
@@ -376,15 +378,95 @@ B291 XEX turbo_basic_xl.xex: INIT c.1 prevzal rizeni a bezi (program spusten z I
 B291 TXT do Atari: 4 stisku klaves pripraveno (0 znaku na Atari klavesnici neni)
 B299 KLAVESY: LIST <RETURN>
 OK     B299: klavesy z pristroje jsou v logu (B299 KLAVESY: LIST <RETURN>)
-B299 PAMET STAV: PC=$F307 A=$06 X=$80 Y=$01 S=$F3 P=$20, PORTB=$FF (ROM OS zap, BASIC vyp, rozsirena pamet pro CPU vyp banka 3), NMIEN=$40, DLIST=$BC20, SAVMSC=$BC40, DDEVIC=$4F, D1: prazdna, rychly timeout SIO ne, XEX stav 4, psani TXT stav 4, snimek 856
+B299 PAMET STAV: PC=$F307 A=$06 X=$80 Y=$01 S=$F3 P=$20, PORTB=$FF (ROM OS zap, BASIC vyp, rozsirena pamet pro CPU vyp banka 3), NMIEN=$40, DLIST=$BC20, SAVMSC=$BC40, DDEVIC=$4F, D1: prazdna, rychly timeout SIO ne, XEX stav 4, psani TXT stav 4, snimek 857
 B299 PAMET BASIC: LOMEM $3629 VNTP $3729 VNTD $3729 VVTP $372A STMTAB $372A STMCUR $3768 STARP $376E MEMTOP $376E; program VNTP..STARP 69 B crc32 F4FD8582, radku 2, s chybou syntaxe 0
-B299 PAMET CRC32: $00-$7F C1CAF356, $80-$FF 3DBEFA57, $0100-$01FF 46FC97EE, $0200-$03FF E6686D04, $0400-$06FF BC263CB1, $0700-$1FFF ECA9A3DC, $2000-$3FFF A5FE58A8, $4000-$7FFF 3F868A9B, $8000-$BFFF A1992622, RAM pod ROM $C000-$CFFF B12E07AB, $D800-$FFFF 0E5626B8, rozsirena 64 kB 4CCF60F0; VBXE MEMAC A $00/$00 B $00
+B299 PAMET CRC32: $00-$7F 078033EE, $80-$FF 3DBEFA57, $0100-$01FF 46FC97EE, $0200-$03FF E6686D04, $0400-$06FF BC263CB1, $0700-$1FFF ECA9A3DC, $2000-$3FFF A5FE58A8, $4000-$7FFF 3F868A9B, $8000-$BFFF A1992622, RAM pod ROM $C000-$CFFF B12E07AB, $D800-$FFFF 0E5626B8, rozsirena 64 kB 4CCF60F0; VBXE MEMAC A $00/$00 B $00
 OK     B299: LOG/CHYBA - diagnostika pameti (stav, ukazatele BASICu, kontrolni soucty) a vypis cele RAM
 TV obraz: male pole -> -44040432, obraz 672x240, stred ARGB=FF0055A1 (R=0 B=161), barev aspon 3
 TV zvuk: 16384 shortu (stereo) za 0,3 s
 OK     B301: TV/PC - obraz Atari primo z jadra (672x240 ARGB, modra obrazovka BASICu) a zvuk (stereo int16)
+OK     B302: PC klavesnice zacina v rezimu PSANI
+B302 PC KLAVESNICE: prvni klavesa z prohlizece na TV/PC (Slash -> OK:Slash=102) - jde primo do Atari 130XE (C++), rezim PSANI
+B299 KLAVESY (PC): ? 6*7 <RETURN>
+--- PC klavesnice: ? 6*7 ---
+READY
+10 DPOKE 1536,4660:? DPEEK(1536)
+20 TEXT 20,25,"Tbxl"
+LIST
+
+  10 DPOKE 1536,4660:? DPEEK(1536)
+  20 TEXT 20,25,"Tbxl"
+
+  READY
+  RUN
+  4660
+
+  READY
+  LIST
+
+  10 DPOKE 1536,4660:? DPEEK(1536)
+  20 TEXT 20,25,"Tbxl"
+
+  READY
+  ? 6*7
+  42
+
+  READY
+
+---
+B302 PC KLAVESNICE: prvni klavesa z prohlizece na TV/PC (Slash -> OK:Slash=102) - jde primo do Atari 130XE (C++), rezim PSANI
+B299 KLAVESY (PC): ? 6*7 <RETURN>
+OK     B302: PC klavesnice - radek '? 6*7' napsany (6 klaves naraz) a spocitany (42)
+OK     B302: v logu prvni klavesa z PC a napsany radek (B299 KLAVESY (PC): ? 6*7 <RETURN>)
+B302 PC KLAVESNICE: rezim HRANI (WASD/sipky = joystick, K/mezernik = skok, L = FIRE, F9 = psani)
+OK     B302: F9 = rezim HRANI
+B302 JOYSTICK 1 z klavesnice pocitace (HRANI: WASD/sipky smer, K/mezernik skok, L FIRE)
+OK     B302: HRANI - W = joystick nahoru (+ klavesa W), L = FIRE
+OK     B302: HRANI - po pusteni joystick v klidu a klavesa pustena
+B302 PC KLAVESNICE: rezim PSANI (klavesy pisou do Atari, F9 = hrani)
+OK     B302: F9 = zpet PSANI
+OK     B302: F1 = START drzeny, po pusteni pusteny
+OK     B302: F2 = BREAK
+B299 KLAVESY (PC): W<BREAK>
+OK     B302: PustVse
+OK     B302: klavesa Z drzena, PustVse ji pustil
+B302 PC KLAVESNICE: rezim HRANI (WASD/sipky = joystick, K/mezernik = skok, L = FIRE, F9 = psani)
+B302 JOYSTICK 1 z klavesnice pocitace (HRANI: WASD/sipky smer, K/mezernik skok, L FIRE)
+B302 PC KLAVESNICE: rezim PSANI (klavesy pisou do Atari, F9 = hrani)
+B299 KLAVESY (PC): W<BREAK>
+OK     B302: BREAK z PC je v logu
+B302 PC KLAVESNICE: prohlizec se 2,5 s neozval (zavreny, spadla Wi-Fi?) - drzene klavesy, joystick a konzole pusteny
+B302 PC KLAVESNICE: prohlizec se 2,5 s neozval (zavreny, spadla Wi-Fi?) - drzene klavesy, joystick a konzole pusteny
+OK     B302: prohlizec se 2,5 s neozval - drzena klavesa Q pustena (a v logu)
+OK     B302: Shift+Backspace = smazat radek (SHIFT+BACK S)
+B299 KLAVESY (PC): ZQ<SMAZ.RADEK> <RETURN>
 B291 PRISTROJ plocha zmena 2400x1080 -> kresleni 2400x1080
-B291 PRISTROJ rozlozen 2400x1080 (displej 2400x1080) za 204 ms
+B291 PRISTROJ rozlozen 2400x1080 (displej 2400x1080) za 192 ms
+20 TEXT 20,25,"Tbxl"
+LIST
+
+  10 DPOKE 1536,4660:? DPEEK(1536)
+  20 TEXT 20,25,"Tbxl"
+
+  READY
+  RUN
+  4660
+
+  READY
+  LIST
+
+  10 DPOKE 1536,4660:? DPEEK(1536)
+  20 TEXT 20,25,"Tbxl"
+
+  READY
+  ? 6*7
+  42
+
+  READY
+  W
+
+
+B299 KLAVESY (PC): ZQ<SMAZ.RADEK> <RETURN>
 na sirku: land=1 dpad (275,826) r=232 FIRE (2244,955)
 OK     B297: displej 2400x1080 = na sirku (obraz pres celou vysku, ovladani jako Sega)
 OK     B297: D-pad posun nahoru = joystick NAHORU (PORTA $E)
@@ -410,21 +492,22 @@ B297 OVLADANI reset -> v=1;sens=15;op=100;size=130;dsize=100;hap=1;pos=
 B297 OVLADANI set:sens=7;op=100;size=100;dsize=100;hap=1 -> v=1;sens=7;op=100;size=100;dsize=100;hap=1;pos=
 OK     B297: VYCHOZI rozlozeni i nastaveni
 B291 PRISTROJ plocha zmena 1080x2160 -> kresleni 1080x2160
-B291 PRISTROJ rozlozen 1080x2160 (displej 1080x2160) za 153 ms
+B291 PRISTROJ rozlozen 1080x2160 (displej 1080x2160) za 196 ms
 OK     B297: otoceni zpet na vysku = pristroj Atari jako driv
 OK     B297: na vysku zase funguje joystick na obrazovce
-B291 KRESLICI_VLAKNO stop
 B291 EMULACE_VLAKNO stop
+B291 KRESLICI_VLAKNO stop
 B291 PRISTROJ plocha zmena 2400x1080 -> kresleni 2400x1080
-B291 PRISTROJ rozlozen 2400x1080 (displej 2400x1080) za 204 ms
+B291 PRISTROJ rozlozen 2400x1080 (displej 2400x1080) za 192 ms
 B297 OVLADANI edit -> v=1;sens=7;op=100;size=100;dsize=100;hap=1;pos=
 B297 OVLADANI mirror -> v=1;sens=7;op=100;size=100;dsize=100;hap=1;pos=0.8852,0.7650,0.1277,0.8840,0.0652,0.6850,0.0652,0.5040,0.0518,0.0500,0.0518,0.1300,0.0518,0.2100
 B297 OVLADANI set:size=130;sens=15 -> v=1;sens=15;op=100;size=130;dsize=100;hap=1;pos=0.8852,0.7650,0.1277,0.8752,0.0652,0.6850,0.0652,0.5040,0.0518,0.0500,0.0518,0.1300,0.0518,0.2100
 B297 OVLADANI reset -> v=1;sens=15;op=100;size=130;dsize=100;hap=1;pos=
 B297 OVLADANI set:sens=7;op=100;size=100;dsize=100;hap=1 -> v=1;sens=7;op=100;size=100;dsize=100;hap=1;pos=
 B291 PRISTROJ plocha zmena 1080x2160 -> kresleni 1080x2160
-B291 PRISTROJ rozlozen 1080x2160 (displej 1080x2160) za 153 ms
-B291 KRESLICI_VLAKNO stop
+B291 PRISTROJ rozlozen 1080x2160 (displej 1080x2160) za 196 ms
 B291 EMULACE_VLAKNO stop
+B291 KRESLICI_VLAKNO stop
 
-VYSLEDEK: 62 kontrol, 0 chyb
+VYSLEDEK: 76 kontrol, 0 chyb
+exit=0

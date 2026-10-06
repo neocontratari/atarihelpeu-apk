@@ -479,6 +479,85 @@ int main() {
       over(r0 == -((672 << 16) | 240) && wh == ((672 << 16) | 240) && (px >> 24) == 0xFF && bb > rr && barev >= 2 && n > 0 && (n % 2) == 0,
            "B301: TV/PC - obraz Atari primo z jadra (672x240 ARGB, modra obrazovka BASICu) a zvuk (stereo int16)");
     }
+    // f) B302: klavesnice pocitace (prohlizec na TV/PC) -> Atari pres devPcKlavesaNative
+    //    (vlakno "webserveru" = tohle vlakno, emulace bezi ve svem vlakne jako v appce)
+    {
+      auto pk = [&](const char *code, const char *znak, int mod, bool dolu) {
+        FakeStr c{code}, z{znak};
+        jstring r = Java_eu_atarihelp_emu10_NativeAtariCoreBridge_devPcKlavesaNative(&g_env, nullptr, (jstring)&c, (jstring)&z, mod, dolu ? JNI_TRUE : JNI_FALSE);
+        return ((FakeStr *)r)->s;
+      };
+      auto stroj = [](int &pa, int &tr, int &co, int &kb, int &sk) { std::lock_guard<std::mutex> l(g_mStroj); pa = g_stroj->porta & 15; tr = g_stroj->trig[0]; co = g_stroj->consol; kb = g_stroj->kbcode; sk = g_stroj->skstat; };
+      auto logTed = []() { std::string s; jstring j = Java_eu_atarihelp_emu10_NativeAtariCoreBridge_devPollLogNative(&g_env, nullptr); if (j) s = ((FakeStr *)j)->s; printf("%s", s.c_str()); return s; };
+      int pa, tr, co, kb, sk;
+      over(pk("STAV", "", 0, true) == "PSANI", "B302: PC klavesnice zacina v rezimu PSANI");
+      // psani: cely radek naraz (jako kdyz po siti dojde vic klaves najednou), Shift pro ? a *
+      struct K { const char *code, *znak; int mod; };
+      const K radek[] = {{"Slash", "?", 1}, {"Space", " ", 0}, {"Digit6", "6", 0}, {"Digit8", "*", 1}, {"Digit7", "7", 0}, {"Enter", "Enter", 0}};
+      for (const K &k : radek) { pk(k.code, k.znak, k.mod, true); pk(k.code, k.znak, k.mod, false); }
+      spi(1500);
+      const std::string sp = obrazovka();
+      printf("--- PC klavesnice: ? 6*7 ---\n%s---\n", sp.c_str());
+      std::string lg = logTed();
+      over(sp.find("? 6*7") != std::string::npos && sp.find("\n  42\n") != std::string::npos,
+           "B302: PC klavesnice - radek '? 6*7' napsany (6 klaves naraz) a spocitany (42)");
+      over(lg.find("B302 PC KLAVESNICE: prvni klavesa") != std::string::npos && lg.find("B299 KLAVESY (PC): ? 6*7 <RETURN>") != std::string::npos,
+           "B302: v logu prvni klavesa z PC a napsany radek (B299 KLAVESY (PC): ? 6*7 <RETURN>)");
+      // HRANI: W = joystick nahoru, L = FIRE
+      over(pk("F9", "F9", 0, true) == "HRANI" && pk("STAV", "", 0, true) == "HRANI", "B302: F9 = rezim HRANI");
+      pk("F9", "F9", 0, false);
+      pk("KeyW", "w", 0, true); pk("KeyL", "l", 0, true);
+      spi(150);
+      stroj(pa, tr, co, kb, sk);
+      over(pa == 0x0E && tr == 0 && kb == 46 && !(sk & 4), "B302: HRANI - W = joystick nahoru (+ klavesa W), L = FIRE");
+      pk("KeyW", "w", 0, false); pk("KeyL", "l", 0, false);
+      spi(150);
+      stroj(pa, tr, co, kb, sk);
+      over(pa == 0x0F && tr == 1 && (sk & 4), "B302: HRANI - po pusteni joystick v klidu a klavesa pustena");
+      over(pk("F9", "F9", 0, true) == "PSANI", "B302: F9 = zpet PSANI");
+      pk("F9", "F9", 0, false);
+      // F1 = START drzeny, kratke tuknuti stroj vidi aspon 5 snimku
+      pk("F1", "F1", 0, true);
+      spi(150);
+      stroj(pa, tr, co, kb, sk);
+      const int coDrz = co;
+      pk("F1", "F1", 0, false);
+      spi(200);
+      stroj(pa, tr, co, kb, sk);
+      over((coDrz & 1) == 0 && (co & 1) == 1, "B302: F1 = START drzeny, po pusteni pusteny");
+      // F2 = BREAK, PustVse (prohlizec ztratil zamereni) pusti drzenou klavesu
+      over(pk("Break", "", 0, true) == "BREAK", "B302: F2 = BREAK");
+      pk("F2", "F2", 0, false);
+      pk("KeyZ", "z", 0, true);
+      spi(150);
+      stroj(pa, tr, co, kb, sk);
+      const bool zDrz = kb == 23 && !(sk & 4);
+      over(pk("PustVse", "", 0, false) == "PUSTENO_VSE", "B302: PustVse");
+      spi(150);
+      stroj(pa, tr, co, kb, sk);
+      over(zDrz && (sk & 4), "B302: klavesa Z drzena, PustVse ji pustil");
+      lg = logTed();
+      over(lg.find("<BREAK>") != std::string::npos, "B302: BREAK z PC je v logu");
+      // hlidani spojeni: Q drzene a prohlizec se odmlci (zavreny panel, spadla Wi-Fi)
+      // -> C++ po 2,5 s klavesu pusti (jinak by ji OS Atari opakoval do nekonecna)
+      pk("KeyQ", "q", 0, true);
+      spi(400);
+      stroj(pa, tr, co, kb, sk);
+      const bool qDrz = kb == 47 && !(sk & 4);
+      spi(3300);
+      stroj(pa, tr, co, kb, sk);
+      lg = logTed();
+      over(qDrz && (sk & 4) && lg.find("neozval") != std::string::npos,
+           "B302: prohlizec se 2,5 s neozval - drzena klavesa Q pustena (a v logu)");
+      pk("KeyQ", "q", 0, false);
+      // Shift+Backspace = smazat radek (W a Z napsane pri zkousce), pak RETURN na prazdnem radku
+      over(pk("Backspace", "Backspace", 1, true) == "OK:Backspace=116", "B302: Shift+Backspace = smazat radek (SHIFT+BACK S)");
+      pk("Backspace", "Backspace", 1, false);
+      pk("Enter", "Enter", 0, true); pk("Enter", "Enter", 0, false);
+      spi(500);
+      printf("%s", obrazovka().c_str());
+      logTed();
+    }
   }
 
   }   // !jenSirka

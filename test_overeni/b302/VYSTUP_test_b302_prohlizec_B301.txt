@@ -1,0 +1,13 @@
+B302: prohlizec (Chromium) -> server jako Java -> C++ PcKlavesnice/PcPrehravac -> jadro Atari 130XE
+stranka z MainActivity.java (B301, 1f077e9): 15534 bajtu, skriptu 2
+OK     Atari nastartovalo do READY
+pomala Wi-Fi (150 ms na pozadavek): 56 znaku napsano za 1.7 s, Atari je mel za 3.4 s
+obrazovka:
+  READY
+  70I MN      LIST70
+  70 ERROR-   I MN      LIST70
+na Atari: (radek 70 neni)
+CHYBA  pomala Wi-Fi: rychle psani - do Atari doslo vsechno (nic se nezahodilo)
+OK     zadna chyba JavaScriptu na strance []
+
+VYSLEDEK: 3 kontrol, 1 chyb

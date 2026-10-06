@@ -1,0 +1,106 @@
+NAIVNE: klavesy jdou do stroje hned, jak prijdou (bez PcPrehravac)
+radek 10 (26 klaves naraz) napsany za 0 snimku
+OK     CapsLock = klavesa CAPS (60)
+OK     drzeny CapsLock neprepina dokola
+OK     AltGr+X (#) = SHIFT+3, ne CONTROL
+OK     opakovani drzene klavesy od systemu = DRZENO
+radky 30-70 napsany za 0 snimku
+OK     klavesa jde do Atari hned v nejblizsim snimku (20 ms)
+--- LIST ---
+                                        
+  READY                                 
+                                        
+                                        
+  75 REM Z 101 MISISIPI                 
+                                        
+                                        
+                                        
+                                        
+                                        
+                                        
+                                        
+                                        
+                                        
+                                        
+                                        
+                                        
+                                        
+                                        
+                                        
+                                        
+                                        
+                                        
+                                        
+---
+CHYBA  radek 10 presne (26 klaves naraz, 00, uvozovky, Shift)
+CHYBA  radek 20: CapsLock -> mala pismena
+CHYBA  radek 30: cesky Příliš -> PRILIS, AltGr # 
+CHYBA  radek 40: AA a BBB naraz - zadna klavesa neztracena
+CHYBA  radek 50: Backspace smazal X
+CHYBA  radek 60: drzena klavesa jednou
+CHYBA  radek 70: prekryv A/B - obe klavesy
+CHYBA  radek 75: rychly pisar (ZZZ, 1001, MISSISSIPPI) - nic neztraceno
+OK     zadna chyba syntaxe
+CHYBA  RUN: AHOJ1006 a male
+OK     F2 = BREAK
+OK     drzene F2 = jen jeden BREAK
+CHYBA  BREAK zastavil program (STOPPED AT LINE 80)
+radek 80 na obrazovce -1, kurzor 10, COLCRS 2 -> 0x nahoru
+--- sipky ---
+                                        
+  READY                                 
+                                        
+                                        
+  75 REM Z 101 MISISIPI                 
+                                        
+                                        
+                                        
+                                        
+                                        
+                                        
+                                        
+                                        
+                                        
+                                        
+                                        
+                                        
+                                        
+                                        
+                                        
+                                        
+                                        
+                                        
+                                        
+---
+CHYBA  sipky nahoru/vpravo = kurzor, radek 80 prepsan na 90 GOTO 90
+OK     F9 = HRANI
+OK     drzene F9 neprepina dokola
+OK     W = joystick nahoru
+OK     W je i klavesa W drzena (PEEK(764) v BASICu)
+OK     L = FIRE (s drzenym W)
+OK     sipka vlevo = joystick vlevo (diagonala)
+OK     W pusteno: joystick bez nahoru, klavesa pustena
+OK     vse pusteno: joystick v klidu
+OK     mezernik = skok (nahoru + MEZERA)
+OK     mezernik pusten
+OK     F9 = zpet PSANI
+OK     F1 = START drzeny
+OK     F4 = OPTION (s drzenym START)
+OK     F1 pusteno, OPTION drzi
+OK     konzole pustena
+OK     Ctrl+C = CONTROL+C (graficky znak)
+OK     AltGr+V (@) = SHIFT+8
+OK     Delete = DELETE (CONTROL+BACK S)
+OK     Shift+Insert = vlozit radek (SHIFT+>)
+OK     Home = CLEAR (SHIFT+<)
+OK     F6 = HELP
+OK     F8 = INVERZE (logo Atari)
+OK     paragraf (Atari ho nema) = NEZNAMA, nic se nenapise
+OK     Shift sam nic nepise
+OK     klavesa bez znaku -> podle mista (E)
+OK     hlidani spojeni: 2,5 s ticho -> pusteno (M i OPTION), "Zije" drzeni prodlouzi
+OK     hlidani spojeni: bez drzene klavesy nic
+OK     Z a SELECT drzene
+OK     PustVse = konzole a joystick pusteny
+OK     PustVse = klavesa Z pustena
+pc-klavesnice: chyb 11

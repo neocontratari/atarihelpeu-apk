@@ -13,6 +13,7 @@
 #include "nap_atari_machine.h"
 #include "nap_atari_roms.h"
 #include "nap_atari_runtime.h"
+#include "nap_atari_pc_klavesnice.h"
 #include "syntaz_kazeta.h"
 using namespace nap;
 
@@ -216,6 +217,235 @@ static std::string cloadList(const std::vector<uint8_t> &wav, bool tbxl, Machine
 
 int main(int argc, char **argv) {
   std::string mode = argc > 1 ? argv[1] : "boot";
+  if (mode == "pc-klavesnice") {
+    // B302: ./test_core pc-klavesnice - klavesnice pocitace (prohlizec na TV/PC) -> Atari 130XE:
+    // PcKlavesnice (mapovani, rezim PSANI/HRANI, drzene klavesy) + PcPrehravac (tempo pro OS).
+    // Po siti muze prijit nekolik klaves NARAZ - tady schvalne vsechny udalosti radku najednou.
+    // "naivne" = bez PcPrehravac: kazda udalost hned do stroje (jako kdyby se
+    // klavesy predavaly tak, jak prijdou) - dukaz, ze bez tempa se znaky ztraceji
+    const bool naivne = argc > 2 && std::string(argv[2]) == "naivne";
+    int chyb = 0;
+    auto over = [&](bool ok, const std::string &co) { if (!ok) chyb++; printf("%s  %s\n", ok ? "OK   " : "CHYBA", co.c_str()); };
+    Machine *m = novy(true);
+    for (int f = 0; f < 400; f++) { m->runFrame(); if (f > 30 && obrazovka(*m).find("READY") != std::string::npos) break; }
+    if (naivne) printf("NAIVNE: klavesy jdou do stroje hned, jak prijdou (bez PcPrehravac)\n");
+    PcKlavesnice kl;
+    PcPrehravac hr;
+    int joy = 0, kon = 0;
+    std::vector<int> stisky;
+    auto ud = [&](const std::string &code, const std::string &znak, int mod, bool dolu) {
+      std::vector<PcAkce> a;
+      const std::string r = kl.udalost(code, znak, mod, dolu, a);
+      for (auto &x : a) {
+        if (x.t == PcAkce::JOY) joy = x.v;
+        else if (x.t == PcAkce::KONZOLE) kon = x.v;
+        else if (!naivne) hr.pridej(x);
+        else if (x.t == PcAkce::KLAVESA) { m->klavesa(x.v, true); stisky.push_back(x.v); }
+        else if (x.t == PcAkce::PUSTIT) m->klavesaPustena();
+        else m->breakKey();
+      }
+      return r;
+    };
+    long long snimku = 0;
+    auto snimky = [&](int n) { for (int i = 0; i < n; i++) { if (!naivne) hr.krok(*m, &stisky); m->runFrame(); snimku++; } };
+    auto dobeh = [&](int navic) { for (int i = 0; i < 3000 && !hr.prazdny(); i++) snimky(1); snimky(navic); };
+    // americka klavesnice: znak -> e.code a Shift
+    auto usKod = [](char c, int &mod) -> std::string {
+      mod = 0;
+      if (c >= 'a' && c <= 'z') return std::string("Key") + (char)(c - 'a' + 'A');
+      if (c >= 'A' && c <= 'Z') { mod = PcKlavesnice::SHIFT; return std::string("Key") + c; }
+      if (c >= '0' && c <= '9') return std::string("Digit") + c;
+      switch (c) {
+        case ' ': return "Space";
+        case '\n': return "Enter";
+        case '"': mod = PcKlavesnice::SHIFT; return "Quote";
+        case ';': return "Semicolon";
+        case ':': mod = PcKlavesnice::SHIFT; return "Semicolon";
+        case '+': mod = PcKlavesnice::SHIFT; return "Equal";
+        case '=': return "Equal";
+        case '-': return "Minus";
+        case '*': mod = PcKlavesnice::SHIFT; return "Digit8";
+        case '?': mod = PcKlavesnice::SHIFT; return "Slash";
+        case ',': return "Comma";
+        case '.': return "Period";
+        default: return "Unidentified";
+      }
+    };
+    auto napisNaraz = [&](const std::string &t) {
+      for (char c : t) {
+        int mod; const std::string code = usKod(c, mod);
+        const std::string z = c == '\n' ? std::string("Enter") : std::string(1, c);
+        ud(code, z, mod, true); ud(code, z, mod, false);
+      }
+    };
+    const int S = PcKlavesnice::SHIFT, C = PcKlavesnice::CTRL, A = PcKlavesnice::ALT, O = PcKlavesnice::OPAKOVANI;
+    // 1) radek naraz: velka/mala pismena, uvozovky, strednik, dvojice "00", ? = PRINT
+    long long s0 = snimku;
+    napisNaraz("10 PRINT \"Ahoj\";100;:? 2*3\n");
+    dobeh(30);
+    printf("radek 10 (26 klaves naraz) napsany za %lld snimku\n", snimku - s0 - 30);
+    // 2) CapsLock = Atari CAPS (mala pismena), pak zpet velka
+    over(ud("CapsLock", "CapsLock", 0, true).rfind("OK:CapsLock=60", 0) == 0, "CapsLock = klavesa CAPS (60)");
+    over(ud("CapsLock", "CapsLock", O, true) == "DRZENO", "drzeny CapsLock neprepina dokola");
+    ud("CapsLock", "CapsLock", 0, false);
+    napisNaraz("20 ? \"male\"\n");
+    ud("CapsLock", "CapsLock", 0, true); ud("CapsLock", "CapsLock", 0, false);
+    dobeh(10);
+    // 3) ceska klavesnice: diakritika bez hacku a carek, AltGr (Windows: Ctrl+Alt) neni CONTROL
+    {
+      napisNaraz("30 REM ");
+      ud("KeyP", "P", S, true); ud("KeyP", "P", S, false);
+      const char *cz[][2] = {{"Digit5", "\xC5\x99"}, {"Digit9", "\xC3\xAD"}, {"KeyL", "l"}, {"KeyI", "i"}, {"Digit3", "\xC5\xA1"}};
+      for (auto &k : cz) { ud(k[0], k[1], 0, true); ud(k[0], k[1], 0, false); }
+      napisNaraz(" ");
+      over(ud("KeyX", "#", C | A, true) == "OK:KeyX=90", "AltGr+X (#) = SHIFT+3, ne CONTROL");
+      ud("KeyX", "#", C | A, false);
+      napisNaraz("\n");
+    }
+    // 4) dvojice a trojice stejne klavesy naraz (OS: KEYDEL)
+    napisNaraz("40 REM AABBB\n");
+    // 5) Backspace
+    napisNaraz("50 ? 7X");
+    ud("Backspace", "Backspace", 0, true); ud("Backspace", "Backspace", 0, false);
+    napisNaraz("\n");
+    // 6) drzena klavesa: opakovani od systemu nic neprida (opakuje OS Atari sam)
+    napisNaraz("60 REM ");
+    ud("KeyQ", "q", 0, true);
+    bool drz = true; for (int i = 0; i < 5; i++) drz = drz && ud("KeyQ", "q", O, true) == "DRZENO";
+    over(drz, "opakovani drzene klavesy od systemu = DRZENO");
+    ud("KeyQ", "q", 0, false);
+    napisNaraz("\n");
+    // 7) prekryv: A dolu, B dolu, A nahoru, B nahoru
+    napisNaraz("70 REM ");
+    ud("KeyA", "a", 0, true); ud("KeyB", "b", 0, true); ud("KeyA", "a", 0, false); ud("KeyB", "b", 0, false);
+    napisNaraz("\n");
+    s0 = snimku;
+    dobeh(30);
+    printf("radky 30-70 napsany za %lld snimku\n", snimku - s0 - 30);
+    // 7b) normalni psani: klavesa jde do Atari hned v nejblizsim snimku, rychly pisar
+    //     (drzi 2 snimky, mezera 1 snimek, dvojice i trojice) nic neztrati
+    stisky.clear();
+    ud("Digit7", "7", 0, true); snimky(1);
+    over(stisky.size() == 1 && stisky[0] == 51, "klavesa jde do Atari hned v nejblizsim snimku (20 ms)");
+    snimky(2); ud("Digit7", "7", 0, false); snimky(2);
+    for (char c : std::string("5 REM ZZZ 1001 MISSISSIPPI\n")) {
+      int mod; const std::string code = usKod(c, mod);
+      const std::string z = c == '\n' ? std::string("Enter") : std::string(1, c);
+      ud(code, z, mod, true); snimky(2); ud(code, z, mod, false); snimky(1);
+    }
+    dobeh(20);
+    napisNaraz("LIST\n");
+    dobeh(150);
+    const std::string sc = obrazovka(*m);
+    printf("--- LIST ---\n%s---\n", sc.c_str());
+    over(sc.find("10 PRINT \"AHOJ\";100;:? 2*3") != std::string::npos, "radek 10 presne (26 klaves naraz, 00, uvozovky, Shift)");
+    over(sc.find("20 ? \"male\"") != std::string::npos, "radek 20: CapsLock -> mala pismena");
+    over(sc.find("30 REM PRILIS #") != std::string::npos, "radek 30: cesky Příliš -> PRILIS, AltGr # ");
+    over(sc.find("40 REM AABBB") != std::string::npos, "radek 40: AA a BBB naraz - zadna klavesa neztracena");
+    over(sc.find("50 ? 7 ") != std::string::npos && sc.find("7X") == std::string::npos, "radek 50: Backspace smazal X");
+    over(sc.find("60 REM Q") != std::string::npos && sc.find("60 REM QQ") == std::string::npos, "radek 60: drzena klavesa jednou");
+    over(sc.find("70 REM AB") != std::string::npos, "radek 70: prekryv A/B - obe klavesy");
+    over(sc.find("75 REM ZZZ 1001 MISSISSIPPI") != std::string::npos, "radek 75: rychly pisar (ZZZ, 1001, MISSISSIPPI) - nic neztraceno");
+    over(sc.find("ERROR") == std::string::npos, "zadna chyba syntaxe");
+    napisNaraz("RUN\n");
+    dobeh(100);
+    const std::string sr = obrazovka(*m);
+    over(sr.find("AHOJ1006") != std::string::npos && sr.find("male") != std::string::npos, "RUN: AHOJ1006 a male");
+    // 8) BREAK (prohlizec posila F2 jako "Break")
+    napisNaraz("80 GOTO 80\nRUN\n");
+    dobeh(50);
+    over(ud("Break", "", 0, true) == "BREAK", "F2 = BREAK");
+    over(ud("Break", "", O, true) == "DRZENO", "drzene F2 = jen jeden BREAK");
+    ud("F2", "F2", 0, false);
+    dobeh(50);
+    { const std::string sb = obrazovka(*m); over(sb.find("STOPPED") != std::string::npos && sb.find("AT LINE 80") != std::string::npos, "BREAK zastavil program (STOPPED AT LINE 80)"); }
+    // 9) sipky = kurzor (CONTROL + - = + *): nahoru na radek 80, prepsat na 90 GOTO 90
+    {
+      napisNaraz("LIST 80\n");
+      dobeh(60);
+      // kurzor je pod READY; nahoru na radek "80 GOTO 80" (ROWCRS $54 - radek na obrazovce)
+      const std::string s8 = obrazovka(*m);
+      int r80 = -1, r = 0;
+      for (size_t p = 0, q; (q = s8.find('\n', p)) != std::string::npos; p = q + 1, r++)
+        if (q - p >= 12 && s8.compare(p, 12, "  80 GOTO 80") == 0) r80 = r;
+      const int nahoru = r80 >= 0 ? m->mem.ram[0x54] - r80 : 0;
+      printf("radek 80 na obrazovce %d, kurzor %d, COLCRS %d -> %dx nahoru\n", r80, m->mem.ram[0x54], m->mem.ram[0x55], nahoru);
+      for (int i = 0; i < nahoru; i++) { ud("ArrowUp", "ArrowUp", 0, true); ud("ArrowUp", "ArrowUp", 0, false); }
+      napisNaraz("9");
+      for (int i = 0; i < 7; i++) { ud("ArrowRight", "ArrowRight", 0, true); ud("ArrowRight", "ArrowRight", 0, false); }
+      napisNaraz("9\n");
+      dobeh(30);
+      napisNaraz("LIST 80,90\n");
+      dobeh(60);
+      const std::string sl = obrazovka(*m);
+      printf("--- sipky ---\n%s---\n", sl.c_str());
+      over(sl.find("90 GOTO 90") != std::string::npos, "sipky nahoru/vpravo = kurzor, radek 80 prepsan na 90 GOTO 90");
+    }
+    // 10) HRANI: WASD/sipky = joystick, K/mezernik = skok, L = FIRE
+    over(ud("F9", "F9", 0, true) == "HRANI", "F9 = HRANI");
+    over(ud("F9", "F9", O, true) == "DRZENO", "drzene F9 neprepina dokola");
+    ud("F9", "F9", 0, false);
+    over(ud("KeyW", "w", 0, true) == "SMER:KeyW" && joy == 1, "W = joystick nahoru");
+    snimky(5);
+    over(m->kbcode == 46 && !(m->skstat & 4), "W je i klavesa W drzena (PEEK(764) v BASICu)");
+    over(ud("KeyL", "l", 0, true) == "VYSTREL" && joy == 17, "L = FIRE (s drzenym W)");
+    over(ud("ArrowLeft", "ArrowLeft", 0, true) == "SMER:ArrowLeft" && joy == 21, "sipka vlevo = joystick vlevo (diagonala)");
+    ud("KeyW", "w", 0, false);
+    snimky(5);
+    over(joy == 20 && (m->skstat & 4), "W pusteno: joystick bez nahoru, klavesa pustena");
+    ud("KeyL", "l", 0, false); ud("ArrowLeft", "ArrowLeft", 0, false);
+    over(joy == 0, "vse pusteno: joystick v klidu");
+    over(ud("Space", " ", 0, true) == "SKOK" && joy == 1, "mezernik = skok (nahoru + MEZERA)");
+    ud("Space", " ", 0, false);
+    over(joy == 0, "mezernik pusten");
+    over(ud("F9", "F9", 0, true) == "PSANI", "F9 = zpet PSANI");
+    ud("F9", "F9", 0, false);
+    // 11) START / SELECT / OPTION drzene jako na skrini
+    over(ud("F1", "F1", 0, true) == "START" && kon == 1, "F1 = START drzeny");
+    over(ud("F4", "F4", 0, true) == "OPTION" && kon == 5, "F4 = OPTION (s drzenym START)");
+    ud("F1", "F1", 0, false);
+    over(kon == 4, "F1 pusteno, OPTION drzi");
+    ud("F4", "F4", 0, false);
+    over(kon == 0, "konzole pustena");
+    // 12) ostatni mapovani
+    over(ud("KeyC", "c", C, true) == "OK:KeyC=146", "Ctrl+C = CONTROL+C (graficky znak)"); ud("KeyC", "c", C, false);
+    over(ud("KeyV", "@", C | A, true) == "OK:KeyV=117", "AltGr+V (@) = SHIFT+8"); ud("KeyV", "@", C | A, false);
+    over(ud("Delete", "Delete", 0, true) == "OK:Delete=180", "Delete = DELETE (CONTROL+BACK S)"); ud("Delete", "Delete", 0, false);
+    over(ud("Insert", "Insert", S, true) == "OK:Insert=119", "Shift+Insert = vlozit radek (SHIFT+>)"); ud("Insert", "Insert", S, false);
+    over(ud("Home", "Home", 0, true) == "OK:Home=118", "Home = CLEAR (SHIFT+<)"); ud("Home", "Home", 0, false);
+    over(ud("F6", "F6", 0, true) == "OK:F6=17", "F6 = HELP"); ud("F6", "F6", 0, false);
+    over(ud("F8", "F8", 0, true) == "OK:F8=39", "F8 = INVERZE (logo Atari)"); ud("F8", "F8", 0, false);
+    over(ud("Quote", "\xC2\xA7", 0, true).rfind("NEZNAMA:Quote", 0) == 0, "paragraf (Atari ho nema) = NEZNAMA, nic se nenapise");
+    over(ud("ShiftLeft", "Shift", 0, true) == "NIC", "Shift sam nic nepise");
+    over(ud("KeyE", "Unidentified", 0, true) == "OK:KeyE=42", "klavesa bez znaku -> podle mista (E)"); ud("KeyE", "Unidentified", 0, false);
+    // 12b) hlidani spojeni: drzena klavesa a prohlizec se 2,5 s neozve -> vse pustit
+    {
+      kl.zprava(10000);
+      ud("KeyM", "m", 0, true); ud("F4", "F4", 0, true);
+      std::vector<PcAkce> a1, a2;
+      const bool drzi = !kl.hlidej(12400, a1) && a1.empty();          // 2,4 s ticho - jeste drzi
+      kl.zprava(12400);                                                 // "Zije" od prohlizece
+      const bool drzi2 = !kl.hlidej(14800, a2);                         // 2,4 s od "Zije"
+      std::vector<PcAkce> a3;
+      const bool pustil = kl.hlidej(15000, a3);                         // 2,6 s ticho
+      bool m = false, k0 = false;
+      for (auto &x : a3) { if (x.t == PcAkce::PUSTIT && x.v == 37) m = true; if (x.t == PcAkce::KONZOLE && x.v == 0) k0 = true; }
+      over(drzi && drzi2 && pustil && m && k0 && kl.drzene.empty(), "hlidani spojeni: 2,5 s ticho -> pusteno (M i OPTION), \"Zije\" drzeni prodlouzi");
+      for (auto &x : a3) { if (x.t == PcAkce::KONZOLE) kon = x.v; else if (x.t != PcAkce::JOY) hr.pridej(x); }
+      std::vector<PcAkce> a4;
+      over(!kl.hlidej(99999, a4) && a4.empty(), "hlidani spojeni: bez drzene klavesy nic");
+      dobeh(5);
+    }
+    // 13) PustVse (okno prohlizece ztratilo zamereni): vse pustit
+    ud("KeyZ", "z", 0, true); ud("F3", "F3", 0, true);
+    snimky(5);
+    over(kon == 2 && !(m->skstat & 4), "Z a SELECT drzene");
+    over(ud("PustVse", "", 0, false) == "PUSTENO_VSE" && kon == 0 && joy == 0, "PustVse = konzole a joystick pusteny");
+    dobeh(5);
+    over((m->skstat & 4) != 0, "PustVse = klavesa Z pustena");
+    printf("pc-klavesnice: chyb %d\n", chyb);
+    return chyb ? 1 : 0;
+  }
   if (mode == "kazeta-run-list") {
     // B299: CLOAD (TBXL), RUN, po N snimcich BREAK nebo RESET, pak LIST
     std::vector<uint8_t> wav = nacti(argv[2]);

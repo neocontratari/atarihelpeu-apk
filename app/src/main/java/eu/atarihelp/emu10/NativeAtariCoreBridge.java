@@ -125,6 +125,10 @@ public final class NativeAtariCoreBridge {
     // B301: obraz a zvuk Atari pro TV / PC (web prohlizec v appce) primo z jadra
     private static native int     devGrabFrameNative(int[] argb);
     private static native int     devPullTvAudioNative(short[] pcm);
+    // B302: klavesa z prohlizece na TV / PC (e.code, e.key, mod: 1 Shift, 2 Ctrl, 4 Alt,
+    //  8 AltGr, 16 opakovani; dolu) - mapovani, rezim PSANI/HRANI i drzene klavesy resi C++.
+    //  code "STAV" = jen rezim. Vraci text pro prohlizec.
+    private static native String  devPcKlavesaNative(String code, String znak, int mod, boolean dolu);
 
     // B287: Rene - "chci ciste jadro atari emu v c++ - Java odhaduje a to
     // je problem... vyzaduji aby... bylo opravdu emu atari pod tlacitkem
@@ -330,6 +334,12 @@ public final class NativeAtariCoreBridge {
     public static int devPullTvAudioSafe(short[] pcm) {
         if (!loaded || pcm == null) return 0;
         try { return devPullTvAudioNative(pcm); } catch (Throwable t) { return 0; }
+    }
+    /** B302: klavesa z prohlizece na TV/PC -> Atari 130XE (C++). Vraci text pro prohlizec
+     *  ("PSANI"/"HRANI", "OK:...", "NEZNAMA:...") nebo null pri chybe knihovny. */
+    public static String devPcKlavesaSafe(String code, String znak, int mod, boolean dolu) {
+        if (!loaded || code == null) return null;
+        try { return devPcKlavesaNative(code, znak == null ? "" : znak, mod, dolu); } catch (Throwable t) { return null; }
     }
 
     /** Vrati vysledek jako JSON. Nikdy nehodi vyjimku. */

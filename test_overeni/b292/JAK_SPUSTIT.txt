@@ -22,6 +22,16 @@ nap_atari_runtime.h).
                                                START+OPTION pri zapnuti, RETURN po
                                                pipnuti (KazetaBoot jako v appce);
                                                synt = kazeta ze syntaz_kazeta.h
+   ./test_core pc-klavesnice [naivne]       -> B302: klavesnice pocitace (prohlizec na TV/PC)
+                                               -> Atari: nap::PcKlavesnice (mapovani, PSANI/
+                                               HRANI, drzene klavesy, hlidani spojeni) +
+                                               nap::PcPrehravac (tempo pro OS: KEYDEL, CH).
+                                               Radky napsane vsemi klavesami NARAZ, cesky,
+                                               AltGr, CapsLock, sipky, BREAK, joystick ...
+                                               "naivne" = klavesy hned, jak prijdou (bez
+                                               tempa) - dukaz, ze se pak znaky ztraceji
+                                               (VYSTUP_test_core_b302_pc_klavesnice*.txt)
+                                               Prohlizec (Chromium) -> C++: ../b302
    ./test_core pokey-casovac                -> B300: perioda preruseni casovace 1 pro AUDF
                                                0..$FF na 1,79 MHz (AUDF+4) i 64 kHz ((AUDF+1)*28);
                                                do B299 AUDF=$FF nevystrelil nikdy (Ghostbusters)
@@ -81,6 +91,8 @@ nap_atari_runtime.h).
    z test_assets/ az do hry; bezi v realnem case, cca 4 minuty)
    (B301: obraz a zvuk Atari pro TV / PC - devGrabFrameNative (672x240 ARGB)
    a devPullTvAudioNative (stereo int16))
+   (B302: klavesnice pocitace pres devPcKlavesaNative - psani radku naraz,
+   HRANI (joystick, FIRE), START, BREAK, PustVse, hlidani spojeni 2,5 s)
    (B299: TXT soubor -> ATARI BASIC / Turbo-BASIC XL pres devProgramNative,
    klavesy pristroje v logu, devDiagNative a devRamDumpNative pro LOG/CHYBA)
    (B298: vysunuti / vymena diskety bez restartu, CLOAD s disketou v D1:,

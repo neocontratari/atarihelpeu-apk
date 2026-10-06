@@ -1,0 +1,30 @@
+B302 - klavesnice pocitace (web prohlizec na TV / PC) -> Atari 130XE (C++) v HELP
+=================================================================================
+
+Konec-koncu test: skutecny prohlizec (Chromium pres Playwright) se SKUTECNOU
+strankou z appky (vytahne se primo z MainActivity.java, napTvWebWriteHtml),
+Python server dela to, co v appce Java (/status, /klavesa, /klavesy), a
+libpcklav.so je skutecne jadro Atari + skutecna nap_atari_pc_klavesnice.h
+(vlakno 50 snimku/s jako emulacni vlakno v appce).
+
+Spoustet z adresare test_overeni/b302:
+
+   g++ -std=c++17 -O2 -shared -fPIC -I../../app/src/main/cpp/atari \
+       -o libpcklav.so pc_klav_lib.cpp
+   python3 test_b302_prohlizec.py           -> VYSTUP_test_b302_prohlizec.txt
+   python3 test_b302_prohlizec.py stary     -> jen "pomala Wi-Fi" se strankou z B301
+                                               (commit 1f077e9) - dukaz, ze stary
+                                               prohlizec pri pomale Wi-Fi klavesy zahazoval
+                                               (VYSTUP_test_b302_prohlizec_B301.txt)
+
+Co se overuje:
+ - stranka zapne klavesnici sama (/status atari=1 atariCpp=1), popis klaves vpravo dole,
+ - psani programu: Shift, uvozovky, ?, dvojice 00 / LL, CapsLock = CAPS, Backspace,
+   rychle psani bez prodlevy, sipky (neni to uz zpozdeni zvuku), drzena klavesa
+   (opakovani od prohlizece = DRZENO, opakuje OS Atari), RUN a F2 = BREAK,
+ - pomala Wi-Fi telefonu (150 ms na pozadavek) - vse dojde (davky /klavesy),
+ - F9 = HRANI: W/L/sipky = joystick a FIRE, ztrata zamereni okna = vse pustit,
+   F1 = START, drzena klavesa bez opakovani drzi ("Zije"), spadle spojeni = C++
+   po 2,5 s vse pusti, F9 = zpet PSANI, zadna chyba JavaScriptu.
+
+Dalsi testy B302: ../b292 (./test_core pc-klavesnice [naivne], test_b292_jni_host).

@@ -52,6 +52,7 @@
 // nap_atari_keyboard.h z B289/B290 - ta umela jen klavesnici a konzoli)
 #include "nap_atari_device.h"
 #include "nap_atari_runtime.h"
+#include "nap_atari_pc_klavesnice.h"   // B302: klavesnice pocitace (prohlizec na TV/PC) -> Atari
 #include <string>
 #include <thread>
 #include <mutex>
@@ -716,6 +717,7 @@ static bool g_atrVymena = false;                   // B298: dalsi ATR jen vymeni
 static nap::PsaniProgramu g_psani;                 // B299: program z TXT souboru -> BASIC / TBXL - pod g_mStroj
 static std::string g_klavLog;                      // B299: co uzivatel napsal na klavesnici pristroje (do logu po RETURN) - pod g_mStroj
 static int g_klavPrazdnych = 0;                    // B299: prazdne RETURN po sobe (do logu jen prvni 3)
+static bool g_klavLogPc = false;                   // B302: v radku je klavesa z klavesnice pocitace
 static std::mutex g_mFrame;
 static std::vector<uint32_t> g_sdilenySnimek;      // posledni snimek Atari pro kresleni
 static std::atomic<unsigned long long> g_snimekSeq{0};
@@ -750,16 +752,28 @@ static long long g_consolDrzetDo[3] = {0, 0, 0};
 // ovladace (1/2/4 = stisknuto). Vse pod g_mStroj.
 static int g_joyDotyk = 0, g_joyPad = 0, g_padConsol = 0, g_padKlav = 0;
 static bool g_joyHlasenoDotyk = false, g_joyHlasenoPad = false;
+// B302: klavesnice pocitace (prohlizec na TV/PC): joystick 1 a START/SELECT/OPTION
+// (pod g_mStroj), klavesy v tempu pro OS (g_pcHrac, pod g_mStroj). Mapovani,
+// rezim PSANI/HRANI a drzene klavesy (g_pcMapa) + fronta akci z vlakna
+// webserveru (g_pcVstup) pod g_mPc. Poradi zamku: g_mStroj -> g_mPc.
+static int g_joyPc = 0, g_pcConsol = 0;
+static bool g_joyHlasenoPc = false;
+static nap::PcPrehravac g_pcHrac;
+static std::mutex g_mPc;
+static nap::PcKlavesnice g_pcMapa;
+static std::vector<nap::PcAkce> g_pcVstup;
+static bool g_pcPrvni = false;
+static int g_pcNeznamych = 0;
 static int consolEfektivni() {
   int m = g_consolChtene & 7;
   long long f = g_snimkuCelkem.load();
   for (int b = 0; b < 3; b++) if (f < g_consolDrzetDo[b]) m &= ~(1 << b);
-  m &= ~g_padConsol;
+  m &= ~(g_padConsol | g_pcConsol);
   return m;
 }
 static void aplikujJoyLocked() {
   if (!g_stroj) return;
-  const int m = g_joyDotyk | g_joyPad;
+  const int m = g_joyDotyk | g_joyPad | g_joyPc;
   g_stroj->porta = (0xF0 | (~m & 15)) & 0xFF;      // PORTA: joystick 1 = dolni 4 bity, 0 = stisknuto
   g_stroj->trig[0] = (m & 16) ? 0 : 1;            // TRIG0 = FIRE joysticku 1
 }
@@ -812,7 +826,65 @@ static void studenyStartLocked(int consol) {
   g_rec.reset();
   g_kazBoot.zrus();
   g_psani.zrus();                // B299: novy stroj = psani programu z TXT konci
-  g_klavLog.clear();
+  g_klavLog.clear(); g_klavLogPc = false;
+  g_pcHrac.zrus();               // B302: novy stroj nema zadnou klavesu stisknutou
+}
+
+// B299/B302: co uzivatel napsal - radek do logu po RETURN (kvuli chybam, ktere na PC
+// nejdou zopakovat). v = scankod, -1 = BREAK; zPc = z klavesnice pocitace (TV/PC).
+// POZOR: volat jen pod g_mStroj.
+static void zalogujKlavesuLocked(int v, bool zPc) {
+  if (zPc) g_klavLogPc = true;
+  const char *pred = g_klavLogPc ? "B299 KLAVESY (PC): " : "B299 KLAVESY: ";
+  if (v < 0) {
+    devLog(pred + g_klavLog + "<BREAK>");
+    g_klavLog.clear(); g_klavLogPc = false;
+    return;
+  }
+  const bool ret = (v & 0x3F) == 12;
+  if (!ret) g_klavLog += nap::napScanText(v);
+  if (ret || g_klavLog.size() > 160) {
+    // prazdny RETURN (hry, potvrzovani) jen 3x po sobe, at log nezahlti
+    if (!g_klavLog.empty()) g_klavPrazdnych = 0;
+    if (!g_klavLog.empty() || ++g_klavPrazdnych <= 3)
+      devLog(pred + g_klavLog + (ret ? (g_klavLog.empty() ? "<RETURN>" : " <RETURN>") : " ..."));
+    g_klavLog.clear(); g_klavLogPc = false;
+  }
+}
+
+// B302: jeden snimek klavesnice pocitace (emulacni vlakno, pod g_mStroj, PRED runFrame):
+// akce z webserveru vyzvednout, joystick a konzoli hned, klavesy v tempu pro OS.
+static void pcKlavesniceSnimekLocked() {
+  std::vector<nap::PcAkce> a;
+  bool ticho = false;
+  {
+    std::lock_guard<std::mutex> p(g_mPc);
+    a.swap(g_pcVstup);
+    ticho = g_pcMapa.hlidej(nap_ted_ms(), a);   // prohlizec se odmlcel - vse pustit
+  }
+  if (ticho) devLog("B302 PC KLAVESNICE: prohlizec se 2,5 s neozval (zavreny, spadla Wi-Fi?) - drzene klavesy, joystick a konzole pusteny");
+  for (const auto &x : a) {
+    if (x.t == nap::PcAkce::JOY) {
+      g_joyPc = x.v & 31;
+      aplikujJoyLocked();
+      if (!g_joyHlasenoPc && g_joyPc) { g_joyHlasenoPc = true; devLog("B302 JOYSTICK 1 z klavesnice pocitace (HRANI: WASD/sipky smer, K/mezernik skok, L FIRE)"); }
+    } else if (x.t == nap::PcAkce::KONZOLE) {
+      const int pc = x.v & 7;
+      // kratky stisk START/SELECT/OPTION musi stroj videt aspon 5 snimku
+      for (int b = 0; b < 3; b++)
+        if ((pc & (1 << b)) && !(g_pcConsol & (1 << b))) g_consolDrzetDo[b] = g_snimkuCelkem.load() + 5;
+      g_pcConsol = pc;
+      if (g_stroj && !g_xex.aktivni()) g_stroj->consol = consolEfektivni();
+    } else {
+      g_pcHrac.pridej(x);
+    }
+  }
+  if (!g_stroj) return;
+  // psani programu z TXT / textu ma prednost (nove klavesy z PC pockaji ve fronte)
+  const bool smiStisk = !g_psani.aktivni() && g_typeQ.empty();
+  std::vector<int> st;
+  g_pcHrac.krok(*g_stroj, &st, smiStisk);
+  for (int v : st) zalogujKlavesuLocked(v, true);
 }
 static void vyzvednoutVystupyLocked() {
   for (auto &s : g_rec.log) devLog(s);
@@ -851,7 +923,7 @@ static void emuVlaknoMain() {
             // B298: START/SELECT/OPTION, ktere uzivatel PRAVE DRZI na pristroji,
             // plati i pri zapnuti - jako na skutecnem 130XE (START = boot
             // z kazety, OPTION = bez BASICu). Drive se pri zapnuti pustily.
-            const int drzene = (g_consolChtene & ~g_padConsol) & 7;   // prst na pristroji nebo herni ovladac
+            const int drzene = (g_consolChtene & ~(g_padConsol | g_pcConsol)) & 7;   // prst na pristroji, herni ovladac nebo F1/F3/F4 na PC
             studenyStartLocked(drzene);
             if (g_stroj) g_stroj->sioRychlyTimeout = false;
             g_strojBezi = true; g_atariRing.clear();
@@ -879,6 +951,8 @@ static void emuVlaknoMain() {
           }
           case nap::dev::Ev::POWER_OFF:
             g_strojBezi = false; g_typeQ.clear(); g_rec.reset(); g_xex.zrus(); g_atariRing.clear(); g_psani.zrus();
+            g_pcHrac.zrus();                                       // B302: klavesy z PC ve fronte zahodit
+            { std::lock_guard<std::mutex> p(g_mPc); g_pcVstup.clear(); }
             devLog("B291 POWER VYPNUTO");
             break;
           case nap::dev::Ev::KEY:
@@ -887,15 +961,7 @@ static void emuVlaknoMain() {
               g_stroj->klavesa(e.v, true);
               // B299: co presne uzivatel napsal (radek do logu po RETURN) - kvuli chybam, ktere
               // na PC nejdou zopakovat (TBXL LIST u Reneho)
-              const bool ret = (e.v & 0x3F) == 12;
-              if (!ret) g_klavLog += nap::napScanText(e.v);
-              if (ret || g_klavLog.size() > 160) {
-                // prazdny RETURN (hry, potvrzovani) jen 3x po sobe, at log nezahlti
-                if (!g_klavLog.empty()) g_klavPrazdnych = 0;
-                if (!g_klavLog.empty() || ++g_klavPrazdnych <= 3)
-                  devLog("B299 KLAVESY: " + g_klavLog + (ret ? (g_klavLog.empty() ? "<RETURN>" : " <RETURN>") : " ..."));
-                g_klavLog.clear();
-              }
+              zalogujKlavesuLocked(e.v, false);
             }
             break;
           case nap::dev::Ev::KEYUP:
@@ -950,8 +1016,7 @@ static void emuVlaknoMain() {
           case nap::dev::Ev::BREAK:
             if (g_stroj && g_strojBezi) {
               g_stroj->breakKey();
-              devLog("B299 KLAVESY: " + g_klavLog + "<BREAK>");
-              g_klavLog.clear();
+              zalogujKlavesuLocked(-1, false);
             }
             break;
           case nap::dev::Ev::JOY:
@@ -988,6 +1053,17 @@ static void emuVlaknoMain() {
       vyzvednoutVystupyLocked();
     }
     if (!g_strojBezi.load()) {
+      // B302: pocitac vypnuty - klavesy z PC zahodit, ale joystick a START/SELECT/OPTION
+      // drzene na PC plati (F1 drzene pri POWER = boot z kazety jako na skrini)
+      {
+        std::lock_guard<std::mutex> l(g_mStroj);
+        std::vector<nap::PcAkce> a;
+        { std::lock_guard<std::mutex> p(g_mPc); a.swap(g_pcVstup); }
+        for (const auto &x : a) {
+          if (x.t == nap::PcAkce::JOY) g_joyPc = x.v & 31;
+          else if (x.t == nap::PcAkce::KONZOLE) g_pcConsol = x.v & 7;
+        }
+      }
       std::this_thread::sleep_for(std::chrono::milliseconds(15));
       dalsi = nap_ted_ns();
       continue;
@@ -1011,6 +1087,7 @@ static void emuVlaknoMain() {
     {
       std::lock_guard<std::mutex> l(g_mStroj);
       if (!g_stroj) studenyStartLocked(7);
+      pcKlavesniceSnimekLocked();                                 // B302: klavesnice pocitace (TV/PC)
       if (!g_xex.aktivni()) g_stroj->consol = consolEfektivni();   // pri zavadeni XEX drzi OPTION zavadec
       if (g_kazBoot.aktivni()) g_stroj->consol = nap::KazetaBoot::konzole(g_stroj->consol);   // B298: boot z kazety
       g_typeQ.step(*g_stroj);
@@ -1206,6 +1283,9 @@ Java_eu_atarihelp_emu10_NativeAtariCoreBridge_devStartNative(JNIEnv *, jclass, j
     std::lock_guard<std::mutex> l(g_mStroj);
     if (studeny) {
       g_joyDotyk = g_joyPad = g_padConsol = g_padKlav = 0;   // B296: joystick pusteny
+      g_joyPc = g_pcConsol = 0;                              // B302: klavesnice pocitace pustena
+      g_pcHrac.zrus();
+      { std::lock_guard<std::mutex> p(g_mPc); g_pcVstup.clear(); g_pcMapa.drzene.clear(); }
       // B298: START/OPTION drzene pri POWER plati (boot z kazety) - novy vstup do
       // HELP ale zacina s pustenou konzoli
       g_consolChtene = 7; g_consolDrzetDo[0] = g_consolDrzetDo[1] = g_consolDrzetDo[2] = 0;
@@ -1237,6 +1317,9 @@ Java_eu_atarihelp_emu10_NativeAtariCoreBridge_devStartNative(JNIEnv *, jclass, j
              "(Ghostbusters: hudba a rec z preruseni casovace 1, bez nej titulka stala; nejhlubsi tony byly potichu).");
       devLog("B301 TV/PC (web prohlizec v appce): obraz Atari 130XE primo z jadra (vyrez 336x240 jako na telefonu) "
              "a zvuk 44100 Hz stereo - drive bylo na TV videt jen stranku s testy pod pristrojem.");
+      devLog("B302 KLAVESNICE POCITACE (prohlizec na TV/PC) -> Atari 130XE primo v C++: psani podle rozlozeni "
+             "(cesky: diakritika bez hacku, AltGr znaky), sipky = kurzor, F1/F3/F4 START/SELECT/OPTION, F2 BREAK, "
+             "F6 HELP, F8 INVERZE, F9 HRANI (WASD/sipky joystick, K skok, L FIRE); klavesy v tempu, ktere OS stihne.");
     }
     g_strojBezi = zapnuto;
   }
@@ -1412,6 +1495,51 @@ extern "C" JNIEXPORT void JNICALL
 Java_eu_atarihelp_emu10_NativeAtariCoreBridge_devPadNative(JNIEnv *, jclass, jint maska) {
   nap::dev::Ev e; e.t = nap::dev::Ev::PAD; e.v = maska & 0x3FF;
   { std::lock_guard<std::mutex> l(g_mEv); g_evQ.push_back(e); }
+}
+
+/** B302: klavesa z prohlizece na TV/PC (web viewer appky). code = e.code (misto
+ *  klavesy), znak = e.key (co napsala), mod = 1 Shift, 2 Ctrl, 4 Alt, 8 AltGr,
+ *  16 opakovani; dolu = stisk/pusteni. code "STAV" = jen vratit rezim.
+ *  Vse (mapovani, rezim PSANI/HRANI, drzene klavesy) resi C++; vraci text pro
+ *  prohlizec ("PSANI"/"HRANI", "SKOK", "VYSTREL", "OK:...", "NEZNAMA:..."). */
+extern "C" JNIEXPORT jstring JNICALL
+Java_eu_atarihelp_emu10_NativeAtariCoreBridge_devPcKlavesaNative(JNIEnv *env, jclass, jstring jcode, jstring jznak, jint mod, jboolean dolu) {
+  std::string code, znak;
+  if (jcode) { const char *c = env->GetStringUTFChars(jcode, nullptr); if (c) { code.assign(c, strnlen(c, 64)); env->ReleaseStringUTFChars(jcode, c); } }
+  if (jznak) { const char *c = env->GetStringUTFChars(jznak, nullptr); if (c) { znak.assign(c, strnlen(c, 16)); env->ReleaseStringUTFChars(jznak, c); } }
+  std::string r, log1, log2;
+  {
+    std::lock_guard<std::mutex> p(g_mPc);
+    if (code != "STAV") g_pcMapa.zprava(nap_ted_ms());   // hlidani spojeni (i opakovani a "Zije")
+    if (code == "STAV") {
+      r = g_pcMapa.hrani ? "HRANI" : "PSANI";
+    } else if (dolu && !g_run.load()) {
+      // emulace stoji (appka na pozadi) - stisk zahodit, at se po navratu nenapise
+      // naraz vsechno, co se mezitim mackalo (pusteni projde: joystick nesmi zustat drzeny)
+      r = "NEBEZI";
+    } else {
+      std::vector<nap::PcAkce> a;
+      r = g_pcMapa.udalost(code, znak, (int)mod, dolu != 0, a);
+      if (g_pcVstup.size() + a.size() > 512) {
+        // emulace nebezi (napr. appka na pozadi) - nehromadit
+        g_pcVstup.clear();
+        log2 = "B302 PC KLAVESNICE: fronta plna (emulace nebezi?) - zahozeno";
+      }
+      g_pcVstup.insert(g_pcVstup.end(), a.begin(), a.end());
+      if (!g_pcPrvni && dolu) {
+        g_pcPrvni = true;
+        log1 = "B302 PC KLAVESNICE: prvni klavesa z prohlizece na TV/PC (" + nap::pcAscii(code) + " -> " + r +
+               ") - jde primo do Atari 130XE (C++), rezim " + (g_pcMapa.hrani ? "HRANI" : "PSANI");
+      }
+      if (r == "HRANI" || r == "PSANI")
+        log2 = "B302 PC KLAVESNICE: rezim " + r + (r == "HRANI" ? " (WASD/sipky = joystick, K/mezernik = skok, L = FIRE, F9 = psani)"
+                                                                : " (klavesy pisou do Atari, F9 = hrani)");
+      else if (r.rfind("NEZNAMA", 0) == 0 && g_pcNeznamych < 20) { g_pcNeznamych++; log2 = "B302 PC KLAVESNICE: " + r + " - tahle klavesa na Atari nic nedela"; }
+    }
+  }
+  if (!log1.empty()) devLog(log1);
+  if (!log2.empty()) devLog(log2);
+  return env->NewStringUTF(nap::pcAscii(r, 64).c_str());
 }
 
 /** Napsat text do Atari (tlacitko BASIC/TBXL TXT). runPotom: na konec RUN. */

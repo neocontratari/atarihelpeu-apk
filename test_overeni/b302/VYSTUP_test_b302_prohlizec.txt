@@ -1,0 +1,77 @@
+B302: prohlizec (Chromium) -> server jako Java -> C++ PcKlavesnice/PcPrehravac -> jadro Atari 130XE
+stranka z MainActivity.java: 17394 bajtu, skriptu 2
+OK     Atari nastartovalo do READY
+OK     stranka z appky: /status atari=1 atariCpp=1 -> klavesnice zapnuta sama (napVAtari, napVAtariCpp)
+popis klaves: ATARI - pis normalne; F1 START, F3 SELECT, F4 OPTION, F2 BREAK, F6 HELP, F8 INVERZE   (F9 = hrani)
+OK     popis klaves pro Atari 130XE (C++) v rohu obrazovky
+--- LIST ---
+
+  READY
+  10 PRINT "AHOJ";100;:? 2*3
+  20 ? "male"
+  30 ? 7
+  40 REM BALL 1001 ZZZ
+  LIST
+
+  10 PRINT "AHOJ";100;:? 2*3
+  20 ? "male"
+  30 ? 7
+  40 REM BALL 1001 ZZZ
+
+  READY
+
+
+
+
+
+
+
+
+
+
+---
+OK     radek 10 z prohlizece presne (Shift, uvozovky, 00)
+OK     CapsLock z prohlizece = CAPS na Atari (mala pismena)
+OK     Backspace z prohlizece
+OK     rychle psani bez prodlevy (LL, 00, ZZZ) - nic neztraceno
+OK     zadna chyba syntaxe
+OK     sipky v Atari = kurzor, ne zpozdeni zvuku (avdmsg: zadny)
+OK     opakovani z prohlizece (e.repeat, mod 16) -> DRZENO (11 stisku, 10 opakovani)
+drzene X 1,5 s -> 10 znaku X
+OK     drzena klavesa se opakuje jako na skutecnem Atari (OS)
+OK     RUN (AHOJ1006) a F2 = BREAK (STOPPED AT LINE 60)
+pomala Wi-Fi (150 ms na pozadavek): 56 znaku napsano za 1.7 s, Atari je mel za 4.2 s
+obrazovka:
+  READY
+  50 REM XXXXXXXXXX
+  LIST 50
+  50 REM XXXXXXXXXX
+  READY
+  60 GOTO 60
+  RUN
+  AHOJ1006
+  male
+  7
+  STOPPED  AT LINE 60
+  70 REM POMALA WIFI 0123456789 ABCDEFGH
+  IJKLMNOPQRSTUVWXYZ
+  LIST 70
+  70 REM POMALA WIFI 0123456789 ABCDEFGH
+  IJKLMNOPQRSTUVWXYZ
+  READY
+na Atari: 70 REM POMALA WIFI 0123456789 ABCDEFGHIJKLMNOPQRSTUVWXYZ
+OK     pomala Wi-Fi: rychle psani - do Atari doslo vsechno (nic se nezahodilo)
+OK     F9: popis prepnut na HRANI (ATARI HRANI - WASD/sipky smer, L = FIRE,)
+joystick: W+L 17, jen L 16, vlevo+dolu 6, nic 0
+OK     HRANI: W = nahoru, L = FIRE, sipky = smer, po pusteni klid
+OK     okno ztratilo zamereni (blur) -> PustVse: joystick pusten
+OK     F1 = START drzeny / pusteny
+OK     drzena klavesa 4 s bez opakovani: "Zije" ji drzi (joystick vlevo = 4)
+OK     spojeni spadlo: C++ po 2,5 s pustil drzenou klavesu (joystick v klidu)
+OK     F9 = zpet PSANI
+OK     blur poslal PustVse
+OK     zadna klavesa z testu neskoncila jako NEZNAMA []
+klaves 389 v 213 pozadavcich (nejvic 12 v jednom)
+OK     zadna chyba JavaScriptu na strance []
+
+VYSLEDEK: 23 kontrol, 0 chyb
