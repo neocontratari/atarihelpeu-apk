@@ -112,6 +112,22 @@ int main(int argc, char **argv) {
     printf("TIMEOUT: pass %d fail %d skip %d\n%s", pass, fail, skip, obrazovka(*m).c_str());
     return 4;
   }
+  if (mode == "atr") {
+    // ./test_core atr disketa.atr <snimku> <prefix> [seznam]  - boot z D1: (OPTION drzene 150 snimku)
+    std::vector<uint8_t> d = nacti(argv[2]);
+    int frames = atoi(argv[3]); std::string pref = argv[4];
+    std::set<int> dump; if (argc > 5) { const char *p = argv[5]; while (*p) { dump.insert(atoi(p)); while (*p && *p != ',') p++; if (*p) p++; } }
+    Machine *m = novy(false);
+    if (!m->disk.load(d.data(), d.size(), argv[2])) { printf("ATR nelze nacist\n"); return 2; }
+    printf("ATR: %d sektoru po %d B\n", m->disk.sectors, m->disk.sectorSize);
+    for (int f = 1; f <= frames; f++) {
+      m->consol = f < 150 ? 3 : 7;
+      m->runFrame();
+      if (dump.count(f)) ulozIdx(*m, pref + "_" + std::to_string(f) + ".idx");
+    }
+    printf("PC=$%04X jam=%d SIO prikazu=%lld cteni=%lld zapisu=%lld PORTB=$%02X\n", m->cpu.pc, m->cpu.jam, m->sioPrikazu, m->disk.reads, m->disk.writes, m->mem.portB());
+    return 0;
+  }
   if (mode == "basic") {
     // ./test_core basic "prikazy"  - napise prikazy do BASICu (\n = RETURN) a vypise obrazovku
     Machine *m = novy(true);

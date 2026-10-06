@@ -11,7 +11,9 @@
 //  2) drzeni klavesy prstem: OS ji po ~1 s zacne opakovat, po pusteni prestane
 //  3) CSAVE -> WAV (linka SIO DATA OUT) pres vlakna -> devTakeWav
 //  4) EJECT vraci Jave akci "vyber kazetu"
-//  5) ten WAV vlozeny jako kazeta (devLoadTape) -> CLOAD, PLAY, RETURN -> LIST
+//  5) ten WAV vlozeny jako kazeta (devLoadTape, PLAY se zmackne samo) ->
+//     CLOAD, RETURN, po pipnuti RETURN -> LIST
+//  6) B295: disketa ATR do D1: -> start z diskety, po POWER vyp/zap znovu
 #include "../../app/src/main/cpp/atari/nap_atari_native.cpp"
 #include <cstdio>
 #include <cstdlib>
@@ -170,12 +172,12 @@ int main() {
   printf("devLoadTape: %s\n", ((FakeStr *)vr)->s.c_str());
   over(((FakeStr *)vr)->s.rfind("OK ", 0) == 0, "kazeta vlozena (WAV demodulovan)");
   { std::lock_guard<std::mutex> dl(g_mDev); over(!devGet().doorOpen, "po vlozeni kazety se dvirka zavrela"); }
+  { std::lock_guard<std::mutex> dl(g_mDev); over(devGet().play, "B295: po vlozeni kazety je PLAY zmacknute samo"); }
   klep(8 + 17, 393 + 25); spi(400); klep(8 + 17, 393 + 25);   // POWER vyp / zap
   for (int i = 0; i < 160 && obrazovka().find("READY") == std::string::npos; i++) spi(100);
   napis("CLOAD\n");
   spi(3000);                                           // pipnuti, OS ceka na klavesu
-  klep(383 + 40, 1440 + 35);                           // PLAY
-  klavesa("Return");
+  klavesa("Return");                                   // B295: PLAY uz je zmacknute - jen RETURN
   bool motor = false;
   for (int i = 0; i < 400; i++) {
     spi(100);
@@ -191,6 +193,30 @@ int main() {
   over(motor, "CLOAD zapnul motor (pasek bezel)");
   over(scr.find("10 PRINT \"KAZETA B292\"") != std::string::npos && scr.find("20 GOTO 10") != std::string::npos,
        "CLOAD nahral program z kazety (LIST ho ukazuje)");
+
+  // 6) B295: disketa ATR (Acid800 - bootovaci disketa) -> D1: a start z ni
+  {
+    const char *atrPath = getenv("ATR") ? getenv("ATR") : "/home/claude/ref/atari800/test/acid800.atr";
+    FILE *f = fopen(atrPath, "rb");
+    if (!f) printf("(ATR %s neni - test diskety preskocen)\n", atrPath);
+    else {
+      FakeArr atr; int c; while ((c = fgetc(f)) != EOF) atr.b.push_back((uint8_t)c); fclose(f);
+      FakeStr an{"acid800.atr"};
+      jstring r = Java_eu_atarihelp_emu10_NativeAtariCoreBridge_devLoadAtrNative(&g_env, nullptr, (jbyteArray)&atr, (jstring)&an);
+      printf("devLoadAtr: %s\n", ((FakeStr *)r)->s.c_str());
+      over(((FakeStr *)r)->s.rfind("OK ", 0) == 0, "ATR prijat do mechaniky D1:");
+      bool nabootovano = false;
+      for (int i = 0; i < 150 && !nabootovano; i++) { spi(100); nabootovano = obrazovka().find("Acid800") != std::string::npos; }
+      std::string sc = obrazovka();
+      printf("--- obrazovka po startu z diskety ---\n%s---\n", sc.c_str());
+      over(nabootovano, "Atari nabootovalo z diskety v D1: (Acid800)");
+      // POWER vyp/zap: disketa zustava v mechanice a bootuje znovu
+      klep(8 + 17, 393 + 25); spi(400); klep(8 + 17, 393 + 25);
+      nabootovano = false;
+      for (int i = 0; i < 150 && !nabootovano; i++) { spi(100); nabootovano = obrazovka().find("Acid800") != std::string::npos; }
+      over(nabootovano, "po POWER vyp/zap disketa v mechanice zustala a bootuje znovu");
+    }
+  }
 
   Java_eu_atarihelp_emu10_NativeAtariCoreBridge_devStopNative(&g_env, nullptr);
   vypisLog();

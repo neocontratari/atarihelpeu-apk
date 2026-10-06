@@ -1,5 +1,5 @@
-B292 ATARI_SELFTEST cpu=29C55806 instr=51200 0.00s | mem=D3949DC5 reads=16252928 0.04s | 3.70 MIPS = 8.4x realny cas Atari (cely stroj po cyklech)
-SELFTEST {"cpuHash":"29C55806","cpuInstr":51200,"cpuSec":0.00,"memHash":"D3949DC5","memReads":16252928,"memSec":0.04,"mips":3.70,"realtimeX":8.4,"abi":"jine","charSigned":1}
+B292 ATARI_SELFTEST cpu=29C55806 instr=51200 0.00s | mem=D3949DC5 reads=16252928 0.04s | 3.63 MIPS = 8.2x realny cas Atari (cely stroj po cyklech)
+SELFTEST {"cpuHash":"29C55806","cpuInstr":51200,"cpuSec":0.00,"memHash":"D3949DC5","memReads":16252928,"memSec":0.04,"mips":3.63,"realtimeX":8.2,"abi":"jine","charSigned":1}
 OK     samokontrola probehla (51200 instrukci, 16252928 cteni)
 B291 HELP otevren - pristroj ZAPNUT, studeny start Atari
 B293 JADRO = ATARI 130XE PAL: RAM 64 kB + rozsirena 4x16 kB (PORTB bity 2-3, procesor bit 4, ANTIC bit 5), OS XL/XE rev.2 (soucet $9211), BASIC rev.C vestaveny, self-test ROM $5000, TRIG3=0 (bez cartridge), RESET = reset CPU+ANTIC+PIA/MMU, plovouci datova sbernice, ANTIC/GTIA PAL 312 radku, POKEY 1,773 MHz
@@ -8,12 +8,13 @@ B291 EMULACE_VLAKNO start (50 snimku/s, zvuk OpenSL, vse v C++)
 B291 EMULACE_VLAKNO priorita nice=-8 nastavena
 B291 KRESLICI_VLAKNO start (pristroj kresli C++ primo na displej)
 B291 KRESLICI_VLAKNO priorita nice=-4 nastavena
-B291 PRISTROJ rozlozen 1080x2160 (displej 1080x2160) za 145 ms
+B291 PRISTROJ rozlozen 1080x2160 (displej 1080x2160) za 149 ms
 OK     Atari nastartovalo do READY
 drzeni A 2,5 s -> 19 znaku A
 OK     drzena klavesa se opakuje jako na skutecnem Atari
 OK     po pusteni klavesy opakovani prestalo
 B291 TXT do Atari: 44 stisku klaves pripraveno (0 znaku na Atari klavesnici neni)
+B295 KAZETA motor ZAPNUT - v magnetofonu neni kazeta (CSAVE nahrava do WAV, CLOAD nema co cist - EJECT a vyber kazetu)
 B292 KAZETA motor ZAPNUT (PACTL bit3=0) - nahravam linku SIO DATA OUT
 B292 CSAVE_HOTOVO motor VYPNUT, SEROUT bajtu=264, zvuk=24.1s -> ukladam WAV
 B291 HELP otevren - pristroj ZAPNUT, studeny start Atari
@@ -23,31 +24,37 @@ B291 EMULACE_VLAKNO start (50 snimku/s, zvuk OpenSL, vse v C++)
 B291 EMULACE_VLAKNO priorita nice=-8 nastavena
 B291 KRESLICI_VLAKNO start (pristroj kresli C++ primo na displej)
 B291 KRESLICI_VLAKNO priorita nice=-4 nastavena
-B291 PRISTROJ rozlozen 1080x2160 (displej 1080x2160) za 145 ms
+B291 PRISTROJ rozlozen 1080x2160 (displej 1080x2160) za 149 ms
 B291 TXT do Atari: 44 stisku klaves pripraveno (0 znaku na Atari klavesnici neni)
+B295 KAZETA motor ZAPNUT - v magnetofonu neni kazeta (CSAVE nahrava do WAV, CLOAD nema co cist - EJECT a vyber kazetu)
 B292 KAZETA motor ZAPNUT (PACTL bit3=0) - nahravam linku SIO DATA OUT
 B292 CSAVE_HOTOVO motor VYPNUT, SEROUT bajtu=264, zvuk=24.1s -> ukladam WAV
 OK     CSAVE: hotovy WAV prisel do Javy (devTakeWav)
 WAV 24.1 s
 OK     EJECT vraci Jave akci VYBER KAZETY
 OK     EJECT otevrel dvirka
-B292 KAZETA VLOZENA OK kazeta_b292.wav: 24.1 s, 44100 Hz, 1 kanal(y) (FSK v kanalu 1), 16 bit; pri 600 Bd 264 bajtu v 2 zaznamech, 0 chyb ramce; demodulace 35 ms
-devLoadTape: OK kazeta_b292.wav: 24.1 s, 44100 Hz, 1 kanal(y) (FSK v kanalu 1), 16 bit; pri 600 Bd 264 bajtu v 2 zaznamech, 0 chyb ramce; demodulace 35 ms
+B292 KAZETA VLOZENA OK kazeta_b292.wav: 24.1 s, 44100 Hz, 1 kanal(y) (FSK v kanalu 1), 16 bit; pri 600 Bd 264 bajtu v 2 zaznamech, 0 chyb ramce; demodulace 36 ms
+B295 KAZETA PLAY zmacknuto automaticky - ted napis CLOAD, RETURN, a po pipnuti jeste jednou RETURN
+devLoadTape: OK kazeta_b292.wav: 24.1 s, 44100 Hz, 1 kanal(y) (FSK v kanalu 1), 16 bit; pri 600 Bd 264 bajtu v 2 zaznamech, 0 chyb ramce; demodulace 36 ms
 OK     kazeta vlozena (WAV demodulovan)
 OK     po vlozeni kazety se dvirka zavrela
+OK     B295: po vlozeni kazety je PLAY zmacknute samo
 B291 POWER VYPNUTO
 B291 POWER ZAPNUTO - studeny start (pamet i hardware od nuly, jako vypinac na skrini)
 B291 TXT do Atari: 6 stisku klaves pripraveno (0 znaku na Atari klavesnici neni)
-B292 KAZETAK PLAY - kazeta: kazeta_b292.wav, pozice 0.0 s
+B295 KAZETA motor ZAPNUT - kazeta kazeta_b292.wav, PLAY=ano (pasek bezi), pozice 0.0 / 24.1 s
 B292 KAZETA motor ZAPNUT (PACTL bit3=0) - nahravam linku SIO DATA OUT
+B295 KAZETA motor VYPNUT - z pasky prijato 130 bajtu (chyb ramce 0), pozice 21.7 / 24.1 s
 B292 KAZETA motor VYPNUT (SEROUT bajtu=0, 21.6s) - neni to CSAVE, WAV se nevytvari
 B291 TXT do Atari: 5 stisku klaves pripraveno (0 znaku na Atari klavesnici neni)
-B292 KAZETA VLOZENA OK kazeta_b292.wav: 24.1 s, 44100 Hz, 1 kanal(y) (FSK v kanalu 1), 16 bit; pri 600 Bd 264 bajtu v 2 zaznamech, 0 chyb ramce; demodulace 35 ms
+B292 KAZETA VLOZENA OK kazeta_b292.wav: 24.1 s, 44100 Hz, 1 kanal(y) (FSK v kanalu 1), 16 bit; pri 600 Bd 264 bajtu v 2 zaznamech, 0 chyb ramce; demodulace 36 ms
+B295 KAZETA PLAY zmacknuto automaticky - ted napis CLOAD, RETURN, a po pipnuti jeste jednou RETURN
 B291 POWER VYPNUTO
 B291 POWER ZAPNUTO - studeny start (pamet i hardware od nuly, jako vypinac na skrini)
 B291 TXT do Atari: 6 stisku klaves pripraveno (0 znaku na Atari klavesnici neni)
-B292 KAZETAK PLAY - kazeta: kazeta_b292.wav, pozice 0.0 s
+B295 KAZETA motor ZAPNUT - kazeta kazeta_b292.wav, PLAY=ano (pasek bezi), pozice 0.0 / 24.1 s
 B292 KAZETA motor ZAPNUT (PACTL bit3=0) - nahravam linku SIO DATA OUT
+B295 KAZETA motor VYPNUT - z pasky prijato 130 bajtu (chyb ramce 0), pozice 21.7 / 24.1 s
 B292 KAZETA motor VYPNUT (SEROUT bajtu=0, 21.6s) - neni to CSAVE, WAV se nevytvari
 B291 TXT do Atari: 5 stisku klaves pripraveno (0 znaku na Atari klavesnici neni)
 --- obrazovka po CLOAD + LIST ---
@@ -78,9 +85,47 @@ B291 TXT do Atari: 5 stisku klaves pripraveno (0 znaku na Atari klavesnici neni)
 ---
 OK     CLOAD zapnul motor (pasek bezel)
 OK     CLOAD nahral program z kazety (LIST ho ukazuje)
+B295 DISKETA VLOZENA OK acid800.atr: 720 sektoru po 128 B (90 kB) -> mechanika D1:, studeny start s OPTION (BASIC vypnuty)
+devLoadAtr: OK acid800.atr: 720 sektoru po 128 B (90 kB) -> mechanika D1:, studeny start s OPTION (BASIC vypnuty)
+OK     ATR prijat do mechaniky D1:
+--- obrazovka po startu z diskety ---
+  Altirra Acid800 test, V1.2
+  Copyright (C) 2010
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+---
+OK     Atari nabootovalo z diskety v D1: (Acid800)
+B291 POWER VYPNUTO
+B291 POWER ZAPNUTO - studeny start (pamet i hardware od nuly, jako vypinac na skrini)
+B295 POWER s disketou v D1: (acid800.atr) - OPTION drzeno pri startu, BASIC vypnuty, bootuje disketa
+OK     po POWER vyp/zap disketa v mechanice zustala a bootuje znovu
 B291 KRESLICI_VLAKNO stop
 B291 EMULACE_VLAKNO stop
+B295 DISKETA VLOZENA OK acid800.atr: 720 sektoru po 128 B (90 kB) -> mechanika D1:, studeny start s OPTION (BASIC vypnuty)
+B291 POWER VYPNUTO
+B291 POWER ZAPNUTO - studeny start (pamet i hardware od nuly, jako vypinac na skrini)
+B295 POWER s disketou v D1: (acid800.atr) - OPTION drzeno pri startu, BASIC vypnuty, bootuje disketa
 B291 KRESLICI_VLAKNO stop
 B291 EMULACE_VLAKNO stop
 
-VYSLEDEK: 11 kontrol, 0 chyb
+VYSLEDEK: 15 kontrol, 0 chyb

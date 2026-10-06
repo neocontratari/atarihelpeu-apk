@@ -108,6 +108,8 @@ public final class NativeAtariCoreBridge {
     // stroj ho cte pri zapnutem motoru a PLAY, bajty sklada POKEY.
     private static native String  devLoadTapeNative(byte[] wav, String jmeno);
     private static native void    devEjectTapeNative();
+    // B295: disketa ATR do mechaniky D1: (prikazy SIO v C++) + studeny start
+    private static native String  devLoadAtrNative(byte[] atr, String jmeno);
 
     // B287: Rene - "chci ciste jadro atari emu v c++ - Java odhaduje a to
     // je problem... vyzaduji aby... bylo opravdu emu atari pod tlacitkem
@@ -261,6 +263,13 @@ public final class NativeAtariCoreBridge {
         if (!loaded) return "CHYBA knihovna napatari neni nactena";
         if (wav == null) return "CHYBA zadna data";
         try { String r = devLoadTapeNative(wav, jmeno); return r == null ? "CHYBA nic" : r; }
+        catch (Throwable t) { return "CHYBA " + t.getMessage(); }
+    }
+    /** B295: disketa ATR do D1: a nabootovat. Vraci "OK ..." / "CHYBA ...". */
+    public static String devLoadAtrSafe(byte[] atr, String jmeno) {
+        if (!loaded) return "CHYBA knihovna napatari neni nactena";
+        if (atr == null) return "CHYBA zadna data";
+        try { String r = devLoadAtrNative(atr, jmeno); return r == null ? "CHYBA nic" : r; }
         catch (Throwable t) { return "CHYBA " + t.getMessage(); }
     }
     public static void devEjectTapeSafe() {

@@ -6744,10 +6744,13 @@ public class MainActivity extends Activity {
                     startActivityForResult(Intent.createChooser(i, "XEX / ZIP pro Atari 130XE (C++)"), PICK_ATARI_CPP_XEX);
                     break;
                 }
-                case 3:   // ATR / DISK
-                    NativeAtariCoreBridge.devStatusSafe("ATR DISK: DISKETOVA MECHANIKA V C++ JESTE NENI", 7000);
-                    appendNativeLog("B291 ATR_DISK: disketova mechanika (SIO D1:) v C++ jadru zatim neni - ATR spusti hlavni ATARI 130XE EMULATOR. Nic se nepredstira.");
+                case 3: { // ATR / DISK - B295: disketova mechanika D1: v C++
+                    Intent i = new Intent(Intent.ACTION_GET_CONTENT);
+                    i.addCategory(Intent.CATEGORY_OPENABLE);
+                    i.setType("*/*");
+                    startActivityForResult(Intent.createChooser(i, "ATR disketa (nebo ZIP) pro Atari 130XE (C++)"), PICK_ATARI_CPP_XEX);
                     break;
+                }
                 case 4: { // TURBO / BASIC
                     byte[] tb = atariCppAsset("emu_atari_cpp/turbo_basic_xl.xex");
                     atariCppSpustProgram(tb, "turbo_basic_xl.xex", "TURBO_BASIC");
@@ -6870,8 +6873,9 @@ public class MainActivity extends Activity {
         byte[] d = (ex != null && ex.data != null && ex.data.length > 0) ? ex.data : data;
         String n = (ex != null && ex.name != null && ex.name.length() > 0) ? ex.name : name;
         if (d.length >= 2 && (d[0] & 0xFF) == 0x96 && (d[1] & 0xFF) == 0x02) {
-            NativeAtariCoreBridge.devStatusSafe("ATR DISK: MECHANIKA V C++ JESTE NENI", 7000);
-            appendNativeLog("B291 " + odkud + " " + n + " je ATR (disketa) - v C++ zatim neni mechanika, nic se nespousti");
+            // B295: ATR = disketa -> mechanika D1: v C++ a studeny start (boot z diskety)
+            String r = NativeAtariCoreBridge.devLoadAtrSafe(d, n);
+            appendNativeLog("B295 " + odkud + " " + n + " je ATR (disketa) bajtu=" + d.length + " -> " + r);
             return;
         }
         boolean ok = NativeAtariCoreBridge.devLoadXexSafe(d, n);
@@ -6915,13 +6919,15 @@ public class MainActivity extends Activity {
               + "CSAVE: napis CSAVE, RETURN, po pipnuti znovu RETURN. Po skonceni nahravani se WAV sam ulozi do "
               + "Download/AtariHelp/Atari_emu/csave_<datum>_<cas>.wav (nahrava se linka SIO DATA OUT - presne signal "
               + "pro skutecny magnetofon).\n\n"
-              + "CLOAD: EJECT a vyber kazetu, napis CLOAD, RETURN, po pipnuti stiskni PLAY a RETURN. Atari si samo "
-              + "zmeri rychlost pasky a nahraje program (READY).\n\n"
+              + "CLOAD: EJECT a vyber kazetu (PLAY se zmackne samo). Napis CLOAD a RETURN - Atari pipne a ceka "
+              + "(jako na skutecnem Atari: 'zmackni PLAY a klavesu') - zmackni jeste jednou RETURN. Rozbehne se motor, "
+              + "Atari si zmeri rychlost pasky a nahraje program, pak READY a LIST.\n\n"
               + "XEX/MOBIL - spusti XEX nebo ZIP z telefonu. TURBO/BASIC - Turbo-BASIC XL 1.5. "
               + "NET/HRY - hry z atarihelp.eu (spusti se tady v C++).\n\n"
               + "BASIC/TBXL TXT - vlozeni vypisu programu (pise se klavesnici Atari).\n\n"
               + "LOG/CHYBA - log a testy (zpet tlacitkem ZPET NA ATARI 130XE nebo sipkou zpet).\n\n"
-              + "ATR/DISK - disketova mechanika v C++ zatim neni (ATR spusti hlavni ATARI 130XE EMULATOR).\n\n"
+              + "ATR/DISK - disketa (ATR, i v ZIP) do mechaniky D1: a start z diskety (OPTION drzene = BASIC vypnuty). "
+              + "Disketa v mechanice zustava i po vypnuti/zapnuti POWER.\n\n"
               + "MENU - zpet do hlavni nabidky.";
         android.widget.TextView tv = new android.widget.TextView(this);
         tv.setText(t);

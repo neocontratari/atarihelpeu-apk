@@ -113,9 +113,9 @@ Tenhle test pousti jadro na desetitisicich nahodnych stavu a porovnava vysledek
 s cislem, ktere vyslo na pocitaci. Delam to proto, ze pocitac je x86 a telefon
 ARM - a na ARM se nektere veci chovaji jinak. Kdyz se to rozejde, ma se to
 poznat ted, a ne az podle spatneho obrazu.<br><br>
-B294: kazeta uz funguje (CSAVE do WAV, CLOAD z WAV pres EJECT). V C++ zatim
-chybi disketova mechanika (ATR) - tlacitko ATR/DISK to na pristroji poctive
-napise, nic se nepredstira.
+B295: kazeta funguje (CSAVE do WAV, CLOAD z WAV pres EJECT) a disketova
+mechanika D1: taky (ATR/DISK, nebo ATR z XEX/MOBIL a NET/HRY). V C++ zatim
+neni VBXE (pridavna graficka karta - na beznem 130XE neni).
 </p>
 
 <p><a href="../index.html">&larr; Zpet do nabidky</a></p>
@@ -132,7 +132,7 @@ try{ if(window.AHATARICPP && !AHATARICPP.jeNactene()){
 } }catch(e){}
 function set(id,t,cls){var e=$(id); if(!e)return; e.textContent=t; if(cls)e.className='v '+cls;}
 var KROKY=[
- // B294: testy pro B293/B294 (nove jadro 130XE po cyklech, kazeta, kontrola 130XE)
+ // B295: testy pro B293-B295 (nove jadro 130XE po cyklech, kazeta, disketa, kontrola 130XE)
  {n:1,co:'TEST JADRA (tlacitko SPUSTIT TEST JADRA nize)',
   ok:'Procesor i Pamet = SEDI (29C55806 / D3949DC5), Rychlost aspon 2x realny cas.',
   ne:'NESEDI, nebo rychlost pod 1x (Atari by se zpomalovalo).'},
@@ -157,16 +157,19 @@ var KROKY=[
  {n:8,co:'CSAVE: kratky program, CSAVE, RETURN, po pipnuti RETURN',
   ok:'Civky se toci, pod pristrojem CSAVE ULOZENO: Atari_emu/csave_datum_cas.wav.',
   ne:'Zadny WAV, nebo hlaska o chybe.'},
- {n:9,co:'CLOAD: EJECT -> vyber WAV z bodu 8 -> CLOAD, RETURN, PLAY, RETURN',
-  ok:'Dvirka se zavrou, po PLAY a RETURN bezi motor, pak READY a LIST ukaze program.',
-  ne:'Nenahraje se (ERROR, zamrzne, nebo se nic nedeje).'},
- {n:10,co:'Skutecne 130XE: WAV z bodu 8 prehraj do skutecneho Atari (CLOAD)',
+ {n:9,co:'CLOAD: EJECT -> vyber WAV z bodu 8 (PLAY se zmackne samo) -> napis CLOAD, RETURN, po pipnuti jeste jednou RETURN',
+  ok:'Dvirka se zavrou, PLAY je zmacknute, po druhem RETURN bezi motor (civky se toci), pak READY a LIST ukaze program.',
+  ne:'Nenahraje se (ERROR, zamrzne, nebo se nic nedeje) - v logu jsou radky B295 KAZETA motor ...'},
+ {n:10,co:'ATR/DISK: vyber disketu ATR (treba wolf3d.atr)',
+  ok:'Atari nabootuje z diskety. wolf3d.atr napise WOLF3D NEEDS VBXE - to je spravne, 130XE bez VBXE karty presne tohle ukaze.',
+  ne:'Nenabootuje, nebo zamrzne.'},
+ {n:11,co:'Skutecne 130XE: WAV z bodu 8 prehraj do skutecneho Atari (CLOAD)',
   ok:'Skutecne Atari program nahraje.',
   ne:'Nenahraje (napis poznamkou, jakou chybu ukazalo).'},
- {n:11,co:'Skutecne 130XE vs emulator - stejne prikazy na obou (BASIC po zapnuti)',
+ {n:12,co:'Skutecne 130XE vs emulator - stejne prikazy na obou (BASIC po zapnuti)',
   ok:'Vyjdou stejna cisla. V emulatoru: ?FRE(0) = 37902 | POKE 20,0:FOR I=1 TO 2000:NEXT I:?PEEK(20) = 184 | POKE 559,0:POKE 20,0:FOR I=1 TO 2000:NEXT I:POKE 559,34:?PEEK(20) = 136. Cisla ze skutecneho Atari zapis poznamkou.',
   ne:'Skutecne Atari ukaze jina cisla (zapis je poznamkou ZAPSAT).'},
- {n:12,co:'ATARI 130XE EMULATOR, PS1 a SEGA v hlavni nabidce',
+ {n:13,co:'ATARI 130XE EMULATOR, PS1 a SEGA v hlavni nabidce',
   ok:'Bezi UPLNE STEJNE jako dosud.',
   ne:'Jakakoli zmena proti minule verzi.'}
 ];
