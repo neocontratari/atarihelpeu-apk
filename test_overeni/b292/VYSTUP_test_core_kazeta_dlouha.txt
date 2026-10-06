@@ -1,0 +1,23 @@
+== ./test_core kazeta-dlouha basic 12
+ATARI BASIC: program 5768 znaku, v pameti 7001 B, LIST 5777 znaku - SOUHLASI se zdrojem
+CSAVE -> WAV 158.1 s: 56 zaznamu (kontrolni soucet OK 56, spatne 0), chyb ramce v zaznamech 0, sum v mezerach 31, druh: BASIC program (CLOAD)
+CLOAD: OS precetl 7149 B, chyb ramce pri cteni 0; program v pameti 7004 B, rozdilnych bajtu 0; LIST po CLOAD SHODNY
+KAZETA DLOUHA OK: LIST = zdroj, CSAVE -> CLOAD bez chyby, LIST po nahrani stejny
+
+== ./test_core kazeta-dlouha tbxl 10
+TURBO-BASIC XL: program 7187 znaku, v pameti 8433 B, LIST 7216 znaku - SOUHLASI se zdrojem
+CSAVE -> WAV 187.8 s: 68 zaznamu (kontrolni soucet OK 68, spatne 0), chyb ramce v zaznamech 0, sum v mezerach 33, druh: BASIC program (CLOAD)
+CLOAD: OS precetl 8709 B, chyb ramce pri cteni 0; program v pameti 8436 B, rozdilnych bajtu 0; LIST po CLOAD SHODNY
+KAZETA DLOUHA OK: LIST = zdroj, CSAVE -> CLOAD bez chyby, LIST po nahrani stejny
+
+== ./test_core bootkazeta synt
+PASKA: 28.4 s, kanalu 1 (data v 0), druh: bootovaci (hra - START+OPTION pri zapnuti), zaznamu 2 (OK 2, spatne 0), chyb ramce v zaznamech 0 (vsech 0), zvukova stopa 0 vzorku @ 0 Hz
+B298 KAZETA BOOT: OS pipnul (484 cvaknuti, snimek 123) - RETURN stisknut, motor bezi, hra se nahrava
+snimek 1658: motor od snimku 123, $0600=$42 COLOR4=$34 PC=$071F, prijato z pasky 262 B, chyb ramce pri cteni 0, energie zvuku s motorem 875.8
+BOOT KAZETA OK: hra z kazety nabootovala (START+OPTION pri zapnuti, RETURN po pipnuti)
+
+== ./test_core bootkazeta synt-stereo
+PASKA: 28.4 s, kanalu 2 (data v 1), druh: bootovaci (hra - START+OPTION pri zapnuti), zaznamu 2 (OK 2, spatne 0), chyb ramce v zaznamech 0 (vsech 0), zvukova stopa 626880 vzorku @ 22050 Hz
+B298 KAZETA BOOT: OS pipnul (484 cvaknuti, snimek 123) - RETURN stisknut, motor bezi, hra se nahrava
+snimek 1658: motor od snimku 123, $0600=$42 COLOR4=$34 PC=$071F, prijato z pasky 262 B, chyb ramce pri cteni 0, energie zvuku s motorem 3117.5
+BOOT KAZETA OK: hra z kazety nabootovala (START+OPTION pri zapnuti, RETURN po pipnuti)

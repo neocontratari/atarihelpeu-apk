@@ -14,6 +14,14 @@ nap_atari_runtime.h).
                                                *.ppm 768x240 RGB (B296: i obraz z VBXE)
    ./test_core atr disketa.atr 1500 prefix 300,600   -> totez se startem z D1:
    ./test_core kazeta [vystup.wav] [vstup.wav]  -> CSAVE -> WAV -> CLOAD -> LIST
+   ./test_core kazeta-dlouha basic 12        -> B298: dlouhy program napsany na
+   ./test_core kazeta-dlouha tbxl 10            klavesnici -> LIST (= zdroj) -> CSAVE ->
+                                               WAV -> novy stroj -> CLOAD -> pamet i LIST
+                                               stejne (VYSTUP_test_core_kazeta_dlouha.txt)
+   ./test_core bootkazeta synt|synt-stereo|x.wav -> B298: kazeta s hrou (boot):
+                                               START+OPTION pri zapnuti, RETURN po
+                                               pipnuti (KazetaBoot jako v appce);
+                                               synt = kazeta ze syntaz_kazeta.h
    ./test_core xe130                        -> B293: kontrola veci, ktere ma 130XE
                                                jinak nez Atari 800 (banky, ANTIC/CPU
                                                pristup, TRIG3, RESET, self-test ROM...)
@@ -43,4 +51,9 @@ nap_atari_runtime.h).
        -o test_b292_jni_host test_b292_jni_host.cpp
    ./test_b292_jni_host                     -> VYSTUP_test_b292_jni_host.txt
    (B296: i joystick dotykem / ovladacem a VBXE - Popeye a Wolfenstein 3D
-   z test_assets/ az do hry; bezi v realnem case, cca 3,5 minuty)
+   z test_assets/ az do hry; bezi v realnem case, cca 4 minuty)
+   (B298: vysunuti / vymena diskety bez restartu, CLOAD s disketou v D1:,
+   hra z kazety s bootem - synteticka kazeta ze syntaz_kazeta.h, stereo)
+
+4) B298: dohledani mezilehleho certifikatu (AtarihelpTls.java) - viz
+   ../b298/JAK_SPUSTIT.txt

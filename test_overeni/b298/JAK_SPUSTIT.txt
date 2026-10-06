@@ -1,0 +1,23 @@
+B298 - test AtarihelpTls.java na PC (bez Androidu)
+===================================================
+
+Co se overuje: kdyz server (atarihelp.eu za WEDOS ochranou) neposle mezilehly
+certifikat, Java v Androidu 9 spojeni odmitne ("Trust anchor for certification
+path not found"). AtarihelpTls ho dohleda podle adresy vydavatele v certifikatu
+(AIA, "CA Issuers" - jako prohlizec) a retez zkontroluje ZNOVU systemem.
+
+Spousteni (z adresare test_overeni/b298):
+
+   ./mkcerts.sh 18765 certs                 -> koren, mezilehly, list atarihelp.eu
+                                               s AIA na http://127.0.0.1:18765/inter.der
+                                               a list od cizi CA (stejne jmeno vydavatele)
+   (cd certs && python3 -m http.server 18765 --bind 127.0.0.1 &)
+   javac -d out ../../app/src/main/java/eu/atarihelp/emu10/AtarihelpTls.java TestAtarihelpTls.java
+   java -Dhttp.nonProxyHosts="127.0.0.1|localhost" -cp out eu.atarihelp.emu10.TestAtarihelpTls certs
+
+Ocekavany vystup: VYSTUP_TestAtarihelpTls.txt (5 kontrol, 0 chyb):
+ - adresa vydavatele se precte z certifikatu,
+ - system sam neuplny retez odmitne (jako telefon v Reneho logu),
+ - AtarihelpTls ho doplni a prijme,
+ - list od cizi CA se odmitne i po doplneni,
+ - uplny retez projde beze zmeny.

@@ -6298,6 +6298,11 @@ public class MainActivity extends Activity {
         if (c == null) return;
         try { c.setConnectTimeout(20000); } catch (Throwable ignored) {}
         try { c.setReadTimeout(45000); } catch (Throwable ignored) {}
+        // B298: Rene "nahravani z netu nekdy jde a nekdy ne" - v logu
+        // "Trust anchor for certification path not found" jen obcas (WEDOS ochrana,
+        // 2 IP). Kdyz server neposle mezilehly certifikat, dohleda se jako v
+        // prohlizeci (AIA) a retez se zkontroluje systemem znovu - viz AtarihelpTls.
+        if (isProviderBlockedUrl(url) || isAtariHelpUrl(url)) AtarihelpTls.pouzij(c, this::appendNativeLog);
         if (isAtariHelpUrl(url)) {
             try { c.setRequestProperty("User-Agent", ATARIHELP_BROWSER_UA); } catch (Throwable ignored) {}
             try { c.setRequestProperty("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,application/zip,application/octet-stream,*/*;q=0.8"); } catch (Throwable ignored) {}
@@ -6349,7 +6354,9 @@ public class MainActivity extends Activity {
             last = ex0;
             appendNativeLog("BUILD2SB44 PROVIDER_DIRECT_FIRST_FAIL reason=" + reason + " err=" + safeMsg(ex0) + " target=" + compactUrl(url));
         }
-        for (int i = 0; i < 3; i++) {
+        // B298: proxy.cors.sh (rezim 0) uz neexistuje - v Reneho logu pokazde
+        // "Unable to resolve host" a jen zdrzoval; zustavaji allorigins a corsproxy.io
+        for (int i = 1; i < 3; i++) {
             String relay = providerRelayUrl(url, i);
             HttpURLConnection c = null;
             try {
@@ -6573,6 +6580,11 @@ public class MainActivity extends Activity {
     private AtariDeviceView atariZarizeni = null;
     private boolean atariZarizeniSkryte = false;          // LOG/CHYBA: je videt stranka s logem
     private volatile boolean atariCppNetCil = false;      // NET HRY spustene z pristroje
+    // B298: poradi pozadavku na hry z netu - plati jen POSLEDNI vybrana hra.
+    // V Reneho logu dobehlo stazeni Donkey Konga (z drivejsiho kliknuti) az
+    // po navratu do HELP a hra se "sama" spustila; Moon Patrol a Galactic
+    // Chase dobehly naraz a zavadely se obe.
+    private final java.util.concurrent.atomic.AtomicInteger atariNetGen = new java.util.concurrent.atomic.AtomicInteger();
     private byte[] atariCppCekajiciHra = null;            // hra z NET HRY cekajici na pristroj
     private String atariCppCekajiciJmeno = null;
     // B292: posledni hra z NET HRY (zahozeni dvojiteho vyberu) a zpozdene
@@ -6738,11 +6750,13 @@ public class MainActivity extends Activity {
         try {
             switch (kod) {
                 case 1:   // NET / HRY
+                    atariNetGen.incrementAndGet();   // B298: starsi rozjeta stazeni uz nic nespusti
                     atariCppNetCil = true;
                     appendNativeLog("B291 NET_HRY - vybrana hra (XEX/ZIP) se spusti v Atari C++ v HELP");
                     showAtariNetGamesBridge();
                     break;
                 case 2: { // XEX / MOBIL
+                    atariCppAtrVymena = false;   // B298: vymena diskety jen z menu ATR/DISK
                     Intent i = new Intent(Intent.ACTION_GET_CONTENT);
                     i.addCategory(Intent.CATEGORY_OPENABLE);
                     i.setType("*/*");
@@ -6750,10 +6764,10 @@ public class MainActivity extends Activity {
                     break;
                 }
                 case 3: { // ATR / DISK - B295: disketova mechanika D1: v C++
-                    Intent i = new Intent(Intent.ACTION_GET_CONTENT);
-                    i.addCategory(Intent.CATEGORY_OPENABLE);
-                    i.setType("*/*");
-                    startActivityForResult(Intent.createChooser(i, "ATR disketa (nebo ZIP) pro Atari 130XE (C++)"), PICK_ATARI_CPP_XEX);
+                    // B298: Rene "U W3D nepomuze ani vypnout a zapnout emu - hra je neustale
+                    // nactena" - disketa v D1: zustava (jako u skutecne mechaniky), ted ji jde
+                    // vysunout, nebo vymenit bez restartu (dalsi disketa / strana hry)
+                    atariCppDiskMenu();
                     break;
                 }
                 case 4: { // TURBO / BASIC
@@ -6836,8 +6850,9 @@ public class MainActivity extends Activity {
                 "VÝCHOZÍ ROZLOŽENÍ TLAČÍTEK",
                 "RESET ATARI",
                 "XEX / MOBIL - spustit hru z telefonu",
-                "ATR / DISK - disketa do D1:",
+                "ATR / DISK - disketa do D1: (vysunout, vyměnit)",
                 "NET / HRY",
+                "KAZETA (WAV) - vložit kazetu, hry z kazety",
                 "NÁPOVĚDA K OVLÁDÁNÍ"
         };
         new android.app.AlertDialog.Builder(this)
@@ -6869,6 +6884,9 @@ public class MainActivity extends Activity {
                             break;
                         case 7:
                             atariZarizeniAkce(1);
+                            break;
+                        case 8:   // B298: na sirku neni kazetak videt - vyber kazety odsud
+                            atariZarizeniAkce(9);
                             break;
                         default:
                             atariCppHelpDialog();
@@ -6992,7 +7010,7 @@ public class MainActivity extends Activity {
         polozky.add("VYJMOUT KAZETU");
         appendNativeLog("B292 KAZETA EJECT - nabidka: " + wavy.size() + " WAV v Download/AtariHelp/Atari_emu");
         new android.app.AlertDialog.Builder(this)
-                .setTitle("KAZETA → Atari 130XE (CLOAD)")
+                .setTitle("KAZETA → Atari 130XE (CLOAD, hry se nahrají samy)")
                 .setItems(polozky.toArray(new String[0]), (dlg, kt) -> {
                     if (kt == jiny) {
                         Intent i = new Intent(Intent.ACTION_GET_CONTENT);
@@ -7047,6 +7065,43 @@ public class MainActivity extends Activity {
         }
     }
 
+    // B298: disketova mechanika D1: - co s disketou (vysunout / vymenit / jina a boot)
+    private boolean atariCppAtrVymena = false;   // dalsi ATR z vyberu jen vymenit v D1: (bez restartu)
+
+    private void atariCppDiskMenu() {
+        final String d1 = NativeAtariCoreBridge.devCtlSafe("d1");
+        if (d1 == null || d1.isEmpty()) {
+            atariCppVyberAtr(false);
+            return;
+        }
+        final String[] polozky = {
+                "VYSUNOUT DISKETU - Atari se zapne znovu s BASICem",
+                "VYMĚNIT DISKETU BEZ RESTARTU (hra chce další disketu / druhou stranu)",
+                "VLOŽIT JINOU DISKETU A NABOOTOVAT"
+        };
+        new android.app.AlertDialog.Builder(this)
+                .setTitle("MECHANIKA D1: " + d1)
+                .setItems(polozky, (dlg, w) -> {
+                    if (w == 0) {
+                        NativeAtariCoreBridge.devCtlSafe("disk_eject");
+                        appendNativeLog("B298 DISKETA_MENU vysunout " + d1);
+                    } else {
+                        atariCppVyberAtr(w == 1);
+                    }
+                })
+                .setNegativeButton("ZRUŠIT", null)
+                .show();
+    }
+
+    private void atariCppVyberAtr(boolean vymena) {
+        atariCppAtrVymena = vymena;
+        Intent i = new Intent(Intent.ACTION_GET_CONTENT);
+        i.addCategory(Intent.CATEGORY_OPENABLE);
+        i.setType("*/*");
+        startActivityForResult(Intent.createChooser(i, vymena ? "Vyměnit disketu v D1: (ATR, bez restartu)"
+                : "ATR disketa (nebo ZIP) pro Atari 130XE (C++)"), PICK_ATARI_CPP_XEX);
+    }
+
     /** XEX (i uvnitr ZIP) -> C++ zavadec. ATR zatim neumime - poctive to rekne. */
     private void atariCppSpustProgram(byte[] data, String name, String odkud) {
         if (data == null || data.length == 0) {
@@ -7059,10 +7114,15 @@ public class MainActivity extends Activity {
         String n = (ex != null && ex.name != null && ex.name.length() > 0) ? ex.name : name;
         if (d.length >= 2 && (d[0] & 0xFF) == 0x96 && (d[1] & 0xFF) == 0x02) {
             // B295: ATR = disketa -> mechanika D1: v C++ a studeny start (boot z diskety)
+            // B298: z menu ATR/DISK "VYMENIT BEZ RESTARTU" -> jen vymena v D1:
+            final boolean vymena = atariCppAtrVymena && "XEX_MOBIL".equals(odkud);
+            atariCppAtrVymena = false;
+            if (vymena) NativeAtariCoreBridge.devCtlSafe("atr_vymena");
             String r = NativeAtariCoreBridge.devLoadAtrSafe(d, n);
-            appendNativeLog("B295 " + odkud + " " + n + " je ATR (disketa) bajtu=" + d.length + " -> " + r);
+            appendNativeLog("B295 " + odkud + " " + n + " je ATR (disketa) bajtu=" + d.length + (vymena ? " (VYMENA bez restartu)" : "") + " -> " + r);
             return;
         }
+        atariCppAtrVymena = false;
         boolean ok = NativeAtariCoreBridge.devLoadXexSafe(d, n);
         appendNativeLog("B291 " + odkud + " " + n + " bajtu=" + d.length + (ok ? " -> zavadim v C++" : " -> NENI XEX (chybi $FFFF) - nic se nespousti"));
         if (!ok) NativeAtariCoreBridge.devStatusSafe("NENI XEX: " + n, 6000);
@@ -7118,13 +7178,20 @@ public class MainActivity extends Activity {
               + "pro skutecny magnetofon).\n\n"
               + "CLOAD: EJECT a vyber kazetu (PLAY se zmackne samo). Napis CLOAD a RETURN - Atari pipne a ceka "
               + "(jako na skutecnem Atari: 'zmackni PLAY a klavesu') - zmackni jeste jednou RETURN. Rozbehne se motor, "
-              + "Atari si zmeri rychlost pasky a nahraje program, pak READY a LIST.\n\n"
+              + "Atari si zmeri rychlost pasky a nahraje program, pak READY a LIST. Pri nahravani je slyset to, "
+              + "co pusti skutecne Atari: bzuceni POKEY po kazdem zaznamu (POKE 65,0 = potichu); u stereo WAV "
+              + "navic zvukova stopa kazety (hudba / hlas), jako ze skutecneho magnetofonu.\n\n"
+              + "HRY NA KAZETE (boot, ne BASIC): appka to pozna sama z kazety - Atari zapne s drzenym START+OPTION "
+              + "(jako na skutecnem 130XE), po pipnuti stiskne RETURN a hra se nahraje. Rucne: drz START a OPTION "
+              + "a prepni POWER. Na sirku je vyber kazety v kolecku (KAZETA).\n\n"
               + "XEX/MOBIL - spusti XEX nebo ZIP z telefonu. TURBO/BASIC - Turbo-BASIC XL 1.5. "
               + "NET/HRY - hry z atarihelp.eu (spusti se tady v C++).\n\n"
               + "BASIC/TBXL TXT - vlozeni vypisu programu (pise se klavesnici Atari).\n\n"
               + "LOG/CHYBA - log a testy (zpet tlacitkem ZPET NA ATARI 130XE nebo sipkou zpet).\n\n"
               + "ATR/DISK - disketa (ATR, i v ZIP) do mechaniky D1: a start z diskety (OPTION drzene = BASIC vypnuty). "
-              + "Disketa v mechanice zustava i po vypnuti/zapnuti POWER.\n\n"
+              + "Disketa v mechanice zustava i po vypnuti/zapnuti POWER (jako u skutecne mechaniky - proto se hra "
+              + "nahrava znovu). Kdyz je v D1: disketa, ATR/DISK nabidne: VYSUNOUT (Atari znovu s BASICem), "
+              + "VYMENIT BEZ RESTARTU (hra chce dalsi disketu / druhou stranu) nebo jinou disketu a boot.\n\n"
               + "MENU - zpet do hlavni nabidky.";
         android.widget.TextView tv = new android.widget.TextView(this);
         tv.setText(t);
@@ -10960,6 +11027,7 @@ public class MainActivity extends Activity {
     }
 
     private void downloadAndRun(final String url) {
+        final int gen = atariNetGen.incrementAndGet();   // B298: plati jen posledni vyber
         new Thread(() -> {
             try {
                 if (!markAtariHelpRequestAllowed(url, "downloadGame")) return;
@@ -11009,6 +11077,10 @@ public class MainActivity extends Activity {
                     ui.post(() -> { try { setPs1RemoteStatus("PS1_BIOS_INSTALLED count=" + bc + " - SONY logo pojede u dalsi hry"); } catch (Throwable ignored) {} });
                     return;
                 }
+                if (gen != atariNetGen.get()) {
+                    appendNativeLog("B298 NET_HRY opozdene stazeni " + name + " zahozeno - mezitim byla vybrana jina hra (nebo znovu NET/HRY)");
+                    return;
+                }
                 final SegaExtract sega = extractSegaRomFromMaybeZip(name, data);
                 if (sega != null && sega.data != null && sega.data.length > 0) {
                     appendNativeLog("BUILD2SA5AF ZIP_CONTAINS_SEGA name=" + sega.name + " bytes=" + sega.data.length + " -> EMU_SEGA");
@@ -11025,6 +11097,10 @@ public class MainActivity extends Activity {
                     queueAtariGameFor130xe(atariName, atariData, "netDownload");
                 });
             } catch (Exception ex) {
+                if (gen != atariNetGen.get()) {   // B298: stary pozadavek - chyba uz nikoho nezajima
+                    appendNativeLog("B298 NET_HRY stare stazeni selhalo (uz neplatne): " + safeMsg(ex));
+                    return;
+                }
                 ui.post(() -> {
                     try {
                         appendNativeLog("BUILD2SA5AF WEB_GAME_DOWNLOAD_FAIL noEmuFallback " + safeMsg(ex));

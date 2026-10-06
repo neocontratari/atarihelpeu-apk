@@ -772,7 +772,13 @@ public:
       return u >= x0 - pad && u < x0 + w + pad && v >= y0 - pad && v < y0 + h + pad;
     };
     if (in(8, 393, 34, 50, 6)) return ID_POWER;
-    if (!power) return ID_NONE;                      // vypnuto: prekryv blokuje vse krome POWER
+    if (!power) {
+      // vypnuto: prekryv blokuje vse krome POWER - B298: a START/SELECT/OPTION,
+      // ty se na skutecnem 130XE drzi PRED zapnutim (START = boot z kazety,
+      // OPTION = bez BASICu)
+      for (int i = 3; i >= 1; i--) if (in(CONSOLE[i].x, CON_Y, CONSOLE[i].w, CON_H)) return ID_CON0 + i;
+      return ID_NONE;
+    }
     if (in(SCR_X, SCR_Y, SCR_W, SCR_H)) return u < SCR_X + SCR_W * 0.5f ? ID_JOY : ID_FIRE;
     for (int i = 0; i < 8; i++) if (in(SVC_X0 + i * (SVC_W + SVC_GAP), SVC_Y, SVC_W, SVC_H)) return ID_SVC0 + i;
     for (int i = 0; i < 6; i++) if (in(TAPE_B[i], TAPE_Y, TAPE_B[i + 1] - TAPE_B[i], TAPE_H)) return ID_TAPE0 + i;
@@ -1501,7 +1507,8 @@ public:
     //  box-shadow:inset 0 2px 5px rgba(40,36,26,.4),0 1px 0 rgba(0,0,0,.15);transform:translateY(2px)}
     // .cbtn span{700;1.55cqw;letter-spacing:.02em;#3a3630} .pressed span{translateY(1px)}
     const ConDef &d = CONSOLE[i];
-    bool pr = power && (conHeld[i] || within(now, conAt[i]));
+    // B298: START/SELECT/OPTION jdou drzet i pri vypnutem Atari (pred zapnutim)
+    bool pr = (power || (i >= 1 && i <= 3)) && (conHeld[i] || within(now, conAt[i]));
     float w = L(d.w), h = L(CON_H);
     float ty = pr ? PX(2) : 0.f;
     RRect r = mkRR(X(d.x), Y(CON_Y) + ty, w, h, w * .14f, h * .22f);

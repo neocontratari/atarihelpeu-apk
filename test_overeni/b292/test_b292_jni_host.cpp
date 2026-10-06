@@ -19,6 +19,7 @@
 //  8) B296: VBXE - Popeye (XEX) az do hry, Wolfenstein 3D (ATR) az do hry
 //     a chuze joystickem (test_assets/)
 #include "../../app/src/main/cpp/atari/nap_atari_native.cpp"
+#include "syntaz_kazeta.h"
 #include <cstdio>
 #include <cstdlib>
 #include <string>
@@ -318,6 +319,79 @@ int main() {
       printf("W3D: joystick nahoru -> zmenenych bodu %zu z %zu\n", ruzne, po.size());
       over(ruzne > 10000, "B296: joystick dotykem ve Wolfensteinu - hrac jde dopredu (obraz se zmenil)");
       vypisLog();
+    }
+  }
+
+  // 10) B298: disketa - vysunuti, vymena bez restartu; CLOAD s disketou v D1:;
+  //     kazeta s bootem (START+OPTION + RETURN po pipnuti) pres skutecna vlakna
+  {
+    auto ctl = [](const char *c) { FakeStr s{c}; return ((FakeStr *)Java_eu_atarihelp_emu10_NativeAtariCoreBridge_devCtlNative(&g_env, nullptr, (jstring)&s))->s; };
+    auto peekS = [](int a) { std::lock_guard<std::mutex> l(g_mStroj); return (int)g_stroj->mem.ram[a & 0xFFFF]; };
+    printf("D1: pred vysunutim = \"%s\"\n", ctl("d1").c_str());
+    ctl("disk_eject");
+    bool ready = false;
+    for (int i = 0; i < 120 && !ready; i++) { spi(100); ready = obrazovka().find("READY") != std::string::npos; }
+    over(ready && ctl("d1").empty(), "B298: VYSUNOUT DISKETU -> D1: prazdna a Atari znovu v BASICu (READY)");
+    // vymena diskety bez restartu: znacka v RAM musi zustat
+    napis("POKE 1536,77\n"); spi(2500);
+    const int znacka = peekS(0x600);
+    const char *atrPath = "/home/claude/ref/atari800/test/acid800.atr";
+    FILE *f = fopen(atrPath, "rb");
+    if (!f) printf("(ATR %s neni - vymena diskety preskocena)\n", atrPath);
+    else {
+      FakeArr atr; int c; while ((c = fgetc(f)) != EOF) atr.b.push_back((uint8_t)c); fclose(f);
+      ctl("atr_vymena");
+      FakeStr an{"acid800.atr"};
+      jstring r = Java_eu_atarihelp_emu10_NativeAtariCoreBridge_devLoadAtrNative(&g_env, nullptr, (jbyteArray)&atr, (jstring)&an);
+      printf("devLoadAtr (vymena): %s\n", ((FakeStr *)r)->s.c_str());
+      spi(1500);
+      over(znacka == 77 && peekS(0x600) == 77 && obrazovka().find("READY") != std::string::npos && ctl("d1") == "acid800.atr",
+           "B298: VYMENIT DISKETU bez restartu - v D1: je nova, program/pamet bezi dal (POKE zustal)");
+      // CLOAD s disketou v D1: (drive ERROR 138 - kazeta sla pres patch disku)
+      FakeStr nm2{"kazeta_b292.wav"};
+      Java_eu_atarihelp_emu10_NativeAtariCoreBridge_devLoadTapeNative(&g_env, nullptr, (jbyteArray)&soubor, (jstring)&nm2);
+      napis("NEW\nCLOAD\n");
+      spi(3500);
+      klavesa("Return");
+      bool mot = false;
+      for (int i = 0; i < 400; i++) { spi(100); if (g_motorOn.load()) mot = true; if (mot && !g_motorOn.load()) break; }
+      spi(500);
+      napis("LIST\n"); spi(2500);
+      std::string sc = obrazovka();
+      printf("--- CLOAD s disketou v D1: ---\n%s---\n", sc.c_str());
+      over(mot && sc.find("20 GOTO 10") != std::string::npos && sc.find("ERROR") == std::string::npos,
+           "B298: CLOAD funguje i s disketou v D1: (kazeta jde pres OS, ne pres patch diskety)");
+    }
+    // kazeta s bootem (synteticka hra) -> sama START+OPTION, RETURN po pipnuti, nahraje se a bezi
+    {
+      std::vector<uint8_t> w = syntazBootKazetaWav(true);
+      FakeArr bw; bw.b = w;
+      FakeStr bn{"hra_boot.wav"};
+      jstring r = Java_eu_atarihelp_emu10_NativeAtariCoreBridge_devLoadTapeNative(&g_env, nullptr, (jbyteArray)&bw, (jstring)&bn);
+      const std::string rs = ((FakeStr *)r)->s;
+      printf("devLoadTape (boot): %s\n", rs.c_str());
+      over(rs.find("bootovaci") != std::string::npos && rs.find("zvukova stopa") != std::string::npos,
+           "B298: kazeta poznana jako bootovaci (hra) a ma zvukovou stopu (stereo)");
+      bool hra = false;
+      for (int i = 0; i < 600 && !hra; i++) { spi(100); hra = peekS(0x600) == 0x42 && peekS(0x2C8) == 0x34; }
+      vypisLog();
+      over(hra, "B298: hra z kazety nabootovala sama (START+OPTION pri zapnuti, RETURN po pipnuti, nahrani)");
+      over(ctl("d1").empty(), "B298: pri bootu z kazety je D1: prazdna (disketa vysunuta, aby nebootovala ona)");
+      // POWER vyp/zap BEZ START: kazeta je porad v magnetofonu, ale nebootuje (jako skutecny 130XE) -> BASIC
+      klep(8 + 17, 393 + 25); spi(400); klep(8 + 17, 393 + 25);
+      bool rdy = false;
+      for (int i = 0; i < 160 && !rdy; i++) { spi(100); rdy = obrazovka().find("READY") != std::string::npos; }
+      over(rdy, "B298: POWER vyp/zap bez START = BASIC (kazeta v magnetofonu sama nebootuje)");
+      // rucne jako na skutecnem 130XE: POWER vyp, drzet START+OPTION (dva prsty), POWER zap
+      klep(8 + 17, 393 + 25); spi(300);
+      prst(480, 776, 5, 0); prst(728, 776, 6, 0); spi(300);      // START (x 436-540) a OPTION (x 705-751)
+      klep(8 + 17, 393 + 25, 7);
+      spi(1500);
+      prst(480, 776, 5, 1); prst(728, 776, 6, 1);
+      bool hra2 = false;
+      for (int i = 0; i < 600 && !hra2; i++) { spi(100); hra2 = peekS(0x600) == 0x42 && peekS(0x2C8) == 0x34; }
+      vypisLog();
+      over(hra2, "B298: rucne jako na 130XE - drzet START+OPTION a zapnout POWER = boot z kazety (RETURN po pipnuti sam)");
     }
   }
 

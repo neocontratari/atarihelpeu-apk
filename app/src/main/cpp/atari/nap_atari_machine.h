@@ -152,7 +152,10 @@ struct TapeDeck {
   double rxNext = 0;                  // cyklus dalsiho vzorkovani bitu
   int rxByte = 0;
   long long bytes = 0, framing = 0;   // diagnostika
-  void eject() { img = TapeImage(); pos = 0; loaded = false; name.clear(); line = 1; rxPhase = 0; bytes = framing = 0; }
+  // B298: jen kdyz OS opravdu cte (preruseni SERIN povolene) - chyby v
+  // mezerach mezi zaznamy (sum, dobeh tonu) OS ignoruje, neni co hlasit
+  long long bytesRx = 0, framingRx = 0;
+  void eject() { img = TapeImage(); pos = 0; loaded = false; name.clear(); line = 1; rxPhase = 0; bytes = framing = 0; bytesRx = framingRx = 0; }
 };
 
 class Machine {
@@ -321,7 +324,10 @@ public:
   void runFrame() {
     const long long f = frame;
     while (frame == f) {
-      if (cpu.pc == 0xE459 && !cpu.jam && (disk.mounted || sioRychlyTimeout) && !cpu.takeNmi && !cpu.takeIrq) { sioPatch(); continue; }
+      // B298: kazeta (DDEVIC $60) NIKDY pres patch - tu obsluhuje OS sam pres
+      // POKEY (CLOAD/CSAVE/boot z kazety). Drive s disketou v D1: dostal i
+      // CLOAD "timeout" (ERROR 138).
+      if (cpu.pc == 0xE459 && !cpu.jam && (disk.mounted || sioRychlyTimeout) && mem.ram[0x300] != 0x60 && !cpu.takeNmi && !cpu.takeIrq) { sioPatch(); continue; }
       cpu.step();
     }
     if (keyHoldFrames > 0 && --keyHoldFrames == 0) skstat |= 0x04;
@@ -331,12 +337,90 @@ public:
   // =================================================================
   //  ZVUK: vzorky za posledni usek behu (volat po runFrame)
   // =================================================================
+  //
+  // B298: zvuk jako ze skutecneho Atari - pasmo je omezene (vystup Atari ->
+  // TV/monitor nepusti nic nad ~15 kHz). Drive se urovne POKEY jen
+  // prumerovaly po vzorcich 44,1 kHz a vse nad 22 kHz se "prelozilo" dolu:
+  // pri CLOAD OS zapne kanaly 1+2 s AUDF=0 (~32 kHz, na skutecnem Atari
+  // neslyset) a u nas z toho byl piskot ~12 kHz. Ted: urovne se zprumeruji
+  // na 8x hustsi mrizku (352,8 kHz), pak FIR dolni propust (okno Kaiser,
+  // hrana 16 kHz, nad 22 kHz utlum > 60 dB) a bere se kazdy 8. vzorek.
+  static const int AA_K = 8;           // podvzorku na vystupni vzorek
+  static const int AA_TAPS = 192;      // delka FIR (24 vystupnich vzorku = 0,54 ms)
+  static const float *aaFir() {
+    struct T {
+      float h[AA_TAPS];
+      T() {
+        const double PI = 3.14159265358979323846;
+        const double fs = 44100.0 * AA_K, fc = 16000.0, beta = 7.0, M = AA_TAPS - 1;
+        auto i0 = [](double x) { double s = 1, t = 1; for (int k = 1; k < 50; k++) { t *= (x / (2.0 * k)) * (x / (2.0 * k)); s += t; } return s; };
+        double d[AA_TAPS], suma = 0;
+        for (int n = 0; n < AA_TAPS; n++) {
+          const double m = n - M / 2.0;
+          const double sn = (m == 0) ? 2.0 * fc / fs : std::sin(2.0 * PI * fc / fs * m) / (PI * m);
+          const double r = 2.0 * n / M - 1.0;
+          const double w = i0(beta * std::sqrt(std::max(0.0, 1.0 - r * r))) / i0(beta);
+          d[n] = sn * w; suma += d[n];
+        }
+        for (int n = 0; n < AA_TAPS; n++) h[n] = (float)(d[n] / suma);
+      }
+    };
+    static const T t;
+    return t.h;
+  }
+  std::vector<float> aaBuf;            // historie podvzorku (AA_TAPS-1) + aktualni usek
+  double aaDcx = 0, aaDcy = 0;         // vazebni kondenzator (stejnosmerna slozka pryc)
   void genAudio(float *out, int n, double sampleRateHz) {
     (void)sampleRateHz;
-    integrate(audEv, audLevelStart, audFrom, cyc, out, n, true);
+    if (n <= 0) return;
+    const int H = AA_TAPS - 1, m = n * AA_K;
+    if (aaBuf.size() < (size_t)H) aaBuf.assign((size_t)H, (float)audLevelStart);
+    aaBuf.resize((size_t)H + (size_t)m);
+    integrate(audEv, audLevelStart, audFrom, cyc, aaBuf.data() + H, m, false);
     audLevelStart = audLevel;
     audFrom = cyc;
     audEv.clear();
+    const float *h = aaFir();
+    for (int i = 0; i < n; i++) {
+      // FIR je symetricky (h[j] = h[TAPS-1-j]): vystup i = sum h[j] * (x[j] + x[TAPS-1-j])
+      // pres polovinu koeficientu, 4 nezavisle soucty (rychlejsi i na telefonu)
+      const float *x = aaBuf.data() + (size_t)(i + 1) * AA_K - 1 + H - (AA_TAPS - 1);
+      float a0 = 0, a1 = 0, a2 = 0, a3 = 0;
+      for (int j = 0; j < AA_TAPS / 2; j += 4) {
+        a0 += h[j] * (x[j] + x[AA_TAPS - 1 - j]);
+        a1 += h[j + 1] * (x[j + 1] + x[AA_TAPS - 2 - j]);
+        a2 += h[j + 2] * (x[j + 2] + x[AA_TAPS - 3 - j]);
+        a3 += h[j + 3] * (x[j + 3] + x[AA_TAPS - 4 - j]);
+      }
+      out[i] = (a0 + a1) + (a2 + a3);
+    }
+    std::memmove(aaBuf.data(), aaBuf.data() + m, (size_t)H * sizeof(float));
+    aaBuf.resize((size_t)H);
+    mixTapeAudio(out, n);                // B298: zvukova stopa kazety (AUDIO IN)
+    for (int i = 0; i < n; i++) {
+      const double y = out[i] - aaDcx + 0.995 * aaDcy;
+      aaDcx = out[i]; aaDcy = y; out[i] = (float)y;
+    }
+  }
+  // B298: AUDIO IN z magnetofonu - skutecny magnetofon Atari (410/1010/XC12)
+  // pousti do televize LEVOU (zvukovou) stopu pasky, datovou ne. U stereo
+  // WAV je to druhy kanal (ne ten s daty); hraje jen kdyz se pasek hybe.
+  double tapeAudPos = -1;
+  void mixTapeAudio(float *out, int n) {
+    if (!tape.loaded || tape.img.audio.empty() || tape.img.rate <= 0) { tapeAudPos = -1; return; }
+    const double p1 = tape.pos;
+    const double p0 = tapeAudPos < 0 ? p1 : tapeAudPos;
+    tapeAudPos = p1;
+    if (!(p1 > p0) || p1 - p0 > tape.img.rate) return;     // pasek stoji (nebo skok - REW/FWD)
+    const double k = tape.img.audioRate / tape.img.rate;
+    const std::vector<int16_t> &a = tape.img.audio;
+    for (int i = 0; i < n; i++) {
+      const double tp = (p0 + (p1 - p0) * (i + 0.5) / n) * k;
+      const size_t j = (size_t)tp;
+      if (j + 1 >= a.size()) break;
+      const double f = tp - (double)j;
+      out[i] += (float)(((1.0 - f) * a[j] + f * a[j + 1]) * (0.2 / 32768.0));
+    }
   }
   // kazetovy vystup (SIO DATA OUT v dvoutonovem rezimu) - pro CSAVE WAV.
   // Sbira se jen pri tapeCapture=true (jinak by fronta zmen rostla).
@@ -1762,13 +1846,20 @@ public:
           tape.rxPhase = 1; tape.rxByte = 0;
           tape.rxNext = tSeg + serialHalfBitCycles();
           skstat &= ~0x02;                             // seriovy vstup prijima
+          // B298: asynchronni prijem (SKCTL bit 4) - start bit znovu spusti
+          // casovace 3+4 (hodiny prijmu se srovnaji s daty). Je to slyset:
+          // OS pri cteni kazety nechava kanal 4 znit (AUDC4 = $A8).
+          if (skctl & 0x10) {
+            if (audctl & 0x08) { pcnt16[1] = ((audf[3] << 8) | audf[2]) + 1; pborrow16[1] = 0; }
+            else { pcnt[2] = audfP1[2]; pcnt[3] = audfP1[3]; pborrow[2] = pborrow[3] = 0; }
+          }
         }
         tape.line = lvl;
       }
       i++;
     }
     tape.pos = p1;
-    if ((size_t)tape.pos >= tape.img.n) tape.line = 1; // konec pasky
+    if ((size_t)tape.pos >= tape.img.n) { tape.line = 1; tape.pos = (double)tape.img.n; }   // konec pasky (B298: pocitadlo dal nebezi)
   }
   void tapeUartSample() {
     const int v = tape.line;
@@ -1786,6 +1877,7 @@ public:
     // stop bit
     tape.rxPhase = 0; skstat |= 0x02;
     if (v) tape.bytes++; else tape.framing++;
+    if ((irqen & 0x20) && (skctl & 3)) { if (v) tape.bytesRx++; else tape.framingRx++; }
     receiveSerialByte((uint8_t)tape.rxByte, 0, !v);
   }
 

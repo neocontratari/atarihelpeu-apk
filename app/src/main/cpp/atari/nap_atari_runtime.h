@@ -156,6 +156,55 @@ struct CsaveRecorder {
 
 
 // ---------------------------------------------------------------------
+//  B298: kazeta s bootem (hry na kazete, ne BASIC). Na skutecnem 130XE:
+//  pri zapnuti drzet START (= boot z kazety) a OPTION (= BASIC vypnuty),
+//  OS jednou pipne a ceka na klavesu, pak se zapne motor a hra se nahraje.
+//  Tohle dela totez: drzi START+OPTION od studeneho startu, pozna pipnuti
+//  (reproduktor v GTIA - rada cvaknuti), po jeho skonceni stiskne RETURN
+//  a konzoli pusti. Kdyby OS nepipnul do 12 s, RETURN se stiskne stejne.
+// ---------------------------------------------------------------------
+struct KazetaBoot {
+  enum Stav { NIC, CEKA_PIP, PIPA, HOTOVO } stav = NIC;
+  int snimku = 0, tichoSnimku = 0;
+  long long klikPosl = 0, klikPiskStart = 0;
+  std::vector<std::string> log;
+  bool aktivni() const { return stav == CEKA_PIP || stav == PIPA; }
+  // konzole behem bootu: START + OPTION drzene (bity 0 a 2 = 0)
+  static int konzole(int c) { return c & ~5; }
+  void start(const Machine &m) { stav = CEKA_PIP; snimku = 0; tichoSnimku = 0; klikPosl = m.gtiaKlikPocitadlo; klikPiskStart = klikPosl; }
+  void zrus() { stav = NIC; }
+  // vola se po kazdem snimku; vraci true, kdyz prave stiskl RETURN
+  bool poSnimku(Machine &m) {
+    if (!aktivni()) return false;
+    snimku++;
+    const long long k = m.gtiaKlikPocitadlo;
+    if (stav == CEKA_PIP) {
+      // pipnuti = desitky prepnuti reproduktoru za par snimku (jednotliva
+      // cvaknuti pri inicializaci OS se nepocitaji)
+      if (k - klikPosl >= 20) { stav = PIPA; klikPiskStart = klikPosl; klikPosl = k; tichoSnimku = 0; return false; }
+      if (snimku % 5 == 0) klikPosl = k;
+      if (snimku > 50 * 12) {
+        m.klavesa(12);
+        log.push_back("B298 KAZETA BOOT: OS do 12 s nepipnul - RETURN stisknut stejne");
+        stav = HOTOVO; return true;
+      }
+      return false;
+    }
+    // PIPA: ceka se, az pipnuti skonci (10 snimku bez cvaknuti)
+    if (k != klikPosl) { klikPosl = k; tichoSnimku = 0; return false; }
+    if (++tichoSnimku >= 10) {
+      m.klavesa(12);
+      char b[200];
+      std::snprintf(b, sizeof(b), "B298 KAZETA BOOT: OS pipnul (%lld cvaknuti, snimek %d) - RETURN stisknut, motor bezi, hra se nahrava",
+                    klikPosl - klikPiskStart, snimku);
+      log.push_back(b);
+      stav = HOTOVO; return true;
+    }
+    return false;
+  }
+};
+
+// ---------------------------------------------------------------------
 //  XEX zavadec (tlacitka XEX/MOBIL a TURBO/BASIC na pristroji)
 //
 //  Postup (stejna myslenka jako zavadeni XEX bez DOSu v jinych emulatorech):

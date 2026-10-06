@@ -695,6 +695,8 @@ static std::vector<nap::dev::Ev> g_evQ;
 static nap::TypeQueue g_typeQ;                     // pod g_mStroj
 static nap::CsaveRecorder g_rec;                   // pod g_mStroj
 static nap::XexLoader g_xex;                       // pod g_mStroj
+static nap::KazetaBoot g_kazBoot;                  // B298: boot z kazety (START+OPTION, RETURN po pipnuti) - pod g_mStroj
+static bool g_atrVymena = false;                   // B298: dalsi ATR jen vymenit v D1: (bez restartu) - pod g_mStroj
 static std::mutex g_mFrame;
 static std::vector<uint32_t> g_sdilenySnimek;      // posledni snimek Atari pro kresleni
 static std::atomic<unsigned long long> g_snimekSeq{0};
@@ -789,12 +791,15 @@ static void studenyStartLocked(int consol) {
   g_vbxeZapisuPred = g_vbxeBlituPred = 0; g_vbxeXdlPred = false; g_vbxeRezimPred = -1;
   g_typeQ.clear();
   g_rec.reset();
+  g_kazBoot.zrus();
 }
 static void vyzvednoutVystupyLocked() {
   for (auto &s : g_rec.log) devLog(s);
   g_rec.log.clear();
   for (auto &s : g_xex.log) devLog(s);
   g_xex.log.clear();
+  for (auto &s : g_kazBoot.log) devLog(s);
+  g_kazBoot.log.clear();
   if (g_rec.maHotovo) {
     std::lock_guard<std::mutex> o(g_mOut);
     g_wavOut.swap(g_rec.hotovo);
@@ -818,19 +823,37 @@ static void emuVlaknoMain() {
       std::lock_guard<std::mutex> l(g_mStroj);
       for (const auto &e : ev) {
         switch (e.t) {
-          case nap::dev::Ev::POWER_ON:
+          case nap::dev::Ev::POWER_ON: {
             g_xex.zrus();
-            studenyStartLocked(7);
+            // B298: START/SELECT/OPTION, ktere uzivatel PRAVE DRZI na pristroji,
+            // plati i pri zapnuti - jako na skutecnem 130XE (START = boot
+            // z kazety, OPTION = bez BASICu). Drive se pri zapnuti pustily.
+            const int drzene = (g_consolChtene & ~g_padConsol) & 7;   // prst na pristroji nebo herni ovladac
+            studenyStartLocked(drzene);
             if (g_stroj) g_stroj->sioRychlyTimeout = false;
             g_strojBezi = true; g_atariRing.clear();
-            g_consolChtene = 7; g_consolDrzetDo[0] = g_consolDrzetDo[1] = g_consolDrzetDo[2] = 0;
+            g_consolDrzetDo[0] = g_consolDrzetDo[1] = g_consolDrzetDo[2] = 0;
             devLog("B291 POWER ZAPNUTO - studeny start (pamet i hardware od nuly, jako vypinac na skrini)");
-            if (g_stroj && g_stroj->disk.mounted) {
+            if (g_stroj && !(drzene & 1) && g_stroj->tape.loaded) {
+              // START drzeny + kazeta v magnetofonu = boot z kazety; po pipnuti RETURN sam
+              g_stroj->tape.pos = 0; g_stroj->tape.rxPhase = 0; g_stroj->tape.play = true;
+              g_kazBoot.start(*g_stroj);
+              devLog("B298 POWER se START (+OPTION) a kazetou " + g_stroj->tape.name + " - boot z kazety (pasek pretocen na zacatek, po pipnuti RETURN)");
+              g_statusText = "BOOT Z KAZETY - RETURN STISKNU SÁM"; g_statusMs = 8000;
+            } else if (g_stroj && g_stroj->disk.mounted) {
               // B295: s disketou v D1: se startuje jako s hrou - OPTION drzene (BASIC vypnuty)
               g_consolDrzetDo[2] = g_snimkuCelkem.load() + 150;
               devLog("B295 POWER s disketou v D1: (" + g_stroj->disk.name + ") - OPTION drzeno pri startu, BASIC vypnuty, bootuje disketa");
+              // B298: at je videt, proc se zase nahrava hra (Rene: "W3D nepomuze ani vypnout a zapnout")
+              {   // nazev zkratit, at se zprava vejde na radek pod pristrojem
+                std::string jm = g_stroj->disk.name; if (jm.size() > 18) jm = jm.substr(0, 16) + "..";
+                g_statusText = "V D1: JE " + jm + " - VYSUNOUT: ATR/DISK"; g_statusMs = 7000;
+              }
+            } else if (drzene != 7) {
+              devLog(std::string("B298 POWER s drzenym") + ((drzene & 1) ? "" : " START") + ((drzene & 2) ? "" : " SELECT") + ((drzene & 4) ? "" : " OPTION"));
             }
             break;
+          }
           case nap::dev::Ev::POWER_OFF:
             g_strojBezi = false; g_typeQ.clear(); g_rec.reset(); g_xex.zrus(); g_atariRing.clear();
             devLog("B291 POWER VYPNUTO");
@@ -883,6 +906,7 @@ static void emuVlaknoMain() {
           case nap::dev::Ev::RESET:
             if (g_stroj && g_strojBezi) {
               g_stroj->reset(); g_stroj->consol = 7;
+              g_kazBoot.zrus();          // B298: teply start boot z kazety nedela
               devLog("B291 RESET (tlacitko RESET na pristroji - pamet zustava)");
             }
             break;
@@ -947,6 +971,7 @@ static void emuVlaknoMain() {
       std::lock_guard<std::mutex> l(g_mStroj);
       if (!g_stroj) studenyStartLocked(7);
       if (!g_xex.aktivni()) g_stroj->consol = consolEfektivni();   // pri zavadeni XEX drzi OPTION zavadec
+      if (g_kazBoot.aktivni()) g_stroj->consol = nap::KazetaBoot::konzole(g_stroj->consol);   // B298: boot z kazety
       g_typeQ.step(*g_stroj);
       if (!g_stroj->cpu.jam) g_stroj->runFrame();
       if (g_stroj->cpu.jam) std::fill(zvuk.begin(), zvuk.end(), 0.f);
@@ -958,6 +983,7 @@ static void emuVlaknoMain() {
       for (float &v : pasek) v *= 0.8f;
       g_rec.snimek(*g_stroj, pasek.data(), 882);
       g_xex.poSnimku(*g_stroj);
+      if (g_kazBoot.poSnimku(*g_stroj)) { g_statusText = "NAHRÁVÁ SE Z KAZETY..."; g_statusMs = 15000; }
       // B296: VBXE - do logu, kdyz ho program najde / zapne XDL / zmeni rezim
       {
         static int hlaseni = 0;
@@ -989,7 +1015,7 @@ static void emuVlaknoMain() {
           motorPred = mot;
           char b[320];
           if (mot) {
-            bajtuPred = t.bytes; ramcePred = t.framing;
+            bajtuPred = t.bytesRx; ramcePred = t.framingRx;
             if (t.loaded)
               snprintf(b, sizeof(b), "B295 KAZETA motor ZAPNUT - kazeta %s, PLAY=%s, pozice %.1f / %.1f s",
                        t.name.c_str(), t.play ? "ano (pasek bezi)" : "NE - pasek STOJI, zmackni PLAY", t.pos / t.img.rate, t.img.seconds());
@@ -1000,8 +1026,9 @@ static void emuVlaknoMain() {
             g_statusMs = t.loaded && !t.play ? 30000 : 6000;
           } else {
             if (t.loaded) {
-              snprintf(b, sizeof(b), "B295 KAZETA motor VYPNUT - z pasky prijato %lld bajtu (chyb ramce %lld), pozice %.1f / %.1f s",
-                       t.bytes - bajtuPred, t.framing - ramcePred, t.pos / t.img.rate, t.img.seconds());
+              // B298: pocita se jen to, co OS opravdu cetl (sum v mezerach mezi zaznamy OS necte)
+              snprintf(b, sizeof(b), "B295 KAZETA motor VYPNUT - OS z pasky precetl %lld bajtu (chyb ramce pri cteni %lld), pozice %.1f / %.1f s",
+                       t.bytesRx - bajtuPred, t.framingRx - ramcePred, t.pos / t.img.rate, t.img.seconds());
               devLog(b);
             }
           }
@@ -1130,7 +1157,12 @@ Java_eu_atarihelp_emu10_NativeAtariCoreBridge_devStartNative(JNIEnv *, jclass, j
   }
   {
     std::lock_guard<std::mutex> l(g_mStroj);
-    if (studeny) { g_joyDotyk = g_joyPad = g_padConsol = g_padKlav = 0; }   // B296: joystick pusteny
+    if (studeny) {
+      g_joyDotyk = g_joyPad = g_padConsol = g_padKlav = 0;   // B296: joystick pusteny
+      // B298: START/OPTION drzene pri POWER plati (boot z kazety) - novy vstup do
+      // HELP ale zacina s pustenou konzoli
+      g_consolChtene = 7; g_consolDrzetDo[0] = g_consolDrzetDo[1] = g_consolDrzetDo[2] = 0;
+    }
     if (studeny || !g_stroj) {
       g_xex.zrus();
       studenyStartLocked(7);
@@ -1148,6 +1180,9 @@ Java_eu_atarihelp_emu10_NativeAtariCoreBridge_devStartNative(JNIEnv *, jclass, j
       devLog("B296 VBXE FX 1.26 v jadre: registry $D640, 512 kB VRAM, MEMAC A/B, XDL (overlay LR/SR/HR/text 80 sloupcu), "
              "atributova mapa, palety 4x256, blitter (rezimy 0-6, zoom, vzor, kolize) + IRQ; obraz 4 body na barevny takt. "
              "Joystick 1: leva pulka obrazovky = smer, prava = FIRE; herni ovladac taky.");
+      devLog("B298 ZVUK s pasmem jako TV (FIR 16 kHz, bez prekladu ultrazvuku do slysitelna), asynchronni prijem POKEY "
+             "restartuje casovace 3+4 start bitem; KAZETA: hra (boot) = START+OPTION a RETURN samo, stereo WAV = zvukova "
+             "stopa do TV, CLOAD i s disketou v D1:; DISKETA: ATR/DISK = vysunout / vymenit bez restartu.");
     }
     g_strojBezi = zapnuto;
   }
@@ -1263,6 +1298,40 @@ extern "C" JNIEXPORT jstring JNICALL
 Java_eu_atarihelp_emu10_NativeAtariCoreBridge_devCtlNative(JNIEnv *env, jclass, jstring jcmd) {
   std::string cmd;
   if (jcmd) { const char *c = env->GetStringUTFChars(jcmd, nullptr); if (c) { cmd = c; env->ReleaseStringUTFChars(jcmd, c); } }
+  // B298: disketova mechanika D1: - "d1" = co je v mechanice ("" = prazdna),
+  // "disk_eject" = vysunout a zapnout znovu (BASIC), "atr_vymena" = dalsi ATR
+  // jen vymenit bez restartu (druha strana hry), "atr_normal" = zrusit
+  if (cmd == "d1" || cmd == "disk_eject" || cmd == "atr_vymena" || cmd == "atr_normal") {
+    std::string out, jm;
+    bool vysunuto = false;
+    {
+      std::lock_guard<std::mutex> l(g_mStroj);
+      if (g_stroj && g_stroj->disk.mounted) jm = g_stroj->disk.name;
+      if (cmd == "atr_vymena") g_atrVymena = true;
+      else if (cmd == "atr_normal") g_atrVymena = false;
+      else if (cmd == "disk_eject" && g_stroj) {
+        vysunuto = g_stroj->disk.mounted;
+        g_stroj->disk = nap::AtrDisk();
+        g_xex.zrus();
+        studenyStartLocked(7);                 // jako vysunout disketu a vypnout/zapnout: BASIC
+        g_stroj->sioRychlyTimeout = false;
+        g_strojBezi = true;
+        g_consolChtene = 7; g_consolDrzetDo[0] = g_consolDrzetDo[1] = g_consolDrzetDo[2] = 0;
+        vyzvednoutVystupyLocked();
+      }
+      out = (cmd == "disk_eject") ? std::string() : jm;
+    }
+    if (cmd == "disk_eject") {
+      devLog(vysunuto ? "B298 DISKETA " + jm + " vysunuta z D1: - studeny start (BASIC)" : std::string("B298 DISKETA: D1: byla prazdna - studeny start (BASIC)"));
+      std::lock_guard<std::mutex> dl(g_mDev);
+      nap::dev::Device &dv = devGet();
+      if (!dv.power) { dv.power = true; dv.powerAt = nap_ted_ms(); }
+      dv.atariValid = false; dv.markScreen(); dv.markLegend();
+      dv.setStatusMessage("DISKETA VYSUNUTA - D1: PRÁZDNÁ", nap_ted_ms(), 4000);
+    } else if (cmd == "atr_vymena") devLog("B298 DISKETA: dalsi ATR se jen vymeni v D1: (bez restartu, napr. druha strana hry)");
+    pokeRender();
+    return env->NewStringUTF(out.c_str());
+  }
   std::string out;
   nap::dev::Ev ev[16]; int n = 0;
   {
@@ -1371,9 +1440,15 @@ Java_eu_atarihelp_emu10_NativeAtariCoreBridge_devLoadTapeNative(JNIEnv *env, jcl
     pokeRender();
     return env->NewStringUTF(b);
   }
-  snprintf(b, sizeof(b), "OK %s: %.1f s, %d Hz, %d kanal(y) (FSK v kanalu %d), %d bit; pri 600 Bd %lld bajtu v %lld zaznamech, %lld chyb ramce; demodulace %lld ms",
+  // B298: zaznamy s platnym kontrolnim souctem, chyby ramce jen UVNITR zaznamu
+  // (ty by vadily; sum v mezerach mezi zaznamy OS necte), druh kazety
+  snprintf(b, sizeof(b), "OK %s: %.1f s, %d Hz, %d kanal(y) (FSK v kanalu %d), %d bit; pri 600 Bd %lld bajtu v %lld zaznamech "
+                         "(kontrolni soucet OK %lld, spatne %lld), chyb ramce v zaznamech %lld (sum v mezerach %lld); druh: %s%s; demodulace %lld ms",
            nm.c_str(), img.seconds(), img.srcRate, img.channels, img.usedChannel + 1, img.bitsPerSample,
-           img.bytes600, img.records600, img.framing600, ms);
+           img.bytes600, img.records600, img.recordsOk600, img.recordsBad600, img.framingRec600, img.framing600 - img.framingRec600,
+           nap::napTapeDruh(img), img.audio.empty() ? "" : ", zvukova stopa (druhy kanal) hraje do TV jako u skutecneho magnetofonu", ms);
+  const int druh = img.druh;
+  bool odpojenaDisketa = false;
   {
     std::lock_guard<std::mutex> l(g_mStroj);
     if (!g_stroj) zaloz();
@@ -1383,16 +1458,45 @@ Java_eu_atarihelp_emu10_NativeAtariCoreBridge_devLoadTapeNative(JNIEnv *env, jcl
     // (jako bys kazetu vlozil a zmackl PLAY). Pasek se stejne hne az kdyz
     // OS zapne motor (CLOAD + RETURN + po pipnuti RETURN).
     t.img = std::move(img); t.loaded = true; t.name = nm; t.play = true; t.pos = 0;
+    if (druh == nap::TapeImage::BOOT) {
+      // B298: Rene "pro wav jsou hry, kde je potreba podrzet start+option" -
+      // presne to se ted stane samo: studeny start s drzenym START+OPTION,
+      // OS pipne, RETURN, hra se nahraje a spusti.
+      g_xex.zrus();
+      if (g_stroj->disk.mounted) { odpojenaDisketa = true; g_stroj->disk = nap::AtrDisk(); }
+      studenyStartLocked(nap::KazetaBoot::konzole(7));
+      g_stroj->sioRychlyTimeout = false;
+      g_kazBoot.start(*g_stroj);
+      g_strojBezi = true;
+      g_consolChtene = 7; g_consolDrzetDo[0] = g_consolDrzetDo[1] = g_consolDrzetDo[2] = 0;
+      vyzvednoutVystupyLocked();
+    }
   }
   devLog(std::string("B292 KAZETA VLOZENA ") + b);
-  devLog("B295 KAZETA PLAY zmacknuto automaticky - ted napis CLOAD, RETURN, a po pipnuti jeste jednou RETURN");
+  const char *stav;
+  if (druh == nap::TapeImage::BOOT) {
+    if (odpojenaDisketa) devLog("B298 DISKETA vyjmuta z D1: (bootuje kazeta)");
+    devLog("B298 KAZETA S BOOTEM - studeny start s drzenym START+OPTION (jako pri zapnuti na skutecnem 130XE), po pipnuti RETURN sam");
+    stav = "HRA Z KAZETY - NAHRAJE SE SAMA";
+  } else if (druh == nap::TapeImage::TEXT) {
+    devLog("B298 KAZETA s vypisem BASICu (text) - napis ENTER \"C:\", RETURN, po pipnuti RETURN");
+    stav = "NAPIŠ ENTER \"C:\" A 2x RETURN";
+  } else {
+    devLog("B295 KAZETA PLAY zmacknuto automaticky - ted napis CLOAD, RETURN, a po pipnuti jeste jednou RETURN");
+    stav = druh == nap::TapeImage::BASIC ? "NAPIŠ CLOAD + RETURN, PO PÍPNUTÍ RETURN"
+                                         : "NAPIŠ CLOAD, HRA: START+OPTION+POWER";
+  }
   {
     std::lock_guard<std::mutex> dl(g_mDev);
     nap::dev::Device &d = devGet();
     d.setDoor(false, nap_ted_ms());
     d.play = true; d.rec = false; d.markTape(); d.markWindow(); d.markLegend();
     d.counter = 0; d.counterAcc = 0; d.markCounter();
-    d.setStatusMessage("NAPIS CLOAD + RETURN, PO PIPNUTI RETURN", nap_ted_ms(), 120000);
+    if (druh == nap::TapeImage::BOOT) {
+      if (!d.power) { d.power = true; d.powerAt = nap_ted_ms(); }
+      d.atariValid = false; d.markScreen();
+    }
+    d.setStatusMessage(stav, nap_ted_ms(), druh == nap::TapeImage::BOOT ? 20000 : 120000);
   }
   pokeRender();
   return env->NewStringUTF(b);
@@ -1417,6 +1521,27 @@ Java_eu_atarihelp_emu10_NativeAtariCoreBridge_devLoadAtrNative(JNIEnv *env, jcla
     devLog(std::string("B295 DISKETA ") + b);
     std::lock_guard<std::mutex> dl(g_mDev);
     devGet().setStatusMessage(("NENI ATR: " + nm).c_str(), nap_ted_ms(), 6000);
+    pokeRender();
+    return env->NewStringUTF(b);
+  }
+  bool vymena = false;
+  {
+    // B298: vymena diskety bez restartu (hra chce "vloz disketu 2 / otoc disketu")
+    std::lock_guard<std::mutex> l(g_mStroj);
+    if (g_atrVymena && g_stroj && g_strojBezi) {
+      vymena = true;
+      g_atrVymena = false;
+      g_stroj->disk = std::move(d);
+    }
+    g_atrVymena = false;
+  }
+  if (vymena) {
+    snprintf(b, sizeof(b), "OK %s -> mechanika D1: VYMENENA bez restartu (program bezi dal)", nm.c_str());
+    devLog(std::string("B298 DISKETA ") + b);
+    {
+      std::lock_guard<std::mutex> dl(g_mDev);
+      devGet().setStatusMessage(("V D1: JE " + (nm.size() > 26 ? nm.substr(0, 24) + ".." : nm)).c_str(), nap_ted_ms(), 5000);
+    }
     pokeRender();
     return env->NewStringUTF(b);
   }

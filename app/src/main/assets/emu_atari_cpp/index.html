@@ -113,12 +113,15 @@ Tenhle test pousti jadro na desetitisicich nahodnych stavu a porovnava vysledek
 s cislem, ktere vyslo na pocitaci. Delam to proto, ze pocitac je x86 a telefon
 ARM - a na ARM se nektere veci chovaji jinak. Kdyz se to rozejde, ma se to
 poznat ted, a ne az podle spatneho obrazu.<br><br>
+B298: HRY NA KAZETE (WAV s bootem) se nahraji samy - Atari se zapne s
+drzenym START+OPTION a po pipnuti stiskne RETURN. Zvuk pri CLOAD jako na
+skutecnem 130XE (bez piskotu), u stereo WAV hraje i zvukova stopa kazety.
+CLOAD funguje i s disketou v D1:. ATR/DISK s disketou v D1: nabidne VYSUNOUT
+nebo VYMENIT BEZ RESTARTU. Stahovani her z netu: dohledani certifikatu
+atarihelp.eu, starsi stazeni uz nic nespusti.
 B297: NA SIRKU (otoc telefon) obraz Atari pres cely displej a ovladani jako
 u Segy - D-pad, FIRE, MEZERA, RETURN, START/SELECT/OPTION; kolecko vpravo
-nahore = nastaveni (rozlozeni, citlivost, velikost, pruhlednost, vibrace,
-levak). B296: v C++ jadre je VBXE (Wolfenstein 3D, Popeye). Na vysku je
-joystick 1 obrazovka Atari (leva pulka smer, prava FIRE), herni ovladac
-funguje vsude.
+nahore = nastaveni. B296: v C++ jadre je VBXE (Wolfenstein 3D, Popeye).
 </p>
 
 <p><a href="../index.html">&larr; Zpet do nabidky</a></p>
@@ -135,39 +138,42 @@ try{ if(window.AHATARICPP && !AHATARICPP.jeNactene()){
 } }catch(e){}
 function set(id,t,cls){var e=$(id); if(!e)return; e.textContent=t; if(cls)e.className='v '+cls;}
 var KROKY=[
- // B297: na sirku - obraz pres cely displej, D-pad a tlacitka jako u Segy (nastavitelne)
+ // B298: kazeta (boot, zvuk, CLOAD s disketou), disketa (vysunout/vymenit), hry z netu
  {n:1,co:'TEST JADRA (tlacitko SPUSTIT TEST JADRA nize)',
   ok:'Procesor i Pamet = SEDI (29C55806 / D3949DC5), Rychlost aspon 2x realny cas.',
   ne:'NESEDI, nebo rychlost pod 1x (Atari by se zpomalovalo).'},
- {n:2,co:'NA SIRKU: v HELP otoc telefon na sirku',
-  ok:'Obraz Atari pres celou vysku displeje, vlevo dole D-pad, vpravo FIRE / MEZERA / RETURN, vlevo nahore START / SELECT / OPTION, vpravo nahore kolecko. Nahore se na chvili ukaze KOLECKO VPRAVO NAHORE = NASTAVENI D-PADU.',
-  ne:'Zustane maly pristroj, obraz je useknuty / rozmazany, nebo tlacitka chybi.'},
- {n:3,co:'Wolfenstein 3D na sirku (ATR/DISK -> wolf3d.atr, RETURN do hry): D-pad = chuze a otaceni (i sikmo), FIRE = strelba, MEZERA = dvere',
-  ok:'Puntik D-padu jede pod palcem, hrac chodi a otaci se, FIRE strili (ubyva AMMO), MEZERA otevre dvere, pri stisku telefon kratce zavibruje.',
-  ne:'Smer se zasekne, nereaguje, nebo jde jinam, nez ukazuje puntik.'},
- {n:4,co:'Popeye na sirku: START (vlevo nahore), pak FIRE',
-  ok:'Hra zacne, D-padem chodis, FIRE = rana. Obraz je cely videt.',
-  ne:'START nebo FIRE nereaguje.'},
- {n:5,co:'Kolecko -> UPRAVIT ROZLOZENI TLACITEK: pretahni D-pad a FIRE jinam, zkus PO SKUPINACH, pak HOTOVO',
-  ok:'Tlacitka jdou tahat prstem (carkovany ramecek), PO SKUPINACH tahne FIRE/MEZERA/RETURN najednou, VYCHOZI vrati puvodni mista, HOTOVO -> pod obrazem ROZLOZENI ULOZENO. Po vypnuti appky a novem spusteni jsou tlacitka tam, kam jsi je dal.',
-  ne:'Tlacitko nejde chytit, uskakuje, nebo se rozlozeni neulozi.'},
- {n:6,co:'Kolecko -> OVLADANI: CITLIVOST A VZHLED (posuvniky, vibrace)',
-  ok:'Po pusteni posuvniku se hned zmeni velikost tlacitek / D-padu / pruhlednost; citlivost meni, jak daleko musi prst dojet; vibrace jde vypnout. VYCHOZI NASTAVENI vse vrati.',
-  ne:'Zmena se neprojevi nebo se neulozi.'},
- {n:7,co:'Kolecko -> PROHODIT D-PAD A AKCE (LEVAK)',
-  ok:'D-pad je vpravo, FIRE/MEZERA/RETURN vlevo; zustane i po novem spusteni.',
-  ne:'Nic se nestane, nebo se tlacitka prekryvaji.'},
- {n:8,co:'Zpet na vysku',
-  ok:'Pristroj Atari jako driv (klavesnice, kazetak, joystick na obrazovce). Nic se nezaseklo (zadny smer ani klavesa nezustala drzena).',
-  ne:'Pristroj je rozhozeny, nebo neco zustalo drzene.'},
- {n:9,co:'Herni ovladac (jestli mas): na sirku i na vysku',
-  ok:'Krizek/packa = smer, A nebo B = FIRE, X = MEZERA, Y = RETURN, START/SELECT jako na konzoli.',
-  ne:'Ovladac nereaguje.'},
- {n:10,co:'Hry bez VBXE na sirku (napr. Donkey Kong Jr. z NET/HRY)',
-  ok:'Obraz pres celou vysku, hraje se D-padem a FIRE.',
-  ne:'Obraz je deformovany nebo ovladani nereaguje.'},
- {n:11,co:'ATARI 130XE EMULATOR, PS1 a SEGA v hlavni nabidce',
-  ok:'Bezi UPLNE STEJNE jako dosud (i Sega na sirku).',
+ {n:2,co:'CLOAD - ZVUK: EJECT, vyber WAV s BASIC programem, CLOAD, RETURN, po pipnuti RETURN',
+  ok:'Behem nahravani bzucivy ton po kazdem zaznamu (jako skutecne 130XE), ZADNY vysoky piskot. Program se nahraje, READY.',
+  ne:'Porad piskot, nebo zvuk jiny nez na skutecnem Atari (popis jak).'},
+ {n:3,co:'TVUJ DLOUHY PROGRAM Z WAV (WALLS ULTIMATE): CLOAD a hned LIST (pred RUN)',
+  ok:'Vypis je cely a spravne. (Na PC jsem overil dlouhe programy v BASICu i TBXL - vypis sedi znak po znaku.)',
+  ne:'Vypis se rozsype - pak mi prosim posli ten WAV (WALLSULTIMATED...wav), rozeberu ho bajt po bajtu.'},
+ {n:4,co:'HRA NA KAZETE (WAV, ktery potreboval START+OPTION): EJECT a vyber ji',
+  ok:'Atari se samo zapne s drzenym START+OPTION, pipne, samo stiskne RETURN, bezi motor a hra se nahraje a spusti. Pod pristrojem HRA Z KAZETY... V logu B298 KAZETA BOOT: OS pipnul.',
+  ne:'Nic se nedeje, nebo nahravani skonci chybou (v logu radek B292 KAZETA VLOZENA - posli ho).'},
+ {n:5,co:'Totez rucne jako na 130XE: POWER vypnout, drzet START a OPTION (dva prsty), POWER zapnout',
+  ok:'Boot z kazety jako na skutecnem 130XE (po pipnuti RETURN stiskne appka sama).',
+  ne:'Atari nabehne do BASICu.'},
+ {n:6,co:'POWER vyp/zap BEZ START (kazeta s hrou porad v magnetofonu)',
+  ok:'Atari nabehne normalne do BASICu (READY) - kazeta sama nebootuje, jako na skutecnem 130XE.',
+  ne:'Hra se nahrava znovu.'},
+ {n:7,co:'Wolfenstein 3D (ATR) a pak ATR/DISK',
+  ok:'Nabidka MECHANIKA D1: wolf3d.atr - VYSUNOUT DISKETU (Atari znovu s BASICem, READY), VYMENIT BEZ RESTARTU, JINA DISKETA. Po POWER vyp/zap s disketou pod pristrojem V D1: JE ... - VYSUNOUT: ATR/DISK.',
+  ne:'Po VYSUNOUT se W3D nahrava dal.'},
+ {n:8,co:'S disketou v D1: zkus CLOAD z kazety',
+  ok:'CLOAD funguje (drive s disketou v D1: koncil chybou).',
+  ne:'ERROR 138 nebo jina chyba.'},
+ {n:9,co:'NET/HRY - nekolik her za sebou (i rychle po sobe)',
+  ok:'Spusti se vzdy ta POSLEDNI vybrana. Kdyz telefon nejdriv odmitne certifikat, v logu B298 TLS ... doplnen ... DUVERYHODNY a hra se stahne.',
+  ne:'Spusti se jina hra, nez jsi vybral, nebo stahovani selze (v logu radek B298 TLS odmitnuto - posli ho).'},
+ {n:10,co:'Na sirku: kolecko - KAZETA (WAV) a ATR/DISK',
+  ok:'Obe nabidky jdou otevrit i na sirku.',
+  ne:'Polozka chybi nebo nic nedela.'},
+ {n:11,co:'Popeye / W3D / hry z NET jako minule (na vysku i na sirku)',
+  ok:'Bezi stejne jako v B297, zvuk her je cisty (bez praskani a bez piskotu).',
+  ne:'Cokoli horsi nez v B297.'},
+ {n:12,co:'ATARI 130XE EMULATOR, PS1 a SEGA v hlavni nabidce',
+  ok:'Bezi UPLNE STEJNE jako dosud.',
   ne:'Jakakoli zmena proti minule verzi.'}
 ];
 var vysledky={};

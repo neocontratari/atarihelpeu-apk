@@ -1,0 +1,8 @@
+OK     AIA: adresa vydavatele prectena z certifikatu
+OK     system sam neuplny retez (jen list) odmitne - jako Android 9 v Reneho logu
+OK     AtarihelpTls: mezilehly dohledan podle AIA a retez prijat
+OK     list od cizi CA (stejne jmeno vydavatele, jiny klic) je odmitnut i po dohledani
+OK     uplny retez od serveru projde rovnou (beze zmeny)
+B298 TLS atarihelp.eu: server poslal neuplny retez (1 cert.: atarihelp.eu <- Test Inter R11) - doplnen +Test Inter R11 z http://127.0.0.1:18765/inter.der -> DUVERYHODNY (system telefonu)
+B298 TLS odmitnuto: PKIX path building failed: sun.security.provider.certpath.SunCertPathBuilderException: unable to find valid certification path to requested target | server poslal 1 cert.: atarihelp.eu <- Test Inter R11 +Test Inter R11 z http://127.0.0.1:18765/inter.der
+VYSLEDEK: 5 kontrol, 0 chyb

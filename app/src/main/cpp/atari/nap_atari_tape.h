@@ -36,6 +36,20 @@ struct TapeImage {
   // diagnostika
   int channels = 0, bitsPerSample = 0, srcRate = 0, usedChannel = 0;
   long long bytes600 = 0, records600 = 0, framing600 = 0;
+  // B298: chyby ramce JEN uvnitr zaznamu (mezi $55 $55 a kontrolnim
+  // souctem) - ty by vadily. Chyby v mezerach mezi zaznamy (sum, dobeh
+  // tonu) OS vubec necte, framing600 je pocita vsechny.
+  long long framingRec600 = 0, recordsOk600 = 0, recordsBad600 = 0;
+  // B298: co je na pasce - podle prvniho platneho zaznamu (kontrolni soucet OK)
+  enum Druh { NEZNAMY = 0, BASIC = 1, BOOT = 2, TEXT = 3 };
+  int druh = NEZNAMY;
+  int prvniCtl = -1;                   // ridici bajt prvniho zaznamu ($FC/$FA/$FE)
+  std::vector<uint8_t> prvniData;      // 128 datovych bajtu prvniho zaznamu
+  double prvniCas = 0;                 // kde zacina (s)
+  // B298: zvukova stopa (u stereo WAV druhy kanal) - skutecny magnetofon ji
+  // pousti do televize (AUDIO IN). Prazdne = mono WAV / ticho.
+  std::vector<int16_t> audio;
+  double audioRate = 0;
   inline int bit(size_t i) const { return i < n ? (int)((w[i >> 6] >> (i & 63)) & 1) : 1; }
   inline void set(size_t i, int v) { if (v) w[i >> 6] |= (1ULL << (i & 63)); else w[i >> 6] &= ~(1ULL << (i & 63)); }
   double seconds() const { return rate > 0 ? n / rate : 0; }
@@ -148,6 +162,35 @@ inline bool napTapeFromWav(const uint8_t *d, size_t len, TapeImage &t, std::stri
   t = TapeImage();
   t.n = n; t.rate = rate; t.w.assign((n + 63) / 64, 0);
   t.channels = (int)ch.size(); t.bitsPerSample = bits; t.srcRate = rate; t.usedChannel = bestCh;
+  // B298: zvukova stopa = druhy kanal stereo WAV (ne ten s daty). Kdyz je
+  // v nem jen ticho, nic se neuklada. Nad 30 kHz se ulozi s polovicnim
+  // vzorkovanim (staci na hlas/hudbu, setri pamet), nejvys 20 minut.
+  if (ch.size() >= 2) {
+    int ac = -1; double nej = 0;
+    for (size_t c = 0; c < ch.size(); c++) {
+      if ((int)c == bestCh) continue;
+      double s = 0; const size_t krok = 7;
+      for (size_t i = 0; i < ch[c].size(); i += krok) s += (double)ch[c][i] * ch[c][i];
+      const double rms = std::sqrt(s / (double)std::max<size_t>(1, ch[c].size() / krok));
+      if (rms > nej) { nej = rms; ac = (int)c; }
+    }
+    if (ac >= 0 && nej > 0.004) {
+      const int dec = rate > 30000 ? 2 : 1;
+      const std::vector<float> &x = ch[(size_t)ac];
+      size_t m = x.size() / (size_t)dec;
+      const size_t maxM = (size_t)(20 * 60 * (double)rate / dec);
+      if (m > maxM) m = maxM;
+      t.audio.resize(m);
+      for (size_t i = 0; i < m; i++) {
+        float v = 0;
+        for (int k = 0; k < dec; k++) v += x[i * (size_t)dec + (size_t)k];
+        v /= (float)dec;
+        if (v > 1.f) v = 1.f; else if (v < -1.f) v = -1.f;
+        t.audio[i] = (int16_t)std::lround(v * 32767.0);
+      }
+      t.audioRate = (double)rate / dec;
+    }
+  }
   int lvl = 1;
   for (size_t i = 0; i < n; i++) {
     const float em = mark[i], es = space[i];
@@ -158,16 +201,35 @@ inline bool napTapeFromWav(const uint8_t *d, size_t len, TapeImage &t, std::stri
   }
   // diagnostika: kolik bajtu / zaznamu je na pasce pri 600 baudech
   {
-    // zaznam = mezera (>= 50 ms bez bajtu) a pak bajty $55 $55
+    // zaznam = mezera (>= 50 ms bez bajtu) a pak bajty $55 $55, ridici bajt,
+    // 128 dat, kontrolni soucet (soucet s prenosem jako v OS)
     const double bitT = rate / 600.0;
-    int stav = 0; double dalsi = 0; int bit = 0, bajt = 0, posl = 1, vZaznamu = 0, prvni = 0;
-    size_t konecPosl = 0; const size_t mezera = (size_t)(rate * 0.05);
+    int stav = 0; double dalsi = 0; int bit = 0, bajt = 0, posl = 1;
+    size_t konecPosl = 0, zacatek = 0; const size_t mezera = (size_t)(rate * 0.05);
+    std::vector<uint8_t> rec; rec.reserve(160);
+    bool synch = false, vyhodnocen = false;
+    auto uzavri = [&]() {
+      // konec zaznamu (mezera): kontrolni soucet a prvni platny zaznam
+      if (synch && rec.size() >= 132 && !vyhodnocen) {
+        unsigned s = 0;
+        for (int k = 0; k < 131; k++) { s += rec[(size_t)k]; if (s > 255) s = (s & 0xFF) + 1; }
+        if ((uint8_t)s == rec[131]) {
+          t.recordsOk600++;
+          if (t.prvniCtl < 0 && (rec[2] == 0xFC || rec[2] == 0xFA)) {
+            t.prvniCtl = rec[2];
+            t.prvniData.assign(rec.begin() + 3, rec.begin() + 131);
+            t.prvniCas = (double)zacatek / rate;
+          }
+        } else t.recordsBad600++;
+      } else if (synch && !vyhodnocen) t.recordsBad600++;
+      vyhodnocen = true;
+    };
     for (size_t i = 0; i < n; i++) {
       const int v = t.bit(i);
       if (stav == 0) {
         if (posl == 1 && v == 0) {
           stav = 1; dalsi = (double)i + bitT * 0.5;
-          if (i - konecPosl >= mezera || t.bytes600 == 0) vZaznamu = 0;
+          if (i - konecPosl >= mezera || t.bytes600 == 0) { uzavri(); rec.clear(); synch = false; vyhodnocen = false; zacatek = i; }
         }
       } else if ((double)i >= dalsi) {
         if (stav == 1) { if (v == 0) { stav = 2; bit = 0; bajt = 0; dalsi += bitT; } else stav = 0; }
@@ -175,18 +237,41 @@ inline bool napTapeFromWav(const uint8_t *d, size_t len, TapeImage &t, std::stri
         else {
           if (v) {
             t.bytes600++;
-            if (vZaznamu == 0) prvni = bajt;
-            else if (vZaznamu == 1 && prvni == 0x55 && bajt == 0x55) t.records600++;
-            vZaznamu++;
-          } else t.framing600++;
+            if (rec.size() < 160) rec.push_back((uint8_t)bajt);
+            if (rec.size() == 2 && rec[0] == 0x55 && rec[1] == 0x55) { t.records600++; synch = true; }
+            if (rec.size() == 132) uzavri();
+          } else {
+            t.framing600++;
+            if (synch && rec.size() >= 2 && rec.size() < 132) { t.framingRec600++; if (rec.size() < 160) rec.push_back((uint8_t)bajt); }
+          }
           konecPosl = i;
           stav = 0;
         }
       }
       posl = v;
     }
+    uzavri();
+    // co je na pasce (podle prvniho platneho zaznamu)
+    if (t.prvniData.size() == 128) {
+      const uint8_t *dd = t.prvniData.data();
+      int tisk = 0;
+      for (int k = 0; k < 12; k++) if ((dd[k] >= 0x20 && dd[k] < 0x7F) || dd[k] == 0x9B) tisk++;
+      if (dd[0] == 0 && dd[1] == 0) t.druh = TapeImage::BASIC;                       // CSAVE: LOMEM 0, VNT...
+      else if (dd[0] >= '0' && dd[0] <= '9' && tisk >= 10) t.druh = TapeImage::TEXT;  // LIST "C:" (ENTER)
+      else if (dd[1] >= 1) t.druh = TapeImage::BOOT;                                 // bootovaci soubor: pocet zaznamu, adresa
+    }
   }
   return true;
+}
+
+// B298: popis druhu kazety pro log / stavovy radek
+inline const char *napTapeDruh(const TapeImage &t) {
+  switch (t.druh) {
+    case TapeImage::BASIC: return "BASIC program (CLOAD)";
+    case TapeImage::BOOT: return "bootovaci (hra - START+OPTION pri zapnuti)";
+    case TapeImage::TEXT: return "vypis BASIC jako text (ENTER \"C:\")";
+    default: return "neznamy (prvni zaznam neprecten)";
+  }
 }
 
 }  // namespace nap
