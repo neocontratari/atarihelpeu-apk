@@ -66,7 +66,7 @@ int main(int argc, char **argv) {
   // obrazovka se prekresluje cela kazdy snimek) + kopie zmenene oblasti
   std::vector<uint32_t> win((size_t)d->W * d->H);
   double sum = 0, worst = 0; long long area = 0;
-  std::vector<uint32_t> fbx(v->fb, v->fb + AnticView::W * AnticView::H);
+  std::vector<uint32_t> fbx(v->fb, v->fb + AnticView::FW * AnticView::H);   // B296: fb 768 siroky
   for (int i = 0; i < 100; i++) {
     fbx[(i * 7919) % fbx.size()] ^= 0x00FFFFFFu;
     auto a0 = std::chrono::steady_clock::now();

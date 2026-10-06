@@ -45,6 +45,51 @@ static void ulozIdx(Machine &m, const std::string &fn) {
   FILE *o = fopen(fn.c_str(), "wb"); if (!o) return;
   fwrite(m.view->idx, 1, AnticView::W * AnticView::H, o); fclose(o);
 }
+// B296: cely RGB obraz (768x240, 4 body na barevny takt - i VBXE) jako PPM
+static void ulozPpm(Machine &m, const std::string &fn) {
+  FILE *o = fopen(fn.c_str(), "wb"); if (!o) return;
+  fprintf(o, "P6\n%d %d\n255\n", AnticView::FW, AnticView::H);
+  for (int i = 0; i < AnticView::FW * AnticView::H; i++) {
+    const uint32_t v = m.view->fb[i];
+    uint8_t px[3] = {(uint8_t)(v & 0xFF), (uint8_t)((v >> 8) & 0xFF), (uint8_t)((v >> 16) & 0xFF)};
+    fwrite(px, 1, 3, o);
+  }
+  fclose(o);
+}
+static void vbxeStav(Machine &m, const char *kde) {
+  const Vbxe &v = m.vbx;
+  int radku = 0; for (int y = 0; y < AnticView::H; y++) radku += m.view->vbxeRadek[y];
+  printf("VBXE %s: zapisu %lld, XDL snimku %lld, posledni overlay %d, sirka %d, XDL=$%05X zap=%d, MEMAC ctl=$%02X A=$%02X B=$%02X, "
+         "blitu %lld (seznamu %lld), stav blitru %d, IRQ en=%d req=%d, paleta zapisu %lld, radku VBXE %d, extColor %d\n",
+         kde, v.nWrites, v.nXdlFrames, v.lastOvMode, v.ovWidth, v.xdlBase, v.xdlEnabled, v.memacCtl, v.memacBankA, v.memacBankB,
+         v.nBlits, v.nBlitLists, v.blitState, v.irqEn, v.irqReq, v.nPalWrites, radku, v.extColor);
+}
+
+// KLAVESY="snimek:kod,..." - klavesa (kod 0-63, +64 SHIFT, +128 CTRL), START = 1000, FIRE = 1001
+// JOY="od-do:maska,..." - joystick 1 drzeny v snimcich od..do (1 nahoru, 2 dolu, 4 vlevo, 8 vpravo, 16 FIRE)
+static void vstupy(Machine &m, int f) {
+  if (getenv("KLAVESY")) {
+    const char *p = getenv("KLAVESY");
+    while (*p) {
+      int fr = atoi(p); while (*p && *p != ':') p++; if (*p) p++;
+      int kod = atoi(p); while (*p && *p != ',') p++; if (*p) p++;
+      if (fr == f) { if (kod == 1000) m.consol = 6; else if (kod == 1001) m.trig[0] = 0; else m.klavesa(kod); }
+      if (fr + 3 == f && kod == 1001) m.trig[0] = 1;
+    }
+  }
+  if (getenv("JOY")) {
+    int maska = 0;
+    const char *p = getenv("JOY");
+    while (*p) {
+      int od = atoi(p); while (*p && *p != '-') p++; if (*p) p++;
+      int doo = atoi(p); while (*p && *p != ':') p++; if (*p) p++;
+      int mk = atoi(p); while (*p && *p != ',') p++; if (*p) p++;
+      if (f >= od && f <= doo) maska |= mk;
+    }
+    m.porta = 0xF0 | (~maska & 15);
+    if (!getenv("KLAVESY") || m.trig[0]) m.trig[0] = (maska & 16) ? 0 : 1;
+  }
+}
 
 int main(int argc, char **argv) {
   std::string mode = argc > 1 ? argv[1] : "boot";
@@ -122,10 +167,16 @@ int main(int argc, char **argv) {
     printf("ATR: %d sektoru po %d B\n", m->disk.sectors, m->disk.sectorSize);
     for (int f = 1; f <= frames; f++) {
       m->consol = f < 150 ? 3 : 7;
+      vstupy(*m, f);
       m->runFrame();
-      if (dump.count(f)) ulozIdx(*m, pref + "_" + std::to_string(f) + ".idx");
+      if (dump.count(f)) {
+        ulozIdx(*m, pref + "_" + std::to_string(f) + ".idx");
+        ulozPpm(*m, pref + "_" + std::to_string(f) + ".ppm");
+        vbxeStav(*m, ("snimek " + std::to_string(f)).c_str());
+      }
     }
     printf("PC=$%04X jam=%d SIO prikazu=%lld cteni=%lld zapisu=%lld PORTB=$%02X\n", m->cpu.pc, m->cpu.jam, m->sioPrikazu, m->disk.reads, m->disk.writes, m->mem.portB());
+    vbxeStav(*m, "konec");
     return 0;
   }
   if (mode == "basic") {
@@ -280,9 +331,12 @@ int main(int argc, char **argv) {
     m->sioRychlyTimeout = true;
     for (int f = 1; f <= frames; f++) {
       if (!xl.aktivni()) m->consol = 7;
+      vstupy(*m, f);
       m->runFrame(); xl.poSnimku(*m);
       if (dump.count(f)) {
         ulozIdx(*m, pref + "_" + std::to_string(f) + ".idx");
+        ulozPpm(*m, pref + "_" + std::to_string(f) + ".ppm");
+        vbxeStav(*m, ("snimek " + std::to_string(f)).c_str());
         if (getenv("DUMPMEM")) {
           FILE *o = fopen((pref + "_" + std::to_string(f) + ".mem").c_str(), "wb");
           for (int a = 0; a < 65536; a++) { uint8_t b = m->peek((uint16_t)a); fwrite(&b, 1, 1, o); }
@@ -297,6 +351,7 @@ int main(int argc, char **argv) {
     }
     for (auto &l : xl.log) printf("LOG %s\n", l.c_str());
     printf("PC=$%04X jam=%d\n", m->cpu.pc, m->cpu.jam);
+    vbxeStav(*m, "konec");
     return 0;
   }
   return 1;

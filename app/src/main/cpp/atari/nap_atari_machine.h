@@ -40,6 +40,7 @@
 #include <cstdio>
 #include "nap_atari_6502.h"
 #include "nap_atari_tape.h"
+#include "nap_atari_vbxe.h"
 
 namespace nap {
 
@@ -68,14 +69,20 @@ inline uint32_t napAtariPalette(int v) {
   return 0xFF000000u | ((uint32_t)cl(b) << 16) | ((uint32_t)cl(g) << 8) | (uint32_t)cl(r);
 }
 
-// Obraz: 384 x 240 bodu (pul barevneho taktu = 1 bod), barevne takty 32..223
-// a radky 8..247 - stejny vyrez jako Screen_atari v emulatoru atari800.
+// Obraz: barevne takty 32..223 a radky 8..247 - stejny vyrez jako
+// Screen_atari v emulatoru atari800.
+//  idx: 384 x 240 (pul barevneho taktu = 1 bod) - barevny kod GTIA, testy,
+//  fb:  768 x 240 RGBA (4 body na barevny takt) - B296: VBXE kresli az
+//       640 bodu na sirku hraciho pole; radky bez VBXE jsou idx zdvojene.
 struct AnticView {
   static const int W = 384;
   static const int H = 240;
-  uint32_t fb[W * H];      // RGBA (A<<24 | B<<16 | G<<8 | R)
+  static const int FW = 768;
+  uint32_t fb[FW * H];     // RGBA (A<<24 | B<<16 | G<<8 | R)
   uint8_t idx[W * H];      // barevny kod Atari (pred paletou) - pro testy
-  void vymaz(int c) { uint32_t v = napAtariPalette(c); for (int i = 0; i < W * H; i++) { fb[i] = v; idx[i] = (uint8_t)c; } }
+  uint8_t vbxeRadek[H];    // 1 = radek nakreslilo VBXE primo do fb
+  AnticView() { std::memset(vbxeRadek, 0, sizeof vbxeRadek); }
+  void vymaz(int c) { uint32_t v = napAtariPalette(c); for (int i = 0; i < FW * H; i++) fb[i] = v; for (int i = 0; i < W * H; i++) idx[i] = (uint8_t)c; std::memset(vbxeRadek, 0, sizeof vbxeRadek); }
 };
 
 struct Pia { int orA = 0, ddrA = 0, orB = 0, ddrB = 0, ctlA = 0, ctlB = 0; };
@@ -188,6 +195,14 @@ public:
   TapeDeck tape;
   long long sioPrikazu = 0;
 
+  // ---------------- VBXE (B296) ----------------
+  // Karta je "zasunuta" porad: programy bez VBXE ji nevidi (registry na
+  // $D640 jinak nikdo nepouziva, paleta 0 = barvy GTIA), programy s VBXE
+  // (Wolfenstein 3D, Popeye ...) ji najdou a pouziji.
+  Vbxe vbx;
+  bool vbxeOn = true;
+  bool vbxeLine = false;              // aktualni radek kresli VBXE (overlay/mapa/paleta)
+
   Machine() { cpu.bus = this; coldInit(); }
 
   // =================================================================
@@ -250,10 +265,19 @@ public:
     for (int i = 0; i < 8; i++) { spr[i] = Sprite(); sprPos[i] = 0; }
     prior = 0; vdelay = 0; gractl = 0; consolOut = 8; gtiaSpeakerBit = 1;
     std::memset(collP, 0, sizeof collP); std::memset(collM, 0, sizeof collM);
-    for (int i = 0; i < 4; i++) { colpm[i] = colpf[i] = 0; }
-    colbk = 0; rcN = 0; lastSyncCc = 0;
+    for (int i = 0; i < 4; i++) { colpm[i] = colpf[i] = colpmR[i] = colpfR[i] = 0; }
+    colbk = colbkR = 0; rcN = 0; lastSyncCc = 0;
     // POKEY
     pokeyCold();
+    // VBXE: po zapnuti prazdna VRAM, paleta 0 = barvy Atari
+    {
+      uint32_t p[256];
+      for (int i = 0; i < 256; i++) p[i] = napAtariPalette(i);
+      vbx.setDefaultPalette(p);
+      std::fill(vbx.vram.begin(), vbx.vram.end(), (uint8_t)0);
+      vbx.coldReset();
+      vbxeLine = false;
+    }
     // CPU
     cpu.powerOn();
     irqLine = false;
@@ -269,6 +293,8 @@ public:
     dmactlReg = 0; nmien = 0; updatePlayfieldTiming();
     wsyncPending = 0; rdyHalt = false; nmiLatch = false;
     mem.pia = Pia();
+    vbx.warmReset();                    // VBXE: XDL, MEMAC, blitter, IRQ vypnout
+    updateIrq();
     cpu.reset();
   }
 
@@ -370,6 +396,7 @@ public:
   int sprPos[8] = {0};
   uint8_t gReg[32];
   uint8_t colpm[4] = {0}, colpf[4] = {0}, colbk = 0, prior = 0, vdelay = 0, gractl = 0, consolOut = 8;
+  uint8_t colpmR[4] = {0}, colpfR[4] = {0}, colbkR = 0;   // cele zapsane hodnoty (VBXE: rozsirene barvy)
   uint8_t collP[4], collM[4];
   uint8_t merge[240];                  // na barevny takt: PF/P bity
   uint8_t anData[240];                 // na barevny takt: 2 bity (hires / GTIA rezimy)
@@ -409,6 +436,7 @@ public:
   inline void endCycle() {
     pokeyTick();
     ++cyc;
+    if (vbx.stopEvent && vbx.tick(cyc)) updateIrq();    // VBXE: blitter dobehl -> IRQ
     if (++x >= CYCLES_PER_LINE) endScanline();
   }
 
@@ -686,6 +714,7 @@ public:
   void endScanline() {
     syncGtia(1000);                      // dokreslit cely radek
     gtiaEndLine();
+    if (vbxeOn) vbx.endScanline();       // VBXE: adresa overlay / mapy na dalsi radek
     if (tape.loaded) tapeAdvance();      // kazeta bezi v realnem case (motor + PLAY)
     x = 0;
     if (++line >= LINES) {
@@ -697,13 +726,30 @@ public:
     }
     pfDataR = 0; pfCharW = 0;
     displayDone = 0;
+    if (vbxeOn) vbxeBeginLine();
+  }
+
+  // VBXE na zacatku radku: snimek zacina radkem 8 (XDL od zacatku), konci
+  // radkem 248; XDL, atributova mapa, blitter dostane cykly tohoto radku.
+  void vbxeBeginLine() {
+    if (line == 8) vbx.beginFrame();
+    else if (line == 248) vbx.endFrame();
+    vbx.beginScanline(cyc);
+    vbxeLine = line >= 8 && line < 248 && vbx.needsRender();
+    if (vbxeLine) vbx.prepareAttrLine();
+    updateIrq();
   }
 
   void frameDone() {
     if (!view) return;
     static uint32_t lut[256]; static bool lutOk = false;
     if (!lutOk) { for (int i = 0; i < 256; i++) lut[i] = napAtariPalette(i); lutOk = true; }
-    for (int i = 0; i < AnticView::W * AnticView::H; i++) view->fb[i] = lut[view->idx[i]];
+    for (int y = 0; y < AnticView::H; y++) {
+      if (view->vbxeRadek[y]) continue;         // radek uz nakreslilo VBXE (RGB)
+      const uint8_t *s = &view->idx[y * AnticView::W];
+      uint32_t *d = &view->fb[y * AnticView::FW];
+      for (int i = 0; i < AnticView::W; i++) d[2 * i] = d[2 * i + 1] = lut[s[i]];
+    }
   }
 
   // =================================================================
@@ -871,9 +917,9 @@ public:
         spr[4].latch = (uint8_t)((v << 6) & 0xC0); spr[5].latch = (uint8_t)((v << 4) & 0xC0);
         spr[6].latch = (uint8_t)((v << 2) & 0xC0); spr[7].latch = (uint8_t)(v & 0xC0);
         break;
-      case 0x12: case 0x13: case 0x14: case 0x15: colpm[c.reg - 0x12] = v & 0xFE; break;
-      case 0x16: case 0x17: case 0x18: case 0x19: colpf[c.reg - 0x16] = v & 0xFE; break;
-      case 0x1A: colbk = v & 0xFE; break;
+      case 0x12: case 0x13: case 0x14: case 0x15: colpm[c.reg - 0x12] = v & 0xFE; colpmR[c.reg - 0x12] = v; break;
+      case 0x16: case 0x17: case 0x18: case 0x19: colpf[c.reg - 0x16] = v & 0xFE; colpfR[c.reg - 0x16] = v; break;
+      case 0x1A: colbk = v & 0xFE; colbkR = v; break;
       case 0x1B: prior = v; if (v & 0xC0) lineHires = false; break;
       case 0x1E: std::memset(collP, 0, 4); std::memset(collM, 0, 4); break;
       case 0x20: {   // strely z DMA (VDELAY po strelach)
@@ -889,8 +935,10 @@ public:
   }
 
   // barva vystupu: prioritni logika GTIA (rovnice z GTIA, viz Altirra gtiatables)
-  static uint8_t priorityDecode(int prior5, uint8_t m, uint8_t col[9]) {
-    // col: 0-3 P0..P3, 4-7 PF0..PF3, 8 BAK
+  // prior5: PRIOR bity 0-3 + bit 4 = vicebarevni hraci (PRIOR bit 5, viz priSel)
+  // Vysledek: ktere barvy se v bode sectou (bit k = col[k]: 0-3 P0..P3,
+  // 4-7 PF0..PF3, 8 BAK). B296: predpocitano do tabulky (rychlost).
+  static uint16_t priorityMask(int prior5, uint8_t m) {
     static const uint8_t kPfPri[8] = {0, 1, 2, 2, 4, 4, 4, 4};
     const uint8_t v = kPfPri[m & 7];
     const bool pf0 = v & 1, pf1 = (v & 2) != 0, pf2 = (v & 4) != 0, pf3 = (m & 8) != 0;
@@ -908,16 +956,16 @@ public:
     const bool sf1 = pf1 && !(p23 && pri0) && !(p01 && pri01) && !sf3;
     const bool sf0 = pf0 && !(p23 && pri0) && !(p01 && pri01) && !sf3;
     const bool sb = !p01 && !p23 && !pf01 && !pf23;
+    return (uint16_t)((sp0 ? 1 : 0) | (sp1 ? 2 : 0) | (sp2 ? 4 : 0) | (sp3 ? 8 : 0) |
+                      (sf0 ? 16 : 0) | (sf1 ? 32 : 0) | (sf2 ? 64 : 0) | (sf3 ? 128 : 0) | (sb ? 256 : 0));
+  }
+  struct PriTab { uint16_t t[32][256]; PriTab() { for (int p = 0; p < 32; p++) for (int m = 0; m < 256; m++) t[p][m] = priorityMask(p, (uint8_t)m); } };
+  static const PriTab &priTab() { static const PriTab tab; return tab; }
+  const PriTab &priT = priTab();
+  inline uint8_t priorityDecode(int prior5, uint8_t m, const uint8_t col[9]) const {
+    uint32_t s = priT.t[prior5][m];
     uint8_t c = 0;
-    if (sf0) c |= col[4];
-    if (sf1) c |= col[5];
-    if (sf2) c |= col[6];
-    if (sf3) c |= col[7];
-    if (sp0) c |= col[0];
-    if (sp1) c |= col[1];
-    if (sp2) c |= col[2];
-    if (sp3) c |= col[3];
-    if (sb) c |= col[8];
+    while (s) { c |= col[__builtin_ctz(s)]; s &= s - 1; }
     return c;
   }
 
@@ -942,6 +990,10 @@ public:
     if (s.state == 0) s.shift <<= 1;
   }
 
+  // Vyber prioritni logiky: PRIOR bity 0-3 + VICEBAREVNI HRACI = bit 5 ($20).
+  // (B296 oprava: do B295 se jako "vicebarevni" bral bit 4 = paty hrac.)
+  inline int priSel() const { return (prior & 15) | ((prior & 0x20) ? 16 : 0); }
+
   void renderCc(int cc) {
     // spousteni hracu/strel na pozici HPOS (i v okrajich - posuvny registr bezi)
     for (int i = 0; i < 8; i++) {
@@ -953,7 +1005,10 @@ public:
     }
     if (vblankLine || cc < 34 || cc >= 222) {
       for (int i = 0; i < 8; i++) if (spr[i].shift) sprStep(spr[i]);
-      if (cc >= 32 && cc < 224) lineOut[cc * 2] = lineOut[cc * 2 + 1] = 0;
+      if (cc >= 32 && cc < 224) {
+        lineOut[cc * 2] = lineOut[cc * 2 + 1] = 0;
+        if (vbxeLine) vbxeBorder(cc);
+      }
       return;
     }
     uint8_t m = 0;
@@ -1003,32 +1058,135 @@ public:
       if (prior & 0x10) all |= PF3;                 // paty hrac
       else for (int i = 0; i < 4; i++) if (mm & (1 << i)) all |= (uint8_t)(P0 << i);
     }
+    // radek kresli VBXE: barvy pocita VBXE (GTIA kod barvy se tu nepouzije)
+    if (vbxeLine) { lineOut[cc * 2] = lineOut[cc * 2 + 1] = 0; vbxePixels(cc, gmode, all, inPf ? hb : 0, inPf); return; }
     uint8_t col[9] = {colpm[0], colpm[1], colpm[2], colpm[3], colpf[0], colpf[1], colpf[2], colpf[3], colbk};
     uint8_t c0, c1;
+    const int ps = priSel();
     if (gmode == 0) {
-      uint8_t c = priorityDecode(prior & 0x1F, all, col);
+      uint8_t c = priorityDecode(ps, all, col);
       if (lineHires && inPf) {
         // 40znakovy rezim: PF2 pozadi, nastaveny bit = jas PF1 (i pres hrace)
         c0 = (hb & 2) ? (uint8_t)((c & 0xF0) | (colpf[1] & 0x0F)) : c;
         c1 = (hb & 1) ? (uint8_t)((c & 0xF0) | (colpf[1] & 0x0F)) : c;
       } else c0 = c1 = c;
     } else if (gmode == 0x40) {
-      uint8_t c = priorityDecode(prior & 0x1F, (uint8_t)(all & (P0 | P1 | P2 | P3 | PF3)), col);
+      uint8_t c = priorityDecode(ps, (uint8_t)(all & (P0 | P1 | P2 | P3 | PF3)), col);
       int base = cc & ~1;
       uint8_t l = inPf ? (uint8_t)((anData[base] << 2) | anData[base + 1]) : 0;
       if (!(all & 0xF0)) c |= l;
       c0 = c1 = c;
     } else if (gmode == 0xC0) {
-      uint8_t c = priorityDecode(prior & 0x1F, (uint8_t)(all & (P0 | P1 | P2 | P3 | PF3)), col);
+      uint8_t c = priorityDecode(ps, (uint8_t)(all & (P0 | P1 | P2 | P3 | PF3)), col);
       int base = cc & ~1;
       uint8_t l0 = inPf ? (uint8_t)((anData[base] << 6) | (anData[base + 1] << 4)) : 0;
       if (!(all & 0xF0)) { c |= l0; if (l0 == 0) c &= 0xF0; }
       c0 = c1 = c;
     } else {
-      uint8_t c = priorityDecode(prior & 0x1F, all, col);
+      uint8_t c = priorityDecode(ps, all, col);
       c0 = c1 = c;
     }
     if (cc >= 32 && cc < 224) { lineOut[cc * 2] = c0; lineOut[cc * 2 + 1] = c1; }
+  }
+
+  // =================================================================
+  //  VBXE: barvy jednoho barevneho taktu = 2 body po 14 MHz (kazdy 2x)
+  //  Stejna prioritni logika jako GTIA, ale barvy PF0-PF2 muzou prijit
+  //  z atributove mapy, barva jde pres paletu VBXE (bunka/XDL) a pro
+  //  overlay se zapise, ktere vrstvy jsou v bode (priorita + kolize).
+  // =================================================================
+  void vbxeBorder(int cc) {
+    const uint8_t cm = vbx.extColor ? 0xFF : 0xFE;
+    const uint8_t ctrl = (uint8_t)((vbx.pfPal << 6) | (vbx.ovPal << 4));
+    const uint32_t rgb = vbx.pal[vbx.pfPal][colbkR & cm];
+    const uint8_t pt = Vbxe::priTrans(0);
+    for (int h = 0; h < 2; h++) {
+      const int xh = cc * 2 + h;
+      vbx.lineBuf[xh * 2] = vbx.lineBuf[xh * 2 + 1] = rgb;
+      vbx.ovPriBuf[xh * 2] = vbx.ovMainPri & pt;
+      vbx.ovPriBuf[xh * 2 + 1] = (uint8_t)(pt & 0xF7);
+      vbx.ctrlBuf[xh] = ctrl;
+    }
+  }
+  void vbxePixels(int cc, int gmode, uint8_t all, uint8_t hb, bool inPf) {
+    Vbxe &v = vbx;
+    // Oba body taktu jsou stejne: bez atributove mapy (v hires jen bez
+    // nastavenych bodu), s mapou kdyz jsou ve stejne bunce a nejde o hires.
+    const bool m0 = v.attrFromMap[cc * 2], m1 = v.attrFromMap[cc * 2 + 1];
+    bool stejne;
+    if (!m0 && !m1) stejne = !(gmode == 0 && lineHires && hb);
+    else if (m0 && m1) {
+      const Vbxe::AttrPx &a = v.attrMap[cc * 2], &b = v.attrMap[cc * 2 + 1];
+      stejne = a.pf0 == b.pf0 && a.pf1 == b.pf1 && a.pf2 == b.pf2 && a.ctrl == b.ctrl && a.pri == b.pri &&
+               !(gmode == 0 && (lineHires || (a.ctrl & 4)));
+    } else stejne = false;
+    vbxeHalf(cc, 0, gmode, all, hb, inPf);
+    if (stejne) {
+      const int a = cc * 4;
+      v.ovPriBuf[a + 2] = v.ovPriBuf[a]; v.ovPriBuf[a + 3] = v.ovPriBuf[a + 1];
+      v.ctrlBuf[cc * 2 + 1] = v.ctrlBuf[cc * 2];
+      v.lineBuf[a + 2] = v.lineBuf[a + 3] = v.lineBuf[a];
+    } else vbxeHalf(cc, 1, gmode, all, hb, inPf);
+  }
+  void vbxeHalf(int cc, int h, int gmode, uint8_t all, uint8_t hb, bool inPf) {
+    Vbxe &v = vbx;
+    const uint8_t cm = v.extColor ? 0xFF : 0xFE;
+    const uint8_t dctl = (uint8_t)((v.pfPal << 6) | (v.ovPal << 4));
+    const int ps = priSel();
+    {
+      const int xh = cc * 2 + h;
+      uint8_t pf0, pf1, pf2, ctrl, hflag, apri;
+      if (v.attrFromMap[xh]) {
+        const Vbxe::AttrPx &p = v.attrMap[xh];
+        pf0 = p.pf0; pf1 = p.pf1; pf2 = p.pf2; ctrl = p.ctrl; hflag = p.hiresFlag; apri = p.pri;
+      } else {
+        pf0 = colpfR[0] & cm; pf1 = colpfR[1] & cm; pf2 = colpfR[2] & cm; ctrl = dctl; hflag = 0; apri = v.ovMainPri;
+      }
+      uint8_t col[9] = {(uint8_t)(colpmR[0] & cm), (uint8_t)(colpmR[1] & cm), (uint8_t)(colpmR[2] & cm), (uint8_t)(colpmR[3] & cm),
+                        pf0, pf1, pf2, (uint8_t)(colpfR[3] & cm), (uint8_t)(colbkR & cm)};
+      uint8_t i = all, c;
+      if (gmode == 0) {
+        bool hires = lineHires;
+        int lb = hires ? (h ? (hb & 1) : ((hb >> 1) & 1)) : 0;
+        if (ctrl & 4) {                       // bunka s prohozenym rezimem hires <-> lores
+          if (!hires) {
+            static const uint8_t kAn[8] = {0, 1, 2, 2, 3, 3, 3, 3};
+            const uint8_t an = kAn[all & 7];
+            lb = h ? (an & 1) : ((an >> 1) & 1);
+            i = (uint8_t)((all & 0xF0) | PF2);
+            hires = true;
+          } else {
+            if (all & PF2) i = (uint8_t)((all & 0xF0) | (1 << (hb & 3)));
+            hires = false;
+          }
+        }
+        if (hires) {
+          col[4] = colpfR[0] & cm;            // v hires je PF0 bunky maska PF2/PF3
+          if (v.extColor) {
+            if (lb) i = (uint8_t)(i - ((i & PF2) >> 1));      // nastaveny bod = cela barva PF1
+            i = (uint8_t)(i + ((i & PF2) & hflag));
+            c = priorityDecode(ps, i, col);
+          } else {
+            i = (uint8_t)(i + ((i & PF2) & hflag));
+            c = priorityDecode(ps, i, col);
+            if (lb) c = (uint8_t)((c & 0xF0) | (pf1 & 0x0F));
+          }
+        } else c = priorityDecode(ps, i, col);
+      } else if (gmode == 0x40 || gmode == 0xC0) {
+        i = (uint8_t)(all & (P0 | P1 | P2 | P3 | PF3));
+        c = priorityDecode(ps, i, col);
+        if (!(i & 0xF0)) {
+          const int base = cc & ~1;
+          if (gmode == 0x40) { if (inPf) c |= (uint8_t)((anData[base] << 2) | anData[base + 1]); }
+          else { const uint8_t l0 = inPf ? (uint8_t)((anData[base] << 6) | (anData[base + 1] << 4)) : 0; c |= l0; if (!l0) c &= 0xF0; }
+        }
+      } else c = priorityDecode(ps, i, col);
+      const uint8_t pt = Vbxe::priTrans(i);
+      v.ovPriBuf[xh * 2] = apri & pt;
+      v.ovPriBuf[xh * 2 + 1] = (uint8_t)((pt & 0xF7) | (ctrl & 0x08));
+      v.ctrlBuf[xh] = ctrl;
+      v.lineBuf[xh * 2] = v.lineBuf[xh * 2 + 1] = v.pal[ctrl >> 6][c];
+    }
   }
 
   void gtiaEndLine() {
@@ -1038,8 +1196,13 @@ public:
     for (int i = 0; i < rcN; i++) { if (rc[i].pos < 0) applyChange(rc[i]); else rc[k++] = rc[i]; }
     rcN = k;
     lastSyncCc = 0;
+    if (vbxeLine) vbx.composeOverlay();          // overlay VBXE (i kvuli kolizim)
     if (view && line >= 8 && line < 248) {
       std::memcpy(&view->idx[(line - 8) * AnticView::W], &lineOut[64], AnticView::W);
+      if (vbxeLine) {
+        std::memcpy(&view->fb[(line - 8) * AnticView::FW], &vbx.lineBuf[32 * 4], AnticView::FW * 4);
+        view->vbxeRadek[line - 8] = 1;
+      } else view->vbxeRadek[line - 8] = 0;
     }
     std::memset(merge, 0, sizeof merge);
     std::memset(anData, 0, sizeof anData);
@@ -1056,17 +1219,21 @@ public:
     if ((a & 0xF800) == 0xD000) { ioWrite(a, v); return; }
     memWrite(a, v);
   }
+  // Poradi (kdo vyhraje): ROM (OS / BASIC / self-test) > VBXE MEMAC >
+  // rozsirena pamet 130XE > zakladni pamet. ($D000-$D7FF = I/O resi volajici.)
   inline uint8_t memRead(uint16_t a, bool antic) {
     const int pb = mem.portB();
-    if (a >= 0xC000) { if ((pb & 1) && mem.os) return mem.os[a - 0xC000]; return mem.ram[a]; }
-    if (a >= 0xA000) { if (!(pb & 2) && mem.bas) return mem.bas[a - 0xA000]; return mem.ram[a]; }
-    if (a >= 0x4000 && a < 0x8000) {
-      // self-test ROM ($5000-$57FF, PORTB bit 7 = 0, jen se zapnutou OS ROM):
-      // MMU dekoduje adresu bez ohledu na to, kdo je na sbernici - vidi ji
-      // procesor i ANTIC a ma prednost pred rozsirenou pameti
-      if (a >= 0x5000 && a < 0x5800 && !(pb & 0x80) && (pb & 1) && mem.os) return mem.os[a - 0x5000 + 0x1000];
-      if (!(pb & (antic ? 0x20 : 0x10))) return mem.ext[((pb >> 2) & 3) * 0x4000 + (a - 0x4000)];
+    if (a >= 0xC000) { if ((pb & 1) && mem.os) return mem.os[a - 0xC000]; }
+    else if (a >= 0xA000) { if (!(pb & 2) && mem.bas) return mem.bas[a - 0xA000]; }
+    // self-test ROM ($5000-$57FF, PORTB bit 7 = 0, jen se zapnutou OS ROM):
+    // MMU dekoduje adresu bez ohledu na to, kdo je na sbernici - vidi ji
+    // procesor i ANTIC a ma prednost pred rozsirenou pameti
+    else if (a >= 0x5000 && a < 0x5800 && !(pb & 0x80) && (pb & 1) && mem.os) return mem.os[a - 0x5000 + 0x1000];
+    if (vbx.mapAny) {
+      const int32_t o = (antic ? vbx.mapAntic : vbx.mapCpu)[a >> 12];
+      if (o >= 0) return vbx.vram[(uint32_t)(o + (a & 0x0FFF)) & Vbxe::MASK];
     }
+    if (a >= 0x4000 && a < 0x8000 && !(pb & (antic ? 0x20 : 0x10))) return mem.ext[((pb >> 2) & 3) * 0x4000 + (a - 0x4000)];
     return mem.ram[a];
   }
   inline uint8_t anticRead(uint16_t a) {
@@ -1078,12 +1245,14 @@ public:
   }
   inline void memWrite(uint16_t a, uint8_t v) {
     const int pb = mem.portB();
-    if (a >= 0xC000) { if (pb & 1) return; mem.ram[a] = v; return; }
-    if (a >= 0xA000) { if (!(pb & 2) && mem.bas) return; mem.ram[a] = v; return; }
-    if (a >= 0x4000 && a < 0x8000) {
-      if (a >= 0x5000 && a < 0x5800 && !(pb & 0x80) && (pb & 1)) return;
-      if (!(pb & 0x10)) { mem.ext[((pb >> 2) & 3) * 0x4000 + (a - 0x4000)] = v; return; }
+    if (a >= 0xC000) { if (pb & 1) return; }
+    else if (a >= 0xA000) { if (!(pb & 2) && mem.bas) return; }
+    else if (a >= 0x5000 && a < 0x5800 && !(pb & 0x80) && (pb & 1)) return;
+    if (vbx.mapAny) {
+      const int32_t o = vbx.mapCpu[a >> 12];
+      if (o >= 0) { vbx.vram[(uint32_t)(o + (a & 0x0FFF)) & Vbxe::MASK] = v; return; }
     }
+    if (a >= 0x4000 && a < 0x8000 && !(pb & 0x10)) { mem.ext[((pb >> 2) & 3) * 0x4000 + (a - 0x4000)] = v; return; }
     mem.ram[a] = v;
   }
 
@@ -1093,6 +1262,10 @@ public:
       case 0xD200: return pokeyRead(a & 0x0F);
       case 0xD300: return piaRead(a & 3);
       case 0xD400: return anticRegRead(a & 0x0F);
+      case 0xD600:
+        // VBXE: registry $D640-$D65F (+ $D6C0-$D6FF konfigurace FPGA)
+        if (vbxeOn) { const int r = vbx.read((uint8_t)(a & 0xFF), cyc); if (r >= 0) return (uint8_t)r; }
+        return busData;
       // $D100 (PBI), $D500 (cartridge), $D600-$D7FF: na 130XE tam bez
       // pripojenych zarizeni nic neodpovida a datova sbernice "plave" - cte
       // se posledni hodnota, ktera na ni byla (typicky horni bajt adresy z
@@ -1102,10 +1275,15 @@ public:
   }
   void ioWrite(uint16_t a, uint8_t v) {
     switch (a & 0xFF00) {
-      case 0xD000: gtiaWrite(a & 0x1F, v); break;
+      case 0xD000:
+        gtiaWrite(a & 0x1F, v);
+        // VBXE: zapis do zrcadla GTIA $D080-$D0FF = teply reset VBXE
+        if (vbxeOn && (a & 0x80)) { vbx.warmReset(); updateIrq(); }
+        break;
       case 0xD200: pokeyWrite(a & 0x0F, v); break;
       case 0xD300: piaWrite(a & 3, v); break;
       case 0xD400: anticRegWrite(a & 0x0F, v); break;
+      case 0xD600: if (vbxeOn) { vbx.write((uint8_t)(a & 0xFF), v, cyc); updateIrq(); } break;
       default: break;
     }
   }
@@ -1242,7 +1420,8 @@ public:
     audLevel = audLevelStart = 0; audEv.clear(); audFrom = 0;
     tapeLevel = tapeLevelStart = 0; tapeEv.clear(); tapeFrom = 0;
   }
-  void updateIrq() { irqLine = ((~irqst) & irqen & 0xFF) != 0; }
+  // linka IRQ: POKEY nebo VBXE (konec blitru)
+  void updateIrq() { irqLine = ((~irqst) & irqen & 0xFF) != 0 || vbx.irqOut(); }
 
   // Polynomialni citace POKEY (fakta o hardwaru - Altirra HW Reference):
   // vsechny jsou typu XNOR (stav "same nuly" je platny, init je nuluje),

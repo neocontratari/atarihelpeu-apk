@@ -1,14 +1,15 @@
-B292 ATARI_SELFTEST cpu=29C55806 instr=51200 0.00s | mem=D3949DC5 reads=16252928 0.04s | 3.63 MIPS = 8.2x realny cas Atari (cely stroj po cyklech)
-SELFTEST {"cpuHash":"29C55806","cpuInstr":51200,"cpuSec":0.00,"memHash":"D3949DC5","memReads":16252928,"memSec":0.04,"mips":3.63,"realtimeX":8.2,"abi":"jine","charSigned":1}
+B292 ATARI_SELFTEST cpu=29C55806 instr=51200 0.00s | mem=D3949DC5 reads=16252928 0.07s | 3.73 MIPS = 8.5x realny cas Atari (cely stroj po cyklech)
+SELFTEST {"cpuHash":"29C55806","cpuInstr":51200,"cpuSec":0.00,"memHash":"D3949DC5","memReads":16252928,"memSec":0.07,"mips":3.73,"realtimeX":8.5,"abi":"jine","charSigned":1}
 OK     samokontrola probehla (51200 instrukci, 16252928 cteni)
 B291 HELP otevren - pristroj ZAPNUT, studeny start Atari
 B293 JADRO = ATARI 130XE PAL: RAM 64 kB + rozsirena 4x16 kB (PORTB bity 2-3, procesor bit 4, ANTIC bit 5), OS XL/XE rev.2 (soucet $9211), BASIC rev.C vestaveny, self-test ROM $5000, TRIG3=0 (bez cartridge), RESET = reset CPU+ANTIC+PIA/MMU, plovouci datova sbernice, ANTIC/GTIA PAL 312 radku, POKEY 1,773 MHz
+B296 VBXE FX 1.26 v jadre: registry $D640, 512 kB VRAM, MEMAC A/B, XDL (overlay LR/SR/HR/text 80 sloupcu), atributova mapa, palety 4x256, blitter (rezimy 0-6, zoom, vzor, kolize) + IRQ; obraz 4 body na barevny takt. Joystick 1: leva pulka obrazovky = smer, prava = FIRE; herni ovladac taky.
 B291 PRISTROJ plocha nova 1080x2160 -> kresleni 1080x2160
 B291 EMULACE_VLAKNO start (50 snimku/s, zvuk OpenSL, vse v C++)
 B291 EMULACE_VLAKNO priorita nice=-8 nastavena
 B291 KRESLICI_VLAKNO start (pristroj kresli C++ primo na displej)
 B291 KRESLICI_VLAKNO priorita nice=-4 nastavena
-B291 PRISTROJ rozlozen 1080x2160 (displej 1080x2160) za 149 ms
+B291 PRISTROJ rozlozen 1080x2160 (displej 1080x2160) za 147 ms
 OK     Atari nastartovalo do READY
 drzeni A 2,5 s -> 19 znaku A
 OK     drzena klavesa se opakuje jako na skutecnem Atari
@@ -19,12 +20,13 @@ B292 KAZETA motor ZAPNUT (PACTL bit3=0) - nahravam linku SIO DATA OUT
 B292 CSAVE_HOTOVO motor VYPNUT, SEROUT bajtu=264, zvuk=24.1s -> ukladam WAV
 B291 HELP otevren - pristroj ZAPNUT, studeny start Atari
 B293 JADRO = ATARI 130XE PAL: RAM 64 kB + rozsirena 4x16 kB (PORTB bity 2-3, procesor bit 4, ANTIC bit 5), OS XL/XE rev.2 (soucet $9211), BASIC rev.C vestaveny, self-test ROM $5000, TRIG3=0 (bez cartridge), RESET = reset CPU+ANTIC+PIA/MMU, plovouci datova sbernice, ANTIC/GTIA PAL 312 radku, POKEY 1,773 MHz
+B296 VBXE FX 1.26 v jadre: registry $D640, 512 kB VRAM, MEMAC A/B, XDL (overlay LR/SR/HR/text 80 sloupcu), atributova mapa, palety 4x256, blitter (rezimy 0-6, zoom, vzor, kolize) + IRQ; obraz 4 body na barevny takt. Joystick 1: leva pulka obrazovky = smer, prava = FIRE; herni ovladac taky.
 B291 PRISTROJ plocha nova 1080x2160 -> kresleni 1080x2160
 B291 EMULACE_VLAKNO start (50 snimku/s, zvuk OpenSL, vse v C++)
 B291 EMULACE_VLAKNO priorita nice=-8 nastavena
 B291 KRESLICI_VLAKNO start (pristroj kresli C++ primo na displej)
 B291 KRESLICI_VLAKNO priorita nice=-4 nastavena
-B291 PRISTROJ rozlozen 1080x2160 (displej 1080x2160) za 149 ms
+B291 PRISTROJ rozlozen 1080x2160 (displej 1080x2160) za 147 ms
 B291 TXT do Atari: 44 stisku klaves pripraveno (0 znaku na Atari klavesnici neni)
 B295 KAZETA motor ZAPNUT - v magnetofonu neni kazeta (CSAVE nahrava do WAV, CLOAD nema co cist - EJECT a vyber kazetu)
 B292 KAZETA motor ZAPNUT (PACTL bit3=0) - nahravam linku SIO DATA OUT
@@ -33,9 +35,9 @@ OK     CSAVE: hotovy WAV prisel do Javy (devTakeWav)
 WAV 24.1 s
 OK     EJECT vraci Jave akci VYBER KAZETY
 OK     EJECT otevrel dvirka
-B292 KAZETA VLOZENA OK kazeta_b292.wav: 24.1 s, 44100 Hz, 1 kanal(y) (FSK v kanalu 1), 16 bit; pri 600 Bd 264 bajtu v 2 zaznamech, 0 chyb ramce; demodulace 36 ms
+B292 KAZETA VLOZENA OK kazeta_b292.wav: 24.1 s, 44100 Hz, 1 kanal(y) (FSK v kanalu 1), 16 bit; pri 600 Bd 264 bajtu v 2 zaznamech, 0 chyb ramce; demodulace 42 ms
 B295 KAZETA PLAY zmacknuto automaticky - ted napis CLOAD, RETURN, a po pipnuti jeste jednou RETURN
-devLoadTape: OK kazeta_b292.wav: 24.1 s, 44100 Hz, 1 kanal(y) (FSK v kanalu 1), 16 bit; pri 600 Bd 264 bajtu v 2 zaznamech, 0 chyb ramce; demodulace 36 ms
+devLoadTape: OK kazeta_b292.wav: 24.1 s, 44100 Hz, 1 kanal(y) (FSK v kanalu 1), 16 bit; pri 600 Bd 264 bajtu v 2 zaznamech, 0 chyb ramce; demodulace 42 ms
 OK     kazeta vlozena (WAV demodulovan)
 OK     po vlozeni kazety se dvirka zavrela
 OK     B295: po vlozeni kazety je PLAY zmacknute samo
@@ -47,7 +49,7 @@ B292 KAZETA motor ZAPNUT (PACTL bit3=0) - nahravam linku SIO DATA OUT
 B295 KAZETA motor VYPNUT - z pasky prijato 130 bajtu (chyb ramce 0), pozice 21.7 / 24.1 s
 B292 KAZETA motor VYPNUT (SEROUT bajtu=0, 21.6s) - neni to CSAVE, WAV se nevytvari
 B291 TXT do Atari: 5 stisku klaves pripraveno (0 znaku na Atari klavesnici neni)
-B292 KAZETA VLOZENA OK kazeta_b292.wav: 24.1 s, 44100 Hz, 1 kanal(y) (FSK v kanalu 1), 16 bit; pri 600 Bd 264 bajtu v 2 zaznamech, 0 chyb ramce; demodulace 36 ms
+B292 KAZETA VLOZENA OK kazeta_b292.wav: 24.1 s, 44100 Hz, 1 kanal(y) (FSK v kanalu 1), 16 bit; pri 600 Bd 264 bajtu v 2 zaznamech, 0 chyb ramce; demodulace 42 ms
 B295 KAZETA PLAY zmacknuto automaticky - ted napis CLOAD, RETURN, a po pipnuti jeste jednou RETURN
 B291 POWER VYPNUTO
 B291 POWER ZAPNUTO - studeny start (pamet i hardware od nuly, jako vypinac na skrini)
@@ -119,13 +121,69 @@ B291 POWER VYPNUTO
 B291 POWER ZAPNUTO - studeny start (pamet i hardware od nuly, jako vypinac na skrini)
 B295 POWER s disketou v D1: (acid800.atr) - OPTION drzeno pri startu, BASIC vypnuty, bootuje disketa
 OK     po POWER vyp/zap disketa v mechanice zustala a bootuje znovu
-B291 KRESLICI_VLAKNO stop
-B291 EMULACE_VLAKNO stop
+B296 JOYSTICK 1 dotykem na obrazovce (leva pulka = smer, prava = FIRE)
+joystick dotykem nahoru: PORTA dolni bity $E, TRIG0 1
+OK     B296: dotyk na leve pulce obrazovky + posun nahoru = joystick NAHORU (PORTA $E)
+OK     B296: posun prstu doprava = joystick NAHORU+VPRAVO (PORTA $6)
+OK     B296: dotyk na prave pulce obrazovky = FIRE (TRIG0 = 0)
+OK     B296: po zvednuti prstu je joystick v klidu (PORTA $F, TRIG0 1)
+B296 JOYSTICK 1 z herniho ovladace / klavesnice telefonu (smer, FIRE, START, SELECT, OPTION)
+ovladac vlevo+FIRE+START: PORTA $B TRIG0 0 CONSOL 2
+OK     B296: herni ovladac = joystick VLEVO + FIRE + START
+OK     B296: ovladac pusteny -> joystick v klidu, START pusteny
+OK     B296: tlacitko X ovladace = klavesa MEZERA drzena (Wolfenstein: dvere)
+OK     B296: tlacitko X pusteno = klavesa pustena
+B295 DISKETA vyjmuta z D1: (spousti se XEX)
+B291 XEX Popeye (VBXE, PAL Version)(2).xex: 61819 bajtu - studeny start s OPTION (BASIC vypnuty), pak segmenty
+OK     B296: Popeye (VBXE) prijat jako XEX
+B291 XEX OS nastartovan za 87 snimku (BASIC=VYPNUTY, RAMTOP=$C0) - nahravam segmenty
+B296 VBXE: program nasel kartu VBXE (registry $D640, FX 1.26) a pouziva ji
+B291 XEX Popeye (VBXE, PAL Version)(2).xex nahrano: 624 segmentu, 59321 bajtu, 267 x INIT -> start $2C59 (RUNAD)
+B296 VBXE: XDL ZAPNUTO, overlay zadny, blitru 237 (seznamu 221), zapisu palety 381, MEMAC A $A8/$9E B $00, snimek 5118
+B296 VBXE: XDL ZAPNUTO, overlay SR 320 bodu, blitru 335 (seznamu 319), zapisu palety 381, MEMAC A $A8/$9E B $00, snimek 5119
+Popeye: zapisu do VBXE 2537, snimku s XDL 500, radku z VBXE 240
+OK     B296: Popeye zapnul VBXE (XDL + overlay) a obraz kresli VBXE
+Popeye po START/FIRE: blitu 7992
+OK     B296: Popeye hraje (blitter VBXE kresli postavy - tisice blitu)
+B295 DISKETA VLOZENA OK wolf3d(1).atr: 13061 sektoru po 128 B (1632 kB) -> mechanika D1:, studeny start s OPTION (BASIC vypnuty)
+B296 VBXE: program nasel kartu VBXE (registry $D640, FX 1.26) a pouziva ji
+B296 VBXE: XDL ZAPNUTO, overlay zadny, blitru 2 (seznamu 2), zapisu palety 768, MEMAC A $88/$8B B $00, snimek 6254
+B296 VBXE: XDL ZAPNUTO, overlay LR 160 bodu, blitru 2 (seznamu 2), zapisu palety 768, MEMAC A $88/$8B B $00, snimek 6255
+B296 VBXE: XDL ZAPNUTO, overlay SR 320 bodu, blitru 2 (seznamu 2), zapisu palety 768, MEMAC A $88/$8A B $00, snimek 6348
 B295 DISKETA VLOZENA OK acid800.atr: 720 sektoru po 128 B (90 kB) -> mechanika D1:, studeny start s OPTION (BASIC vypnuty)
 B291 POWER VYPNUTO
 B291 POWER ZAPNUTO - studeny start (pamet i hardware od nuly, jako vypinac na skrini)
 B295 POWER s disketou v D1: (acid800.atr) - OPTION drzeno pri startu, BASIC vypnuty, bootuje disketa
+B296 JOYSTICK 1 dotykem na obrazovce (leva pulka = smer, prava = FIRE)
+B296 JOYSTICK 1 z herniho ovladace / klavesnice telefonu (smer, FIRE, START, SELECT, OPTION)
+B295 DISKETA vyjmuta z D1: (spousti se XEX)
+B291 XEX Popeye (VBXE, PAL Version)(2).xex: 61819 bajtu - studeny start s OPTION (BASIC vypnuty), pak segmenty
+B291 XEX OS nastartovan za 87 snimku (BASIC=VYPNUTY, RAMTOP=$C0) - nahravam segmenty
+B296 VBXE: program nasel kartu VBXE (registry $D640, FX 1.26) a pouziva ji
+B291 XEX Popeye (VBXE, PAL Version)(2).xex nahrano: 624 segmentu, 59321 bajtu, 267 x INIT -> start $2C59 (RUNAD)
+B296 VBXE: XDL ZAPNUTO, overlay zadny, blitru 237 (seznamu 221), zapisu palety 381, MEMAC A $A8/$9E B $00, snimek 5118
+B296 VBXE: XDL ZAPNUTO, overlay SR 320 bodu, blitru 335 (seznamu 319), zapisu palety 381, MEMAC A $A8/$9E B $00, snimek 5119
+devLoadAtr: OK wolf3d(1).atr: 13061 sektoru po 128 B (1632 kB) -> mechanika D1:, studeny start s OPTION (BASIC vypnuty)
+W3D titulka: snimku s XDL 296, overlay 2
+OK     B296: Wolfenstein 3D nabootoval a titulku kresli VBXE (overlay SR 320 bodu)
+B296 VBXE: XDL ZAPNUTO, overlay LR 160 bodu, blitru 4 (seznamu 4), zapisu palety 768, MEMAC A $88/$8A B $00, snimek 6552
+B296 VBXE: XDL ZAPNUTO, overlay SR 320 bodu, blitru 86 (seznamu 86), zapisu palety 768, MEMAC A $88/$8A B $00, snimek 6553
+B296 VBXE: XDL ZAPNUTO, overlay LR 160 bodu, blitru 1417 (seznamu 1417), zapisu palety 768, MEMAC A $88/$8A B $00, snimek 7078
+W3D po menu: overlay 1
+OK     B296: Wolfenstein 3D ve hre (3D pohled = overlay LR 160 bodu)
+W3D: joystick nahoru -> zmenenych bodu 119148 z 184320
+OK     B296: joystick dotykem ve Wolfensteinu - hrac jde dopredu (obraz se zmenil)
+B291 KRESLICI_VLAKNO stop
+B291 EMULACE_VLAKNO stop
+B295 DISKETA VLOZENA OK wolf3d(1).atr: 13061 sektoru po 128 B (1632 kB) -> mechanika D1:, studeny start s OPTION (BASIC vypnuty)
+B296 VBXE: program nasel kartu VBXE (registry $D640, FX 1.26) a pouziva ji
+B296 VBXE: XDL ZAPNUTO, overlay zadny, blitru 2 (seznamu 2), zapisu palety 768, MEMAC A $88/$8B B $00, snimek 6254
+B296 VBXE: XDL ZAPNUTO, overlay LR 160 bodu, blitru 2 (seznamu 2), zapisu palety 768, MEMAC A $88/$8B B $00, snimek 6255
+B296 VBXE: XDL ZAPNUTO, overlay SR 320 bodu, blitru 2 (seznamu 2), zapisu palety 768, MEMAC A $88/$8A B $00, snimek 6348
+B296 VBXE: XDL ZAPNUTO, overlay LR 160 bodu, blitru 4 (seznamu 4), zapisu palety 768, MEMAC A $88/$8A B $00, snimek 6552
+B296 VBXE: XDL ZAPNUTO, overlay SR 320 bodu, blitru 86 (seznamu 86), zapisu palety 768, MEMAC A $88/$8A B $00, snimek 6553
+B296 VBXE: XDL ZAPNUTO, overlay LR 160 bodu, blitru 1417 (seznamu 1417), zapisu palety 768, MEMAC A $88/$8A B $00, snimek 7078
 B291 KRESLICI_VLAKNO stop
 B291 EMULACE_VLAKNO stop
 
-VYSLEDEK: 15 kontrol, 0 chyb
+VYSLEDEK: 29 kontrol, 0 chyb

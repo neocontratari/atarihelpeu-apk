@@ -1,0 +1,37 @@
+=== B296 VBXE na PC (test_core) - obrazky kontroloval Claude, do repozitare se nedavaji ===
+
+--- Popeye (VBXE, PAL Version)(2).xex: klavesa 400, START 1600, FIRE 1800, joystick vlevo 1900-2600 ---
+VBXE snimek 1500: zapisu 2125, XDL snimku 294, posledni overlay 2, sirka 0, XDL=$1E000 zap=1, MEMAC ctl=$A8 A=$9E B=$00, blitu 352 (seznamu 334), stav blitru 0, IRQ en=0 req=1, paleta zapisu 381, radku VBXE 240, extColor 1
+VBXE snimek 2600: zapisu 38950, XDL snimku 1394, posledni overlay 2, sirka 0, XDL=$1E000 zap=1, MEMAC ctl=$A8 A=$9E B=$00, blitu 20748 (seznamu 8502), stav blitru 0, IRQ en=0 req=1, paleta zapisu 507, radku VBXE 240, extColor 1
+LOG B291 XEX /home/claude/atarihelpeu-apk/test_assets/Popeye (VBXE, PAL Version)(2).xex: 61819 bajtu - studeny start s OPTION (BASIC vypnuty), pak segmenty
+LOG B291 XEX OS nastartovan za 87 snimku (BASIC=VYPNUTY, RAMTOP=$C0) - nahravam segmenty
+LOG B291 XEX /home/claude/atarihelpeu-apk/test_assets/Popeye (VBXE, PAL Version)(2).xex nahrano: 624 segmentu, 59321 bajtu, 267 x INIT -> start $2C59 (RUNAD)
+PC=$2287 jam=0
+VBXE konec: zapisu 38950, XDL snimku 1394, posledni overlay 2, sirka 0, XDL=$1E000 zap=1, MEMAC ctl=$A8 A=$9E B=$00, blitu 20748 (seznamu 8502), stav blitru 0, IRQ en=0 req=1, paleta zapisu 507, radku VBXE 240, extColor 1
+
+--- wolf3d(1).atr: klavesa 400, RETURN 700/900/1100 (menu, epizoda, obtiznost), joystick nahoru 1500-1560, MEZERA 1570 (dvere) ---
+ATR: 13061 sektoru po 128 B
+VBXE snimek 300: zapisu 825, XDL snimku 146, posledni overlay 2, sirka 1, XDL=$0A030 zap=1, MEMAC ctl=$88 A=$8A B=$00, blitu 2 (seznamu 2), stav blitru 0, IRQ en=0 req=1, paleta zapisu 768, radku VBXE 240, extColor 0
+VBXE snimek 1400: zapisu 9500, XDL snimku 1246, posledni overlay 1, sirka 1, XDL=$0A000 zap=1, MEMAC ctl=$88 A=$8A B=$00, blitu 2928 (seznamu 2902), stav blitru 2, IRQ en=0 req=1, paleta zapisu 768, radku VBXE 240, extColor 0
+VBXE snimek 1560: zapisu 11999, XDL snimku 1406, posledni overlay 1, sirka 1, XDL=$0A000 zap=1, MEMAC ctl=$88 A=$8A B=$00, blitu 5026 (seznamu 4951), stav blitru 0, IRQ en=0 req=1, paleta zapisu 768, radku VBXE 240, extColor 0
+VBXE snimek 1700: zapisu 15711, XDL snimku 1546, posledni overlay 1, sirka 1, XDL=$0A000 zap=1, MEMAC ctl=$88 A=$8A B=$00, blitu 7052 (seznamu 6941), stav blitru 2, IRQ en=0 req=1, paleta zapisu 768, radku VBXE 240, extColor 0
+PC=$BED5 jam=0 SIO prikazu=4489 cteni=4488 zapisu=0 PORTB=$FE
+VBXE konec: zapisu 15711, XDL snimku 1546, posledni overlay 1, sirka 1, XDL=$0A000 zap=1, MEMAC ctl=$88 A=$8A B=$00, blitu 7052 (seznamu 6941), stav blitru 2, IRQ en=0 req=1, paleta zapisu 768, radku VBXE 240, extColor 0
+
+--- nightdriver_vbxe.xex: klavesa 600 a 900 (dve titulky), START 1100, FIRE 1200, plyn 1300-1700 ---
+VBXE snimek 1700: zapisu 778, XDL snimku 751, posledni overlay 2, sirka 0, XDL=$00000 zap=1, MEMAC ctl=$4E A=$00 B=$00, blitu 0 (seznamu 0), stav blitru 0, IRQ en=0 req=0, paleta zapisu 768, radku VBXE 54, extColor 0
+LOG B291 XEX /home/claude/atarihelpeu-apk/test_assets/nightdriver_vbxe.xex: 32047 bajtu - studeny start s OPTION (BASIC vypnuty), pak segmenty
+LOG B291 XEX OS nastartovan za 87 snimku (BASIC=VYPNUTY, RAMTOP=$C0) - nahravam segmenty
+LOG B291 XEX /home/claude/atarihelpeu-apk/test_assets/nightdriver_vbxe.xex: INIT c.3 prevzal rizeni a bezi (program spusten z INIT; kdyz se vrati, nahraju zbytek)
+LOG B296 XEX /home/claude/atarihelpeu-apk/test_assets/nightdriver_vbxe.xex: INIT c.3 se vratil po 10 s - nahravam dalsi segmenty
+LOG B291 XEX /home/claude/atarihelpeu-apk/test_assets/nightdriver_vbxe.xex nahrano: 36 segmentu, 31901 bajtu, 7 x INIT -> start $A400 (RUNAD)
+PC=$A566 jam=0
+VBXE konec: zapisu 778, XDL snimku 751, posledni overlay 2, sirka 0, XDL=$00000 zap=1, MEMAC ctl=$4E A=$00 B=$00, blitu 0 (seznamu 0), stav blitru 0, IRQ en=0 req=0, paleta zapisu 768, radku VBXE 54, extColor 0
+
+--- rrumble.xex (Robots Rumble VBXE) ---
+VBXE snimek 1500: zapisu 7180, XDL snimku 1392, posledni overlay 2, sirka 1, XDL=$00000 zap=1, MEMAC ctl=$B8 A=$81 B=$00, blitu 480 (seznamu 480), stav blitru 0, IRQ en=0 req=1, paleta zapisu 1539, radku VBXE 240, extColor 1
+LOG B291 XEX /home/claude/atarihelpeu-apk/test_assets/rrumble.xex: 52447 bajtu - studeny start s OPTION (BASIC vypnuty), pak segmenty
+LOG B291 XEX OS nastartovan za 87 snimku (BASIC=VYPNUTY, RAMTOP=$C0) - nahravam segmenty
+LOG B291 XEX /home/claude/atarihelpeu-apk/test_assets/rrumble.xex nahrano: 38 segmentu, 52293 bajtu, 16 x INIT -> start $2CFD (RUNAD)
+PC=$2F90 jam=0
+VBXE konec: zapisu 7180, XDL snimku 1392, posledni overlay 2, sirka 1, XDL=$00000 zap=1, MEMAC ctl=$B8 A=$81 B=$00, blitu 480 (seznamu 480), stav blitru 0, IRQ en=0 req=1, paleta zapisu 1539, radku VBXE 240, extColor 1

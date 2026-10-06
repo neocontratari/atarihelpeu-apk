@@ -428,6 +428,7 @@ static const float TW_W = TB_W * 0.8793f, TW_H = TB_H * 0.8362f;
 enum : int {
   ID_NONE = -1, ID_KEY0 = 0, ID_CON0 = 100, ID_TAPE0 = 200, ID_DOOR = 210, ID_CNTRST = 211,
   ID_SVC0 = 300, ID_POWER = 400,
+  ID_JOY = 500, ID_FIRE = 501,           // B296: obrazovka = joystick (leva pulka smer, prava FIRE)
 };
 // Servisni akce (vraci se Jave - otevreni vyberu souboru, dialogu, menu...)
 enum : int {
@@ -439,8 +440,11 @@ enum : int {
 // B292: KEYUP (pusteni klavesy - OS pak klavesu opakuje jako skutecna
 // klavesnice, dokud je drzena), SHIFT (zamek SHIFT = SKSTAT bit 3),
 // TAPE (v: bit0 PLAY, bit1 REC), REWIND/FFWD (pretoceni pasky).
+// B296: JOY = joystick 1 z doteku na obrazovce (v: bit0 nahoru, 1 dolu,
+// 2 vlevo, 3 vpravo, 4 FIRE), PAD = herni ovladac / klavesnice telefonu
+// (stejne bity + 5 START, 6 SELECT, 7 OPTION).
 struct Ev {
-  enum T { NONE, KEY, CONSOL, RESET, BREAK, POWER_ON, POWER_OFF, KEYUP, SHIFT, TAPE, REWIND, FFWD } t = NONE;
+  enum T { NONE, KEY, CONSOL, RESET, BREAK, POWER_ON, POWER_OFF, KEYUP, SHIFT, TAPE, REWIND, FFWD, JOY, PAD } t = NONE;
   int v = 0;
 };
 
@@ -491,8 +495,9 @@ public:
   std::vector<IRect> dirty;
   bool needPresent = true;
 
-  // --- obraz Atari (384x240, RGBA jako AnticView::fb) ---
-  static const int AW = 384, AH = 240;
+  // --- obraz Atari (768x240, RGBA jako AnticView::fb - B296: 4 body na
+  //     barevny takt kvuli VBXE 640 bodu; bez VBXE je kazdy bod 2x) ---
+  static const int AW = 768, AH = 240;
   std::vector<uint32_t> atari;  bool atariValid = false;
 
   Device() { atari.assign((size_t)AW * AH, 0xFF000000u); }
@@ -556,6 +561,43 @@ public:
   inline float toDuX(float x) const { return (x - devX) / s; }
   inline float toDuY(float y) const { return (y - devY) / s; }
 
+  // ---------------- B296: joystick na obrazovce ----------------
+  // Obrazovka Atari (sklo 108,105 715x605 du) je dotykovy joystick 1:
+  // LEVA pulka = smer (kam prst od mista dotyku posune, tam joystick
+  // ukazuje - 8 smeru), PRAVA pulka = FIRE (drzeny, dokud je prst dole).
+  // Hry pro VBXE (Wolfenstein 3D, Popeye ...) se bez joysticku ovladat
+  // nedaji; obrazovka jinak na dotek nereagovala, vzhled se nemeni.
+  static constexpr float SCR_X = 108.f, SCR_Y = 105.f, SCR_W = 715.f, SCR_H = 605.f;
+  static constexpr float JOY_PRAH = 24.f;            // du: od kolika se smer pocita
+  int joyPid = -1, firePid = -1;
+  float joyU0 = 0, joyV0 = 0;
+  int joyStick = 0;                                  // bity 0-3 (nahoru, dolu, vlevo, vpravo)
+  bool joyFire = false;
+  bool joyNapovezeno = false;
+  int joyMask() const { return joyStick | (joyFire ? 16 : 0); }
+  int joySmer(float u, float v) {
+    float du = u - joyU0, dv = v - joyV0;
+    // stred se posouva za prstem (rychla zmena smeru bez navratu na misto dotyku)
+    const float R = JOY_PRAH * 2.5f, d = std::sqrt(du * du + dv * dv);
+    if (d > R) { joyU0 = u - du * (R / d); joyV0 = v - dv * (R / d); du = u - joyU0; dv = v - joyV0; }
+    int m = 0;
+    if (dv < -JOY_PRAH) m |= 1;
+    if (dv > JOY_PRAH) m |= 2;
+    if (du < -JOY_PRAH) m |= 4;
+    if (du > JOY_PRAH) m |= 8;
+    return m;
+  }
+  // posun prstu (jen joystick)
+  int pointerMove(int pid, float x, float y, long long now, Ev *out, int maxOut) {
+    (void)now;
+    if (pid != joyPid || joyPid < 0 || maxOut < 1) return 0;
+    const int m = joySmer(toDuX(x), toDuY(y));
+    if (m == joyStick) return 0;
+    joyStick = m;
+    out[0].t = Ev::JOY; out[0].v = joyMask();
+    return 1;
+  }
+
   int hitTest(float x, float y) const {
     float u = toDuX(x), v = toDuY(y);
     auto in = [&](float x0, float y0, float w, float h, float pad = 0.f) {
@@ -563,6 +605,7 @@ public:
     };
     if (in(8, 393, 34, 50, 6)) return ID_POWER;
     if (!power) return ID_NONE;                      // vypnuto: prekryv blokuje vse krome POWER
+    if (in(SCR_X, SCR_Y, SCR_W, SCR_H)) return u < SCR_X + SCR_W * 0.5f ? ID_JOY : ID_FIRE;
     for (int i = 0; i < 8; i++) if (in(SVC_X0 + i * (SVC_W + SVC_GAP), SVC_Y, SVC_W, SVC_H)) return ID_SVC0 + i;
     for (int i = 0; i < 6; i++) if (in(TAPE_B[i], TAPE_Y, TAPE_B[i + 1] - TAPE_B[i], TAPE_H)) return ID_TAPE0 + i;
     if (in(855, 1328, 37, 48, 4)) return ID_CNTRST;
@@ -651,6 +694,13 @@ public:
     }
     if (id == ID_CNTRST) { swHeld = true; swAt = now; counter = 0; counterAcc = 0; markCounter(); return n; }
     if (id == ID_DOOR) { setDoor(false, now); return n; }
+    if (id == ID_JOY || id == ID_FIRE) {
+      if (id == ID_JOY) { joyPid = pid; joyU0 = toDuX(x); joyV0 = toDuY(y); joyStick = 0; }
+      else { firePid = pid; joyFire = true; }
+      if (!joyNapovezeno) { joyNapovezeno = true; setStatusMessage("JOYSTICK: LEVO = SMER, VPRAVO = FIRE", now, 5000); }
+      push(Ev::JOY, joyMask());
+      return n;
+    }
     if (id >= ID_SVC0 && id < ID_SVC0 + 8) { int i = id - ID_SVC0; svcHeld[i] = true; svcAt[i] = now; markSvc(i); return n; }
     return n;
   }
@@ -682,6 +732,12 @@ public:
       return n;
     }
     if (id == ID_CNTRST) { swHeld = false; markCounter(); return n; }
+    if (id == ID_JOY || id == ID_FIRE) {
+      if (pid == joyPid) { joyPid = -1; joyStick = 0; }
+      if (pid == firePid) { firePid = -1; joyFire = false; }
+      push(Ev::JOY, joyMask());
+      return n;
+    }
     if (id >= ID_SVC0 && id < ID_SVC0 + 8) {
       int i = id - ID_SVC0; svcHeld[i] = false; markSvc(i);
       // akce az pri pusteni NAD stejnym tlacitkem (jako bezne kliknuti)
@@ -739,6 +795,7 @@ public:
     for (int i = 0; i < 6; i++) { tapeHeld[i] = false; tapeAt[i] = -100000; }
     for (int i = 0; i < 8; i++) { svcHeld[i] = false; svcAt[i] = -100000; }
     for (int i = 0; i < 16; i++) pidElem[i] = ID_NONE;
+    joyPid = firePid = -1; joyStick = 0; joyFire = false;
     shiftLatched = ctrlLatched = false;
     power = true; powerAt = -100000;
     rec = play = false; doorOpen = false; doorAt = -100000;
@@ -1104,10 +1161,11 @@ public:
   // .screen{border-radius:1%;box-shadow:inset 0 0 3.5cqw rgba(0,0,0,.55),
   //  inset 0 .3cqw 1cqw rgba(0,0,0,.5)} pb(108,105,715,605)
   // .scanlines{background:repeating-linear-gradient(180deg,rgba(0,0,0,.16) 0 1px,transparent 1px 4px)}
-  // Obraz Atari (384x240): orez 8 px z kazde strany (cisty okraj) -> 368
-  // sloupcu na celou sirku obrazovky; radky v pomeru PAL televize, na
-  // stred (nad a pod je cerna jako na skutecnem CRT).
-  static const int CROP_X0 = 24, CROP_W = 336;
+  // Obraz Atari (768x240 = barevne takty 32..223 po 4 bodech): orez 12
+  // taktu z kazde strany -> takty 44..212 (= siroky overlay VBXE) na celou
+  // sirku obrazovky; radky v pomeru PAL televize, na stred (nad a pod je
+  // cerna jako na skutecnem CRT).
+  static const int CROP_X0 = 48, CROP_W = 672;
   int scrX0 = 0, scrY0 = 0, scrX1 = 0, scrY1 = 0;      // px rozsah obrazovky
   std::vector<uint16_t> scrMod;    // nasobitel jasu 0..256 (stiny+linky)
   std::vector<uint8_t>  scrAdd;    // odlesk skla (pridany jas 0..255)
@@ -1169,7 +1227,9 @@ public:
     }
     // svisle: vsech 240 radku tak, aby obraz vyplnil skoro celou vysku skla
     // (jako televize s dotazenou vyskou obrazu) - bod je o ~12 % vyssi nez sirsi.
-    float ky = kx / 0.88f;
+    // B296: radek = vyska 2 bodu z 768 siroke radky (= 1 bod puvodnich 384),
+    // aby obraz zustal stejne vysoky jako do B295.
+    float ky = kx * (AW / 384.f) / 0.88f;
     picH = AH * ky; picY0 = sy + (sh - picH) * 0.5f;
     rowIdx.assign(h, -1); rowW.assign(h, 0);
     for (int y = 0; y < h; y++) {

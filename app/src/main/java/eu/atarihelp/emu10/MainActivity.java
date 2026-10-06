@@ -6654,6 +6654,8 @@ public class MainActivity extends Activity {
         final AtariDeviceView v = atariZarizeni;
         atariZarizeni = null;
         atariZarizeniSkryte = false;
+        atariPadTlacitka = 0; atariPadPacka = 0;           // B296: ovladac pustit
+        try { NativeAtariCoreBridge.devPadSafe(0); } catch (Throwable ignored) {}
         ui.removeCallbacks(atariZarizeniTik);
         if (atariCppSpustCekajici != null) { ui.removeCallbacks(atariCppSpustCekajici); atariCppSpustCekajici = null; }
         try { NativeAtariCoreBridge.devStopSafe(); } catch (Throwable ignored) {}
@@ -6912,6 +6914,13 @@ public class MainActivity extends Activity {
                 "POWER (zeleny vypinac vlevo u obrazovky) - vypne / zapne Atari. Zapnuti = studeny start (pamet se vymaze).\n\n"
               + "RESET - jako na skutecnem Atari: program v pameti zustane.\n\n"
               + "HELP, START, SELECT, OPTION - konzolova tlacitka, drzi se po dobu stisku.\n\n"
+              + "JOYSTICK 1 = OBRAZOVKA ATARI: polozis prst na LEVOU pulku obrazovky a posouvas ho "
+              + "(nahoru / dolu / do stran, i sikmo) - joystick ukazuje tim smerem, dokud prst drzis. "
+              + "PRAVA pulka obrazovky = FIRE (drzene, dokud je prst dole). Jde to obema palci najednou.\n\n"
+              + "Herni ovladac (bluetooth / USB): krizek nebo packa = joystick, A/B = FIRE, X = klavesa MEZERA, "
+              + "Y = RETURN, START/SELECT = konzole, L2/R2 = OPTION.\n\n"
+              + "VBXE - v jadre je graficka karta VBXE (FX 1.26 na $D640), hry pro VBXE (Wolfenstein 3D, Popeye ...) "
+              + "ji najdou samy. Wolfenstein 3D: chuze joystickem, FIRE = strelba, MEZERA = otevrit dvere.\n\n"
               + "SHIFT a CONTROL - tuknuti = zamceno (zlate), dalsi tuknuti = odemceno.\n\n"
               + "Kazetak: REC a PLAY drzi, STOP je pusti. EJECT otevre dvirka a nabidne kazety (WAV ulozene CSAVE "
               + "nebo jakykoli WAV z telefonu) - po vyberu se kazeta vlozi a dvirka zavrou. REW = pasek na zacatek, "
@@ -8457,6 +8466,47 @@ public class MainActivity extends Activity {
         return ps1BiosRunning || ps1SessionActive;
     }
 
+    // ===================================================================
+    //  B296: HERNI OVLADAC PRO ATARI 130XE V HELP (C++ jadro)
+    //  Smerovy krizek / packa = joystick 1, A/B/L1/R1 = FIRE,
+    //  X = klavesa MEZERA (Wolfenstein: otevrit dvere), Y = RETURN,
+    //  START = START, SELECT = SELECT, L2/R2/MODE = OPTION. Sipky na
+    //  bluetooth klavesnici jsou taky smerovy krizek. Hry pro VBXE
+    //  (Wolfenstein 3D, Popeye) se bez joysticku ovladat nedaji.
+    // ===================================================================
+    private int atariPadTlacitka = 0;       // bity jako NativeAtariCoreBridge.devPadSafe
+    private int atariPadPacka = 0;          // smer z analogove packy / HAT
+
+    private boolean napAtariOvladani() {
+        return atariZarizeni != null && !atariZarizeniSkryte;
+    }
+
+    private static int napAtariBitPodleKlavesy(int kod) {
+        switch (kod) {
+            case KeyEvent.KEYCODE_DPAD_UP:       return 1;
+            case KeyEvent.KEYCODE_DPAD_DOWN:     return 2;
+            case KeyEvent.KEYCODE_DPAD_LEFT:     return 4;
+            case KeyEvent.KEYCODE_DPAD_RIGHT:    return 8;
+            case KeyEvent.KEYCODE_DPAD_CENTER:
+            case KeyEvent.KEYCODE_BUTTON_A:
+            case KeyEvent.KEYCODE_BUTTON_B:
+            case KeyEvent.KEYCODE_BUTTON_L1:
+            case KeyEvent.KEYCODE_BUTTON_R1:     return 16;   // FIRE
+            case KeyEvent.KEYCODE_BUTTON_START:  return 32;   // START
+            case KeyEvent.KEYCODE_BUTTON_SELECT: return 64;   // SELECT
+            case KeyEvent.KEYCODE_BUTTON_MODE:
+            case KeyEvent.KEYCODE_BUTTON_L2:
+            case KeyEvent.KEYCODE_BUTTON_R2:     return 128;  // OPTION
+            case KeyEvent.KEYCODE_BUTTON_X:      return 256;  // klavesa MEZERA
+            case KeyEvent.KEYCODE_BUTTON_Y:      return 512;  // klavesa RETURN
+            default: return 0;
+        }
+    }
+
+    private void napAtariPadPosli() {
+        NativeAtariCoreBridge.devPadSafe(atariPadTlacitka | atariPadPacka);
+    }
+
     @Override
     public boolean onKeyDown(int keyCode, KeyEvent event) {
         if (napPs1Ovladani() && event.getRepeatCount() == 0) {
@@ -8464,6 +8514,13 @@ public class MainActivity extends Activity {
             if (t >= 0) {
                 NativePs1CoreBridge.setButtonSafe(t, true);
                 return true;                 // spotrebovano, dal neposilat
+            }
+        }
+        if (napAtariOvladani()) {
+            int b = napAtariBitPodleKlavesy(keyCode);
+            if (b != 0) {
+                if ((atariPadTlacitka & b) == 0) { atariPadTlacitka |= b; napAtariPadPosli(); }
+                return true;
             }
         }
         return super.onKeyDown(keyCode, event);
@@ -8475,6 +8532,13 @@ public class MainActivity extends Activity {
             int t = napTlacitkoPodleKlavesy(keyCode);
             if (t >= 0) {
                 NativePs1CoreBridge.setButtonSafe(t, false);
+                return true;
+            }
+        }
+        if (napAtariOvladani()) {
+            int b = napAtariBitPodleKlavesy(keyCode);
+            if (b != 0) {
+                if ((atariPadTlacitka & b) != 0) { atariPadTlacitka &= ~b; napAtariPadPosli(); }
                 return true;
             }
         }
@@ -8496,6 +8560,24 @@ public class MainActivity extends Activity {
                 if (Math.abs(hx) > 0.5f) x = hx;
                 if (Math.abs(hy) > 0.5f) y = hy;
                 NativePs1CoreBridge.setStickSafe((int) (x * 32767), (int) (y * 32767));
+                return true;
+            }
+            // B296: Atari 130XE v HELP - packa / HAT = joystick 1 (8 smeru)
+            if (napAtariOvladani()
+                    && (event.getSource() & InputDevice.SOURCE_JOYSTICK) == InputDevice.SOURCE_JOYSTICK
+                    && event.getAction() == MotionEvent.ACTION_MOVE) {
+                float x = event.getAxisValue(MotionEvent.AXIS_X);
+                float y = event.getAxisValue(MotionEvent.AXIS_Y);
+                float hx = event.getAxisValue(MotionEvent.AXIS_HAT_X);
+                float hy = event.getAxisValue(MotionEvent.AXIS_HAT_Y);
+                if (Math.abs(hx) > 0.5f) x = hx;
+                if (Math.abs(hy) > 0.5f) y = hy;
+                int m = 0;
+                if (y < -0.5f) m |= 1;
+                if (y > 0.5f) m |= 2;
+                if (x < -0.5f) m |= 4;
+                if (x > 0.5f) m |= 8;
+                if (m != atariPadPacka) { atariPadPacka = m; napAtariPadPosli(); }
                 return true;
             }
         } catch (Throwable ignored) {}

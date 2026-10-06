@@ -113,9 +113,11 @@ Tenhle test pousti jadro na desetitisicich nahodnych stavu a porovnava vysledek
 s cislem, ktere vyslo na pocitaci. Delam to proto, ze pocitac je x86 a telefon
 ARM - a na ARM se nektere veci chovaji jinak. Kdyz se to rozejde, ma se to
 poznat ted, a ne az podle spatneho obrazu.<br><br>
-B295: kazeta funguje (CSAVE do WAV, CLOAD z WAV pres EJECT) a disketova
-mechanika D1: taky (ATR/DISK, nebo ATR z XEX/MOBIL a NET/HRY). V C++ zatim
-neni VBXE (pridavna graficka karta - na beznem 130XE neni).
+B296: v C++ jadre je VBXE (karta FX 1.26 na $D640) - Wolfenstein 3D, Popeye
+a dalsi hry pro VBXE bezi. Joystick 1: LEVA pulka obrazovky Atari = smer
+(posun prstu), PRAVA pulka = FIRE; herni ovladac taky (krizek/packa = smer,
+A/B = FIRE, X = MEZERA, Y = RETURN, START/SELECT). Kazeta (CSAVE/CLOAD) a
+disketa D1: (ATR) funguji dal.
 </p>
 
 <p><a href="../index.html">&larr; Zpet do nabidky</a></p>
@@ -132,44 +134,38 @@ try{ if(window.AHATARICPP && !AHATARICPP.jeNactene()){
 } }catch(e){}
 function set(id,t,cls){var e=$(id); if(!e)return; e.textContent=t; if(cls)e.className='v '+cls;}
 var KROKY=[
- // B295: testy pro B293-B295 (nove jadro 130XE po cyklech, kazeta, disketa, kontrola 130XE)
+ // B296: VBXE (Wolfenstein 3D, Popeye) + joystick na obrazovce / herni ovladac
  {n:1,co:'TEST JADRA (tlacitko SPUSTIT TEST JADRA nize)',
   ok:'Procesor i Pamet = SEDI (29C55806 / D3949DC5), Rychlost aspon 2x realny cas.',
   ne:'NESEDI, nebo rychlost pod 1x (Atari by se zpomalovalo).'},
  {n:2,co:'HELP: start Atari',
-  ok:'Atari nabehne do READY se startovnim zvukem. V logu je radek B293 JADRO = ATARI 130XE PAL.',
+  ok:'Atari nabehne do READY se startovnim zvukem. V logu jsou radky B293 JADRO = ATARI 130XE PAL a B296 VBXE FX 1.26 v jadre.',
   ne:'Nenabehne, je ticho, nebo zvuk zadrhava.'},
- {n:3,co:'Self-test: napis BYE, RETURN, pak AUDIO-VISUAL',
-  ok:'Obraz i zvuk sedi jako v B291 (100 procent), nic necuka.',
-  ne:'Zvuk ujizdi od obrazu, cuka, nebo je grafika jinak.'},
- {n:4,co:'Klavesnice: drz prst na klavese, pak pust; SHIFT, CONTROL, HELP',
-  ok:'Drzena klavesa se po cca 1 s zacne opakovat, po pusteni prestane. SHIFT/CONTROL zamek funguje, HELP reaguje.',
-  ne:'Neopakuje se, nebo se opakuje i po pusteni.'},
- {n:5,co:'BASIC/TBXL TXT: 10 ? "HELLO 1000" -> VLOZIT + RUN',
-  ok:'Vypise HELLO 1000 - zadne zdvojene pismeno ani nula se neztrati.',
-  ne:'Vypise HELO 10 nebo jinak.'},
- {n:6,co:'RESET s programem v pameti (napr. po bodu 5)',
-  ok:'Atari skoci do READY a LIST ukaze program (pamet zustala).',
-  ne:'Program zmizel, Atari zamrzne nebo se restartuje cele.'},
- {n:7,co:'NET/HRY: nekolik her (hlavne ty, co mely chybu v grafice)',
-  ok:'Kazda hra se spusti tady v HELP (C++), nikdy ve starem emulatoru. Hry s chybou zapis poznamkou ZAPSAT (jmeno + co je spatne).',
-  ne:'Nekde skoci do stareho ATARI 130XE EMULATORU, nebo hra nejede.'},
- {n:8,co:'CSAVE: kratky program, CSAVE, RETURN, po pipnuti RETURN',
-  ok:'Civky se toci, pod pristrojem CSAVE ULOZENO: Atari_emu/csave_datum_cas.wav.',
-  ne:'Zadny WAV, nebo hlaska o chybe.'},
- {n:9,co:'CLOAD: EJECT -> vyber WAV z bodu 8 (PLAY se zmackne samo) -> napis CLOAD, RETURN, po pipnuti jeste jednou RETURN',
-  ok:'Dvirka se zavrou, PLAY je zmacknute, po druhem RETURN bezi motor (civky se toci), pak READY a LIST ukaze program.',
-  ne:'Nenahraje se (ERROR, zamrzne, nebo se nic nedeje) - v logu jsou radky B295 KAZETA motor ...'},
- {n:10,co:'ATR/DISK: vyber disketu ATR (treba wolf3d.atr)',
-  ok:'Atari nabootuje z diskety. wolf3d.atr napise WOLF3D NEEDS VBXE - to je spravne, 130XE bez VBXE karty presne tohle ukaze.',
-  ne:'Nenabootuje, nebo zamrzne.'},
- {n:11,co:'Skutecne 130XE: WAV z bodu 8 prehraj do skutecneho Atari (CLOAD)',
-  ok:'Skutecne Atari program nahraje.',
-  ne:'Nenahraje (napis poznamkou, jakou chybu ukazalo).'},
- {n:12,co:'Skutecne 130XE vs emulator - stejne prikazy na obou (BASIC po zapnuti)',
-  ok:'Vyjdou stejna cisla. V emulatoru: ?FRE(0) = 37902 | POKE 20,0:FOR I=1 TO 2000:NEXT I:?PEEK(20) = 184 | POKE 559,0:POKE 20,0:FOR I=1 TO 2000:NEXT I:POKE 559,34:?PEEK(20) = 136. Cisla ze skutecneho Atari zapis poznamkou.',
-  ne:'Skutecne Atari ukaze jina cisla (zapis je poznamkou ZAPSAT).'},
- {n:13,co:'ATARI 130XE EMULATOR, PS1 a SEGA v hlavni nabidce',
+ {n:3,co:'Wolfenstein 3D: ATR/DISK -> wolf3d.atr',
+  ok:'Za par sekund titulka Wolfenstein 3-D (vojak, chodba). V logu B296 VBXE: XDL ZAPNUTO, overlay SR 320 bodu.',
+  ne:'Napise WOLF3D NEEDS VBXE, zamrzne, nebo je obraz rozsypany.'},
+ {n:4,co:'Wolfenstein 3D: klavesa (treba RETURN) -> menu NEW GAME -> RETURN, RETURN, RETURN',
+  ok:'Vyber epizody, obtiznosti, pak hra: dvere pred tebou, dole FLOOR 1, LIVES 3, HEALTH 100%, AMMO 8.',
+  ne:'Menu nereaguje, nebo se hra nespusti.'},
+ {n:5,co:'Wolfenstein 3D ve hre: prst na LEVE pulce obrazovky a posouvej (nahoru = dopredu, do stran = otaceni), PRAVA pulka = strelba, MEZERA = otevrit dvere',
+  ok:'Chodis a otacis se, pri strelbe ubyva AMMO, mezera otevre dvere. Pod pristrojem se jednou ukaze JOYSTICK: LEVO = SMER, VPRAVO = FIRE.',
+  ne:'Postava se nehybe, strelba nejde, nebo se joystick zasekne v jednom smeru.'},
+ {n:6,co:'Popeye: XEX/MOBIL (nebo NET/HRY) -> Popeye (VBXE, PAL)',
+  ok:'Text VBXE found at $D640, FX core version 1.26. Klavesa -> Loading... (cca 20 s) -> titulka POPEYE (hvezda, Popeye s dymkou).',
+  ne:'Napise, ze VBXE neni, zamrzne na Loading..., nebo je titulka rozsypana.'},
+ {n:7,co:'Popeye: START (konzole), pak FIRE (prava pulka obrazovky)',
+  ok:'GET READY! ROUND 1, pak hra - Popeye, Olive, Brutus, schody. Levou pulkou obrazovky chodis, FIRE = rana.',
+  ne:'Hra nezacne, postavy chybi nebo blikaji spatne.'},
+ {n:8,co:'Herni ovladac (jestli mas pripojeny): krizek/packa, A, X, START',
+  ok:'Krizek/packa = smer, A nebo B = FIRE, X = MEZERA, Y = RETURN, START/SELECT jako na konzoli. V logu B296 JOYSTICK 1 z herniho ovladace.',
+  ne:'Ovladac nereaguje.'},
+ {n:9,co:'NET/HRY: nekolik her BEZ VBXE (napr. Donkey Kong Jr., Decathlon)',
+  ok:'Vypadaji a hraji se stejne jako v B295 (jen prekryvy vicebarevnych hracu jsou ted spravne). Kde jdou ovladat joystickem, jde to ted obrazovkou.',
+  ne:'Jakakoli zmena k horsimu - zapis poznamkou ZAPSAT (jmeno + co je spatne).'},
+ {n:10,co:'Kazeta: CSAVE a pak CLOAD (EJECT -> vyber WAV, CLOAD, RETURN, po pipnuti RETURN)',
+  ok:'Funguje jako v B295 - LIST po CLOAD ukaze program.',
+  ne:'Nenahraje se - v logu jsou radky B295 KAZETA motor ...'},
+ {n:11,co:'ATARI 130XE EMULATOR, PS1 a SEGA v hlavni nabidce',
   ok:'Bezi UPLNE STEJNE jako dosud.',
   ne:'Jakakoli zmena proti minule verzi.'}
 ];

@@ -2,18 +2,35 @@ B292 - nove jadro Atari 130XE presne po cyklech (testy na obycejnem Linuxu s g++
 ==================================================================================
 
 Spoustet z adresare test_overeni/b292. Prekladaji se jen hlavicky jadra
-(nap_atari_6502.h, nap_atari_machine.h, nap_atari_tape.h, nap_atari_runtime.h).
+(nap_atari_6502.h, nap_atari_machine.h, nap_atari_tape.h, nap_atari_vbxe.h,
+nap_atari_runtime.h).
 
-1) Jadro na PC (boot, Acid800, XEX, kazeta):
+1) Jadro na PC (boot, Acid800, XEX, ATR, kazeta):
    g++ -std=c++17 -O2 -I../../app/src/main/cpp/atari -o test_core test_core.cpp
    ./test_core boot                         -> start OS s BASICem, READY
    ./test_core acid acid800.atr             -> Acid800 (DETAIL=1 / TEXTLOG=1)
-   ./test_core xex hra.xex 1500 prefix 300,600  -> snimky obrazu (*.idx 384x240)
+   ./test_core xex hra.xex 1500 prefix 300,600  -> snimky obrazu:
+                                               *.idx 384x240 (kod barvy GTIA, srovnani s atari800)
+                                               *.ppm 768x240 RGB (B296: i obraz z VBXE)
+   ./test_core atr disketa.atr 1500 prefix 300,600   -> totez se startem z D1:
    ./test_core kazeta [vystup.wav] [vstup.wav]  -> CSAVE -> WAV -> CLOAD -> LIST
    ./test_core xe130                        -> B293: kontrola veci, ktere ma 130XE
                                                jinak nez Atari 800 (banky, ANTIC/CPU
                                                pristup, TRIG3, RESET, self-test ROM...)
    acid800.atr je v repozitari emulatoru atari800 (test/acid800.atr).
+
+   B296 - vstupy pro xex/atr (promenne prostredi):
+     KLAVESY="snimek:kod,..."  klavesa (kod 0-63, +64 SHIFT, +128 CTRL),
+                               1000 = START, 1001 = FIRE
+     JOY="od-do:maska,..."     joystick 1 drzeny ve snimcich od..do
+                               (1 nahoru, 2 dolu, 4 vlevo, 8 vpravo, 16 FIRE)
+   Priklady (VYSTUP_test_core_vbxe.txt):
+     KLAVESY="400:33,1600:1000,1800:1001" JOY="1900-2600:4" \
+       ./test_core xex "../../test_assets/Popeye (VBXE, PAL Version)(2).xex" 2600 pop 1500,2600
+     KLAVESY="400:33,700:12,900:12,1100:12,1570:33" JOY="1500-1560:1" \
+       ./test_core atr "../../test_assets/wolf3d(1).atr" 1700 w3d 300,1400,1560,1700
+   Na konci a u kazdeho ulozeneho snimku vypise stav VBXE (zapisy, XDL,
+   rezim overlay, MEMAC, pocet blitu, IRQ, radku kreslenych pres VBXE).
 
 2) Procesor proti SingleStepTests (github.com/SingleStepTests/65x02, 6502/v1):
    g++ -std=c++17 -O2 -I../../app/src/main/cpp/atari -o test_6502_sst test_6502_sst.cpp
@@ -25,3 +42,5 @@ Spoustet z adresare test_overeni/b292. Prekladaji se jen hlavicky jadra
        -I$JAVA_HOME/include/linux -I../../app/src/main/cpp/atari \
        -o test_b292_jni_host test_b292_jni_host.cpp
    ./test_b292_jni_host                     -> VYSTUP_test_b292_jni_host.txt
+   (B296: i joystick dotykem / ovladacem a VBXE - Popeye a Wolfenstein 3D
+   z test_assets/ az do hry; bezi v realnem case, cca 3,5 minuty)

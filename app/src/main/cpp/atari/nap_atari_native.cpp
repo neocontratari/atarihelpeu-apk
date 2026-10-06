@@ -461,7 +461,8 @@ Java_eu_atarihelp_emu10_NativeAtariCoreBridge_screenNative(JNIEnv *env, jclass) 
   const int W = AnticView::W, H = AnticView::H, PX = W * H;
   std::string raw; raw.reserve(PX * 3);
   for (int i = 0; i < PX; i++) {
-    const uint32_t v = g_view->fb[i];
+    // fb ma 4 body na barevny takt (sirka 768) - sem kazdy druhy (384)
+    const uint32_t v = g_view->fb[(i / W) * AnticView::FW + (i % W) * 2];
     raw.push_back((char)(v & 0xFF));
     raw.push_back((char)((v >> 8) & 0xFF));
     raw.push_back((char)((v >> 16) & 0xFF));
@@ -723,12 +724,28 @@ static std::atomic<long long> g_snimkuCelkem{0};
 // ztratit mezi dvema snimky. (Klavesy se ztratit nemuzou - jdou pres IRQ.)
 static int g_consolChtene = 7;
 static long long g_consolDrzetDo[3] = {0, 0, 0};
+// B296: joystick 1 - z doteku na obrazovce a z herniho ovladace (bity:
+// 0 nahoru, 1 dolu, 2 vlevo, 3 vpravo, 4 FIRE); START/SELECT/OPTION z
+// ovladace (1/2/4 = stisknuto). Vse pod g_mStroj.
+static int g_joyDotyk = 0, g_joyPad = 0, g_padConsol = 0, g_padKlav = 0;
+static bool g_joyHlasenoDotyk = false, g_joyHlasenoPad = false;
 static int consolEfektivni() {
   int m = g_consolChtene & 7;
   long long f = g_snimkuCelkem.load();
   for (int b = 0; b < 3; b++) if (f < g_consolDrzetDo[b]) m &= ~(1 << b);
+  m &= ~g_padConsol;
   return m;
 }
+static void aplikujJoyLocked() {
+  if (!g_stroj) return;
+  const int m = g_joyDotyk | g_joyPad;
+  g_stroj->porta = (0xF0 | (~m & 15)) & 0xFF;      // PORTA: joystick 1 = dolni 4 bity, 0 = stisknuto
+  g_stroj->trig[0] = (m & 16) ? 0 : 1;            // TRIG0 = FIRE joysticku 1
+}
+// B296: co dela VBXE - do logu jen zmeny (zadny spam po snimcich)
+static long long g_vbxeZapisuPred = 0, g_vbxeBlituPred = 0;
+static bool g_vbxeXdlPred = false;
+static int g_vbxeRezimPred = -1;
 
 static void devLog(const std::string &s) {
   ALOG("%s", s.c_str());
@@ -768,6 +785,8 @@ static void studenyStartLocked(int consol) {
   g_stroj->tape.line = 1; g_stroj->tape.rxPhase = 0;
   g_stroj->disk = std::move(disketa);
   g_stroj->shiftDrzen(g_shiftZamek);
+  aplikujJoyLocked();
+  g_vbxeZapisuPred = g_vbxeBlituPred = 0; g_vbxeXdlPred = false; g_vbxeRezimPred = -1;
   g_typeQ.clear();
   g_rec.reset();
 }
@@ -870,6 +889,34 @@ static void emuVlaknoMain() {
           case nap::dev::Ev::BREAK:
             if (g_stroj && g_strojBezi) g_stroj->breakKey();
             break;
+          case nap::dev::Ev::JOY:
+            g_joyDotyk = e.v & 31;
+            aplikujJoyLocked();
+            if (!g_joyHlasenoDotyk) { g_joyHlasenoDotyk = true; devLog("B296 JOYSTICK 1 dotykem na obrazovce (leva pulka = smer, prava = FIRE)"); }
+            break;
+          case nap::dev::Ev::PAD: {
+            g_joyPad = e.v & 31;
+            aplikujJoyLocked();
+            const int pc = (e.v >> 5) & 7;
+            if (pc != g_padConsol) {
+              // kratky stisk START/SELECT/OPTION musi stroj videt aspon 5 snimku
+              for (int b = 0; b < 3; b++)
+                if ((pc & (1 << b)) && !(g_padConsol & (1 << b))) g_consolDrzetDo[b] = g_snimkuCelkem.load() + 5;
+              g_padConsol = pc;
+              if (g_stroj && !g_xex.aktivni()) g_stroj->consol = consolEfektivni();
+            }
+            // tlacitka X / Y = klavesy MEZERA / RETURN (drzene jako prstem)
+            const int kl = (e.v >> 8) & 3;
+            if (kl != g_padKlav && g_stroj && g_strojBezi) {
+              const int nove = kl & ~g_padKlav;
+              if (nove & 1) g_stroj->klavesa(33, true);
+              else if (nove & 2) g_stroj->klavesa(12, true);
+              else if (!kl) g_stroj->klavesaPustena();
+            }
+            g_padKlav = kl;
+            if (!g_joyHlasenoPad) { g_joyHlasenoPad = true; devLog("B296 JOYSTICK 1 z herniho ovladace / klavesnice telefonu (smer, FIRE, START, SELECT, OPTION)"); }
+            break;
+          }
           default: break;
         }
       }
@@ -911,6 +958,26 @@ static void emuVlaknoMain() {
       for (float &v : pasek) v *= 0.8f;
       g_rec.snimek(*g_stroj, pasek.data(), 882);
       g_xex.poSnimku(*g_stroj);
+      // B296: VBXE - do logu, kdyz ho program najde / zapne XDL / zmeni rezim
+      {
+        static int hlaseni = 0;
+        const nap::Vbxe &v = g_stroj->vbx;
+        if (v.nWrites > 0 && g_vbxeZapisuPred == 0)
+          devLog("B296 VBXE: program nasel kartu VBXE (registry $D640, FX 1.26) a pouziva ji");
+        g_vbxeZapisuPred = v.nWrites;
+        const bool xdl = v.xdlEnabled;
+        const int rez = (v.lastOvMode >= 0 && v.lastOvMode <= 4) ? v.lastOvMode : 0;
+        if ((xdl != g_vbxeXdlPred || (xdl && rez != g_vbxeRezimPred)) && hlaseni < 30) {
+          static const char *kRez[5] = {"zadny", "LR 160 bodu", "SR 320 bodu", "HR 640 bodu/16 barev", "TEXT 80 sloupcu"};
+          char b[300];
+          snprintf(b, sizeof(b), "B296 VBXE: XDL %s, overlay %s, blitru %lld (seznamu %lld), zapisu palety %lld, MEMAC A $%02X/$%02X B $%02X, snimek %lld",
+                   xdl ? "ZAPNUTO" : "VYPNUTO", kRez[rez], v.nBlits, v.nBlitLists, v.nPalWrites, v.memacCtl, v.memacBankA, v.memacBankB,
+                   g_snimkuCelkem.load());
+          devLog(b);
+          hlaseni++;
+        }
+        g_vbxeXdlPred = xdl; g_vbxeRezimPred = rez;
+      }
       g_motorOn = nap::CsaveRecorder::motor(*g_stroj);
       // B295: co se deje s kazetou - do logu a pod pristroj
       {
@@ -942,8 +1009,8 @@ static void emuVlaknoMain() {
       }
       {
         std::lock_guard<std::mutex> f(g_mFrame);
-        if (g_sdilenySnimek.size() != (size_t)AnticView::W * AnticView::H)
-          g_sdilenySnimek.assign((size_t)AnticView::W * AnticView::H, 0xFF000000u);
+        if (g_sdilenySnimek.size() != (size_t)AnticView::FW * AnticView::H)
+          g_sdilenySnimek.assign((size_t)AnticView::FW * AnticView::H, 0xFF000000u);
         std::memcpy(g_sdilenySnimek.data(), g_view->fb, g_sdilenySnimek.size() * 4);
       }
       g_snimekSeq++;
@@ -1016,7 +1083,7 @@ static void kresliVlaknoMain() {
         posledniSeq = seq;
         if (g_strojBezi.load()) {
           std::lock_guard<std::mutex> f(g_mFrame);
-          if (g_sdilenySnimek.size() == (size_t)AnticView::W * AnticView::H) d.setAtariFrame(g_sdilenySnimek.data());
+          if (g_sdilenySnimek.size() == (size_t)AnticView::FW * AnticView::H) d.setAtariFrame(g_sdilenySnimek.data());
         }
       }
       d.motorOn = g_motorOn.load();
@@ -1063,6 +1130,7 @@ Java_eu_atarihelp_emu10_NativeAtariCoreBridge_devStartNative(JNIEnv *, jclass, j
   }
   {
     std::lock_guard<std::mutex> l(g_mStroj);
+    if (studeny) { g_joyDotyk = g_joyPad = g_padConsol = g_padKlav = 0; }   // B296: joystick pusteny
     if (studeny || !g_stroj) {
       g_xex.zrus();
       studenyStartLocked(7);
@@ -1077,6 +1145,9 @@ Java_eu_atarihelp_emu10_NativeAtariCoreBridge_devStartNative(JNIEnv *, jclass, j
                "RESET = reset CPU+ANTIC+PIA/MMU, plovouci datova sbernice, ANTIC/GTIA PAL 312 radku, POKEY 1,773 MHz",
                (unsigned)NAP_OS_ROM[0x3FF7], osSum);
       devLog(b);
+      devLog("B296 VBXE FX 1.26 v jadre: registry $D640, 512 kB VRAM, MEMAC A/B, XDL (overlay LR/SR/HR/text 80 sloupcu), "
+             "atributova mapa, palety 4x256, blitter (rezimy 0-6, zoom, vzor, kolize) + IRQ; obraz 4 body na barevny takt. "
+             "Joystick 1: leva pulka obrazovky = smer, prava = FIRE; herni ovladac taky.");
     }
     g_strojBezi = zapnuto;
   }
@@ -1158,14 +1229,24 @@ Java_eu_atarihelp_emu10_NativeAtariCoreBridge_devTouchNative(JNIEnv *, jclass, j
     if (d.W <= 1) return 0;
     if (akce == 0) n = d.pointerDown(pid & 15, bx, by, ted, ev, 8);
     else if (akce == 1) n = d.pointerUp(pid & 15, bx, by, ted, ev, 8, &svc);
+    else if (akce == 3) n = d.pointerMove(pid & 15, bx, by, ted, ev, 8);   // B296: posun prstu (joystick)
     else n = d.pointerCancelAll(ted, ev, 8);
   }
   if (n > 0) {
     std::lock_guard<std::mutex> l(g_mEv);
     for (int i = 0; i < n; i++) g_evQ.push_back(ev[i]);
   }
-  pokeRender();
+  if (akce != 3 || n > 0) pokeRender();
   return svc;
+}
+
+/** B296: herni ovladac / klavesnice telefonu -> joystick 1 a konzole.
+ *  maska: bit0 nahoru, 1 dolu, 2 vlevo, 3 vpravo, 4 FIRE, 5 START, 6 SELECT, 7 OPTION,
+ *  8 klavesa MEZERA, 9 klavesa RETURN. */
+extern "C" JNIEXPORT void JNICALL
+Java_eu_atarihelp_emu10_NativeAtariCoreBridge_devPadNative(JNIEnv *, jclass, jint maska) {
+  nap::dev::Ev e; e.t = nap::dev::Ev::PAD; e.v = maska & 0x3FF;
+  { std::lock_guard<std::mutex> l(g_mEv); g_evQ.push_back(e); }
 }
 
 /** Napsat text do Atari (tlacitko BASIC/TBXL TXT). runPotom: na konec RUN. */

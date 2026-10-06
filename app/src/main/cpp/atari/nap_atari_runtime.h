@@ -172,7 +172,10 @@ struct CsaveRecorder {
 //   5) nakonec JSR na RUNAD ($02E0) - program bezi.
 // ---------------------------------------------------------------------
 struct XexLoader {
-  enum Stav { NIC, START, SEGMENT, INIT, BEZI, CHYBA } stav = NIC;
+  // INIT_DLOUHO (B296): INIT bezi uz pres 10 s - bud prevzal rizeni (TBXL,
+  // Decathlon), nebo ceka na hrace (titulka "stiskni klavesu" - Night Driver
+  // VBXE). Uzivatel uz ma konzoli; kdyz se INIT vrati, nahraje se zbytek.
+  enum Stav { NIC, START, SEGMENT, INIT, INIT_DLOUHO, BEZI, CHYBA } stav = NIC;
   std::vector<uint8_t> data;
   std::string jmeno;
   size_t pos = 0;
@@ -207,9 +210,15 @@ struct XexLoader {
 
   // Vola se po kazdem snimku (pod zamkem stroje).
   void poSnimku(Machine &m) {
-    if (!aktivni()) return;
+    if (!aktivni() && stav != INIT_DLOUHO) return;
     snimku++;
     char b[220];
+    if (stav == INIT_DLOUHO) {
+      if (m.cpu.pc != PARK) { initSnimku++; return; }  // INIT (program) bezi dal
+      std::snprintf(b, sizeof(b), "B296 XEX %s: INIT c.%d se vratil po %d s - nahravam dalsi segmenty", jmeno.c_str(), initu, initSnimku / 50);
+      log.push_back(b);
+      stav = SEGMENT;
+    }
     if (stav == START) {
       parkKod(m);
       int dv = m.mem.ram[0x0A] | (m.mem.ram[0x0B] << 8);
@@ -231,10 +240,12 @@ struct XexLoader {
       if (m.cpu.pc != PARK) {
         initSnimku++;
         // INIT, ktery se nevrati, SPUSTIL program sam (napr. Turbo-BASIC XL,
-        // Decathlon) - presne tak by to dopadlo i s DOSem. Zavadec konci.
+        // Decathlon) - presne tak by to dopadlo i s DOSem. Po 10 s dostane
+        // konzoli uzivatel; zavadec ale dal hlida navrat z INIT (B296: titulka
+        // "stiskni klavesu" muze cekat libovolne dlouho - pak se nahraje zbytek).
         if (initSnimku > 50 * 10) {
-          std::snprintf(b, sizeof(b), "B291 XEX %s: INIT c.%d prevzal rizeni a bezi (program spusten z INIT)", jmeno.c_str(), initu);
-          log.push_back(b); stav = BEZI; data.clear();
+          std::snprintf(b, sizeof(b), "B291 XEX %s: INIT c.%d prevzal rizeni a bezi (program spusten z INIT; kdyz se vrati, nahraju zbytek)", jmeno.c_str(), initu);
+          log.push_back(b); stav = INIT_DLOUHO;
         }
         return;                                        // INIT jeste bezi (normalni emulace)
       }

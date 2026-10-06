@@ -110,6 +110,10 @@ public final class NativeAtariCoreBridge {
     private static native void    devEjectTapeNative();
     // B295: disketa ATR do mechaniky D1: (prikazy SIO v C++) + studeny start
     private static native String  devLoadAtrNative(byte[] atr, String jmeno);
+    // B296: herni ovladac / klavesnice telefonu -> joystick 1 + START/SELECT/OPTION
+    //  maska: bit0 nahoru, 1 dolu, 2 vlevo, 3 vpravo, 4 FIRE, 5 START, 6 SELECT, 7 OPTION,
+    //  8 klavesa MEZERA, 9 klavesa RETURN
+    private static native void    devPadNative(int maska);
 
     // B287: Rene - "chci ciste jadro atari emu v c++ - Java odhaduje a to
     // je problem... vyzaduji aby... bylo opravdu emu atari pod tlacitkem
@@ -275,6 +279,11 @@ public final class NativeAtariCoreBridge {
     public static void devEjectTapeSafe() {
         if (!loaded) return;
         try { devEjectTapeNative(); } catch (Throwable ignored) {}
+    }
+    /** B296: stav herniho ovladace (joystick 1 + konzole). */
+    public static void devPadSafe(int maska) {
+        if (!loaded) return;
+        try { devPadNative(maska); } catch (Throwable ignored) {}
     }
 
     /** Vrati vysledek jako JSON. Nikdy nehodi vyjimku. */

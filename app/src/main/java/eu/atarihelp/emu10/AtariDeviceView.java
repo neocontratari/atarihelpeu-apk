@@ -72,6 +72,12 @@ final class AtariDeviceView extends SurfaceView implements SurfaceHolder.Callbac
                 if (r != 0 && akce != null) akce.naServisniAkci(r);
                 return true;
             }
+            case MotionEvent.ACTION_MOVE: {
+                // B296: posun prstu - obrazovka Atari je joystick (leva pulka smer)
+                final int n = e.getPointerCount();
+                for (int i = 0; i < n; i++) NativeAtariCoreBridge.devTouchSafe(e.getPointerId(i), 3, e.getX(i), e.getY(i));
+                return true;
+            }
             case MotionEvent.ACTION_CANCEL:
                 NativeAtariCoreBridge.devTouchSafe(0, 2, 0f, 0f);
                 return true;

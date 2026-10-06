@@ -14,6 +14,10 @@
 //  5) ten WAV vlozeny jako kazeta (devLoadTape, PLAY se zmackne samo) ->
 //     CLOAD, RETURN, po pipnuti RETURN -> LIST
 //  6) B295: disketa ATR do D1: -> start z diskety, po POWER vyp/zap znovu
+//  7) B296: joystick dotykem na obrazovce (leva pulka smer, prava FIRE) a
+//     z herniho ovladace (smer, FIRE, START, X = MEZERA)
+//  8) B296: VBXE - Popeye (XEX) az do hry, Wolfenstein 3D (ATR) az do hry
+//     a chuze joystickem (test_assets/)
 #include "../../app/src/main/cpp/atari/nap_atari_native.cpp"
 #include <cstdio>
 #include <cstdlib>
@@ -215,6 +219,103 @@ int main() {
       nabootovano = false;
       for (int i = 0; i < 150 && !nabootovano; i++) { spi(100); nabootovano = obrazovka().find("Acid800") != std::string::npos; }
       over(nabootovano, "po POWER vyp/zap disketa v mechanice zustala a bootuje znovu");
+    }
+  }
+
+  // 7) B296: joystick - dotyk na obrazovce (leva pulka smer, prava FIRE) a herni ovladac
+  {
+    auto stav = [](int &pa, int &tr, int &co) { std::lock_guard<std::mutex> l(g_mStroj); pa = g_stroj->porta & 15; tr = g_stroj->trig[0]; co = g_stroj->consol; };
+    int pa, tr, co;
+    // leva pulka: prst dolu, posun nahoru o 60 du -> joystick NAHORU
+    prst(300, 400, 2, 0); spi(60);
+    prst(300, 340, 2, 3); spi(120);
+    stav(pa, tr, co);
+    printf("joystick dotykem nahoru: PORTA dolni bity $%X, TRIG0 %d\n", pa, tr);
+    over(pa == 0x0E, "B296: dotyk na leve pulce obrazovky + posun nahoru = joystick NAHORU (PORTA $E)");
+    prst(360, 340, 2, 3); spi(120);                         // doprava-nahoru (stred jde za prstem)
+    stav(pa, tr, co);
+    over(pa == 0x06, "B296: posun prstu doprava = joystick NAHORU+VPRAVO (PORTA $6)");
+    // prava pulka: FIRE (druhy prst)
+    prst(700, 400, 3, 0); spi(120);
+    stav(pa, tr, co);
+    over(tr == 0, "B296: dotyk na prave pulce obrazovky = FIRE (TRIG0 = 0)");
+    prst(700, 400, 3, 1); prst(360, 340, 2, 1); spi(120);
+    stav(pa, tr, co);
+    over(pa == 0x0F && tr == 1, "B296: po zvednuti prstu je joystick v klidu (PORTA $F, TRIG0 1)");
+    // herni ovladac: vlevo + FIRE + START
+    Java_eu_atarihelp_emu10_NativeAtariCoreBridge_devPadNative(&g_env, nullptr, 4 | 16 | 32); spi(150);
+    stav(pa, tr, co);
+    printf("ovladac vlevo+FIRE+START: PORTA $%X TRIG0 %d CONSOL %d\n", pa, tr, co);
+    over(pa == 0x0B && tr == 0 && (co & 1) == 0, "B296: herni ovladac = joystick VLEVO + FIRE + START");
+    Java_eu_atarihelp_emu10_NativeAtariCoreBridge_devPadNative(&g_env, nullptr, 0); spi(250);
+    stav(pa, tr, co);
+    over(pa == 0x0F && tr == 1 && (co & 1) == 1, "B296: ovladac pusteny -> joystick v klidu, START pusteny");
+    // tlacitko X = klavesa MEZERA (drzena), pusteni
+    Java_eu_atarihelp_emu10_NativeAtariCoreBridge_devPadNative(&g_env, nullptr, 256); spi(150);
+    int kb, sk;
+    { std::lock_guard<std::mutex> l(g_mStroj); kb = g_stroj->kbcode; sk = g_stroj->skstat; }
+    over(kb == 33 && !(sk & 4), "B296: tlacitko X ovladace = klavesa MEZERA drzena (Wolfenstein: dvere)");
+    Java_eu_atarihelp_emu10_NativeAtariCoreBridge_devPadNative(&g_env, nullptr, 0); spi(150);
+    { std::lock_guard<std::mutex> l(g_mStroj); sk = g_stroj->skstat; }
+    over((sk & 4) != 0, "B296: tlacitko X pusteno = klavesa pustena");
+  }
+
+  // 8) B296: VBXE - Popeye (XEX) a Wolfenstein 3D (ATR) pres skutecne vlakna
+  {
+    auto nactiSoubor = [](const char *p, FakeArr &a) { FILE *f = fopen(p, "rb"); if (!f) return false; int c; while ((c = fgetc(f)) != EOF) a.b.push_back((uint8_t)c); fclose(f); return true; };
+    const char *popPath = "/home/claude/atarihelpeu-apk/test_assets/Popeye (VBXE, PAL Version)(2).xex";
+    FakeArr pop;
+    if (!nactiSoubor(popPath, pop)) printf("(Popeye neni - preskoceno)\n");
+    else {
+      FakeStr pn{"Popeye (VBXE, PAL Version)(2).xex"};
+      jboolean ok = Java_eu_atarihelp_emu10_NativeAtariCoreBridge_devLoadXexNative(&g_env, nullptr, (jbyteArray)&pop, (jstring)&pn);
+      over(ok == JNI_TRUE, "B296: Popeye (VBXE) prijat jako XEX");
+      spi(9000);                                              // start OS + nahrani, "Press any key"
+      klavesa("Return"); spi(26000);                          // "Loading..." (rozbaleni grafiky do VRAM) -> titulka
+      long long xdl, zap; int radku = 0;
+      { std::lock_guard<std::mutex> l(g_mStroj); xdl = g_stroj->vbx.nXdlFrames; zap = g_stroj->vbx.nWrites; for (int y = 0; y < AnticView::H; y++) radku += g_view->vbxeRadek[y]; }
+      printf("Popeye: zapisu do VBXE %lld, snimku s XDL %lld, radku z VBXE %d\n", zap, xdl, radku);
+      over(xdl > 50 && radku > 200, "B296: Popeye zapnul VBXE (XDL + overlay) a obraz kresli VBXE");
+      // START = hra (pres herni ovladac), pak FIRE = zacit
+      Java_eu_atarihelp_emu10_NativeAtariCoreBridge_devPadNative(&g_env, nullptr, 32); spi(300);
+      Java_eu_atarihelp_emu10_NativeAtariCoreBridge_devPadNative(&g_env, nullptr, 0); spi(3000);
+      Java_eu_atarihelp_emu10_NativeAtariCoreBridge_devPadNative(&g_env, nullptr, 16); spi(300);
+      Java_eu_atarihelp_emu10_NativeAtariCoreBridge_devPadNative(&g_env, nullptr, 0); spi(6000);
+      long long blitu;
+      { std::lock_guard<std::mutex> l(g_mStroj); blitu = g_stroj->vbx.nBlits; }
+      printf("Popeye po START/FIRE: blitu %lld\n", blitu);
+      over(blitu > 2000, "B296: Popeye hraje (blitter VBXE kresli postavy - tisice blitu)");
+      vypisLog();
+    }
+    const char *w3dPath = "/home/claude/atarihelpeu-apk/test_assets/wolf3d(1).atr";
+    FakeArr w3d;
+    if (!nactiSoubor(w3dPath, w3d)) printf("(wolf3d.atr neni - preskoceno)\n");
+    else {
+      FakeStr wn{"wolf3d(1).atr"};
+      jstring r = Java_eu_atarihelp_emu10_NativeAtariCoreBridge_devLoadAtrNative(&g_env, nullptr, (jbyteArray)&w3d, (jstring)&wn);
+      printf("devLoadAtr: %s\n", ((FakeStr *)r)->s.c_str());
+      spi(9000);
+      long long xdl; int ov;
+      { std::lock_guard<std::mutex> l(g_mStroj); xdl = g_stroj->vbx.nXdlFrames; ov = g_stroj->vbx.lastOvMode; }
+      printf("W3D titulka: snimku s XDL %lld, overlay %d\n", xdl, ov);
+      over(xdl > 50 && ov == 2, "B296: Wolfenstein 3D nabootoval a titulku kresli VBXE (overlay SR 320 bodu)");
+      // klavesa -> menu, RETURN x3 -> hra (overlay LR)
+      klavesa("Return"); spi(4000);
+      klavesa("Return"); spi(3000);
+      klavesa("Return"); spi(3000);
+      klavesa("Return"); spi(9000);
+      { std::lock_guard<std::mutex> l(g_mStroj); ov = g_stroj->vbx.lastOvMode; }
+      printf("W3D po menu: overlay %d\n", ov);
+      over(ov == 1, "B296: Wolfenstein 3D ve hre (3D pohled = overlay LR 160 bodu)");
+      // joystick nahoru 1,5 s (dotykem) -> hrac jde dopredu (meni se obraz)
+      std::vector<uint32_t> pred, po;
+      { std::lock_guard<std::mutex> f(g_mFrame); pred = g_sdilenySnimek; }
+      prst(300, 400, 4, 0); spi(50); prst(300, 330, 4, 3); spi(1500); prst(300, 330, 4, 1); spi(300);
+      { std::lock_guard<std::mutex> f(g_mFrame); po = g_sdilenySnimek; }
+      size_t ruzne = 0; for (size_t i = 0; i < pred.size() && i < po.size(); i++) ruzne += pred[i] != po[i];
+      printf("W3D: joystick nahoru -> zmenenych bodu %zu z %zu\n", ruzne, po.size());
+      over(ruzne > 10000, "B296: joystick dotykem ve Wolfensteinu - hrac jde dopredu (obraz se zmenil)");
+      vypisLog();
     }
   }
 
