@@ -1199,7 +1199,18 @@ public class MainActivity extends Activity {
                     // BUILD2SA67: Atari uz nema vlastni cestu - snima se
                     // z okna jako v B156. Zustava jen intro, ktere bez ni
                     // nema na TV obraz jader.
+                    // B301: Atari 130XE v HELP (C++) - pristroj kresli C++ primo
+                    // na displej (SurfaceView), snimani okna ho nevidi a na TV/PC
+                    // byla jen stranka s testy pod nim. Obraz i zvuk ted primo z jadra.
+                    if (atariZarizeni != null && !atariZarizeniSkryte && tvSmiZvuk()) {
+                        try {
+                            if (tvAtariPcm == null) tvAtariPcm = new short[16384];
+                            int gotA = NativeAtariCoreBridge.devPullTvAudioSafe(tvAtariPcm);
+                            if (gotA > 0) napTvWebAudioPush(tvAtariPcm, 0, gotA, 44100, "ATARI_CPP");
+                        } catch (Throwable ignored) {}
+                    }
                     boolean gotFromCore = napTvWebCaptureIntro(bw, bh)
+                            || napTvWebCaptureAtariCpp()
                             || napTvWebCaptureFromCore(bw, bh);
                     if (gotFromCore) {
                         napTvWebPixelCopyPending = false;
@@ -1450,6 +1461,68 @@ public class MainActivity extends Activity {
             return true;
         } catch (Throwable t) {
             return true;    // behem intra radeji drzet nez snimat okno
+        }
+    }
+
+    // ===== B301: ATARI 130XE (C++, tlacitko HELP) NA TV / PC =====
+    // Rene: "u emu c++ atari web viewer je spatne - je videt akorat to
+    // testovani a ne atari emu na obrazovce tv nebo pc". Pristroj Atari kresli
+    // C++ do vlastni plochy (SurfaceView); PixelCopy okna appky ji nevidi, takze
+    // na TV sla stranka s testy, ktera je pod pristrojem. Ted se obraz bere
+    // primo z jadra (vyrez jako na displeji telefonu) a na 1280x720 se kresli
+    // ve stejnem pomeru stran jako na telefonu, po stranach cerno.
+    private int[] tvAtariArgb = null;
+    private Bitmap tvAtariSrcBmp = null;
+    private short[] tvAtariPcm = null;
+    private boolean tvAtariHlaseno = false;
+
+    private boolean napTvWebCaptureAtariCpp() {
+        try {
+            if (atariZarizeni == null || atariZarizeniSkryte) {
+                if (tvAtariHlaseno) appendNativeLog("B301 TV: Atari 130XE (C++) uz neni videt - TV snima zase okno appky");
+                tvAtariHlaseno = false;
+                return false;
+            }
+            if (tvAtariArgb == null) tvAtariArgb = new int[672 * 240];
+            int wh = NativeAtariCoreBridge.devGrabFrameSafe(tvAtariArgb);
+            if (wh < 0) {
+                tvAtariArgb = new int[((-wh) >> 16) * ((-wh) & 0xFFFF)];
+                wh = NativeAtariCoreBridge.devGrabFrameSafe(tvAtariArgb);
+            }
+            if (wh <= 0) return false;
+            final int sw = wh >> 16, sh = wh & 0xFFFF;
+            if (tvAtariSrcBmp == null || tvAtariSrcBmp.getWidth() != sw || tvAtariSrcBmp.getHeight() != sh) {
+                if (tvAtariSrcBmp != null) { try { tvAtariSrcBmp.recycle(); } catch (Throwable ignored) {} }
+                tvAtariSrcBmp = Bitmap.createBitmap(sw, sh, Bitmap.Config.ARGB_8888);
+                try { tvAtariSrcBmp.setHasAlpha(false); } catch (Throwable ignored) {}
+            }
+            tvAtariSrcBmp.setPixels(tvAtariArgb, 0, sw, 0, 0, sw, sh);
+            final int TVW = 1280, TVH = 720;
+            if (napTvWebBitmapDraw == null || napTvWebBitmapDraw.getWidth() != TVW || napTvWebBitmapDraw.getHeight() != TVH) {
+                if (napTvWebBitmapDraw != null) { try { napTvWebBitmapDraw.recycle(); } catch (Throwable ignored) {} }
+                napTvWebBitmapDraw = Bitmap.createBitmap(TVW, TVH, Bitmap.Config.ARGB_8888);
+            }
+            // pomer stran jako na displeji telefonu: sw/2 bodu Atari (radek 768 ma
+            // 2 sloupce na bod), bod je o 12 % vyssi nez sirsi
+            float pomer = (sw / 2f) / (sh / 0.88f);
+            int dh = TVH, dw = Math.round(TVH * pomer);
+            if (dw > TVW) { dw = TVW; dh = Math.round(TVW / pomer); }
+            int dx = (TVW - dw) / 2, dy = (TVH - dh) / 2;
+            Canvas cv = new Canvas(napTvWebBitmapDraw);
+            cv.drawColor(Color.BLACK);
+            Paint pp = new Paint();
+            pp.setDither(false);
+            pp.setFilterBitmap(true);       // 336x240 -> ~887x720: mirne vyhlazeni (cistsi pro H.264)
+            cv.drawBitmap(tvAtariSrcBmp, null, new Rect(dx, dy, dx + dw, dy + dh), pp);
+            if (!tvAtariHlaseno) {
+                tvAtariHlaseno = true;
+                appendNativeLog("B301 TV: Atari 130XE (C++) jde na TV/PC primo z jadra - obraz " + sw / 2 + "x" + sh
+                        + " -> " + dw + "x" + dh + " na " + TVW + "x" + TVH + ", zvuk 44100 Hz stereo");
+            }
+            napTvWebPublishBitmap(napTvWebBitmapDraw, "ATARI_CPP");
+            return true;
+        } catch (Throwable t) {
+            return false;
         }
     }
 

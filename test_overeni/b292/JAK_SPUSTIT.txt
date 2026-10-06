@@ -79,6 +79,8 @@ nap_atari_runtime.h).
    ./test_b292_jni_host                     -> VYSTUP_test_b292_jni_host.txt
    (B296: i joystick dotykem / ovladacem a VBXE - Popeye a Wolfenstein 3D
    z test_assets/ az do hry; bezi v realnem case, cca 4 minuty)
+   (B301: obraz a zvuk Atari pro TV / PC - devGrabFrameNative (672x240 ARGB)
+   a devPullTvAudioNative (stereo int16))
    (B299: TXT soubor -> ATARI BASIC / Turbo-BASIC XL pres devProgramNative,
    klavesy pristroje v logu, devDiagNative a devRamDumpNative pro LOG/CHYBA)
    (B298: vysunuti / vymena diskety bez restartu, CLOAD s disketou v D1:,

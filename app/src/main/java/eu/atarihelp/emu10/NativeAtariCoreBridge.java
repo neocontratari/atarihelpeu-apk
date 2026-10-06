@@ -122,6 +122,9 @@ public final class NativeAtariCoreBridge {
     private static native String  devProgramNative(byte[] data, String jmeno, int rezim);
     private static native String  devDiagNative();
     private static native byte[]  devRamDumpNative();
+    // B301: obraz a zvuk Atari pro TV / PC (web prohlizec v appce) primo z jadra
+    private static native int     devGrabFrameNative(int[] argb);
+    private static native int     devPullTvAudioNative(short[] pcm);
 
     // B287: Rene - "chci ciste jadro atari emu v c++ - Java odhaduje a to
     // je problem... vyzaduji aby... bylo opravdu emu atari pod tlacitkem
@@ -316,6 +319,17 @@ public final class NativeAtariCoreBridge {
     public static byte[] devRamDumpSafe() {
         if (!loaded) return null;
         try { return devRamDumpNative(); } catch (Throwable t) { return null; }
+    }
+
+    /** B301: obraz Atari pro TV/PC: (sirka<<16)|vyska, zaporne = male pole, 0 = nic. */
+    public static int devGrabFrameSafe(int[] argb) {
+        if (!loaded || argb == null) return 0;
+        try { return devGrabFrameNative(argb); } catch (Throwable t) { return 0; }
+    }
+    /** B301: zvuk Atari pro TV/PC (stereo int16 44100 Hz) - pocet shortu. */
+    public static int devPullTvAudioSafe(short[] pcm) {
+        if (!loaded || pcm == null) return 0;
+        try { return devPullTvAudioNative(pcm); } catch (Throwable t) { return 0; }
     }
 
     /** Vrati vysledek jako JSON. Nikdy nehodi vyjimku. */

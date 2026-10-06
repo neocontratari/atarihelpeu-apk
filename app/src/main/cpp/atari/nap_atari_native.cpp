@@ -177,11 +177,27 @@ static std::atomic<long long> g_atariPodtekani{0};  // kolikrat OpenSL callback 
 // timhle NIJAK nemeni (stejny pocet volani, stejne tempo jako driv), jen
 // se navic vzorky, co uz tak jako tak vznikly, posilaji do fronty pro
 // nativni prehravani misto do JS.
+// B301: odbocka zvuku pro TV / PC (web prohlizec v appce) - presne ta data,
+// ktera jdou do OpenSL. Kruhova fronta ~0,19 s; kdyz ji nikdo necte (TV
+// nebezi), nejstarsi data se prepisuji. Cte devPullTvAudioNative.
+static std::mutex g_mTvZvuk;
+static std::vector<int16_t> g_tvZvuk;
+static unsigned long long g_tvZvukZapis = 0, g_tvZvukCteni = 0;   // pocty shortu (stereo)
+static const size_t TV_ZVUK_KAP = 16384;
+static void tvZvukZapis(const int16_t *s, size_t n) {
+  std::lock_guard<std::mutex> l(g_mTvZvuk);
+  if (g_tvZvuk.size() != TV_ZVUK_KAP) g_tvZvuk.assign(TV_ZVUK_KAP, 0);
+  for (size_t i = 0; i < n; i++) g_tvZvuk[(size_t)((g_tvZvukZapis + i) % TV_ZVUK_KAP)] = s[i];
+  g_tvZvukZapis += n;
+  if (g_tvZvukZapis - g_tvZvukCteni > TV_ZVUK_KAP) g_tvZvukCteni = g_tvZvukZapis - TV_ZVUK_KAP;
+}
+
 static void nap_atari_audio_push(const float *mono, int n) {
   if (!mono || n <= 0) return;
   std::vector<int16_t> stereo((size_t)n * 2);
   nap::atariGainClampToStereoInt16(mono, n, 4.0f, stereo.data());
   g_atariRing.write(stereo.data(), (unsigned)stereo.size());
+  tvZvukZapis(stereo.data(), stereo.size());
 }
 
 #define NAP_ATARI_SL_BLOCK_FRAMES 1024
@@ -1219,6 +1235,8 @@ Java_eu_atarihelp_emu10_NativeAtariCoreBridge_devStartNative(JNIEnv *, jclass, j
              "SIO zkratka jen se zapnutou ROM OS (Turbo-BASIC XL ma na $E459 vlastni kod).");
       devLog("B300 POKEY: casovac s AUDF=$FF (perioda 256) tika a dava preruseni - drive stal "
              "(Ghostbusters: hudba a rec z preruseni casovace 1, bez nej titulka stala; nejhlubsi tony byly potichu).");
+      devLog("B301 TV/PC (web prohlizec v appce): obraz Atari 130XE primo z jadra (vyrez 336x240 jako na telefonu) "
+             "a zvuk 44100 Hz stereo - drive bylo na TV videt jen stranku s testy pod pristrojem.");
     }
     g_strojBezi = zapnuto;
   }
@@ -1508,6 +1526,53 @@ Java_eu_atarihelp_emu10_NativeAtariCoreBridge_devRamDumpNative(JNIEnv *env, jcla
   jbyteArray a = env->NewByteArray((jsize)d.size());
   if (a) env->SetByteArrayRegion(a, 0, (jsize)d.size(), (const jbyte *)d.data());
   return a;
+}
+
+/** B301: obraz Atari pro TV / PC (web prohlizec v appce). Pristroj Atari kresli
+ *  C++ primo na displej (SurfaceView) - snimani okna appky ho nevidi a na TV
+ *  byla jen stranka s testy pod nim. Tohle da obraz primo z jadra: vyrez jako
+ *  na displeji telefonu (sloupce 48..719 ze 768, vsech 240 radku), ARGB pro
+ *  Bitmap. Vraci (sirka << 16) | vyska, zaporne = pole je male, 0 = neni snimek. */
+extern "C" JNIEXPORT jint JNICALL
+Java_eu_atarihelp_emu10_NativeAtariCoreBridge_devGrabFrameNative(JNIEnv *env, jclass, jintArray out) {
+  const int X0 = 48, W = 672, H = AnticView::H, FW = AnticView::FW;
+  const jint wh = (jint)((W << 16) | H);
+  if (!out) return 0;
+  if (env->GetArrayLength(out) < W * H) return -wh;
+  std::vector<jint> buf((size_t)W * H);
+  {
+    std::lock_guard<std::mutex> f(g_mFrame);
+    if (g_sdilenySnimek.size() != (size_t)FW * H) return 0;
+    const bool zap = g_strojBezi.load();             // POWER vypnuto = cerna obrazovka
+    for (int y = 0; y < H; y++) {
+      const uint32_t *src = &g_sdilenySnimek[(size_t)y * FW + X0];
+      jint *dst = &buf[(size_t)y * W];
+      for (int x = 0; x < W; x++) {
+        const uint32_t c = zap ? src[x] : 0xFF000000u;   // snimek je ABGR (R v nizkem bajtu)
+        dst[x] = (jint)(0xFF000000u | ((c & 0xFFu) << 16) | (c & 0xFF00u) | ((c >> 16) & 0xFFu));
+      }
+    }
+  }
+  env->SetIntArrayRegion(out, 0, W * H, buf.data());
+  return wh;
+}
+
+/** B301: zvuk Atari pro TV / PC - vyzvedne, co se od minula prehralo (stereo
+ *  int16, 44100 Hz). Vraci pocet shortu (sude). */
+extern "C" JNIEXPORT jint JNICALL
+Java_eu_atarihelp_emu10_NativeAtariCoreBridge_devPullTvAudioNative(JNIEnv *env, jclass, jshortArray out) {
+  if (!out) return 0;
+  const size_t kap = (size_t)env->GetArrayLength(out) & ~(size_t)1;
+  std::vector<int16_t> tmp;
+  {
+    std::lock_guard<std::mutex> l(g_mTvZvuk);
+    size_t k = (size_t)std::min<unsigned long long>(kap, g_tvZvukZapis - g_tvZvukCteni) & ~(size_t)1;
+    tmp.resize(k);
+    for (size_t i = 0; i < k; i++) tmp[i] = g_tvZvuk[(size_t)((g_tvZvukCteni + i) % TV_ZVUK_KAP)];
+    g_tvZvukCteni += k;
+  }
+  if (!tmp.empty()) env->SetShortArrayRegion(out, 0, (jsize)tmp.size(), (const jshort *)tmp.data());
+  return (jint)tmp.size();
 }
 
 /** Spustit XEX (XEX/MOBIL, TURBO/BASIC, NET HRY). */

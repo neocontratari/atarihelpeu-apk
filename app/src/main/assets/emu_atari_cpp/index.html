@@ -113,6 +113,8 @@ Tenhle test pousti jadro na desetitisicich nahodnych stavu a porovnava vysledek
 s cislem, ktere vyslo na pocitaci. Delam to proto, ze pocitac je x86 a telefon
 ARM - a na ARM se nektere veci chovaji jinak. Kdyz se to rozejde, ma se to
 poznat ted, a ne az podle spatneho obrazu.<br><br>
+B301: TV / PC (web prohlizec v appce) ukazuje Atari 130XE z HELP - obraz
+primo z jadra a zvuk; drive tam byla jen tahle stranka s testy.
 B300: POKEY - casovac s AUDF=$FF uz tika (drive stal). Ghostbusters ma
 hudbu a rec "Ghostbusters!" z preruseni casovace a bez nej zustal na titulce;
 nejhlubsi tony ve hrach byly potichu.
@@ -150,19 +152,22 @@ var KROKY=[
  {n:1,co:'TEST JADRA (tlacitko SPUSTIT TEST JADRA nize)',
   ok:'Procesor i Pamet = SEDI (29C55806 / D3949DC5), Rychlost aspon 2x realny cas.',
   ne:'NESEDI, nebo rychlost pod 1x (Atari by se zpomalovalo).'},
- {n:2,co:'NET/HRY - Ghostbusters',
+ {n:2,co:'TV / PC: zapni prenos na TV nebo PC a otevri HELP (Atari 130XE C++)',
+  ok:'Na TV / v prohlizeci na PC je obraz Atari (BASIC, hra) a hraje zvuk. LOG/CHYBA -> na TV je stranka s logem; ZPET -> zase Atari.',
+  ne:'Na TV je porad stranka s testy, nebo chybi zvuk (posli log - radky B301 TV a TV_WEB).'},
+ {n:3,co:'NET/HRY - Ghostbusters',
   ok:'Titulka: logo, duch, hraje hudba a ozve se "Ghostbusters!", text pisne s balonkem. START -> GHOSTBUSTERS For Professional Paranormal ... Last,First: a hra jde dal.',
   ne:'Zustane jen logo nahore a cerno (jako v B299) - posli log.'},
- {n:3,co:'Zvuk her jako minule (Popeye, Moon Patrol, Donkey Kong, W3D)',
+ {n:4,co:'Zvuk her jako minule (Popeye, Moon Patrol, Donkey Kong, W3D)',
   ok:'Stejne nebo lepe (nektere hluboke tony, ktere predtim chybely, ted zni).',
   ne:'Neco zni hur nez v B299 (napis ktera hra a kde).'},
- {n:4,co:'TURBO BASIC + DLOUHY WALLS (WALLSULTIMATED ... CSave.wav, 36 zaznamu - ten, co se rozsypal): CLOAD a LIST',
+ {n:5,co:'TURBO BASIC + DLOUHY WALLS (WALLSULTIMATED ... CSave.wav, 36 zaznamu - ten, co se rozsypal): CLOAD a LIST',
   ok:'Vypis je cely a spravne az do 9065.',
   ne:'Rozsype se - NEMACKEJ RESET, hned LOG/CHYBA a posli log (je v nem pamet Atari) a posledni spravny radek.'},
- {n:5,co:'BASIC/TBXL TXT - TXT SOUBOR do ATARI BASICu i TURBO-BASICu, pak CSAVE a CLOAD',
+ {n:6,co:'BASIC/TBXL TXT - TXT SOUBOR do ATARI BASICu i TURBO-BASICu, pak CSAVE a CLOAD',
   ok:'Jako v B299 - napise se, RUN, CSAVE a CLOAD funguji.',
   ne:'Cokoli horsi nez v B299.'},
- {n:6,co:'ATARI 130XE EMULATOR, PS1 a SEGA v hlavni nabidce',
+ {n:7,co:'ATARI 130XE EMULATOR, PS1 a SEGA v hlavni nabidce',
   ok:'Bezi UPLNE STEJNE jako dosud.',
   ne:'Jakakoli zmena proti minule verzi.'}
 ];

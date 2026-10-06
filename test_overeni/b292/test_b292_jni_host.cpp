@@ -24,6 +24,7 @@
 #include <cstdlib>
 #include <string>
 #include <vector>
+#include <set>
 
 // ---------- nahrady OpenSL: zvuk "neni k dispozici" ----------
 static const SLInterfaceID_ iidE{1}, iidP{2}, iidQ{3};
@@ -60,6 +61,11 @@ static jsize JNICALL fGetArrayLength(JNIEnv *, jarray a) { return (jsize)((FakeA
 static void JNICALL fGetByteArrayRegion(JNIEnv *, jbyteArray a, jsize st, jsize n, jbyte *buf) { std::memcpy(buf, ((FakeArr *)a)->b.data() + st, n); }
 static jbyteArray JNICALL fNewByteArray(JNIEnv *, jsize n) { FakeArr *a = new FakeArr; a->b.resize(n); return (jbyteArray)a; }
 static void JNICALL fSetByteArrayRegion(JNIEnv *, jbyteArray a, jsize st, jsize n, const jbyte *buf) { std::memcpy(((FakeArr *)a)->b.data() + st, buf, n); }
+// B301: pole int[] / short[] (delka = b.size(), data ve v) pro obraz a zvuk pro TV
+struct FakeIntArr { std::vector<uint8_t> b; std::vector<int32_t> v; };
+struct FakeShortArr { std::vector<uint8_t> b; std::vector<int16_t> v; };
+static void JNICALL fSetIntArrayRegion(JNIEnv *, jintArray a, jsize st, jsize n, const jint *buf) { std::memcpy(((FakeIntArr *)a)->v.data() + st, buf, n * 4); }
+static void JNICALL fSetShortArrayRegion(JNIEnv *, jshortArray a, jsize st, jsize n, const jshort *buf) { std::memcpy(((FakeShortArr *)a)->v.data() + st, buf, n * 2); }
 static JNINativeInterface_ g_tbl;
 static JNIEnv g_env;
 
@@ -112,6 +118,7 @@ int main() {
   g_tbl.GetStringUTFChars = fGetStringUTFChars; g_tbl.ReleaseStringUTFChars = fReleaseStringUTFChars;
   g_tbl.NewStringUTF = fNewStringUTF; g_tbl.GetArrayLength = fGetArrayLength;
   g_tbl.GetByteArrayRegion = fGetByteArrayRegion; g_tbl.NewByteArray = fNewByteArray; g_tbl.SetByteArrayRegion = fSetByteArrayRegion;
+  g_tbl.SetIntArrayRegion = fSetIntArrayRegion; g_tbl.SetShortArrayRegion = fSetShortArrayRegion;
   g_env.functions = &g_tbl;
   FakeStr surface{"plocha"};
 
@@ -453,6 +460,24 @@ int main() {
       over(ds.find("B299 PAMET STAV: PC=$") != std::string::npos && ds.find("STMTAB $") != std::string::npos && ds.find("radku 2,") != std::string::npos &&
            ra && ra->b.size() == 16 + 64 + 65536 + 65536 && std::memcmp(ra->b.data(), "NAP130XE-B299", 13) == 0,
            "B299: LOG/CHYBA - diagnostika pameti (stav, ukazatele BASICu, kontrolni soucty) a vypis cele RAM");
+    }
+    // e) B301: obraz a zvuk Atari pro TV / PC (web prohlizec) primo z jadra
+    {
+      FakeIntArr mala; mala.b.resize(100); mala.v.resize(100);
+      const jint r0 = Java_eu_atarihelp_emu10_NativeAtariCoreBridge_devGrabFrameNative(&g_env, nullptr, (jintArray)&mala);
+      FakeIntArr obr; obr.b.resize(672 * 240); obr.v.assign(672 * 240, 0);
+      const jint wh = Java_eu_atarihelp_emu10_NativeAtariCoreBridge_devGrabFrameNative(&g_env, nullptr, (jintArray)&obr);
+      // TBXL s napsanym programem: modra obrazovka - stred obrazu modry (ARGB: modra v nizkem bajtu)
+      const uint32_t px = (uint32_t)obr.v[(size_t)120 * 672 + 336];
+      const int rr = (px >> 16) & 255, bb = px & 255;
+      int barev = 0; { std::set<int32_t> b; for (int32_t c : obr.v) { b.insert(c); if (b.size() > 3) break; } barev = (int)b.size(); }
+      printf("TV obraz: male pole -> %d, obraz %dx%d, stred ARGB=%08X (R=%d B=%d), barev aspon %d\n", (int)r0, wh >> 16, wh & 0xFFFF, px, rr, bb, barev);
+      spi(300);
+      FakeShortArr zv; zv.b.resize(16384); zv.v.assign(16384, 0);
+      const jint n = Java_eu_atarihelp_emu10_NativeAtariCoreBridge_devPullTvAudioNative(&g_env, nullptr, (jshortArray)&zv);
+      printf("TV zvuk: %d shortu (stereo) za 0,3 s\n", (int)n);
+      over(r0 == -((672 << 16) | 240) && wh == ((672 << 16) | 240) && (px >> 24) == 0xFF && bb > rr && barev >= 2 && n > 0 && (n % 2) == 0,
+           "B301: TV/PC - obraz Atari primo z jadra (672x240 ARGB, modra obrazovka BASICu) a zvuk (stereo int16)");
     }
   }
 
