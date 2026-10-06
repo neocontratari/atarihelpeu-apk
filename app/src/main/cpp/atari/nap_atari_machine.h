@@ -511,7 +511,12 @@ public:
   RegChange rc[256]; int rcN = 0;
 
   // ---- POKEY ----
-  uint8_t audfP1[4] = {1, 1, 1, 1};
+  // AUDF+1 = delka periody 8bitoveho kanalu. B300: musi byt int - pri AUDF=$FF je
+  // to 256 a v uint8_t z toho byla 0: citac pak bezel do minusu a kanal NIKDY
+  // "netikl" (casovac 1 bez preruseni, nejhlubsi ton potichu). Ghostbusters
+  // (Activision) hraje hudbu z preruseni casovace 1 s AUDF1=$FF a bez nej
+  // zustal na titulce.
+  int audfP1[4] = {1, 1, 1, 1};
   int pcnt[4] = {1, 1, 1, 1}, pborrow[4] = {0, 0, 0, 0};
   uint8_t chOut[4] = {0, 0, 0, 0};     // vystupni klopne obvody kanalu
   uint8_t hpf[2] = {0, 0};             // horni propust (AUDCTL bity 2,1)
@@ -1597,7 +1602,7 @@ public:
       case 0x00: case 0x02: case 0x04: case 0x06: {
         int ch = r >> 1;
         audfMark();
-        audf[ch] = v; audfP1[ch] = (uint8_t)(v + 1);
+        audf[ch] = v; audfP1[ch] = v + 1;            // 1..256 (B300: ne uint8_t)
         break;
       }
       case 0x01: case 0x03: case 0x05: case 0x07: audfMark(); audc[r >> 1] = v; updateAudioLevel(); break;

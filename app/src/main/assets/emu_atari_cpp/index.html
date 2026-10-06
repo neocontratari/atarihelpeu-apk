@@ -113,6 +113,9 @@ Tenhle test pousti jadro na desetitisicich nahodnych stavu a porovnava vysledek
 s cislem, ktere vyslo na pocitaci. Delam to proto, ze pocitac je x86 a telefon
 ARM - a na ARM se nektere veci chovaji jinak. Kdyz se to rozejde, ma se to
 poznat ted, a ne az podle spatneho obrazu.<br><br>
+B300: POKEY - casovac s AUDF=$FF uz tika (drive stal). Ghostbusters ma
+hudbu a rec "Ghostbusters!" z preruseni casovace a bez nej zustal na titulce;
+nejhlubsi tony ve hrach byly potichu.
 B299: BASIC/TBXL TXT - TXT SOUBOR s programem (z telefonu) appka sama napise
 do ATARI BASICu nebo TURBO-BASICu XL (NEW, radek po radku), pak RUN / CSAVE /
 CLOAD. LOG/CHYBA prilozi k logu i pamet Atari. Turbo-BASIC s disketou v D1:
@@ -143,35 +146,23 @@ try{ if(window.AHATARICPP && !AHATARICPP.jeNactene()){
 } }catch(e){}
 function set(id,t,cls){var e=$(id); if(!e)return; e.textContent=t; if(cls)e.className='v '+cls;}
 var KROKY=[
- // B299: TXT soubor -> BASIC / TBXL, TBXL LIST s Reneho WAV, pamet v logu, NET na Wi-Fi
+ // B300: POKEY casovac (Ghostbusters), zvuk her, TBXL LIST s dlouhym WALLS, TXT
  {n:1,co:'TEST JADRA (tlacitko SPUSTIT TEST JADRA nize)',
   ok:'Procesor i Pamet = SEDI (29C55806 / D3949DC5), Rychlost aspon 2x realny cas.',
   ne:'NESEDI, nebo rychlost pod 1x (Atari by se zpomalovalo).'},
- {n:2,co:'BASIC/TBXL TXT - TXT SOUBOR -> ATARI BASIC (vyber TXT s programem v BASICu)',
-  ok:'Atari nabehne s BASICem a program se samo napise (NEW, radek po radku). Pod pristrojem HOTOVO ... RADKU - RUN / CSAVE. LIST ukaze program, RUN ho spusti.',
-  ne:'Nic se nenapise, nebo chyby (v logu radek B299 TXT PROGRAM HOTOVO ... - posli ho).'},
- {n:3,co:'BASIC/TBXL TXT - TXT SOUBOR -> TURBO-BASIC XL (TXT s programem pro TBXL, treba WALLS)',
-  ok:'Nejdriv se nahraje Turbo-BASIC XL, pak se program samo napise. LIST a RUN funguji.',
-  ne:'Program se nenapise nebo ma chyby (radky s chybou jsou v logu B299 TXT PROGRAM HOTOVO).'},
- {n:4,co:'Napsany program: CSAVE (ulozi WAV) a pak CLOAD toho WAV a LIST',
-  ok:'Program se ulozi i nahraje zpet a vypis je stejny.',
-  ne:'CSAVE/CLOAD selze nebo je vypis jiny.'},
- {n:5,co:'TURBO BASIC + tvuj WAV (WALLS ULTIMATE): CLOAD a hned LIST',
-  ok:'Vypis je cely a spravne.',
-  ne:'Kdyz se vypis zase rozsype: NEMACKEJ RESET, hned LOG/CHYBA a posli log (je v nem i pamet Atari) a napis, ktery radek byl posledni spravny.'},
- {n:6,co:'NET/HRY na Wi-Fi a pak na mobilnich datech',
-  ok:'Na datech se hra stahne. Kdyz na Wi-Fi ne, appka napise, ze atarihelp.eu vede na MISTNI server (OSPanel) - to je sit, ne appka.',
-  ne:'Hra se nestahne ani na mobilnich datech (posli log).'},
- {n:7,co:'HRA NA KAZETE (WAV, ktery potreboval START+OPTION) a CLOAD - zvuk',
-  ok:'Jako v B298: boot hry sam, pri CLOAD bzuceni po zaznamech, bez piskotu.',
-  ne:'Cokoli horsi nez v B298.'},
- {n:8,co:'Wolfenstein 3D (ATR) a ATR/DISK - VYSUNOUT / VYMENIT',
-  ok:'Jako v B298.',
-  ne:'Cokoli horsi nez v B298.'},
- {n:9,co:'Popeye / W3D / hry z NET jako minule (na vysku i na sirku)',
-  ok:'Bezi stejne jako v B298.',
-  ne:'Cokoli horsi nez v B298.'},
- {n:10,co:'ATARI 130XE EMULATOR, PS1 a SEGA v hlavni nabidce',
+ {n:2,co:'NET/HRY - Ghostbusters',
+  ok:'Titulka: logo, duch, hraje hudba a ozve se "Ghostbusters!", text pisne s balonkem. START -> GHOSTBUSTERS For Professional Paranormal ... Last,First: a hra jde dal.',
+  ne:'Zustane jen logo nahore a cerno (jako v B299) - posli log.'},
+ {n:3,co:'Zvuk her jako minule (Popeye, Moon Patrol, Donkey Kong, W3D)',
+  ok:'Stejne nebo lepe (nektere hluboke tony, ktere predtim chybely, ted zni).',
+  ne:'Neco zni hur nez v B299 (napis ktera hra a kde).'},
+ {n:4,co:'TURBO BASIC + DLOUHY WALLS (WALLSULTIMATED ... CSave.wav, 36 zaznamu - ten, co se rozsypal): CLOAD a LIST',
+  ok:'Vypis je cely a spravne az do 9065.',
+  ne:'Rozsype se - NEMACKEJ RESET, hned LOG/CHYBA a posli log (je v nem pamet Atari) a posledni spravny radek.'},
+ {n:5,co:'BASIC/TBXL TXT - TXT SOUBOR do ATARI BASICu i TURBO-BASICu, pak CSAVE a CLOAD',
+  ok:'Jako v B299 - napise se, RUN, CSAVE a CLOAD funguji.',
+  ne:'Cokoli horsi nez v B299.'},
+ {n:6,co:'ATARI 130XE EMULATOR, PS1 a SEGA v hlavni nabidce',
   ok:'Bezi UPLNE STEJNE jako dosud.',
   ne:'Jakakoli zmena proti minule verzi.'}
 ];

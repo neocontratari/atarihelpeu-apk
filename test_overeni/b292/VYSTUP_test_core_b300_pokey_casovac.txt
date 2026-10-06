@@ -1,0 +1,25 @@
+B300 (oprava AUDF+1 jako int):
+OK     AUDCTL=$40 AUDF1=$00: preruseni 4, perioda 4 cyklu (ocekavano 4)
+OK     AUDCTL=$40 AUDF1=$01: preruseni 4, perioda 5 cyklu (ocekavano 5)
+OK     AUDCTL=$40 AUDF1=$7F: preruseni 4, perioda 131 cyklu (ocekavano 131)
+OK     AUDCTL=$40 AUDF1=$FE: preruseni 4, perioda 258 cyklu (ocekavano 258)
+OK     AUDCTL=$40 AUDF1=$FF: preruseni 4, perioda 259 cyklu (ocekavano 259)
+OK     AUDCTL=$00 AUDF1=$00: preruseni 4, perioda 28 cyklu (ocekavano 28)
+OK     AUDCTL=$00 AUDF1=$01: preruseni 4, perioda 56 cyklu (ocekavano 56)
+OK     AUDCTL=$00 AUDF1=$7F: preruseni 4, perioda 3584 cyklu (ocekavano 3584)
+OK     AUDCTL=$00 AUDF1=$FE: preruseni 4, perioda 7140 cyklu (ocekavano 7140)
+OK     AUDCTL=$00 AUDF1=$FF: preruseni 4, perioda 7168 cyklu (ocekavano 7168)
+pokey-casovac: chyb 0
+
+B299 (pred opravou, AUDF+1 v uint8_t):
+OK     AUDCTL=$40 AUDF1=$00: preruseni 4, perioda 4 cyklu (ocekavano 4)
+OK     AUDCTL=$40 AUDF1=$01: preruseni 4, perioda 5 cyklu (ocekavano 5)
+OK     AUDCTL=$40 AUDF1=$7F: preruseni 4, perioda 131 cyklu (ocekavano 131)
+OK     AUDCTL=$40 AUDF1=$FE: preruseni 4, perioda 258 cyklu (ocekavano 258)
+CHYBA  AUDCTL=$40 AUDF1=$FF: preruseni 0, perioda -1 cyklu (ocekavano 259)
+OK     AUDCTL=$00 AUDF1=$00: preruseni 4, perioda 28 cyklu (ocekavano 28)
+OK     AUDCTL=$00 AUDF1=$01: preruseni 4, perioda 56 cyklu (ocekavano 56)
+OK     AUDCTL=$00 AUDF1=$7F: preruseni 4, perioda 3584 cyklu (ocekavano 3584)
+OK     AUDCTL=$00 AUDF1=$FE: preruseni 4, perioda 7140 cyklu (ocekavano 7140)
+CHYBA  AUDCTL=$00 AUDF1=$FF: preruseni 0, perioda -1 cyklu (ocekavano 7168)
+pokey-casovac: chyb 2

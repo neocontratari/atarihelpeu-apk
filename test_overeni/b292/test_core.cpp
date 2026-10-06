@@ -233,6 +233,41 @@ int main(int argc, char **argv) {
     printf("po RUN + %s: LIST %zu znaku, radku %d\n%s", jak.c_str(), l.size(), (int)std::count(l.begin(), l.end(), '\n'), obrazovka(*b).c_str());
     return 0;
   }
+  if (mode == "pokey-casovac") {
+    // B300: ./test_core pokey-casovac - perioda preruseni casovace 1 (8 bitu) pro AUDF 0..255
+    // na 1,79 MHz (AUDF+4 cyklu) a na 64 kHz ((AUDF+1)*28). Do B299 AUDF=$FF (256) v uint8_t
+    // = 0 -> casovac uz nikdy nevystrelil (Ghostbusters: hudba z preruseni, zustal na titulce).
+    int chyb = 0;
+    for (int rychly = 1; rychly >= 0; rychly--) {
+      for (int audf : {0, 1, 0x7F, 0xFE, 0xFF}) {
+        Machine *m = novy(true);
+        m->pokeyWrite(0x0F, 0x03);                  // SKCTL: normalni rezim (bezi delicky 64/15 kHz)
+        m->pokeyWrite(0x08, rychly ? 0x40 : 0x00);  // AUDCTL: kanal 1 na 1,79 MHz / 64 kHz
+        m->pokeyWrite(0x00, (uint8_t)audf);         // AUDF1
+        m->pokeyWrite(0x0E, 0x01);                  // IRQEN: casovac 1
+        m->pokeyWrite(0x09, 0x00);                  // STIMER
+        long long t = 0, posl = -1, perioda = -1; int vystrelu = 0;
+        const long long limit = rychly ? 5000 : 200000;
+        for (; t < limit && vystrelu < 4; t++) {
+          m->cyc++;
+          m->pokeyTick();
+          if (!(m->irqst & 0x01)) {               // preruseni casovace 1
+            if (posl >= 0) perioda = t - posl;
+            posl = t; vystrelu++;
+            m->pokeyWrite(0x0E, 0x00); m->pokeyWrite(0x0E, 0x01);   // potvrdit jako obsluha
+          }
+        }
+        const long long ocek = rychly ? audf + 4 : (long long)(audf + 1) * 28;
+        const bool ok = vystrelu >= 4 && perioda == ocek;
+        if (!ok) chyb++;
+        printf("%s  AUDCTL=$%02X AUDF1=$%02X: preruseni %d, perioda %lld cyklu (ocekavano %lld)\n", ok ? "OK   " : "CHYBA",
+               rychly ? 0x40 : 0, audf, vystrelu, perioda, ocek);
+        delete m;
+      }
+    }
+    printf("pokey-casovac: chyb %d\n", chyb);
+    return chyb ? 1 : 0;
+  }
   if (mode == "txt-program") {
     // B299: ./test_core txt-program soubor.txt|zkouska basic|tbxl [vystup_list.txt]
     // TXT soubor -> klavesy do Atari (nap::PsaniProgramu jako v appce), pak LIST a srovnani

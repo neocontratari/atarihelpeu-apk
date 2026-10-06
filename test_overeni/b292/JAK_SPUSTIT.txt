@@ -22,6 +22,10 @@ nap_atari_runtime.h).
                                                START+OPTION pri zapnuti, RETURN po
                                                pipnuti (KazetaBoot jako v appce);
                                                synt = kazeta ze syntaz_kazeta.h
+   ./test_core pokey-casovac                -> B300: perioda preruseni casovace 1 pro AUDF
+                                               0..$FF na 1,79 MHz (AUDF+4) i 64 kHz ((AUDF+1)*28);
+                                               do B299 AUDF=$FF nevystrelil nikdy (Ghostbusters)
+                                               (VYSTUP_test_core_b300_pokey_casovac.txt)
    ./test_core txt-program zkouska basic|tbxl  -> B299: TXT soubor -> klavesy do Atari
    ./test_core txt-program x.txt basic|tbxl [list.txt]    (nap::PsaniProgramu jako v appce),
                                                pak LIST a srovnani se souborem
