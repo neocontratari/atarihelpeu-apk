@@ -55,6 +55,17 @@ final class AtariDeviceView extends SurfaceView implements SurfaceHolder.Callbac
         NativeAtariCoreBridge.devSurfaceSafe(null, 0, 0);
     }
 
+    /** B297: kod pro MainActivity - kratka vibrace pri stisku tlacitka na sirku. */
+    static final int AKCE_VIBRACE = 100;
+
+    /** B297: vysledek z C++ - bit 0x1000 = zavibrovat, zbytek = servisni akce. */
+    private void vysledek(int r, boolean akceDovolena) {
+        if (akce == null) return;
+        if ((r & 0x1000) != 0) akce.naServisniAkci(AKCE_VIBRACE);
+        final int kod = r & 0xFFF;
+        if (akceDovolena && kod != 0) akce.naServisniAkci(kod);
+    }
+
     @SuppressLint("ClickableViewAccessibility")
     @Override public boolean onTouchEvent(MotionEvent e) {
         final int am = e.getActionMasked();
@@ -62,20 +73,20 @@ final class AtariDeviceView extends SurfaceView implements SurfaceHolder.Callbac
             case MotionEvent.ACTION_DOWN:
             case MotionEvent.ACTION_POINTER_DOWN: {
                 final int i = e.getActionIndex();
-                NativeAtariCoreBridge.devTouchSafe(e.getPointerId(i), 0, e.getX(i), e.getY(i));
+                vysledek(NativeAtariCoreBridge.devTouchSafe(e.getPointerId(i), 0, e.getX(i), e.getY(i)), false);
                 return true;
             }
             case MotionEvent.ACTION_UP:
             case MotionEvent.ACTION_POINTER_UP: {
                 final int i = e.getActionIndex();
-                final int r = NativeAtariCoreBridge.devTouchSafe(e.getPointerId(i), 1, e.getX(i), e.getY(i));
-                if (r != 0 && akce != null) akce.naServisniAkci(r);
+                vysledek(NativeAtariCoreBridge.devTouchSafe(e.getPointerId(i), 1, e.getX(i), e.getY(i)), true);
                 return true;
             }
             case MotionEvent.ACTION_MOVE: {
                 // B296: posun prstu - obrazovka Atari je joystick (leva pulka smer)
+                // B297: na sirku D-pad a tlacitka (prst muze sklouznout na jine)
                 final int n = e.getPointerCount();
-                for (int i = 0; i < n; i++) NativeAtariCoreBridge.devTouchSafe(e.getPointerId(i), 3, e.getX(i), e.getY(i));
+                for (int i = 0; i < n; i++) vysledek(NativeAtariCoreBridge.devTouchSafe(e.getPointerId(i), 3, e.getX(i), e.getY(i)), false);
                 return true;
             }
             case MotionEvent.ACTION_CANCEL:

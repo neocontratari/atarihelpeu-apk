@@ -128,6 +128,8 @@ int main() {
   for (int i = 0; i < 160 && obrazovka().find("READY") == std::string::npos; i++) spi(100);
   over(obrazovka().find("READY") != std::string::npos, "Atari nastartovalo do READY");
 
+  const bool jenSirka = getenv("JEN_SIRKA") != nullptr;   // B297: rychly beh jen testu na sirku
+  if (!jenSirka) {
   // 2) drzeni klavesy: "A" drzene 2,5 s -> OS opakuje (KRPDEL ~1 s, pak KEYREP)
   {
     const auto *k = klavesaDef("A");
@@ -317,6 +319,99 @@ int main() {
       over(ruzne > 10000, "B296: joystick dotykem ve Wolfensteinu - hrac jde dopredu (obraz se zmenil)");
       vypisLog();
     }
+  }
+
+  }   // !jenSirka
+
+  // 9) B297: na sirku - D-pad a tlacitka jako u Segy, uprava rozlozeni, nastaveni
+  {
+    using D = nap::dev::Device;
+    Java_eu_atarihelp_emu10_NativeAtariCoreBridge_devSurfaceNative(&g_env, nullptr, (jobject)&surface, 2400, 1080);
+    spi(1500);
+    bool land = false; float dcx = 0, dcy = 0, rd = 0, fx = 0, fy = 0, sx = 0, sy = 0, stx = 0, sty = 0, gx = 0, gy = 0;
+    {
+      std::lock_guard<std::mutex> dl(g_mDev); D &d = devGet();
+      land = d.land; dcx = d.cpx(D::C_DPAD); dcy = d.cpy(D::C_DPAD); rd = d.rDpad;
+      fx = d.cpx(D::C_FIRE); fy = d.cpy(D::C_FIRE); sx = d.cpx(D::C_SPACE); sy = d.cpy(D::C_SPACE);
+      stx = d.cpx(D::C_START); sty = d.cpy(D::C_START); gx = d.gearCx; gy = d.gearCy;
+    }
+    printf("na sirku: land=%d dpad (%.0f,%.0f) r=%.0f FIRE (%.0f,%.0f)\n", land, dcx, dcy, rd, fx, fy);
+    over(land, "B297: displej 2400x1080 = na sirku (obraz pres celou vysku, ovladani jako Sega)");
+    auto dotek = [&](int pid, int akce, float x, float y) { return Java_eu_atarihelp_emu10_NativeAtariCoreBridge_devTouchNative(&g_env, nullptr, pid, akce, x, y); };
+    auto stav = [](int &pa, int &tr, int &co, int &kb, int &sk) { std::lock_guard<std::mutex> l(g_mStroj); pa = g_stroj->porta & 15; tr = g_stroj->trig[0]; co = g_stroj->consol; kb = g_stroj->kbcode; sk = g_stroj->skstat; };
+    int pa, tr, co, kb, sk;
+    // D-pad: prst na stred, posun nahoru (o polovinu polomeru)
+    int r1 = dotek(5, 0, dcx, dcy);
+    dotek(5, 3, dcx, dcy - rd * .5f); spi(150);
+    stav(pa, tr, co, kb, sk);
+    over(pa == 0x0E, "B297: D-pad posun nahoru = joystick NAHORU (PORTA $E)");
+    dotek(5, 3, dcx + rd * .45f, dcy + rd * .45f); spi(150);
+    stav(pa, tr, co, kb, sk);
+    over(pa == 0x05, "B297: D-pad sikmo vpravo dolu = diagonala (PORTA $5)");
+    // FIRE druhym prstem (s vibraci)
+    int r2 = dotek(6, 0, fx, fy); spi(150);
+    stav(pa, tr, co, kb, sk);
+    over(tr == 0 && pa == 0x05, "B297: FIRE soucasne s D-padem (TRIG0 = 0, smer drzi)");
+    over((r2 & 0x1000) != 0, "B297: stisk tlacitka vraci Jave vibraci");
+    (void)r1;
+    dotek(6, 1, fx, fy); dotek(5, 1, dcx, dcy); spi(150);
+    stav(pa, tr, co, kb, sk);
+    over(pa == 0x0F && tr == 1, "B297: po zvednuti prstu je joystick v klidu");
+    // MEZERA = klavesa drzena
+    dotek(7, 0, sx, sy); spi(150);
+    stav(pa, tr, co, kb, sk);
+    over(kb == 33 && !(sk & 4), "B297: tlacitko MEZERA = klavesa mezera drzena");
+    dotek(7, 1, sx, sy); spi(150);
+    stav(pa, tr, co, kb, sk);
+    over((sk & 4) != 0, "B297: MEZERA pustena");
+    // START
+    dotek(8, 0, stx, sty); spi(150);
+    stav(pa, tr, co, kb, sk);
+    over((co & 1) == 0, "B297: tlacitko START drzi konzolovy START");
+    dotek(8, 1, stx, sty); spi(250);
+    // ozubene kolecko -> menu (akce 10)
+    dotek(9, 0, gx, gy); int ak = dotek(9, 1, gx, gy);
+    over((ak & 0xFFF) == nap::dev::SVC_CTRL, "B297: ozubene kolecko vraci Jave menu D-PAD A OVLADANI");
+    // uprava rozlozeni: FIRE posunout o 150 px doleva, HOTOVO
+    FakeStr ce{"edit"};
+    Java_eu_atarihelp_emu10_NativeAtariCoreBridge_devCtlNative(&g_env, nullptr, (jstring)&ce);
+    dotek(10, 0, fx, fy); dotek(10, 3, fx - 75, fy); dotek(10, 3, fx - 150, fy); dotek(10, 1, fx - 150, fy);
+    float fx2;
+    nap::dev::RRect hot[3];
+    { std::lock_guard<std::mutex> dl(g_mDev); D &d = devGet(); fx2 = d.cpx(D::C_FIRE); d.editBarButtons(hot); }
+    over(std::fabs(fx2 - (fx - 150)) < 2.f, "B297: v uprave rozlozeni jde FIRE pretahnout prstem");
+    stav(pa, tr, co, kb, sk);
+    over(tr == 1, "B297: pri uprave rozlozeni se nehraje (tahani FIRE nestrili)");
+    const float hx = (hot[2].x0 + hot[2].x1) * .5f, hy = (hot[2].y0 + hot[2].y1) * .5f;
+    dotek(11, 0, hx, hy); ak = dotek(11, 1, hx, hy);
+    over((ak & 0xFFF) == nap::dev::SVC_CTRL_SAVE, "B297: HOTOVO vraci Jave ulozeni rozlozeni");
+    FakeStr cg{"get"};
+    std::string cfg = ((FakeStr *)Java_eu_atarihelp_emu10_NativeAtariCoreBridge_devCtlNative(&g_env, nullptr, (jstring)&cg))->s;
+    printf("nastaveni: %s\n", cfg.c_str());
+    over(cfg.find("pos=0.") != std::string::npos, "B297: rozlozeni je v nastaveni pro Javu (pos=...)");
+    // levak (mirror): D-pad na pravou stranu
+    FakeStr cm{"mirror"};
+    Java_eu_atarihelp_emu10_NativeAtariCoreBridge_devCtlNative(&g_env, nullptr, (jstring)&cm);
+    float dcx2; { std::lock_guard<std::mutex> dl(g_mDev); dcx2 = devGet().cpx(D::C_DPAD); }
+    over(dcx2 > 1200, "B297: PROHODIT (levak) - D-pad je vpravo");
+    // nastaveni z Javy (velikost, citlivost) a navrat na vychozi
+    FakeStr cs{"set:size=130;sens=15"};
+    std::string c2 = ((FakeStr *)Java_eu_atarihelp_emu10_NativeAtariCoreBridge_devCtlNative(&g_env, nullptr, (jstring)&cs))->s;
+    over(c2.find("size=130") != std::string::npos && c2.find("sens=15") != std::string::npos, "B297: velikost a citlivost z Javy se pouziji");
+    FakeStr cr{"reset"}, cr2{"set:sens=7;op=100;size=100;dsize=100;hap=1"};
+    Java_eu_atarihelp_emu10_NativeAtariCoreBridge_devCtlNative(&g_env, nullptr, (jstring)&cr);
+    std::string c3 = ((FakeStr *)Java_eu_atarihelp_emu10_NativeAtariCoreBridge_devCtlNative(&g_env, nullptr, (jstring)&cr2))->s;
+    over(c3 == "v=1;sens=7;op=100;size=100;dsize=100;hap=1;pos=", "B297: VYCHOZI rozlozeni i nastaveni");
+    // zpet na vysku: pristroj jako driv, joystick na obrazovce
+    Java_eu_atarihelp_emu10_NativeAtariCoreBridge_devSurfaceNative(&g_env, nullptr, (jobject)&surface, 1080, 2160);
+    spi(1500);
+    { std::lock_guard<std::mutex> dl(g_mDev); land = devGet().land; }
+    over(!land, "B297: otoceni zpet na vysku = pristroj Atari jako driv");
+    prst(300, 400, 12, 0); spi(60); prst(300, 340, 12, 3); spi(150);
+    stav(pa, tr, co, kb, sk);
+    over(pa == 0x0E, "B297: na vysku zase funguje joystick na obrazovce");
+    prst(300, 340, 12, 1); spi(100);
+    vypisLog();
   }
 
   Java_eu_atarihelp_emu10_NativeAtariCoreBridge_devStopNative(&g_env, nullptr);

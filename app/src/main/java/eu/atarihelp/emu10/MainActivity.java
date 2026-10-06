@@ -6622,6 +6622,7 @@ public class MainActivity extends Activity {
             atariZarizeniSkryte = false;
             v.requestFocus();
             NativeAtariCoreBridge.devStartSafe(true);
+            atariCppOvladaniNacti();                       // B297: D-pad / tlacitka na sirku podle uzivatele
             atariNativeAudioActive = true;
             appendNativeLog("B291 PRISTROJ_ZAPNUT - Atari 130XE ze schvaleneho navrhu, kresli C++ primo na displej");
             ui.removeCallbacks(atariZarizeniTik);
@@ -6730,7 +6731,9 @@ public class MainActivity extends Activity {
 
     /** Servisni tlacitka pristroje (kod z C++ po PUSTENI tlacitka). */
     private void atariZarizeniAkce(int kod) {
-        final String[] jmena = {"?", "NET_HRY", "XEX_MOBIL", "ATR_DISK", "TURBO_BASIC", "BASIC_TBXL_TXT", "LOG_CHYBA", "HELP", "MENU", "EJECT_KAZETA"};
+        if (kod == AtariDeviceView.AKCE_VIBRACE) { atariCppVibruj(); return; }   // B297 (bez logu - casto)
+        final String[] jmena = {"?", "NET_HRY", "XEX_MOBIL", "ATR_DISK", "TURBO_BASIC", "BASIC_TBXL_TXT", "LOG_CHYBA", "HELP", "MENU", "EJECT_KAZETA",
+                "OVLADANI_MENU", "OVLADANI_ULOZIT"};
         appendNativeLog("B291 SERVISNI_TLACITKO " + (kod > 0 && kod < jmena.length ? jmena[kod] : String.valueOf(kod)));
         try {
             switch (kod) {
@@ -6774,12 +6777,192 @@ public class MainActivity extends Activity {
                 case 9:   // B292: EJECT na kazetaku -> vyber kazety (WAV)
                     atariCppKazetaDialog();
                     break;
+                case 10:  // B297: ozubene kolecko na sirku -> D-PAD A OVLADANI
+                    atariCppOvladaniMenu();
+                    break;
+                case 11:  // B297: uprava rozlozeni HOTOVO -> ulozit
+                    atariCppOvladaniUloz(NativeAtariCoreBridge.devCtlSafe("get"));
+                    NativeAtariCoreBridge.devStatusSafe("ROZLOŽENÍ ULOŽENO", 2500);
+                    break;
                 default:
                     break;
             }
         } catch (Throwable t) {
             appendNativeLog("B291 SERVISNI_TLACITKO_CHYBA " + safeMsg(t));
         }
+    }
+
+    // ===================================================================
+    //  B297: NA SIRKU - D-pad a tlacitka jako u Segy, nastaveni podle sebe
+    //  (Rene: "udelej pretoceni na siroko a pridej tam d-pad podobny jako
+    //  u segy i s tim, aby si ho uzivatel opet mohl nastavit podle sebe").
+    //  Kresli a ovlada C++ (nap_atari_device.h); tady jen menu, nastaveni
+    //  (posuvniky) a ulozeni do SharedPreferences.
+    // ===================================================================
+    private static final String ATARI_CPP_PREFS = "nap_atari_cpp";
+
+    private void atariCppVibruj() {
+        try {
+            Vibrator v = napVibrator();
+            if (v == null || !v.hasVibrator()) return;
+            if (Build.VERSION.SDK_INT >= 26) v.vibrate(VibrationEffect.createOneShot(14, VibrationEffect.DEFAULT_AMPLITUDE));
+            else v.vibrate(14);
+        } catch (Throwable ignored) {}
+    }
+
+    private void atariCppOvladaniUloz(String cfg) {
+        if (cfg == null || cfg.isEmpty()) return;
+        try { getSharedPreferences(ATARI_CPP_PREFS, MODE_PRIVATE).edit().putString("ovladani", cfg).apply(); } catch (Throwable ignored) {}
+        appendNativeLog("B297 OVLADANI ulozeno: " + cfg);
+    }
+
+    /** Pri zapnuti pristroje: ulozene nastaveni ovladani do C++. */
+    private void atariCppOvladaniNacti() {
+        try {
+            String cfg = getSharedPreferences(ATARI_CPP_PREFS, MODE_PRIVATE).getString("ovladani", "");
+            if (cfg != null && !cfg.isEmpty()) {
+                NativeAtariCoreBridge.devCtlSafe("set:" + cfg);
+                appendNativeLog("B297 OVLADANI nacteno: " + cfg);
+            }
+        } catch (Throwable ignored) {}
+    }
+
+    /** Ozubene kolecko na sirku - stejne polozky jako Sega "D-PAD A OVLADANI". */
+    private void atariCppOvladaniMenu() {
+        final String[] polozky = {
+                "UPRAVIT ROZLOŽENÍ TLAČÍTEK",
+                "OVLÁDÁNÍ: CITLIVOST A VZHLED",
+                "PROHODIT D-PAD A AKCE (LEVÁK)",
+                "VÝCHOZÍ ROZLOŽENÍ TLAČÍTEK",
+                "RESET ATARI",
+                "XEX / MOBIL - spustit hru z telefonu",
+                "ATR / DISK - disketa do D1:",
+                "NET / HRY",
+                "NÁPOVĚDA K OVLÁDÁNÍ"
+        };
+        new android.app.AlertDialog.Builder(this)
+                .setTitle("D-PAD A OVLÁDÁNÍ")
+                .setItems(polozky, (dlg, w) -> {
+                    switch (w) {
+                        case 0:
+                            NativeAtariCoreBridge.devCtlSafe("edit");
+                            break;
+                        case 1:
+                            atariCppOvladaniNastaveni();
+                            break;
+                        case 2:
+                            atariCppOvladaniUloz(NativeAtariCoreBridge.devCtlSafe("mirror"));
+                            NativeAtariCoreBridge.devStatusSafe("D-PAD A AKCE PROHOZENY (LEVÁK) - ULOŽENO", 3000);
+                            break;
+                        case 3:
+                            atariCppOvladaniUloz(NativeAtariCoreBridge.devCtlSafe("reset"));
+                            NativeAtariCoreBridge.devStatusSafe("ROZLOŽENÍ VRÁCENO NA VÝCHOZÍ", 3000);
+                            break;
+                        case 4:
+                            NativeAtariCoreBridge.devCtlSafe("atari_reset");   // jako tlacitko RESET na pristroji
+                            break;
+                        case 5:
+                            atariZarizeniAkce(2);
+                            break;
+                        case 6:
+                            atariZarizeniAkce(3);
+                            break;
+                        case 7:
+                            atariZarizeniAkce(1);
+                            break;
+                        default:
+                            atariCppHelpDialog();
+                            break;
+                    }
+                })
+                .setNegativeButton("ZAVŘÍT", null)
+                .show();
+    }
+
+    /** "OVLADANI - profi nastaveni" jako u Segy: citlivost, pruhlednost,
+     *  velikost tlacitek, velikost D-padu, vibrace. Zmeny se hned projevi
+     *  (pristroj je videt za dialogem) a ulozi se pri zavreni. */
+    private void atariCppOvladaniNastaveni() {
+        final java.util.Map<String, String> h = new java.util.HashMap<>();
+        for (String kv : NativeAtariCoreBridge.devCtlSafe("get").split(";")) {
+            int q = kv.indexOf('=');
+            if (q > 0) h.put(kv.substring(0, q), kv.substring(q + 1));
+        }
+        final int[] hodnoty = {
+                atariCppInt(h.get("sens"), 7), atariCppInt(h.get("op"), 100),
+                atariCppInt(h.get("size"), 100), atariCppInt(h.get("dsize"), 100)
+        };
+        final boolean[] vibrace = {!"0".equals(h.get("hap"))};
+        final String[] klice = {"sens", "op", "size", "dsize"};
+        final String[] popisy = {
+                "Citlivost D-padu — jak daleko od středu musí prst dojet, než se směr sepne.",
+                "Průhlednost tlačítek",
+                "Velikost tlačítek — FIRE, MEZERA, RETURN, START, SELECT, OPTION.",
+                "Velikost D-padu — jen kulatý ovladač, samostatně."
+        };
+        final String[] jednotky = {"Citlivost: ", "Průhlednost: ", "Velikost: ", "Velikost D-padu: "};
+        final int[] min = {4, 25, 70, 70}, max = {30, 100, 150, 150}, krok = {1, 5, 5, 5};
+        final float dp = getResources().getDisplayMetrics().density;
+        android.widget.LinearLayout box = new android.widget.LinearLayout(this);
+        box.setOrientation(android.widget.LinearLayout.VERTICAL);
+        int pad = (int) (18 * dp);
+        box.setPadding(pad, pad / 2, pad, pad / 2);
+        final android.widget.SeekBar[] posuvniky = new android.widget.SeekBar[4];
+        final android.widget.TextView[] hodnotyTxt = new android.widget.TextView[4];
+        for (int i = 0; i < 4; i++) {
+            final int k = i;
+            android.widget.TextView t = new android.widget.TextView(this);
+            t.setText(popisy[i]);
+            t.setTextSize(14f);
+            t.setPadding(0, (int) (10 * dp), 0, 0);
+            box.addView(t);
+            android.widget.SeekBar sb = new android.widget.SeekBar(this);
+            sb.setMax((max[i] - min[i]) / krok[i]);
+            sb.setProgress((Math.max(min[i], Math.min(max[i], hodnoty[i])) - min[i]) / krok[i]);
+            box.addView(sb);
+            android.widget.TextView v = new android.widget.TextView(this);
+            v.setText(jednotky[i] + hodnoty[i] + " %");
+            v.setTextSize(13f);
+            box.addView(v);
+            posuvniky[i] = sb; hodnotyTxt[i] = v;
+            sb.setOnSeekBarChangeListener(new android.widget.SeekBar.OnSeekBarChangeListener() {
+                @Override public void onProgressChanged(android.widget.SeekBar s, int p, boolean odUzivatele) {
+                    hodnoty[k] = min[k] + p * krok[k];
+                    hodnotyTxt[k].setText(jednotky[k] + hodnoty[k] + " %");
+                    // citlivost hned; vzhled (prekresleni tlacitek) az po pusteni posuvniku
+                    if (k == 0) NativeAtariCoreBridge.devCtlSafe("set:" + klice[k] + "=" + hodnoty[k]);
+                }
+                @Override public void onStartTrackingTouch(android.widget.SeekBar s) {}
+                @Override public void onStopTrackingTouch(android.widget.SeekBar s) {
+                    NativeAtariCoreBridge.devCtlSafe("set:" + klice[k] + "=" + hodnoty[k]);
+                }
+            });
+        }
+        final android.widget.CheckBox cb = new android.widget.CheckBox(this);
+        cb.setText("Vibrace při stisku tlačítka");
+        cb.setChecked(vibrace[0]);
+        cb.setPadding(0, (int) (12 * dp), 0, 0);
+        cb.setOnCheckedChangeListener((b, zap) -> {
+            vibrace[0] = zap;
+            NativeAtariCoreBridge.devCtlSafe("set:hap=" + (zap ? 1 : 0));
+        });
+        box.addView(cb);
+        android.widget.ScrollView sv = new android.widget.ScrollView(this);
+        sv.addView(box);
+        new android.app.AlertDialog.Builder(this)
+                .setTitle("OVLÁDÁNÍ — profi nastavení")
+                .setView(sv)
+                .setNeutralButton("VÝCHOZÍ NASTAVENÍ", (dlg, w) -> {
+                    atariCppOvladaniUloz(NativeAtariCoreBridge.devCtlSafe("set:sens=7;op=100;size=100;dsize=100;hap=1"));
+                    NativeAtariCoreBridge.devStatusSafe("OVLÁDÁNÍ VRÁCENO NA VÝCHOZÍ", 3000);
+                })
+                .setPositiveButton("ZAVŘÍT", null)
+                .setOnDismissListener(d -> atariCppOvladaniUloz(NativeAtariCoreBridge.devCtlSafe("get")))
+                .show();
+    }
+
+    private static int atariCppInt(String s, int vychozi) {
+        try { return s == null ? vychozi : Integer.parseInt(s.trim()); } catch (Throwable t) { return vychozi; }
     }
 
     /** B292: EJECT = vyber kazety. Nabidne WAV z Download/AtariHelp/Atari_emu
@@ -6914,7 +7097,12 @@ public class MainActivity extends Activity {
                 "POWER (zeleny vypinac vlevo u obrazovky) - vypne / zapne Atari. Zapnuti = studeny start (pamet se vymaze).\n\n"
               + "RESET - jako na skutecnem Atari: program v pameti zustane.\n\n"
               + "HELP, START, SELECT, OPTION - konzolova tlacitka, drzi se po dobu stisku.\n\n"
-              + "JOYSTICK 1 = OBRAZOVKA ATARI: polozis prst na LEVOU pulku obrazovky a posouvas ho "
+              + "NA ŠÍŘKU (otoč telefon): obraz Atari přes celý displej, vlevo dole D-pad (joystick, puntík "
+              + "jede pod palcem, i šikmo), vpravo FIRE, MEZERA a RETURN, vlevo nahoře START / SELECT / OPTION. "
+              + "Kolečko vpravo nahoře = D-PAD A OVLÁDÁNÍ: upravit rozložení tlačítek (přetáhneš prstem, "
+              + "PO SKUPINÁCH, VÝCHOZÍ, HOTOVO), citlivost, průhlednost, velikost tlačítek a D-padu, vibrace, "
+              + "prohodit pro leváky, RESET, hry. Tvoje nastavení si appka pamatuje.\n\n"
+              + "NA VÝŠKU - JOYSTICK 1 = OBRAZOVKA ATARI: polozis prst na LEVOU pulku obrazovky a posouvas ho "
               + "(nahoru / dolu / do stran, i sikmo) - joystick ukazuje tim smerem, dokud prst drzis. "
               + "PRAVA pulka obrazovky = FIRE (drzene, dokud je prst dole). Jde to obema palci najednou.\n\n"
               + "Herni ovladac (bluetooth / USB): krizek nebo packa = joystick, A/B = FIRE, X = klavesa MEZERA, "

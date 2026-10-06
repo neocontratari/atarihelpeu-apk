@@ -1199,11 +1199,24 @@ Java_eu_atarihelp_emu10_NativeAtariCoreBridge_devSurfaceNative(JNIEnv *env, jcla
   int vw = w > 0 ? w : ANativeWindow_getWidth(g_win);
   int vh = h > 0 ? h : ANativeWindow_getHeight(g_win);
   if (vw <= 0 || vh <= 0) return;
-  // vnitrni rozliseni: sirka max 1080 px (vetsi displej dopocita kompozitor)
+  // vnitrni rozliseni: kratsi strana max 1080 px (vetsi displej dopocita
+  // kompozitor). B297: na sirku tedy vyska max 1080 (driv sirka 1080 ->
+  // na sirku jen ~486 radku a rozmazany obraz).
   int bw = vw, bh = vh;
-  if (bw > 1080) { bh = (int)((long long)bh * 1080 / bw); bw = 1080; }
+  const int kratsi = std::min(bw, bh);
+  if (kratsi > 1080) { bw = (int)((long long)bw * 1080 / kratsi); bh = (int)((long long)bh * 1080 / kratsi); }
   g_viewW = vw; g_viewH = vh;
-  if (bw != g_bufW.load() || bh != g_bufH.load()) { g_bufW = bw; g_bufH = bh; g_needLayout = true; }
+  if (bw != g_bufW.load() || bh != g_bufH.load()) {
+    // B297: otoceni displeje - pustit vse, co drzi prsty (D-pad, FIRE, klavesy)
+    nap::dev::Ev ev[16]; int n = 0;
+    {
+      std::lock_guard<std::mutex> dl(g_mDev);
+      nap::dev::Device &d = devGet();
+      if (d.W > 1) n = d.pointerCancelAll(nap_ted_ms(), ev, 16);
+    }
+    if (n > 0) { std::lock_guard<std::mutex> l(g_mEv); for (int i = 0; i < n; i++) g_evQ.push_back(ev[i]); }
+    g_bufW = bw; g_bufH = bh; g_needLayout = true;
+  }
   if (nova) g_formatHlaseno = false;
   g_needGeometry = true;
   g_forceFull = true;
@@ -1236,8 +1249,37 @@ Java_eu_atarihelp_emu10_NativeAtariCoreBridge_devTouchNative(JNIEnv *, jclass, j
     std::lock_guard<std::mutex> l(g_mEv);
     for (int i = 0; i < n; i++) g_evQ.push_back(ev[i]);
   }
+  bool vibrace = false;
+  { std::lock_guard<std::mutex> dl(g_mDev); nap::dev::Device &d = devGet(); vibrace = d.hapticReq; d.hapticReq = false; }
   if (akce != 3 || n > 0) pokeRender();
-  return svc;
+  return svc | (vibrace ? 0x1000 : 0);              // B297: bit 0x1000 = Java kratce zavibruje
+}
+
+/** B297: ovladani na sirku (D-pad a tlacitka jako u Segy).
+ *  "get" -> nastaveni, "set:<nastaveni>" -> pouzit, "edit" / "mirror" / "reset" /
+ *  "done" -> prikazy z menu D-PAD A OVLADANI, "stav" -> "land=0/1;edit=0/1".
+ *  Vraci aktualni nastaveni (Java ho uklada do SharedPreferences). */
+extern "C" JNIEXPORT jstring JNICALL
+Java_eu_atarihelp_emu10_NativeAtariCoreBridge_devCtlNative(JNIEnv *env, jclass, jstring jcmd) {
+  std::string cmd;
+  if (jcmd) { const char *c = env->GetStringUTFChars(jcmd, nullptr); if (c) { cmd = c; env->ReleaseStringUTFChars(jcmd, c); } }
+  std::string out;
+  nap::dev::Ev ev[16]; int n = 0;
+  {
+    std::lock_guard<std::mutex> dl(g_mDev);
+    nap::dev::Device &d = devGet();
+    if (cmd.rfind("set:", 0) == 0) d.ctlApplyConfig(cmd.c_str() + 4);
+    else if (cmd == "stav") { out = std::string("land=") + (d.land ? "1" : "0") + ";edit=" + (d.editMode ? "1" : "0"); }
+    else if (cmd == "atari_reset") { ev[0].t = nap::dev::Ev::RESET; ev[0].v = 0; n = 1; }   // RESET z menu na sirku
+    else if (cmd != "get") n = d.ctlCommand(cmd.c_str(), ev, 16);
+    if (out.empty()) out = d.ctlConfig();
+  }
+  if (n > 0) { std::lock_guard<std::mutex> l(g_mEv); for (int i = 0; i < n; i++) g_evQ.push_back(ev[i]); }
+  if (cmd != "get" && cmd != "stav") {
+    devLog("B297 OVLADANI " + (cmd.size() > 80 ? cmd.substr(0, 80) : cmd) + " -> " + out);
+    pokeRender();
+  }
+  return env->NewStringUTF(out.c_str());
 }
 
 /** B296: herni ovladac / klavesnice telefonu -> joystick 1 a konzole.

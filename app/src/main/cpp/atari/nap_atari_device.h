@@ -35,6 +35,9 @@
 #include <cmath>
 #include <vector>
 #include <algorithm>
+#include <string>
+#include <cstdio>
+#include <cstdlib>
 #include "../vendor/stb/stb_truetype.h"
 #include "nap_atari_fonts.h"
 #include "nap_atari_fonts2.h"
@@ -434,6 +437,8 @@ enum : int {
 enum : int {
   SVC_NET = 1, SVC_XEX = 2, SVC_ATR = 3, SVC_TBXL = 4, SVC_TXT = 5, SVC_LOG = 6, SVC_HELP = 7, SVC_MENU = 8,
   SVC_EJECT = 9,   // B292: EJECT na kazetaku -> Java nabidne ulozene WAV (kazety)
+  SVC_CTRL = 10,   // B297: ozubene kolecko na sirku -> menu D-PAD A OVLADANI
+  SVC_CTRL_SAVE = 11,   // B297: uprava rozlozeni HOTOVO -> Java ulozi nastaveni
 };
 
 // Udalost pro skutecny stroj (zpracuje ji emulacni vlakno)
@@ -464,6 +469,139 @@ static inline float cubicBezier(float x1, float y1, float x2, float y2, float x)
   }
   float u = 1 - t;
   return 3 * u * u * t * y1 + 3 * u * t * t * y2 + t * t * t;
+}
+
+// =====================================================================
+//  B297: OVLADANI NA SIRKU - "skleneny" vzhled jako D-pad/tlacitka u Segy
+//  (emu_sega/index.html, @media landscape: #dpad, #dpadNub, #btnA-C,
+//  #btnStart, #btnSegaSettings). Kazdy prvek se predkresli jednou do
+//  "skritku" (premultiplied RGBA) a pak se jen michá pres obraz.
+// =====================================================================
+struct Sprite {
+  int x0 = 0, y0 = 0, w = 0, h = 0;          // levy horni roh na displeji (px)
+  std::vector<uint32_t> px;                  // premultiplied: A<<24 | B<<16 | G<<8 | R
+};
+static inline uint32_t mul255(uint32_t a, uint32_t b) { uint32_t t = a * b + 128; return (t + (t >> 8)) >> 8; }
+static void spriteBlit(Canvas &c, const Sprite &s, int dx = 0, int dy = 0) {
+  if (s.w <= 0 || s.h <= 0) return;
+  const int sx0 = s.x0 + dx, sy0 = s.y0 + dy;
+  const int x0 = std::max(c.clip.x0, sx0), y0 = std::max(c.clip.y0, sy0);
+  const int x1 = std::min(c.clip.x1, sx0 + s.w), y1 = std::min(c.clip.y1, sy0 + s.h);
+  for (int y = y0; y < y1; y++) {
+    const uint32_t *sp = &s.px[(size_t)(y - sy0) * s.w + (x0 - sx0)];
+    uint32_t *dp = &c.at(x0, y);
+    for (int x = x0; x < x1; x++, sp++, dp++) {
+      const uint32_t v = *sp, a = v >> 24;
+      if (!a) continue;
+      const uint32_t d = *dp, ia = 255 - a;
+      uint32_t r = (v & 255) + mul255(d & 255, ia);
+      uint32_t g = ((v >> 8) & 255) + mul255((d >> 8) & 255, ia);
+      uint32_t b = ((v >> 16) & 255) + mul255((d >> 16) & 255, ia);
+      if (r > 255) r = 255;
+      if (g > 255) g = 255;
+      if (b > 255) b = 255;
+      *dp = 0xFF000000u | (b << 16) | (g << 8) | r;
+    }
+  }
+}
+// Styl skla (CSS): radial-gradient(circle at hx hy, s0, s1 p1, s2 p2),
+// border bw, box-shadow 0 0 glowBlur glow, inset 0 0 insetBlur inset, opacity.
+struct GlassStyle {
+  float hx = .5f, hy = .5f;
+  RGBA s0{255, 255, 255, 0}, s1{0, 0, 0, 0}, s2{0, 0, 0, 0}; float p1 = .5f, p2 = 1.f;
+  RGBA border{255, 255, 255, 0}; float bw = 0;
+  RGBA glow{0, 0, 0, 0}; float glowBlur = 0;
+  RGBA inset{0, 0, 0, 0}; float insetBlur = 0;
+  float opacity = 1.f;
+};
+// premultiplied akumulace (float)
+struct PremulPx { float r = 0, g = 0, b = 0, a = 0; };
+static inline void pmOver(PremulPx &d, float r, float g, float b, float a) {
+  if (a <= 0.f) return;
+  const float ia = 1.f - a;
+  d.r = r * a + d.r * ia; d.g = g * a + d.g * ia; d.b = b * a + d.b * ia; d.a = a + d.a * ia;
+}
+// Vykresli sklenene tlacitko (kruh nebo "pilulka") do skritku. Tvar je RRect
+// v px displeje; label (volitelne) se vykresli s CSS text-shadow
+// (0 0 7px #000, 0 0 12px glowCol) a barvou tcol.
+static void renderGlass(Sprite &sp, const RRect &shape, const GlassStyle &st,
+                        const char *label = nullptr, Font *f = nullptr, float fs = 0, float ls = 0,
+                        RGBA tcol = RGBA{240, 250, 255, .72f}, RGBA tglow = RGBA{0, 180, 255, .6f}, float cssPx = 1.f) {
+  const float pad = std::max(st.glowBlur * 1.6f, 2.f) + 2.f;
+  sp.x0 = (int)std::floor(shape.x0 - pad); sp.y0 = (int)std::floor(shape.y0 - pad);
+  sp.w = (int)std::ceil(shape.x1 + pad) - sp.x0; sp.h = (int)std::ceil(shape.y1 + pad) - sp.y0;
+  sp.px.assign((size_t)sp.w * sp.h, 0u);
+  const float bwid = shape.x1 - shape.x0, bhei = shape.y1 - shape.y0;
+  const float hlx = shape.x0 + st.hx * bwid, hly = shape.y0 + st.hy * bhei;
+  // CSS radial-gradient: velikost "farthest-corner"
+  float L = 0.f;
+  const float cxs[2] = {shape.x0, shape.x1}, cys[2] = {shape.y0, shape.y1};
+  for (float cxv : cxs) for (float cyv : cys) L = std::max(L, std::sqrt((cxv - hlx) * (cxv - hlx) + (cyv - hly) * (cyv - hly)));
+  if (L < 1.f) L = 1.f;
+  Grad g; g.n = 3; g.pos[0] = 0; g.pos[1] = st.p1; g.pos[2] = st.p2; g.col[0] = st.s0; g.col[1] = st.s1; g.col[2] = st.s2;
+  // popisek: maska + rozmazane stiny
+  Mask tm, tb1, tb2;
+  const bool maLabel = label && label[0] && f && fs > 0;
+  if (maLabel) {
+    const float w = textW(*f, label, fs, ls);
+    const float cx = (shape.x0 + shape.x1) * .5f, cy = (shape.y0 + shape.y1) * .5f;
+    const float base = baselineIn(*f, cy - fs * .6f, fs * 1.2f, fs);
+    tm.init(sp.x0, sp.y0, sp.w, sp.h);
+    textToMask(tm, *f, cx - (w - ls) * .5f, base, label, fs, ls);
+    tb1 = tm; maskBlur(tb1, 7.f * cssPx * .5f);
+    tb2 = tm; maskBlur(tb2, 12.f * cssPx * .5f);
+  }
+  const float sgGlow = st.glowBlur * .5f, sgIn = st.insetBlur * .5f;
+  for (int y = 0; y < sp.h; y++) {
+    const float py = sp.y0 + y + .5f;
+    for (int x = 0; x < sp.w; x++) {
+      const float pxf = sp.x0 + x + .5f;
+      const float sd = sdRR(pxf, py, shape);
+      if (!maLabel && sd > 3.6f * sgGlow + 1.f) continue;   // daleko venku: pruhledne
+      const float cov = covFromSd(sd);
+      PremulPx o;
+      // vnejsi zare (jen mimo tvar - box-shadow se pod prvkem nekresli)
+      if (st.glow.a > 0.f && sgGlow > 0.f && cov < 1.f) {
+        const float ga = st.glow.a * gaussEdge(sd, sgGlow) * (1.f - cov);
+        pmOver(o, st.glow.r, st.glow.g, st.glow.b, ga);
+      }
+      if (cov > 0.f) {
+        const float t = std::sqrt((pxf - hlx) * (pxf - hlx) + (py - hly) * (py - hly)) / L;
+        const RGBA c = g.at(t);
+        pmOver(o, c.r, c.g, c.b, c.a * cov);
+        if (st.inset.a > 0.f && sd > -3.6f * std::max(sgIn, .3f)) {   // hluboko uvnitr uz stin neni
+          const float ia = st.inset.a * cov * (1.f - gaussEdge(sd, std::max(sgIn, .3f)));
+          pmOver(o, st.inset.r, st.inset.g, st.inset.b, ia);
+        }
+        if (st.border.a > 0.f && st.bw > 0.f) {
+          const float ba = st.border.a * std::max(0.f, cov - covFromSd(sd + st.bw));
+          pmOver(o, st.border.r, st.border.g, st.border.b, ba);
+        }
+      }
+      if (maLabel) {
+        const size_t mi = (size_t)y * sp.w + x;
+        pmOver(o, 0, 0, 0, std::min(1.f, tb1.a[mi] * 1.6f) * .85f * tcol.a);
+        pmOver(o, tglow.r, tglow.g, tglow.b, std::min(1.f, tb2.a[mi] * 1.6f) * tglow.a);
+        pmOver(o, tcol.r, tcol.g, tcol.b, tm.a[mi] * tcol.a);
+      }
+      const float a = o.a * st.opacity;
+      if (a <= 0.002f) continue;
+      const float k = st.opacity;
+      auto q = [](float v) { int i = (int)(v + .5f); return (uint32_t)(i < 0 ? 0 : (i > 255 ? 255 : i)); };
+      sp.px[(size_t)y * sp.w + x] = (q(a * 255.f) << 24) | (q(o.b * k) << 16) | (q(o.g * k) << 8) | q(o.r * k);
+    }
+  }
+}
+// Ozubene kolo (nastaveni) - tvar pro "⚙", ktery v pismu neni.
+static float sdGear(float px, float py, float cx, float cy, float r) {
+  const float dx = px - cx, dy = py - cy;
+  const float d = std::sqrt(dx * dx + dy * dy);
+  const float ang = std::atan2(dy, dx);
+  const float zub = 0.5f + 0.5f * std::cos(ang * 8.f);              // 8 zubu
+  const float rz = r * (0.78f + 0.22f * (zub > 0.5f ? 1.f : zub * 2.f));
+  const float vnejsi = d - rz;
+  const float diera = r * 0.34f - d;                                // otvor uprostred
+  return std::max(vnejsi, diera);
 }
 
 // =====================================================================
@@ -500,6 +638,29 @@ public:
   static const int AW = 768, AH = 240;
   std::vector<uint32_t> atari;  bool atariValid = false;
 
+  // ---------------- B297: NA SIRKU (D-pad a tlacitka jako u Segy) ----------------
+  bool land = false;                       // displej na sirku -> obraz pres celou vysku + ovladani
+  enum : int { C_DPAD = 0, C_FIRE, C_SPACE, C_RET, C_START, C_SELECT, C_OPTION, C_N };
+  float ctlCx[C_N] = {0}, ctlCy[C_N] = {0}; // stred prvku jako podil W / H (0..1)
+  bool ctlVlastni = false;                 // uzivatel si rozlozeni upravil (ulozi Java)
+  // nastaveni jako Sega "OVLADANI - profi nastaveni": citlivost (4-30 % polomeru
+  // D-padu), pruhlednost 25-100 %, velikost tlacitek a D-padu 70-150 %, vibrace
+  int ctlSens = 7, ctlOpacity = 100, ctlSize = 100, ctlDpadSize = 100; bool ctlHaptic = true;
+  bool editMode = false, editGroups = false;           // "UPRAVIT ROZLOZENI TLACITEK"
+  int dragPid = -1; float dragX0 = 0, dragY0 = 0;
+  bool dragMember[C_N] = {false}; float dragCx0[C_N] = {0}, dragCy0[C_N] = {0};
+  bool lpDown[16] = {false}; float lpX[16] = {0}, lpY[16] = {0};
+  int dpadPid = -1, gearPid = -1, barPid = -1, barBtn = -1;
+  int lStick = 0; bool lFire = false, lSpace = false, lRet = false; int lCon = 0;   // lCon: 1 START, 2 SELECT, 4 OPTION
+  float nubDx = 0, nubDy = 0; bool nubAktivni = false;
+  bool hapticReq = false;                  // vibrace pri stisku (vyzvedne Java)
+  bool landNapovezeno = false;
+  float obrX = 0, obrY = 0, obrW = 0, obrH = 0;        // obraz Atari na sirku (px)
+  float rDpad = 0, rFire = 0, rBtn = 0, pillW = 0, pillH = 0;
+  float gearCx = 0, gearCy = 0, gearW = 0, gearH = 0;
+  Sprite spDpad[2], spNub[2], spBtn[C_N][2], spGear[2];
+  int landBuildW = 0, landBuildH = 0, landBuildSize = -1, landBuildDsize = -1, landBuildOp = -1;
+
   Device() { atari.assign((size_t)AW * AH, 0xFF000000u); }
 
   inline float X(float du) const { return devX + du * s; }
@@ -510,6 +671,12 @@ public:
   // ---------------- rozlozeni ----------------
   void layout(int w, int h) {
     W = std::max(1, w); H = std::max(1, h);
+    // B297: na sirku (jako Sega isLandscapeLayoutReady: sirka > 1,12x vyska)
+    // obraz Atari pres celou vysku displeje a ovladani jako u Segy
+    const bool bylLand = land;
+    land = W > H * 1.12f && W >= 520 && H >= 240;
+    if (land != bylLand) { editMode = false; dragPid = gearPid = barPid = -1; }
+    if (land) { layoutLand(); return; }
     // jako stranka navrhu: okraj 14 CSS px, nahore 18 CSS px, pod
     // pristrojem stavovy radek (legend) 14+~16 CSS px.
     float margin = W * (14.f / 404.f);
@@ -541,7 +708,7 @@ public:
 
   // Pro testy: presne zadane meritko a poloha pristroje.
   void layoutFixed(int w, int h, float scale, float dx, float dy) {
-    W = std::max(1, w); H = std::max(1, h); s = scale; devX = dx; devY = dy;
+    W = std::max(1, w); H = std::max(1, h); s = scale; devX = dx; devY = dy; land = false;
     bg.assign((size_t)W * H, 0xFF0D0B0Bu);
     frame.assign((size_t)W * H, 0xFF0D0B0Bu);
     out.assign((size_t)W * H, 0xFF0D0B0Bu);
@@ -590,6 +757,7 @@ public:
   // posun prstu (jen joystick)
   int pointerMove(int pid, float x, float y, long long now, Ev *out, int maxOut) {
     (void)now;
+    if (land) return landMove(pid & 15, x, y, out, maxOut);
     if (pid != joyPid || joyPid < 0 || maxOut < 1) return 0;
     const int m = joySmer(toDuX(x), toDuY(y));
     if (m == joyStick) return 0;
@@ -628,6 +796,7 @@ public:
 
   // Polozeni prstu. Vraci pocet udalosti pro stroj (do out).
   int pointerDown(int pid, float x, float y, long long now, Ev *out, int maxOut) {
+    if (land) return landDown(pid & 15, x, y, now, out, maxOut);
     int n = 0;
     int id = hitTest(x, y);
     if (pid >= 0 && pid < 16) pidElem[pid] = id;
@@ -707,6 +876,7 @@ public:
 
   // Zvednuti prstu. svcAction (out) = servisni akce pro Javu (0 = zadna).
   int pointerUp(int pid, float x, float y, long long now, Ev *out, int maxOut, int *svcAction) {
+    if (land) { if (svcAction) *svcAction = 0; return landUp(pid & 15, x, y, out, maxOut, svcAction); }
     int n = 0;
     if (svcAction) *svcAction = 0;
     int id = (pid >= 0 && pid < 16) ? pidElem[pid] : ID_NONE;
@@ -748,6 +918,7 @@ public:
     return n;
   }
   int pointerCancelAll(long long now, Ev *out, int maxOut) {
+    if (land) return landCancel(out, maxOut);
     int n = 0;
     for (int p = 0; p < 16; p++) if (pidElem[p] != ID_NONE) {
       int dummy = 0; n += pointerUp(p, -1e6f, -1e6f, now, out + n, maxOut - n, &dummy);
@@ -796,6 +967,10 @@ public:
     for (int i = 0; i < 8; i++) { svcHeld[i] = false; svcAt[i] = -100000; }
     for (int i = 0; i < 16; i++) pidElem[i] = ID_NONE;
     joyPid = firePid = -1; joyStick = 0; joyFire = false;
+    // B297: na sirku - jen stav doteku (nastaveni a rozlozeni ovladani zustava)
+    for (int i = 0; i < 16; i++) lpDown[i] = false;
+    dpadPid = gearPid = barPid = dragPid = -1; editMode = false;
+    lStick = 0; lFire = lSpace = lRet = false; lCon = 0; nubAktivni = false;
     shiftLatched = ctrlLatched = false;
     power = true; powerAt = -100000;
     rec = play = false; doorOpen = false; doorAt = -100000;
@@ -873,15 +1048,19 @@ public:
   }
   void mark(const IRect &r) { IRect c = irIsect(r, IRect{0, 0, W, H}); if (!irEmpty(c)) dirty.push_back(c); needPresent = true; }
   void markAll() { mark(IRect{0, 0, W, H}); }
-  void markKey(int k) { const KeyDef &d = KEYS[k]; mark(duRect(d.x, d.y, d.w, d.h)); }
-  void markCon(int i) { mark(duRect(CONSOLE[i].x, CON_Y, CONSOLE[i].w, CON_H)); }
-  void markTape() { mark(duRect(TAPE_B[0], TAPE_Y, TAPE_B[6] - TAPE_B[0], TAPE_H)); }
-  void markWindow() { mark(duRect(TW_X, TW_Y, TW_W, TW_H, 26.f)); }
-  void markReels() { mark(duRect(332.44f, 1317.44f, 602.22f - 332.44f, 66.5f, 3.f)); }
-  void markCounter() { mark(duRect(748, 1328, 144, 48, 8.f)); }
-  void markSvc(int i) { mark(duRect(SVC_X0 + i * (SVC_W + SVC_GAP), SVC_Y, SVC_W, SVC_H, 10.f)); }
-  void markScreen() { mark(IRect{ (int)std::floor(X(108)) - 1, (int)std::floor(Y(105)) - 1, (int)std::ceil(X(823)) + 1, (int)std::ceil(Y(710)) + 1 }); }
-  void markLegend() { mark(IRect{0, (int)std::floor(Y(DH)), W, H}); }
+  // (na sirku prvky pristroje nejsou videt - B297: tam jen obraz a ovladani)
+  void markKey(int k) { if (land) return; const KeyDef &d = KEYS[k]; mark(duRect(d.x, d.y, d.w, d.h)); }
+  void markCon(int i) { if (land) return; mark(duRect(CONSOLE[i].x, CON_Y, CONSOLE[i].w, CON_H)); }
+  void markTape() { if (land) return; mark(duRect(TAPE_B[0], TAPE_Y, TAPE_B[6] - TAPE_B[0], TAPE_H)); }
+  void markWindow() { if (land) return; mark(duRect(TW_X, TW_Y, TW_W, TW_H, 26.f)); }
+  void markReels() { if (land) return; mark(duRect(332.44f, 1317.44f, 602.22f - 332.44f, 66.5f, 3.f)); }
+  void markCounter() { if (land) return; mark(duRect(748, 1328, 144, 48, 8.f)); }
+  void markSvc(int i) { if (land) return; mark(duRect(SVC_X0 + i * (SVC_W + SVC_GAP), SVC_Y, SVC_W, SVC_H, 10.f)); }
+  void markScreen() {
+    if (land) { mark(IRect{scrX0, scrY0, scrX1, scrY1}); return; }
+    mark(IRect{ (int)std::floor(X(108)) - 1, (int)std::floor(Y(105)) - 1, (int)std::ceil(X(823)) + 1, (int)std::ceil(Y(710)) + 1 });
+  }
+  void markLegend() { if (land) { mark(toastRect()); return; } mark(IRect{0, (int)std::floor(Y(DH)), W, H}); }
 
   // =================================================================
   //  KRESLENI
@@ -945,9 +1124,9 @@ public:
       drawDynamic(c, now);
       outDirty.push_back(r);
     }
-    float ov = overlayAlpha(now), nub = nubOn(now);
-    if (std::fabs(ov - lastOv) > 0.001f) { outDirty.push_back(irIsect(deviceIRect(), IRect{0, 0, W, H})); lastOv = ov; }
-    if (std::fabs(nub - lastNub) > 0.001f) { outDirty.push_back(irIsect(powerSwitchRect(), IRect{0, 0, W, H})); lastNub = nub; }
+    float ov = land ? 0.f : overlayAlpha(now), nub = land ? 0.f : nubOn(now);
+    if (std::fabs(ov - lastOv) > 0.001f) { if (!land) outDirty.push_back(irIsect(deviceIRect(), IRect{0, 0, W, H})); lastOv = ov; }
+    if (std::fabs(nub - lastNub) > 0.001f) { if (!land) outDirty.push_back(irIsect(powerSwitchRect(), IRect{0, 0, W, H})); lastNub = nub; }
     if (outDirty.empty()) return;
     if (outDirty.size() > 40) {
       IRect u{0, 0, 0, 0}; for (auto &r : outDirty) u = irUnion(u, r);
@@ -961,8 +1140,10 @@ public:
       for (int y = r.y0; y < r.y1; y++)
         std::memcpy(&out[(size_t)y * W + r.x0], &frame[(size_t)y * W + r.x0], (size_t)(r.x1 - r.x0) * 4);
       Canvas c; c.px = out.data(); c.w = W; c.h = H; c.stride = W; c.clip = r;
-      if (ov > 0.003f) fillRR(c, dev, Grad::solid(rgbac(6, 6, 10, 1.f)), 0, 1, ov);
-      if (hits(r, sw)) drawPowerSwitch(c, now);
+      if (!land) {
+        if (ov > 0.003f) fillRR(c, dev, Grad::solid(rgbac(6, 6, 10, 1.f)), 0, 1, ov);
+        if (hits(r, sw)) drawPowerSwitch(c, now);
+      }
       presentRect = irUnion(presentRect, r);
     }
     outDirty.clear();
@@ -979,6 +1160,7 @@ public:
   static bool hits(const IRect &clip, const IRect &b) { return !irEmpty(irIsect(clip, b)); }
 
   void drawDynamic(Canvas &c, long long now) {
+    if (land) { drawDynamicLand(c, now); return; }
     // poradi presne jako v DOM navrhu (pozdejsi = navrchu)
     if (hits(c.clip, IRect{ (int)X(100), (int)Y(95), (int)X(831), (int)Y(720) })) drawScreen(c);
     for (int i = 0; i < 5; i++) if (hits(c.clip, duRect(CONSOLE[i].x, CON_Y, CONSOLE[i].w, CON_H))) drawConsole(c, i, now);
@@ -1823,6 +2005,609 @@ public:
     fillRR(c, dot, Grad::solid(hexc(led)), dot.y0, dot.y1);
     float base = baselineIn(f, topY, lineH, fs);
     drawText(c, f, x + d + PX(9), base, txt, fs, ls, hexc(0xc3c9d1));
+  }
+
+  // =================================================================
+  //  B297: NA SIRKU - obraz Atari pres celou vysku displeje, D-pad a
+  //  tlacitka jako u Segy (Rene: "udelej pretoceni na siroko a pridej
+  //  tam d-pad podobny jako u segy i s tim, aby si ho uzivatel opet mohl
+  //  nastavit podle sebe"). Rozmery a barvy z emu_sega/index.html
+  //  (@media landscape): D-pad 43vh vlevo dole s puntikem pod palcem,
+  //  sloupec tlacitek vpravo, ozubene kolecko vpravo nahore.
+  // =================================================================
+  float vh() const { return H / 100.f; }
+  float cssL() const { return H / 392.f; }            // 1 CSS px telefonu na sirku (~392 CSS px vyska)
+  bool isPill(int i) const { return i >= C_START; }
+  float ctlRad(int i) const { return i == C_DPAD ? rDpad : (i == C_FIRE ? rFire : rBtn); }
+  // tvar prvku (px) kolem stredu (cx, cy)
+  RRect ctlShape(int i, float cx, float cy) const {
+    if (isPill(i)) return mkRR(cx - pillW * .5f, cy - pillH * .5f, pillW, pillH, pillH * .5f, pillH * .5f);
+    const float r = ctlRad(i);
+    return mkRR(cx - r, cy - r, 2 * r, 2 * r, r, r);
+  }
+  float cpx(int i) const { return ctlCx[i] * W; }
+  float cpy(int i) const { return ctlCy[i] * H; }
+  void setC(int i, float x, float y) { ctlCx[i] = x / W; ctlCy[i] = y / H; }
+  void ctlSizes() {
+    const float v = vh();
+    rDpad = 21.5f * v * ctlDpadSize / 100.f;            // Sega #dpad 43vh
+    rFire = 9.6f * v * ctlSize / 100.f;
+    rBtn = 7.8f * v * ctlSize / 100.f;
+    pillW = 15.f * v * ctlSize / 100.f;
+    pillH = 6.f * v * ctlSize / 100.f;
+    gearW = 11.f * v; gearH = 7.f * v;                  // Sega #btnSegaSettings
+    gearCx = W - W * .015f - gearW * .5f; gearCy = 1.2f * v + gearH * .5f;
+  }
+  // vychozi rozlozeni (jako Sega na sirku): D-pad vlevo dole, FIRE vpravo
+  // dole, nad nim MEZERA a RETURN, START/SELECT/OPTION vlevo nahore (aby
+  // nezakryvaly spodek obrazu - napr. stavovy radek ve Wolfensteinu)
+  void ctlDefaults() {
+    const float v = vh(), vw = W / 100.f;
+    setC(C_DPAD, 1.8f * vw + rDpad, H - 2.f * v - rDpad);
+    const float fx = W - 2.2f * vw - rFire, fy = H - 2.f * v - rFire;
+    setC(C_FIRE, fx, fy);
+    const float sy = fy - rFire - 2.5f * v - rBtn;
+    setC(C_SPACE, fx, sy);
+    setC(C_RET, fx, sy - 2.f * rBtn - 2.5f * v);
+    const float px = 1.8f * vw + pillW * .5f, py = 2.f * v + pillH * .5f, krok = pillH + 2.f * v;
+    setC(C_START, px, py); setC(C_SELECT, px, py + krok); setC(C_OPTION, px, py + 2.f * krok);
+  }
+  void ctlClamp(int i) {
+    const RRect r = ctlShape(i, cpx(i), cpy(i));
+    float dx = 0, dy = 0;
+    if (r.x0 < 0) dx = -r.x0; else if (r.x1 > W) dx = W - r.x1;
+    if (r.y0 < 0) dy = -r.y0; else if (r.y1 > H) dy = H - r.y1;
+    if (dx || dy) setC(i, cpx(i) + dx, cpy(i) + dy);
+  }
+  IRect ctlRect(int i) const {                       // co prekreslit kolem prvku (vcetne zare v obou stavech)
+    const int cx = (int)std::lround(cpx(i)), cy = (int)std::lround(cpy(i));
+    IRect r{0, 0, 0, 0};
+    for (int on = 0; on < 2; on++) {
+      const Sprite &s = i == C_DPAD ? spDpad[on] : spBtn[i][on];
+      r = irUnion(r, IRect{cx + s.x0 - 2, cy + s.y0 - 2, cx + s.x0 + s.w + 2, cy + s.y0 + s.h + 2});
+    }
+    if (editMode) {                                  // carkovany ramecek + zare
+      const RRect sh = rrGrow(ctlShape(i, cpx(i), cpy(i)), 4.f * cssL());
+      const float m = 16.f * cssL() * 1.6f + 4.f;
+      r = irUnion(r, IRect{(int)std::floor(sh.x0 - m), (int)std::floor(sh.y0 - m), (int)std::ceil(sh.x1 + m), (int)std::ceil(sh.y1 + m)});
+    }
+    return r;
+  }
+  IRect gearRect() const { const Sprite &s = spGear[0]; return IRect{s.x0 - 2, s.y0 - 2, s.x0 + s.w + 2, s.y0 + s.h + 2}; }
+  void markCtl(int i) { if (land) mark(ctlRect(i)); }
+  IRect toastRect() const { return IRect{0, (int)(1.5f * vh()), W, (int)(11.f * vh())}; }
+  // lista pri uprave rozlozeni: panel nahore uprostred (mezi START/SELECT/
+  // OPTION vlevo a sloupcem tlacitek vpravo, aby je nezakryval)
+  float editBarH() const { return 10.f * vh(); }
+  RRect editBarRR() const {
+    const float w = W * .64f, x = (W - w) * .5f, y = 1.f * vh();
+    return mkRR(x, y, w, editBarH(), 1.8f * vh(), 1.8f * vh());
+  }
+  IRect editBarRect() const {
+    const RRect r = editBarRR(); const float m = 16.f * cssL() * 1.6f + 4.f;
+    return IRect{(int)std::floor(r.x0 - m), (int)std::floor(r.y0 - m), (int)std::ceil(r.x1 + m), (int)std::ceil(r.y1 + m)};
+  }
+
+  void layoutLand() {
+    // obraz: 672 bodu z 768 siroke radky x 240 radku; bod Atari je ~12 %
+    // vyssi nez sirsi (jako na vysku) -> pomer stran 1,232
+    const float aspect = (float)CROP_W * 0.88f / ((float)AH * (AW / 384.f));
+    obrH = (float)H; obrW = obrH * aspect;
+    if (obrW > W) { obrW = (float)W; obrH = obrW / aspect; }
+    obrX = std::floor((W - obrW) * .5f); obrY = std::floor((H - obrH) * .5f);
+    buildLandTables();
+    ctlSizes();
+    if (!ctlVlastni) ctlDefaults();
+    for (int i = 0; i < C_N; i++) ctlClamp(i);
+    buildSprites();
+    bg.assign((size_t)W * H, 0xFF000000u);
+    frame.assign((size_t)W * H, 0xFF000000u);
+    out.assign((size_t)W * H, 0xFF000000u);
+    outDirty.clear(); presentRect = IRect{0, 0, 0, 0}; lastOv = -1.f; lastNub = -1.f;
+    dirty.clear();
+    dirty.push_back(IRect{0, 0, W, H});
+    needPresent = true;
+    if (!landNapovezeno) {
+      landNapovezeno = true;
+      std::snprintf(extraMsg, sizeof(extraMsg), "%s", "KOLEČKO VPRAVO NAHOŘE = NASTAVENÍ D-PADU");
+      extraUntil = (lastNow > 0 ? lastNow : 0) + 6000;
+    }
+  }
+  void buildLandTables() {
+    hrowsValid = false;
+    scrX0 = (int)obrX; scrX1 = (int)std::ceil(obrX + obrW);
+    scrY0 = (int)obrY; scrY1 = (int)std::ceil(obrY + obrH);
+    const int w = scrX1 - scrX0, h = scrY1 - scrY0;
+    const float kx = obrW / CROP_W, ky = obrH / AH;
+    colIdx.assign(w, 0); colW.assign(w, 0);
+    for (int x = 0; x < w; x++) {
+      float u0 = (scrX0 + x - obrX) / kx, u1 = u0 + 1.f / kx;
+      int i0 = (int)std::floor(u0), i1 = (int)std::floor(u1 - 1e-4f);
+      float wgt = 0.f;
+      if (i1 > i0) wgt = (u1 - (float)i1) / (u1 - u0);
+      i0 = std::min(CROP_W - 1, std::max(0, i0));
+      colIdx[x] = (int16_t)(CROP_X0 + i0);
+      colW[x] = (uint8_t)std::lround(std::min(1.f, std::max(0.f, wgt)) * 255.f);
+    }
+    rowIdx.assign(h, 0); rowW.assign(h, 0);
+    for (int y = 0; y < h; y++) {
+      float v0 = (scrY0 + y - obrY) / ky, v1 = v0 + 1.f / ky;
+      int j0 = (int)std::floor(v0), j1 = (int)std::floor(v1 - 1e-4f);
+      float wgt = 0.f;
+      if (j1 > j0) wgt = (v1 - (float)j1) / (v1 - v0);
+      j0 = std::min(AH - 1, std::max(0, j0));
+      rowIdx[y] = (int16_t)j0;
+      rowW[y] = (uint8_t)(j0 >= AH - 1 ? 0 : std::lround(std::min(1.f, std::max(0.f, wgt)) * 255.f));
+    }
+  }
+  // obraz Atari na sirku: radky predpocitane vodorovne (hrows), svisle ostre
+  // (michaji se jen radky na hranici dvou radku Atari)
+  void drawScreenLand(Canvas &c) {
+    const int x0 = std::max(c.clip.x0, scrX0), x1 = std::min(c.clip.x1, scrX1);
+    const int y0 = std::max(c.clip.y0, scrY0), y1 = std::min(c.clip.y1, scrY1);
+    if (x1 <= x0 || y1 <= y0) return;
+    const int w = scrX1 - scrX0;
+    const bool on = power && atariValid;
+    if (on && !hrowsValid) buildHRows();
+    for (int y = y0; y < y1; y++) {
+      uint32_t *row = &c.at(0, y);
+      if (!on) { std::fill(row + x0, row + x1, 0xFF000000u); continue; }
+      const int ty = y - scrY0, ri = rowIdx[ty], rw = rowW[ty];
+      const uint32_t *A = &hrows[(size_t)ri * w + (x0 - scrX0)];
+      if (!rw) { std::memcpy(row + x0, A, (size_t)(x1 - x0) * 4); continue; }
+      const uint32_t *B = &hrows[(size_t)std::min(AH - 1, ri + 1) * w + (x0 - scrX0)];
+      for (int x = x0; x < x1; x++) row[x] = lerpPx(A[x - x0], B[x - x0], rw);
+    }
+  }
+
+  // ----- vzhled (CSS z emu_sega/index.html, landscape) -----
+  GlassStyle styleDpad(bool on) const {
+    const float k = cssL(), op = ctlOpacity / 100.f;
+    GlassStyle s; s.hx = .5f; s.hy = .42f;
+    s.s0 = RGBA{255, 255, 255, .07f}; s.s1 = RGBA{10, 30, 60, .30f}; s.p1 = .62f; s.s2 = RGBA{0, 0, 0, .22f}; s.p2 = 1.f;
+    s.border = RGBA{on ? 200.f : 150.f, on ? 245.f : 215.f, 255, on ? .75f : .34f}; s.bw = 2.f * k;
+    s.glow = RGBA{0, on ? 170.f : 140.f, 255, on ? .55f : .28f}; s.glowBlur = (on ? 30.f : 22.f) * k;
+    s.inset = RGBA{0, 0, 0, .42f}; s.insetBlur = 30.f * k;
+    s.opacity = (on ? .8f : .55f) * op;
+    return s;
+  }
+  GlassStyle styleNub(bool on) const {
+    const float k = cssL(), op = ctlOpacity / 100.f;
+    GlassStyle s; s.hx = .36f; s.hy = .30f;
+    s.s0 = RGBA{255, 255, 255, .55f}; s.s1 = RGBA{120, 200, 255, .34f}; s.p1 = .40f; s.s2 = RGBA{20, 70, 130, .55f}; s.p2 = 1.f;
+    s.border = RGBA{200, 240, 255, .55f}; s.bw = 2.f * k;
+    s.glow = RGBA{60, 180, 255, .55f}; s.glowBlur = 16.f * k;
+    s.inset = RGBA{255, 255, 255, .18f}; s.insetBlur = 10.f * k;
+    s.opacity = (on ? .8f : .55f) * op;
+    return s;
+  }
+  // tlacitka: modre sklo jako Sega A/B/C, FIRE oranzove (barva LED pristroje);
+  // stisk = zlata zare jako Sega .on
+  GlassStyle styleBtn(int i, bool on) const {
+    const float k = cssL(), op = ctlOpacity / 100.f;
+    GlassStyle s; s.hx = .34f; s.hy = .26f;
+    if (on) {
+      s.s0 = RGBA{255, 255, 255, .45f}; s.s1 = RGBA{230, 170, 60, .30f}; s.p1 = .40f; s.s2 = RGBA{60, 30, 4, .45f}; s.p2 = .80f;
+      s.border = RGBA{255, 240, 180, .85f}; s.bw = 2.f * k;
+      s.glow = RGBA{255, 190, 60, .55f}; s.glowBlur = 24.f * k;
+      s.inset = RGBA{0, 0, 0, .30f}; s.insetBlur = 14.f * k;
+      s.opacity = 1.f * op;
+    } else if (i == C_FIRE) {
+      s.s0 = RGBA{255, 255, 255, .30f}; s.s1 = RGBA{255, 120, 30, .22f}; s.p1 = .38f; s.s2 = RGBA{40, 12, 2, .42f}; s.p2 = .78f;
+      s.border = RGBA{255, 190, 120, .48f}; s.bw = 2.f * k;
+      s.glow = RGBA{255, 130, 20, .34f}; s.glowBlur = 16.f * k;
+      s.inset = RGBA{0, 0, 0, .36f}; s.insetBlur = 16.f * k;
+      s.opacity = .66f * op;
+    } else {
+      const bool pill = isPill(i);
+      s.s0 = RGBA{255, 255, 255, pill ? .28f : .30f}; s.s1 = RGBA{50, 150, 235, pill ? .16f : .18f}; s.p1 = pill ? .40f : .38f;
+      s.s2 = RGBA{4, 16, 34, pill ? .38f : .40f}; s.p2 = pill ? .80f : .78f;
+      s.border = RGBA{165, 225, 255, pill ? .38f : .40f}; s.bw = 2.f * k;
+      s.glow = RGBA{0, 140, 255, pill ? .26f : .30f}; s.glowBlur = (pill ? 14.f : 16.f) * k;
+      s.inset = RGBA{0, 0, 0, pill ? .32f : .36f}; s.insetBlur = (pill ? 12.f : 16.f) * k;
+      s.opacity = .60f * op;
+    }
+    return s;
+  }
+  static const char *ctlLabel(int i) {
+    static const char *L[C_N] = {"", "FIRE", "MEZERA", "RETURN", "START", "SELECT", "OPTION"};
+    return L[i];
+  }
+  // predkresleni vsech prvku (pri zmene velikosti displeje / nastaveni)
+  void buildSprites() {
+    if (landBuildW == W && landBuildH == H && landBuildSize == ctlSize && landBuildDsize == ctlDpadSize && landBuildOp == ctlOpacity) return;
+    landBuildW = W; landBuildH = H; landBuildSize = ctlSize; landBuildDsize = ctlDpadSize; landBuildOp = ctlOpacity;
+    Font &fb = fBold();
+    for (int on = 0; on < 2; on++) {
+      renderGlass(spDpad[on], ctlShape(C_DPAD, 0, 0), styleDpad(on != 0));
+      const float rn = rDpad * .34f;                  // Sega #dpadNub 34 %
+      renderGlass(spNub[on], mkRR(-rn, -rn, 2 * rn, 2 * rn, rn, rn), styleNub(on != 0));
+      for (int i = C_FIRE; i < C_N; i++) {
+        const bool pill = isPill(i);
+        const float fs = pill ? pillH * .36f : (i == C_FIRE ? rFire * .42f : rBtn * .34f);
+        const float ls = pill ? fs * .05f : fs * .02f;
+        renderGlass(spBtn[i][on], ctlShape(i, 0, 0), styleBtn(i, on != 0), ctlLabel(i), &fb, fs, ls,
+                    RGBA{240, 250, 255, on ? .92f : .78f}, i == C_FIRE ? RGBA{255, 140, 40, .6f} : RGBA{0, 180, 255, .6f}, cssL());
+      }
+      // ozubene kolecko: Sega #btnSegaSettings (bila prusvitna pilulka, symbol nastaveni)
+      Sprite &g = spGear[on];
+      const RRect gr = mkRR(gearCx - gearW * .5f, gearCy - gearH * .5f, gearW, gearH, gearH * .5f, gearH * .5f);
+      GlassStyle gs; gs.hx = .5f; gs.hy = .5f;
+      gs.s0 = gs.s1 = gs.s2 = on ? RGBA{120, 200, 255, .28f} : RGBA{255, 255, 255, .12f};
+      gs.border = on ? RGBA{180, 225, 255, .8f} : RGBA{255, 255, 255, .34f}; gs.bw = 1.f * cssL();
+      gs.opacity = .9f;
+      renderGlass(g, gr, gs);
+      // symbol
+      const float rg = gearH * .30f;
+      for (int y = 0; y < g.h; y++) for (int x = 0; x < g.w; x++) {
+        const float px = g.x0 + x + .5f, py = g.y0 + y + .5f;
+        const float a = covFromSd(sdGear(px, py, gearCx, gearCy, rg)) * .85f * .9f;
+        if (a <= 0.002f) continue;
+        uint32_t &d = g.px[(size_t)y * g.w + x];
+        const uint32_t da = d >> 24, ia = (uint32_t)((1.f - a) * 255.f + .5f), sa = (uint32_t)(a * 255.f + .5f);
+        const uint32_t r = sa + mul255(d & 255, ia), gg = sa + mul255((d >> 8) & 255, ia), b = sa + mul255((d >> 16) & 255, ia);
+        const uint32_t na = sa + mul255(da, ia);
+        d = (std::min(na, 255u) << 24) | (std::min(b, 255u) << 16) | (std::min(gg, 255u) << 8) | std::min(r, 255u);
+      }
+    }
+  }
+  bool ctlOn(int i) const {
+    if (editMode) return false;
+    switch (i) {
+      case C_DPAD: return lStick != 0;
+      case C_FIRE: return lFire;
+      case C_SPACE: return lSpace;
+      case C_RET: return lRet;
+      case C_START: return (lCon & 1) != 0;
+      case C_SELECT: return (lCon & 2) != 0;
+      default: return (lCon & 4) != 0;
+    }
+  }
+
+  void drawDynamicLand(Canvas &c, long long now) {
+    (void)now;
+    if (hits(c.clip, IRect{scrX0, scrY0, scrX1, scrY1})) drawScreenLand(c);
+    for (int i = 0; i < C_N; i++) {
+      if (!hits(c.clip, ctlRect(i))) continue;
+      const int cx = (int)std::lround(cpx(i)), cy = (int)std::lround(cpy(i));
+      const bool on = ctlOn(i);
+      if (i == C_DPAD) {
+        spriteBlit(c, spDpad[on], cx, cy);
+        // puntik klouze pod palcem (Sega: max 62 % polomeru)
+        float dx = 0, dy = 0;
+        if (nubAktivni && !editMode) {
+          const float mx = rDpad * .62f, d = std::sqrt(nubDx * nubDx + nubDy * nubDy);
+          const float k = d > mx ? mx / d : 1.f;
+          dx = nubDx * k; dy = nubDy * k;
+        }
+        spriteBlit(c, spNub[on], cx + (int)std::lround(dx), cy + (int)std::lround(dy));
+      } else spriteBlit(c, spBtn[i][on], cx, cy);
+      if (editMode) drawEditOutline(c, i);
+    }
+    if (editMode) { if (hits(c.clip, editBarRect())) drawEditBar(c); }
+    else if (hits(c.clip, gearRect())) spriteBlit(c, spGear[gearPid >= 0 ? 1 : 0]);
+    if (extraMsg[0] && !editMode && hits(c.clip, toastRect())) drawToast(c);
+  }
+  // Sega .hit.layoutEdit: outline 2px dashed rgba(120,200,255,.92), offset 2px,
+  // pozadi rgba(120,200,255,.10) (.22 pri tazeni), zare 16px rgba(120,200,255,.28)
+  void drawEditOutline(Canvas &c, int i) {
+    const float k = cssL();
+    RRect r = rrGrow(ctlShape(i, cpx(i), cpy(i)), 4.f * k);
+    r.rx = r.ry = std::min(14.f * k + 4.f * k, std::min(r.x1 - r.x0, r.y1 - r.y0) * .5f);
+    const bool drag = dragPid >= 0 && dragMember[i];
+    shadowOut(c, r, 0, 0, 16.f * k, 0, RGBA{120, 200, 255, .28f});
+    fillRR(c, r, Grad::solid(RGBA{120, 200, 255, drag ? .22f : .10f}), r.y0, r.y1);
+    int x0, y0, x1, y1;
+    if (!c.span(r.x0 - 1, r.y0 - 1, r.x1 + 1, r.y1 + 1, x0, y0, x1, y1)) return;
+    const float bw = 2.f * k, dash = 7.f * k;
+    for (int y = y0; y < y1; y++) {
+      uint32_t *row = &c.at(0, y);
+      for (int x = x0; x < x1; x++) {
+        const float sd = sdRR(x + .5f, y + .5f, r);
+        const float a = covFromSd(sd + bw) > 0.f ? std::max(0.f, covFromSd(sd) - covFromSd(sd + bw)) : 0.f;
+        if (a <= 0.f) continue;
+        if (((int)((x + y) / dash)) & 1) continue;         // carkovane
+        blendPx(row[x], 120, 200, 255, .92f * a);
+      }
+    }
+  }
+  // lista nahore pri uprave rozlozeni (Sega .layoutEditBar)
+  void editBarButtons(RRect b[3]) const {
+    const RRect bar = editBarRR();
+    const float v = vh(), h = 6.6f * v, y = bar.y0 + (editBarH() - h) * .5f;
+    Font &f = fBold(); const float fs = 2.6f * v;
+    const char *t[3] = {editGroups ? "PO JEDNOM" : "PO SKUPINÁCH", "VÝCHOZÍ", "HOTOVO"};
+    float x = bar.x1 - 1.6f * v;
+    for (int i = 2; i >= 0; i--) {
+      const float w = textW(f, t[i], fs, 0) + 4.f * v;
+      x -= w;
+      b[i] = mkRR(x, y, w, h, 1.4f * v, 1.4f * v);
+      x -= 1.6f * v;
+    }
+  }
+  int editBarHit(float x, float y) const {
+    const RRect bar = editBarRR();
+    if (y > bar.y1 + 6 || x < bar.x0 - 6 || x > bar.x1 + 6) return -1;
+    RRect b[3]; editBarButtons(b);
+    for (int i = 0; i < 3; i++) if (x >= b[i].x0 - 6 && x < b[i].x1 + 6 && y >= b[i].y0 - 6 && y < b[i].y1 + 6) return i;
+    return -1;
+  }
+  void drawEditBar(Canvas &c) {
+    const float v = vh(), bh = editBarH();
+    const RRect bar = editBarRR();
+    shadowOut(c, bar, 0, 4.f * cssL(), 20.f * cssL(), 0, RGBA{0, 0, 0, .5f});
+    fillRR(c, bar, Grad::solid(RGBA{1, 5, 10, .92f}), bar.y0, bar.y1);
+    {
+      RRect in = rrGrow(bar, -1.f);
+      int x0, y0, x1, y1;
+      if (c.span(bar.x0, bar.y0, bar.x1, bar.y1, x0, y0, x1, y1))
+        for (int y = y0; y < y1; y++) for (int x = x0; x < x1; x++) {
+          const float a = covFromSd(sdRR(x + .5f, y + .5f, bar)) - covFromSd(sdRR(x + .5f, y + .5f, in));
+          if (a > 0.f) blendPx(c.at(x, y), 120, 200, 255, .5f * a);
+        }
+    }
+    RRect b[3]; editBarButtons(b);
+    Font &fs = fSemi(), &fb = fBold();
+    const float tfs = 2.4f * v;
+    const char *hint = editGroups ? "Skupina: chyť tlačítko ve skupině (FIRE/MEZERA/RETURN nebo START/SELECT/OPTION) a jede celá. D-pad vždy zvlášť."
+                                  : "Přetáhni tlačítko, kam chceš.";
+    // napoveda: zkratit, aby se vesla pred tlacitka (po celych znacich UTF-8)
+    std::string h = hint;
+    const float maxW = b[0].x0 - bar.x0 - 3.f * v;
+    while (h.size() > 4 && textW(fs, h.c_str(), tfs, 0) > maxW) {
+      size_t cut = h.size() - 1;
+      while (cut > 0 && (((unsigned char)h[cut]) & 0xC0) == 0x80) cut--;
+      h.erase(cut);
+    }
+    drawText(c, fs, bar.x0 + 2.f * v, baselineIn(fs, bar.y0, bh, tfs), h.c_str(), tfs, 0, RGBA{191, 230, 255, 1.f});
+    const char *t[3] = {editGroups ? "PO JEDNOM" : "PO SKUPINÁCH", "VÝCHOZÍ", "HOTOVO"};
+    for (int i = 0; i < 3; i++) {
+      const bool pr = barPid >= 0 && barBtn == i;
+      RGBA bgc = i == 2 ? RGBA{79, 170, 255, 1.f} : (i == 0 && editGroups ? RGBA{110, 190, 255, .85f} : RGBA{255, 255, 255, .12f});
+      if (i == 0 && !editGroups) bgc = RGBA{110, 190, 255, .18f};
+      if (pr) bgc.a = std::min(1.f, bgc.a + .25f);
+      fillRR(c, b[i], Grad::solid(bgc), b[i].y0, b[i].y1);
+      if (i != 2) {
+        const RGBA bc = i == 0 ? RGBA{110, 190, 255, .5f} : RGBA{255, 255, 255, .3f};
+        RRect in = rrGrow(b[i], -1.f);
+        int x0, y0, x1, y1;
+        if (c.span(b[i].x0, b[i].y0, b[i].x1, b[i].y1, x0, y0, x1, y1))
+          for (int y = y0; y < y1; y++) for (int x = x0; x < x1; x++) {
+            const float a = covFromSd(sdRR(x + .5f, y + .5f, b[i])) - covFromSd(sdRR(x + .5f, y + .5f, in));
+            if (a > 0.f) blendPx(c.at(x, y), bc.r, bc.g, bc.b, bc.a * a);
+          }
+      }
+      const float fsz = 2.6f * v;
+      const float w = textW(fb, t[i], fsz, 0);
+      const RGBA tc = i == 2 ? RGBA{4, 7, 10, 1.f} : (i == 0 && editGroups ? RGBA{4, 18, 28, 1.f} : RGBA{223, 234, 255, 1.f});
+      drawText(c, fb, (b[i].x0 + b[i].x1 - w) * .5f, baselineIn(fb, b[i].y0, b[i].y1 - b[i].y0, fsz), t[i], fsz, 0, tc);
+    }
+  }
+  void drawToast(Canvas &c) {
+    const float v = vh();
+    Font &f = fSemi(); const float fs = 2.7f * v;
+    const float w = textW(f, extraMsg, fs, 0) + 5.f * v, h = 6.4f * v;
+    const RRect r = mkRR((W - w) * .5f, 2.2f * v, w, h, 1.6f * v, 1.6f * v);
+    fillRR(c, r, Grad::solid(RGBA{0, 0, 0, .78f}), r.y0, r.y1);
+    shadowOut(c, r, 0, 0, 10.f * cssL(), 0, RGBA{0, 140, 255, .25f});
+    drawText(c, f, r.x0 + 2.5f * v, baselineIn(f, r.y0, h, fs), extraMsg, fs, 0, RGBA{217, 236, 255, 1.f});
+  }
+
+  // ----- doteky na sirku -----
+  bool inCtl(int i, float x, float y, float slop) const {
+    const float cx = cpx(i), cy = cpy(i);
+    if (isPill(i)) {
+      const float hw = pillW * .5f + pillH * (slop - 1.f) * .5f, hh = pillH * .5f * slop;
+      return std::fabs(x - cx) <= hw && std::fabs(y - cy) <= hh;
+    }
+    const float r = ctlRad(i) * slop, dx = x - cx, dy = y - cy;
+    return dx * dx + dy * dy <= r * r;
+  }
+  bool gearHit(float x, float y) const {
+    return std::fabs(x - gearCx) <= gearW * .5f + 1.5f * vh() && std::fabs(y - gearCy) <= gearH * .5f + 1.5f * vh();
+  }
+  // Stav vsech prstu -> joystick, MEZERA/RETURN, konzole (jako Sega update():
+  // kazdy dotek se vyhodnoti podle polohy; prst, ktery zacal na D-padu,
+  // ho ridi i kdyz z nej sklouzne).
+  int landRecompute(Ev *out, int maxOut) {
+    int n = 0;
+    auto push = [&](Ev::T t, int v) { if (n < maxOut) { out[n].t = t; out[n].v = v; n++; } };
+    int stick = 0, con = 0; bool fire = false, sp = false, ret = false, nub = false; float ndx = 0, ndy = 0;
+    const float dcx = cpx(C_DPAD), dcy = cpy(C_DPAD);
+    for (int p = 0; p < 16; p++) {
+      if (!lpDown[p]) continue;
+      const float x = lpX[p], y = lpY[p];
+      if (p != dpadPid && dpadPid < 0 && inCtl(C_DPAD, x, y, 1.35f)) dpadPid = p;
+      if (p == dpadPid) {
+        const float dx = x - dcx, dy = y - dcy, d = std::sqrt(dx * dx + dy * dy);
+        nub = true; ndx = dx; ndy = dy;
+        if (d >= rDpad * ctlSens / 100.f && d > 0.f) {
+          const float rx = dx / d, ry = dy / d, diag = .38f;   // Sega: smerove bity s prekryvem = diagonaly
+          if (ry < -diag) stick |= 1;
+          if (ry > diag) stick |= 2;
+          if (rx < -diag) stick |= 4;
+          if (rx > diag) stick |= 8;
+        }
+        continue;
+      }
+      if (inCtl(C_FIRE, x, y, 1.22f)) { fire = true; continue; }
+      if (inCtl(C_SPACE, x, y, 1.22f)) { sp = true; continue; }
+      if (inCtl(C_RET, x, y, 1.22f)) { ret = true; continue; }
+      if (inCtl(C_START, x, y, 1.22f)) { con |= 1; continue; }
+      if (inCtl(C_SELECT, x, y, 1.22f)) { con |= 2; continue; }
+      if (inCtl(C_OPTION, x, y, 1.22f)) { con |= 4; continue; }
+    }
+    bool novy = false;
+    if (stick != lStick || fire != lFire) {
+      if ((stick & ~lStick) || (fire && !lFire)) novy = true;
+      if (stick != lStick) markCtl(C_DPAD);
+      if (fire != lFire) markCtl(C_FIRE);
+      lStick = stick; lFire = fire;
+      push(Ev::JOY, stick | (fire ? 16 : 0));
+    }
+    if (nub != nubAktivni || (nub && (std::fabs(ndx - nubDx) >= 1.f || std::fabs(ndy - nubDy) >= 1.f))) markCtl(C_DPAD);
+    nubAktivni = nub; nubDx = ndx; nubDy = ndy;
+    if (sp != lSpace || ret != lRet) {
+      if (sp && !lSpace) { push(Ev::KEY, 33); novy = true; }            // MEZERA (drzena)
+      else if (ret && !lRet) { push(Ev::KEY, 12); novy = true; }        // RETURN (drzeny)
+      if (!sp && !ret) push(Ev::KEYUP, 0);
+      if (sp != lSpace) markCtl(C_SPACE);
+      if (ret != lRet) markCtl(C_RET);
+      lSpace = sp; lRet = ret;
+    }
+    if (con != lCon) {
+      if (con & ~lCon) novy = true;
+      for (int b = 0; b < 3; b++) if ((con ^ lCon) & (1 << b)) markCtl(C_START + b);
+      lCon = con;
+      conHeld[1] = (con & 1) != 0; conHeld[2] = (con & 2) != 0; conHeld[3] = (con & 4) != 0;
+      push(Ev::CONSOL, consolMask());
+    }
+    if (novy && ctlHaptic) hapticReq = true;
+    return n;
+  }
+  int landDown(int pid, float x, float y, long long now, Ev *out, int maxOut) {
+    (void)now;
+    if (editMode) {
+      const int b = editBarHit(x, y);
+      if (b >= 0) { barPid = pid; barBtn = b; mark(editBarRect()); return 0; }
+      if (dragPid >= 0) return 0;
+      // prvek pod prstem (D-pad posledni - je nejvetsi)
+      int ci = -1;
+      for (int i = C_N - 1; i >= 0 && ci < 0; i--) if (inCtl(i, x, y, 1.1f)) ci = i;
+      if (ci < 0) return 0;
+      dragPid = pid; dragX0 = x; dragY0 = y;
+      for (int i = 0; i < C_N; i++) { dragMember[i] = false; dragCx0[i] = cpx(i); dragCy0[i] = cpy(i); }
+      if (editGroups && ci >= C_FIRE && ci <= C_RET) { for (int i = C_FIRE; i <= C_RET; i++) dragMember[i] = true; }
+      else if (editGroups && ci >= C_START) { for (int i = C_START; i <= C_OPTION; i++) dragMember[i] = true; }
+      else dragMember[ci] = true;
+      for (int i = 0; i < C_N; i++) if (dragMember[i]) markCtl(i);
+      return 0;
+    }
+    if (gearHit(x, y)) { gearPid = pid; mark(gearRect()); return 0; }
+    lpDown[pid] = true; lpX[pid] = x; lpY[pid] = y;
+    if (dpadPid < 0 && inCtl(C_DPAD, x, y, 1.35f)) dpadPid = pid;
+    return landRecompute(out, maxOut);
+  }
+  int landMove(int pid, float x, float y, Ev *out, int maxOut) {
+    if (editMode) {
+      if (pid != dragPid) return 0;
+      float dx = x - dragX0, dy = y - dragY0;
+      // cela skupina zustane na displeji
+      for (int i = 0; i < C_N; i++) if (dragMember[i]) {
+        const RRect r = ctlShape(i, dragCx0[i], dragCy0[i]);
+        dx = std::max(dx, -r.x0); dx = std::min(dx, W - r.x1);
+        dy = std::max(dy, -r.y0); dy = std::min(dy, H - r.y1);
+      }
+      for (int i = 0; i < C_N; i++) if (dragMember[i]) { markCtl(i); setC(i, dragCx0[i] + dx, dragCy0[i] + dy); markCtl(i); }
+      return 0;
+    }
+    if (!lpDown[pid]) return 0;
+    lpX[pid] = x; lpY[pid] = y;
+    return landRecompute(out, maxOut);
+  }
+  int landUp(int pid, float x, float y, Ev *out, int maxOut, int *svc) {
+    if (pid == barPid) {
+      const int b = barBtn; barPid = -1; barBtn = -1; mark(editBarRect());
+      if (editMode && editBarHit(x, y) == b) {
+        if (b == 0) { editGroups = !editGroups; mark(editBarRect()); }
+        else if (b == 1) { ctlVlastni = false; ctlDefaults(); markAll(); }
+        else { editMode = false; ctlVlastni = true; dragPid = -1; markAll(); if (svc) *svc = SVC_CTRL_SAVE; }
+      }
+      return 0;
+    }
+    if (pid == dragPid) {
+      dragPid = -1; ctlVlastni = true;
+      for (int i = 0; i < C_N; i++) if (dragMember[i]) { markCtl(i); dragMember[i] = false; }
+      return 0;
+    }
+    if (pid == gearPid) {
+      gearPid = -1; mark(gearRect());
+      if (gearHit(x, y) && svc) *svc = SVC_CTRL;
+      return 0;
+    }
+    if (!lpDown[pid]) return 0;
+    lpDown[pid] = false;
+    if (pid == dpadPid) dpadPid = -1;
+    return landRecompute(out, maxOut);
+  }
+  int landCancel(Ev *out, int maxOut) {
+    for (int i = 0; i < 16; i++) lpDown[i] = false;
+    dpadPid = -1;
+    if (gearPid >= 0) { gearPid = -1; mark(gearRect()); }
+    if (barPid >= 0) { barPid = -1; barBtn = -1; mark(editBarRect()); }
+    if (dragPid >= 0) { dragPid = -1; for (int i = 0; i < C_N; i++) dragMember[i] = false; markAll(); }
+    return landRecompute(out, maxOut);
+  }
+
+  // ----- nastaveni z Javy / pro Javu (SharedPreferences) -----
+  // "v=1;sens=7;op=100;size=100;dsize=100;hap=1;pos=x0,y0,x1,y1,..." (pos prazdne = vychozi)
+  std::string ctlConfig() const {
+    char b[512];
+    int n = std::snprintf(b, sizeof(b), "v=1;sens=%d;op=%d;size=%d;dsize=%d;hap=%d;pos=", ctlSens, ctlOpacity, ctlSize, ctlDpadSize, ctlHaptic ? 1 : 0);
+    std::string s(b, (size_t)std::max(0, std::min(n, (int)sizeof(b) - 1)));
+    if (ctlVlastni) {
+      for (int i = 0; i < C_N; i++) {
+        std::snprintf(b, sizeof(b), "%s%.4f,%.4f", i ? "," : "", ctlCx[i], ctlCy[i]);
+        s += b;
+      }
+    }
+    return s;
+  }
+  void ctlApplyConfig(const char *cfg) {
+    if (!cfg) return;
+    std::string s(cfg);
+    size_t p = 0;
+    while (p < s.size()) {
+      size_t e = s.find(';', p); if (e == std::string::npos) e = s.size();
+      const std::string kv = s.substr(p, e - p);
+      p = e + 1;
+      const size_t q = kv.find('=');
+      if (q == std::string::npos) continue;
+      const std::string k = kv.substr(0, q), v = kv.substr(q + 1);
+      auto cl = [](int x, int lo, int hi) { return x < lo ? lo : (x > hi ? hi : x); };
+      if (k == "sens") ctlSens = cl(std::atoi(v.c_str()), 4, 30);
+      else if (k == "op") ctlOpacity = cl(std::atoi(v.c_str()), 25, 100);
+      else if (k == "size") ctlSize = cl(std::atoi(v.c_str()), 70, 150);
+      else if (k == "dsize") ctlDpadSize = cl(std::atoi(v.c_str()), 70, 150);
+      else if (k == "hap") ctlHaptic = std::atoi(v.c_str()) != 0;
+      else if (k == "pos") {
+        float f[2 * C_N]; int cnt = 0; const char *c = v.c_str();
+        while (*c && cnt < 2 * C_N) { char *end = nullptr; f[cnt] = std::strtof(c, &end); if (end == c) break; cnt++; c = end; if (*c == ',') c++; }
+        if (cnt == 2 * C_N) {
+          bool ok = true; for (int i = 0; i < 2 * C_N; i++) if (!(f[i] >= -0.5f && f[i] <= 1.5f)) ok = false;
+          if (ok) { for (int i = 0; i < C_N; i++) { ctlCx[i] = f[2 * i]; ctlCy[i] = f[2 * i + 1]; } ctlVlastni = true; }
+        } else if (cnt == 0) ctlVlastni = false;
+      }
+    }
+    if (land && W > 1) {
+      ctlSizes();
+      if (!ctlVlastni) ctlDefaults();
+      for (int i = 0; i < C_N; i++) ctlClamp(i);
+      buildSprites();
+      markAll();
+    }
+  }
+  // prikazy z menu "D-PAD A OVLADANI" (Java): edit, mirror, reset
+  int ctlCommand(const char *cmd, Ev *out, int maxOut) {
+    if (!cmd || !land) return 0;
+    const std::string c(cmd);
+    int n = 0;
+    if (c == "edit") {
+      n = landCancel(out, maxOut);                    // pustit vse, behem upravy se nehraje
+      editMode = true; editGroups = false; markAll();
+    } else if (c == "mirror") {
+      // levak: D-pad a akcni tlacitka prohodit zrcadlove (Sega MIRROR_IDS)
+      const int ids[4] = {C_DPAD, C_FIRE, C_SPACE, C_RET};
+      for (int i : ids) ctlCx[i] = 1.f - ctlCx[i];
+      ctlVlastni = true;
+      for (int i = 0; i < C_N; i++) ctlClamp(i);
+      markAll();
+    } else if (c == "reset") {
+      ctlVlastni = false; ctlDefaults(); markAll();
+    } else if (c == "done") {
+      editMode = false; ctlVlastni = true; markAll();
+    }
+    return n;
   }
 };
 

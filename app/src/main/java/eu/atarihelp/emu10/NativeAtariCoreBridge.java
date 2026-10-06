@@ -114,6 +114,9 @@ public final class NativeAtariCoreBridge {
     //  maska: bit0 nahoru, 1 dolu, 2 vlevo, 3 vpravo, 4 FIRE, 5 START, 6 SELECT, 7 OPTION,
     //  8 klavesa MEZERA, 9 klavesa RETURN
     private static native void    devPadNative(int maska);
+    // B297: ovladani na sirku (D-pad a tlacitka jako u Segy): "get", "set:<nastaveni>",
+    //  "edit", "mirror", "reset", "done", "stav" -> vraci nastaveni (pro SharedPreferences)
+    private static native String  devCtlNative(String prikaz);
 
     // B287: Rene - "chci ciste jadro atari emu v c++ - Java odhaduje a to
     // je problem... vyzaduji aby... bylo opravdu emu atari pod tlacitkem
@@ -284,6 +287,11 @@ public final class NativeAtariCoreBridge {
     public static void devPadSafe(int maska) {
         if (!loaded) return;
         try { devPadNative(maska); } catch (Throwable ignored) {}
+    }
+    /** B297: ovladani na sirku - prikaz / nastaveni; vraci aktualni nastaveni ("" pri chybe). */
+    public static String devCtlSafe(String prikaz) {
+        if (!loaded || prikaz == null) return "";
+        try { String r = devCtlNative(prikaz); return r == null ? "" : r; } catch (Throwable t) { return ""; }
     }
 
     /** Vrati vysledek jako JSON. Nikdy nehodi vyjimku. */
