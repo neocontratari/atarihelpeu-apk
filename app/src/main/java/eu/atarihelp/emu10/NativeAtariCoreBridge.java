@@ -129,6 +129,12 @@ public final class NativeAtariCoreBridge {
     //  8 AltGr, 16 opakovani; dolu) - mapovani, rezim PSANI/HRANI i drzene klavesy resi C++.
     //  code "STAV" = jen rezim. Vraci text pro prohlizec.
     private static native String  devPcKlavesaNative(String code, String znak, int mod, boolean dolu);
+    // B303: prenos na TV / PC cely v C++ - obraz (paleta + zmenene radky) a zvuk v jednom
+    //  proudu pro prohlizec; Java jen posila bajty. A text vlozeny z PC (Ctrl+V / TXT).
+    private static native int     devTvProudOtevriNative();
+    private static native int     devTvProudDalsiNative(int id, byte[] out, int cekejMs);
+    private static native void    devTvProudZavriNative(int id);
+    private static native String  devVlozNative(byte[] data);
 
     // B287: Rene - "chci ciste jadro atari emu v c++ - Java odhaduje a to
     // je problem... vyzaduji aby... bylo opravdu emu atari pod tlacitkem
@@ -340,6 +346,26 @@ public final class NativeAtariCoreBridge {
     public static String devPcKlavesaSafe(String code, String znak, int mod, boolean dolu) {
         if (!loaded || code == null) return null;
         try { return devPcKlavesaNative(code, znak == null ? "" : znak, mod, dolu); } catch (Throwable t) { return null; }
+    }
+    /** B303: novy prohlizec pro proud z C++ (cislo klienta, 0 = nejde). */
+    public static int devTvProudOtevriSafe() {
+        if (!loaded) return 0;
+        try { return devTvProudOtevriNative(); } catch (Throwable t) { return 0; }
+    }
+    /** B303: dalsi paket (4 B delka + data) do out; 0 = nic noveho, zaporne = out maly (-potreba),
+     *  Integer.MIN_VALUE = chyba (spojeni zavrit - jinak by se smycka tocila naprazdno). */
+    public static int devTvProudDalsiSafe(int id, byte[] out, int cekejMs) {
+        if (!loaded || out == null) return Integer.MIN_VALUE;
+        try { return devTvProudDalsiNative(id, out, cekejMs); } catch (Throwable t) { return Integer.MIN_VALUE; }
+    }
+    public static void devTvProudZavriSafe(int id) {
+        if (!loaded) return;
+        try { devTvProudZavriNative(id); } catch (Throwable ignored) {}
+    }
+    /** B303: text / program vlozeny z PC -> Atari. Vraci zpravu pro prohlizec. */
+    public static String devVlozSafe(byte[] data) {
+        if (!loaded) return "VLOZENI: KNIHOVNA NENI NACTENA";
+        try { String r = devVlozNative(data); return r == null ? "VLOZENI: CHYBA" : r; } catch (Throwable t) { return "VLOZENI: CHYBA"; }
     }
 
     /** Vrati vysledek jako JSON. Nikdy nehodi vyjimku. */

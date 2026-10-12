@@ -31,6 +31,7 @@
 #pragma once
 #include <cstdint>
 #include <cstdio>
+#include <cstring>
 #include <deque>
 #include <string>
 #include <vector>
@@ -69,33 +70,8 @@ inline long pcJedenZnak(const std::string &s) {
   return len == n ? cp : -1;
 }
 
-// Pismena s diakritikou -> zakladni pismeno (Atari ceske znaky nema).
-// "Příliš žluťoučký kůň" se napise jako "Prilis zlutoucky kun".
-inline int pcBezDiakritiky(long cp) {
-  struct P { uint16_t cp; char z; };
-  static const P T[] = {
-    {0xE1,'a'},{0xE0,'a'},{0xE2,'a'},{0xE4,'a'},{0xE3,'a'},{0xE5,'a'},{0x103,'a'},{0x105,'a'},{0x101,'a'},
-    {0xC1,'A'},{0xC0,'A'},{0xC2,'A'},{0xC4,'A'},{0xC3,'A'},{0xC5,'A'},{0x102,'A'},{0x104,'A'},{0x100,'A'},
-    {0x10D,'c'},{0x107,'c'},{0xE7,'c'},{0x10C,'C'},{0x106,'C'},{0xC7,'C'},
-    {0x10F,'d'},{0x111,'d'},{0x10E,'D'},{0x110,'D'},
-    {0xE9,'e'},{0xE8,'e'},{0xEA,'e'},{0xEB,'e'},{0x11B,'e'},{0x119,'e'},{0x113,'e'},
-    {0xC9,'E'},{0xC8,'E'},{0xCA,'E'},{0xCB,'E'},{0x11A,'E'},{0x118,'E'},{0x112,'E'},
-    {0xED,'i'},{0xEC,'i'},{0xEE,'i'},{0xEF,'i'},{0xCD,'I'},{0xCC,'I'},{0xCE,'I'},{0xCF,'I'},
-    {0x13E,'l'},{0x13A,'l'},{0x142,'l'},{0x13D,'L'},{0x139,'L'},{0x141,'L'},
-    {0x148,'n'},{0x144,'n'},{0xF1,'n'},{0x147,'N'},{0x143,'N'},{0xD1,'N'},
-    {0xF3,'o'},{0xF2,'o'},{0xF4,'o'},{0xF6,'o'},{0xF5,'o'},{0x151,'o'},{0xF8,'o'},
-    {0xD3,'O'},{0xD2,'O'},{0xD4,'O'},{0xD6,'O'},{0xD5,'O'},{0x150,'O'},{0xD8,'O'},
-    {0x159,'r'},{0x155,'r'},{0x158,'R'},{0x154,'R'},
-    {0x161,'s'},{0x15B,'s'},{0xDF,'s'},{0x160,'S'},{0x15A,'S'},
-    {0x165,'t'},{0x164,'T'},
-    {0xFA,'u'},{0xF9,'u'},{0xFB,'u'},{0xFC,'u'},{0x16F,'u'},{0x171,'u'},
-    {0xDA,'U'},{0xD9,'U'},{0xDB,'U'},{0xDC,'U'},{0x16E,'U'},{0x170,'U'},
-    {0xFD,'y'},{0xFF,'y'},{0xDD,'Y'},
-    {0x17E,'z'},{0x17A,'z'},{0x17C,'z'},{0x17D,'Z'},{0x179,'Z'},{0x17B,'Z'},
-  };
-  for (const P &x : T) if (x.cp == cp) return x.z;
-  return -1;
-}
+// Pismena s diakritikou -> zakladni pismeno: napBezDiakritiky (nap_atari_runtime.h)
+inline int pcBezDiakritiky(long cp) { return napBezDiakritiky(cp); }
 
 // Napsany znak -> scankod. Male pismeno = klavesa sama (OS Atari po startu
 // pise velka - BASIC chce prikazy velkymi), velke pismeno = SHIFT + klavesa,
@@ -160,11 +136,11 @@ inline bool pcJePrehazovac(const std::string &c) {
 }
 
 // pro log a pro prohlizec: jen tisknutelne ASCII (JNI chce platne UTF-8)
-inline std::string pcAscii(const std::string &s, size_t max = 40) {
+inline std::string pcAscii(const std::string &s, size_t max = 40, bool mezery = false) {
   std::string o;
   for (unsigned char ch : s) {
     if (o.size() >= max) break;
-    o.push_back(ch >= 0x21 && ch <= 0x7E ? (char)ch : '?');
+    o.push_back((ch >= 0x21 && ch <= 0x7E) || (mezery && ch == ' ') ? (char)ch : '?');
   }
   return o;
 }
@@ -298,6 +274,62 @@ struct PcKlavesnice {
     return "OK:" + code + "=" + std::to_string(sc);
   }
 };
+
+// ---------------------------------------------------------------------
+//  B303: TEXT VLOZENY Z PC (Ctrl+V v prohlizeci, pretazeny TXT soubor)
+// ---------------------------------------------------------------------
+// Je to text? Pretazeny XEX / ATR / BAS ulozeny pres SAVE / obrazek se psat
+// nesmi - Atari by dostalo stovky nesmyslnych klaves.
+inline bool pcJeText(const uint8_t *d, size_t n) {
+  if (n == 0) return false;
+  auto zacina = [&](const char *s, size_t k) { return n >= k && std::memcmp(d, s, k) == 0; };
+  if (zacina("\xFF\xFF", 2) || zacina("\x96\x02", 2)) return false;              // XEX, ATR
+  if (zacina("PK\x03\x04", 4) || zacina("RIFF", 4) || zacina("FUJI", 4) || zacina("\x89PNG", 4) || zacina("%PDF", 4) ||
+      zacina("\xFF\xD8\xFF", 3) || zacina("GIF8", 4))
+    return false;                                                                 // ZIP, WAV, CAS, obrazky, PDF
+  bool atascii = false;                                                           // vypis z Atari (LIST "D:") ma EOL $9B
+  if (!napJeUtf8(d, n)) for (size_t i = 0; i < n; i++) if (d[i] == 0x9B) { atascii = true; break; }   // (v UTF-8 je $9B kus pismene)
+  size_t divne = 0;
+  for (size_t i = 0; i < n; i++) {
+    const uint8_t b = d[i];
+    if (b == 0 && !atascii) return false;                                         // v textu z PC nula nebyva (UTF-16, binarka)
+    if ((b < 0x20 && b != '\t' && b != '\n' && b != '\r' && b != 0x1B) || b == 0x7F) divne++;
+  }
+  return divne * 10 <= n;                                                         // ridice znaky nejvys 10 % (grafika v retezcich)
+}
+// Program = aspon jeden radek zacina cislem (pak ho napise PsaniProgramu
+// bez NEW - rychle a s malymi pismeny v retezcich presne).
+inline bool pcJeProgram(const uint8_t *d, size_t n) {
+  bool atascii = false;
+  const auto radky = PsaniProgramu::radkySouboru(d, n, atascii);
+  for (const auto &r : radky) {
+    size_t a = 0; while (a < r.size() && r[a] == ' ') a++;
+    if (a < r.size() && r[a] >= '0' && r[a] <= '9') return true;
+  }
+  return false;
+}
+// Jiny text (prikaz, odpoved na INPUT ...) se napise jako klavesy: kazdy znak
+// stisk + pusteni, konec radku = RETURN. Vraci pocet znaku, ktere na Atari nejsou.
+inline int pcTextNaKlavesy(const uint8_t *d, size_t n, std::vector<PcAkce> &out, size_t maxZnaku) {
+  int nelze = 0; size_t znaku = 0;
+  for (size_t i = 0; i < n && znaku < maxZnaku;) {
+    const uint8_t b = d[i];
+    int dl = b < 0x80 ? 1 : (b & 0xE0) == 0xC0 ? 2 : (b & 0xF0) == 0xE0 ? 3 : (b & 0xF8) == 0xF0 ? 4 : 1;
+    if (i + (size_t)dl > n) dl = 1;
+    const std::string z((const char *)d + i, (size_t)dl);
+    i += (size_t)dl;
+    int sc;
+    if (b == '\r') continue;
+    if (b == '\n' || b == 0x9B) sc = 12;                 // konec radku = RETURN (i ATASCII EOL)
+    else if (b == '\t') sc = 33;
+    else sc = pcZnakNaScan(z);
+    if (sc < 0) { nelze++; continue; }
+    out.push_back({PcAkce::KLAVESA, sc, true});
+    out.push_back({PcAkce::PUSTIT, sc, false});
+    znaku++;
+  }
+  return nelze;
+}
 
 // ---------------------------------------------------------------------
 //  2) PREDANI KLAVES STROJI V TEMPU, KTERE OS STIHNE

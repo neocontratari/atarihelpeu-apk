@@ -864,6 +864,7 @@ public class MainActivity extends Activity {
     private volatile String napTvWebPendingScreenUrl = null;
     private volatile long napTvWebYoutubeInAppUntilMs = 0;
     private volatile long napTvWebPeriodicLogMs = 0;
+    private long napTvWebPeriodicZapisMs = 0;   // B303: TV_WEB_PERIODIC do logu jen jednou za 30 s
     // BUILD2SK70: mereni celeho tick-to-tick cyklu
     private long napTvWebTickLastStartMs = 0;
     private long napTvWebTickDiagSumMs = 0;
@@ -883,7 +884,7 @@ public class MainActivity extends Activity {
                     if (!napTvWebH264ClientQueues.isEmpty()) {
                         napTvWebTickDiagSumMs += tickGap;
                         napTvWebTickDiagCount++;
-                        if (napTvWebTickDiagCount >= 30) {
+                        if (napTvWebTickDiagCount >= 450) {   // B303: prumer za ~15 s (driv kazdou vterinu - zahlcovalo log)
                             // BUILD2SK81: tenhle log se vola jen kdyz H264 fronta NENI
                             // prazdna (podminka o par radku vyse) - skutecny strop pro
                             // TENTO tick je tedy VZDY napTvWebH264FastTickMs, nikdy stary
@@ -971,6 +972,9 @@ public class MainActivity extends Activity {
                                 if (Build.VERSION.SDK_INT >= 29) thermal = napTvWebThermalName(pm.getCurrentThermalStatus());
                             }
                         } catch (Throwable ignored) {}
+                        // B303: stav do logu jen jednou za 30 s (blok sam bezi dal kazde 2 s -
+                        // obnovuje adresu pro /status); driv zahlcoval log
+                        if (nowLog - napTvWebPeriodicZapisMs >= 30000L) { napTvWebPeriodicZapisMs = nowLog;
                         appendNativeLog("BUILD2SK84 TV_WEB_PERIODIC mirror=" + (napTvWebSystemMirrorActive ? "SCREEN" : "APP")
                                 + " appCapture=" + appCapture + " seq=" + napTvWebSeq
                                 + " bmW=" + (napTvWebBitmap == null ? -1 : napTvWebBitmap.getWidth())
@@ -989,6 +993,7 @@ public class MainActivity extends Activity {
                                 + " cpu0KHz=" + readCpuFreqKHz(0) + " cpu4KHz=" + readCpuFreqKHz(4)
                                 + " powerSave=" + powerSave + " thermal=" + thermal
                                 + " url=" + curUrl);
+                        }
                     }
                 }
                 // BUILD2SA55: o tom, jestli se snima okno, ted rozhoduje
@@ -1202,7 +1207,7 @@ public class MainActivity extends Activity {
                     // B301: Atari 130XE v HELP (C++) - pristroj kresli C++ primo
                     // na displej (SurfaceView), snimani okna ho nevidi a na TV/PC
                     // byla jen stranka s testy pod nim. Obraz i zvuk ted primo z jadra.
-                    if (atariZarizeni != null && !atariZarizeniSkryte && tvSmiZvuk()) {
+                    if (atariZarizeni != null && !atariZarizeniSkryte && tvSmiZvuk() && napTvAtariProudKlientu.get() == 0) {
                         try {
                             if (tvAtariPcm == null) tvAtariPcm = new short[16384];
                             int gotA = NativeAtariCoreBridge.devPullTvAudioSafe(tvAtariPcm);
@@ -1244,7 +1249,7 @@ public class MainActivity extends Activity {
                                 if (hqLiteScreenFinal) {
                                     napTvWebPcDiagSumMs += latencyMs;
                                     napTvWebPcDiagCount++;
-                                    if (napTvWebPcDiagCount >= 30) {
+                                    if (napTvWebPcDiagCount >= 450) {   // B303: prumer za ~15 s
                                         // BUILD2SK83: + tier=, viz vysvetleni u TICK_AVG.
                                         appendNativeLog("BUILD2SK83 TV_WEB_PIXELCOPY_AVG n=" + napTvWebPcDiagCount
                                                 + " avgLatencyMs=" + (napTvWebPcDiagSumMs / napTvWebPcDiagCount)
@@ -1483,6 +1488,9 @@ public class MainActivity extends Activity {
                 tvAtariHlaseno = false;
                 return false;
             }
+            // B303: prohlizec bere obraz a zvuk primo z C++ (/atari.stream) - tady
+            // nic nezvetsovat ani nekomprimovat (hlavni vlakno zustane volne)
+            if (napTvAtariProudKlientu.get() > 0) return true;
             if (tvAtariArgb == null) tvAtariArgb = new int[672 * 240];
             int wh = NativeAtariCoreBridge.devGrabFrameSafe(tvAtariArgb);
             if (wh < 0) {
@@ -1815,6 +1823,8 @@ public class MainActivity extends Activity {
         }
     }
 
+    private long napTvWebTmavyLogMs = 0, napTvWebTmavychSnimku = 0;   // B303: tmave snimky do logu jen obcas
+
     private void napTvWebPublishBitmap(Bitmap bm, String mode) {
         try {
             // BUILD2SK69: driv se JPEG komprese delala VZDY, i pro PS1 snimky,
@@ -1843,7 +1853,7 @@ public class MainActivity extends Activity {
                 long compressMs = System.currentTimeMillis() - compressStart;
                 napTvWebCompressDiagSumMs += compressMs;
                 napTvWebCompressDiagCount++;
-                if (napTvWebCompressDiagCount >= 30) {
+                if (napTvWebCompressDiagCount >= 450) {   // B303: prumer za ~15 s
                     appendNativeLog("BUILD2SK68 TV_WEB_COMPRESS_AVG n=" + napTvWebCompressDiagCount
                             + " avgCompressMs=" + (napTvWebCompressDiagSumMs / napTvWebCompressDiagCount)
                             + " w=" + bm.getWidth() + " h=" + bm.getHeight());
@@ -1922,9 +1932,17 @@ public class MainActivity extends Activity {
                         // tmava herni sceny, jen ty opravdu vypadajici na "temer cerny
                         // snimek".
                         if (brightAvg < 20) {
-                            appendNativeLog("BUILD2SK143 TV_WEB_DARK_FRAME_SPIKE brightAvg=" + brightAvg + " mode=" + mode + " w=" + bw + " h=" + bh);
+                            // B303: driv KAZDY tmavy snimek = radek logu (v Reneho logu 350
+                            // z 1030 radku - vytlacily vsechno ostatni). Ted nejvys jednou za 10 s.
+                            napTvWebTmavychSnimku++;
+                            long tedT = System.currentTimeMillis();
+                            if (tedT - napTvWebTmavyLogMs > 10000L) {
+                                appendNativeLog("BUILD2SK143 TV_WEB_DARK_FRAME_SPIKE brightAvg=" + brightAvg + " mode=" + mode + " w=" + bw + " h=" + bh
+                                        + " (tmavych snimku od minule " + napTvWebTmavychSnimku + ")");
+                                napTvWebTmavyLogMs = tedT; napTvWebTmavychSnimku = 0;
+                            }
                         }
-                        if (napTvWebDupCheckCount >= 60) {
+                        if (napTvWebDupCheckCount >= 900) {   // B303: za ~30 s
                             appendNativeLog("BUILD2SK67 TV_WEB_PS1_DUPCHECK sameFrames=" + napTvWebDupCheckSame
                                     + "/" + napTvWebDupCheckCount + " url=" + napTvWebCurrentUrl + " (pokud je toto cislo vysoke, zdroj nevykresluje"
                                     + " novy obsah tak rychle, jak ho zachytavame)");
@@ -2240,7 +2258,7 @@ public class MainActivity extends Activity {
                         + " drawMs=" + ((t1 - t0) / 1000000) + " drainMs=" + ((t2 - t1) / 1000000)
                         + " w=" + w + " h=" + h + " tier=" + napTvWebQualityTier + " stranka=" + napTvDiagUrlSlow);
             }
-            if (napTvWebH264DiagFrameCount >= 30) {
+            if (napTvWebH264DiagFrameCount >= 450) {   // B303: prumer za ~15 s
                 // BUILD2SK83: + tier= (w/h uz tu byly, tier chybel).
                 // BUILD2SB38: + stranka= - Rene: "po super settings grafice
                 // se zacal sekat prenos." Bez tohohle nejde v logu poznat,
@@ -2921,6 +2939,119 @@ public class MainActivity extends Activity {
         out.write(b);
     }
 
+    // ===================================================================
+    //  B303: ATARI 130XE (C++) NA TV / PC CELE V C++ - MALE ZPOZDENI
+    //
+    //  Rene: "ma to na TV zpozdeni - nejde to vylepsit? Opravdu prevod jede
+    //  jak ma v C++?" Nejel: snimek z C++ tu Java zvetsovala na 1280x720 a
+    //  komprimovala (H.264 / JPEG) na hlavnim vlakne - v logu snimek jen kazdych
+    //  36 ms, JPEG 27-33 ms (~14 snimku/s), prohlizec H.264 jeste bufferoval.
+    //  Ted C++ zabali kazdy snimek (paleta + jen zmenene radky) i zvuk do jednoho
+    //  proudu a Java ho jen posila - zadne zvetsovani, zadna komprese v Jave.
+    // ===================================================================
+    private final java.util.concurrent.atomic.AtomicInteger napTvAtariProudKlientu = new java.util.concurrent.atomic.AtomicInteger();
+
+    private void napTvWebAtariProud(OutputStream out, Socket sock) throws IOException {
+        String h = "HTTP/1.1 200 OK\r\n"
+                + "Content-Type: application/octet-stream\r\n"
+                + "Cache-Control: no-store, no-cache, must-revalidate, max-age=0\r\n"
+                + "Pragma: no-cache\r\n"
+                + "X-Content-Type-Options: nosniff\r\n"
+                + "Connection: close\r\n\r\n";
+        out.write(h.getBytes("ISO-8859-1"));
+        out.flush();
+        if (!atariCppNaObrazovce) return;
+        // maly odesilaci buffer: kdyz Wi-Fi nestiha, nesmi se ve fronte systemu
+        // nahromadit sekundy obrazu (zpozdeni) - radsi se snimky preskoci
+        try { sock.setSendBufferSize(64 * 1024); } catch (Throwable ignored) {}
+        final int id = NativeAtariCoreBridge.devTvProudOtevriSafe();
+        if (id <= 0) return;
+        napTvAtariProudKlientu.incrementAndGet();
+        final long[] zapsanoMs = { System.currentTimeMillis() };
+        final boolean[] konec = { false };
+        // hlidac: zapis visi pres 8 s (prohlizec zmizel bez rozlouceni, spadla Wi-Fi) - zavrit,
+        // jinak by vlakno viselo v zapisu (prohlizec se pak pripoji znovu sam)
+        Thread hlidac = new Thread(() -> {
+            try {
+                while (!konec[0] && !sock.isClosed()) {
+                    Thread.sleep(2000);
+                    if (!konec[0] && System.currentTimeMillis() - zapsanoMs[0] > 8000L) {
+                        appendNativeLog("B303 TV PROUD: prohlizec " + id + " 8 s nic neprevzal - zaviram spojeni");
+                        try { sock.close(); } catch (Throwable ignored) {}
+                        return;
+                    }
+                }
+            } catch (InterruptedException ignored) {}
+        }, "nap-atari-proud-hlidac");
+        hlidac.setDaemon(true);
+        hlidac.start();
+        byte[] b = new byte[256 * 1024];
+        try {
+            while (napTvWebRunning && atariCppNaObrazovce && !sock.isClosed()) {
+                int n = NativeAtariCoreBridge.devTvProudDalsiSafe(id, b, 250);
+                if (n == Integer.MIN_VALUE) { appendNativeLog("B303 TV PROUD: chyba jadra - spojeni " + id + " zaviram"); break; }
+                if (n < 0) { b = new byte[Math.min(-n, 16 * 1024 * 1024) + 65536]; continue; }
+                zapsanoMs[0] = System.currentTimeMillis();
+                if (n == 0) continue;
+                out.write(b, 0, n);                  // 4 B delka + paket - jednim zapisem (TCP_NODELAY)
+                out.flush();
+                zapsanoMs[0] = System.currentTimeMillis();
+            }
+        } finally {
+            konec[0] = true;
+            napTvAtariProudKlientu.decrementAndGet();
+            NativeAtariCoreBridge.devTvProudZavriSafe(id);
+        }
+    }
+
+    /** B303: POST /vloz - text z PC (Ctrl+V v prohlizeci, pretazeny TXT soubor) do Atari. */
+    private void napTvWebVloz(byte[] prvni, int n, InputStream in, OutputStream out) throws IOException {
+        java.io.ByteArrayOutputStream vse = new java.io.ByteArrayOutputStream();
+        vse.write(prvni, 0, n);
+        byte[] tmp = new byte[16384];
+        int konecHl = -1;
+        byte[] d = vse.toByteArray();
+        while (true) {
+            for (int i = 0; i + 3 < d.length; i++) {
+                if (d[i] == '\r' && d[i + 1] == '\n' && d[i + 2] == '\r' && d[i + 3] == '\n') { konecHl = i; break; }
+            }
+            if (konecHl >= 0 || d.length > 32768) break;
+            int r = in.read(tmp);
+            if (r <= 0) break;
+            vse.write(tmp, 0, r);
+            d = vse.toByteArray();
+        }
+        String odp;
+        if (konecHl < 0) {
+            odp = "VLOZENI: SPATNY POZADAVEK";
+        } else {
+            String hl = new String(d, 0, konecHl, "ISO-8859-1");
+            int delka = 0;
+            for (String radek : hl.split("\r\n")) {
+                int dv = radek.indexOf(':');
+                if (dv > 0 && radek.substring(0, dv).trim().equalsIgnoreCase("Content-Length")) {
+                    try { delka = Integer.parseInt(radek.substring(dv + 1).trim()); } catch (Throwable ignored) {}
+                }
+            }
+            delka = Math.max(0, Math.min(delka, 512 * 1024));
+            final int telo = konecHl + 4;
+            while (vse.size() - telo < delka) {
+                int r = in.read(tmp);
+                if (r <= 0) break;
+                vse.write(tmp, 0, r);
+            }
+            d = vse.toByteArray();
+            int maji = Math.max(0, Math.min(delka, d.length - telo));
+            byte[] data = java.util.Arrays.copyOfRange(d, telo, telo + maji);
+            if (maji == 0) odp = "VLOZENI: PRAZDNE";
+            else if (!atariCppNaObrazovce) odp = "VLOZENI: ATARI 130XE (HELP) NENI NA OBRAZOVCE";
+            else odp = NativeAtariCoreBridge.devVlozSafe(data);
+        }
+        byte[] b = odp.getBytes("UTF-8");
+        napTvWebHeader(out, "200 OK", "text/plain; charset=utf-8", b.length, true);
+        out.write(b);
+    }
+
     /** Jedna klavesa z prohlizece -> Atari (C++ v HELP, nebo stranka stareho Atari / Segy).
      *  Vraci odpoved pro prohlizec. modL < 0 = stary prohlizec bez "mod" (jen ctrl). */
     private String napTvWebJednaKlavesa(final String code, String znak, final boolean dolu, boolean ctrl, long modL) {
@@ -3154,6 +3285,41 @@ public class MainActivity extends Activity {
         return "http://" + napTvWebLocalIp() + ":" + napTvWebPort + "/";
     }
 
+    // ===================================================================
+    //  B303: Wi-Fi telefonu v uspornem rezimu spi mezi majaky routeru (desitky
+    //  az stovky ms) - klavesy z PC pak do telefonu dojdou pozde (lag). Dokud bezi
+    //  prenos na TV / PC, drzi appka Wi-Fi v rezimu nizke latence (Android 10+
+    //  LOW_LATENCY, starsi HIGH_PERF = bez usporneho rezimu). Po vypnuti prenosu pusti.
+    // ===================================================================
+    private android.net.wifi.WifiManager.WifiLock napTvWifiZamek;
+
+    @SuppressWarnings("deprecation")
+    private void napTvWifiNizkaLatence(boolean zap) {
+        try {
+            if (zap) {
+                if (napTvWifiZamek == null) {
+                    android.net.wifi.WifiManager wm = (android.net.wifi.WifiManager) getApplicationContext()
+                            .getSystemService(android.content.Context.WIFI_SERVICE);
+                    if (wm == null) { appendNativeLog("B303 WIFI: WifiManager neni - rezim nizke latence nejde"); return; }
+                    int rezim = Build.VERSION.SDK_INT >= 29 ? android.net.wifi.WifiManager.WIFI_MODE_FULL_LOW_LATENCY
+                            : android.net.wifi.WifiManager.WIFI_MODE_FULL_HIGH_PERF;
+                    napTvWifiZamek = wm.createWifiLock(rezim, "atarihelp:tv-prenos");
+                    napTvWifiZamek.setReferenceCounted(false);
+                }
+                if (!napTvWifiZamek.isHeld()) {
+                    napTvWifiZamek.acquire();
+                    appendNativeLog("B303 WIFI: rezim nizke latence ZAPNUT (" + (Build.VERSION.SDK_INT >= 29 ? "LOW_LATENCY" : "HIGH_PERF")
+                            + ") - klavesy z PC a obraz na TV bez cekani na usporny rezim Wi-Fi");
+                }
+            } else if (napTvWifiZamek != null && napTvWifiZamek.isHeld()) {
+                napTvWifiZamek.release();
+                appendNativeLog("B303 WIFI: rezim nizke latence VYPNUT (prenos na TV / PC skoncil)");
+            }
+        } catch (Throwable t) {
+            appendNativeLog("B303 WIFI: rezim nizke latence nejde - " + safeMsg(t));
+        }
+    }
+
     private synchronized String napTvWebStart() {
         if (napTvWebRunning && napTvWebServer != null) {
             return "TV_WEB_CAST_OK " + napTvWebUrl() + (napTvWebSystemMirrorActive ? " SCREEN" : " APP");
@@ -3194,6 +3360,7 @@ public class MainActivity extends Activity {
             ui.post(napTvWebFrameTick);
             String url = napTvWebUrl();
             appendNativeLog("BUILD2SA13C13 TV_WEB_CAST_ON url=" + url + " mode=browser_mjpeg_mp3_draw_safe_youtube_in_app audio=PCM16_STEREO");
+            napTvWifiNizkaLatence(true);     // B303: mensi zpozdeni klaves z PC i obrazu
             // BUILD2SK26: telefon si po chvili necinnosti (nikdo se ho behem
             // sledovani TV nedotyka) sam zamkne obrazovku - to zpusobi
             // "activityPause" (potvrzeno v logu), po kterem nasleduje dlouha
@@ -3216,6 +3383,7 @@ public class MainActivity extends Activity {
 
     private synchronized String napTvWebStop(String why) {
         napTvWebRunning = false;
+        napTvWifiNizkaLatence(false);        // B303
         // BUILD2SK26: uvolni drzeni obrazovky vzhuru - mimo TV cast se telefon
         // ma chovat normalne (nezustavat zbytecne vzhuru a zrat baterku).
         // (drzeni displeje vzhuru se uz NERUSI - appka nesmi usnout nikdy)
@@ -3305,6 +3473,14 @@ public class MainActivity extends Activity {
             if (q >= 0) path = path.substring(0, q);
             if ("/".equals(path) || "/index.html".equals(path)) {
                 napTvWebWriteHtml(out);
+            } else if ("/atari.stream".equals(path)) {
+                // B303: Atari 130XE (C++) na TV/PC - obraz a zvuk primo z C++
+                napTvWebAtariProud(out, s);
+            } else if ("/vloz".equals(path)) {
+                // B303: Ctrl+V / pretazeny TXT v prohlizeci -> program do Atari
+                // (telo POSTu se docita - kdyby nedoslo, vlakno nesmi viset navzdy)
+                try { s.setSoTimeout(10000); } catch (Throwable ignored) {}
+                napTvWebVloz(buf, Math.max(0, n), in, out);
             } else if ("/frame.jpg".equals(path)) {
                 napTvWebWriteFrame(out);
             } else if ("/stream.mjpg".equals(path)) {
@@ -3356,6 +3532,7 @@ public class MainActivity extends Activity {
                 byte[] body = ("running=" + napTvWebRunning
                         + " atari=" + (vAtari ? 1 : 0)
                         + " atariCpp=" + (atariCpp ? 1 : 0)
+                        + " atariProud=" + (atariCpp && NativeAtariCoreBridge.isLoaded() ? 1 : 0)
                         + (klavRezim != null ? " klavRezim=" + klavRezim : "")
                         + " sega=" + (vSeze ? 1 : 0)
                         + " seq=" + napTvWebSeq
@@ -3466,7 +3643,7 @@ public class MainActivity extends Activity {
                 + "<script>(function(){var AVD=(function(){try{var m=location.search.match(/[?&]av=([0-9.]+)/);if(m)return parseFloat(m[1]);var q=localStorage.getItem('napAvd');return q!==null?parseFloat(q):0.30;}catch(e){return 0.30;}})();function setAvd(x){AVD=Math.max(0,Math.min(2,Math.round(x*100)/100));try{localStorage.setItem('napAvd',AVD);}catch(e){}var o=document.getElementById('avdmsg');if(!o){o=document.createElement('div');o.id='avdmsg';o.style.cssText='position:fixed;left:50%;top:12%;transform:translateX(-50%);background:rgba(0,0,0,.75);color:#0f0;font:20px monospace;padding:8px 16px;border-radius:6px;z-index:99999;pointer-events:none';document.body.appendChild(o);}o.textContent='ZVUK '+Math.round(AVD*1000)+' ms';o.style.display='block';clearTimeout(window._avdT);window._avdT=setTimeout(function(){o.style.display='none';},1200);}var v=document.getElementById('v'),s=document.getElementById('s'),a=document.getElementById('a'),n=0,fb=false,ac=null,g=null,next=0,aseq=0,aon=false,active=[],lastSeq=0,lastSeqT=0,curFps=0,staleTicks=0;" // BUILD2SB1
                 + "var h264v=document.getElementById('h264v'),h264Active=false,h264Reader=null,jm=null,h264Loading=false,h264LastFeedMs=0;" // BUILD2SK57+SK73
                 + "var pan=document.getElementById('pan'),sB=document.getElementById('sB'),sC=document.getElementById('sC'),sS=document.getElementById('sS'),sR=document.getElementById('sR'),sF=document.getElementById('sF'),panT=0;"
-                + "function napF(){var f='brightness('+(sB.value/100)+') contrast('+(sC.value/100)+') saturate('+(sS.value/100)+')';h264v.style.filter=f;v.style.filter=f;"
+                + "function napF(){var f='brightness('+(sB.value/100)+') contrast('+(sC.value/100)+') saturate('+(sS.value/100)+')';h264v.style.filter=f;v.style.filter=f;if(ap&&ap.cv)ap.cv.style.filter=f;"
                 + "try{localStorage.setItem('napObraz',sB.value+','+sC.value+','+sS.value);}catch(e){}}"
                 + "try{var ul=localStorage.getItem('napObraz');if(ul){var pp=ul.split(',');sB.value=pp[0];sC.value=pp[1];sS.value=pp[2];}}catch(e){}"
                 // Pouzit VZDYCKY, i pri prvnim spusteni - jinak by vychozi
@@ -3492,7 +3669,8 @@ public class MainActivity extends Activity {
                 + "napSetFill();if(sF)sF.onclick=function(){napFill=napFill?0:1;napSetFill();};"
                 + "var sV=document.getElementById('sV'),napV=1;"
                 + "if(sV)sV.onclick=function(){fetch('/vyhlazeni').then(function(r){return r.text();})"
-                + ".then(function(t){napV=(t.trim()==='1');sV.textContent='VYLADENI OBRAZU: '+(napV?'zapnuto':'vypnuto');})"
+                + ".then(function(t){napV=(t.trim()==='1');sV.textContent='VYLADENI OBRAZU: '+(napV?'zapnuto':'vypnuto');"
+                + "if(window.napAp&&napAp.cv)napAp.cv.style.imageRendering=napV?'auto':'pixelated';})"
                 + ".catch(function(e){clog('vyladeni: '+e);});};"
                 + "function panUkaz(){pan.style.opacity='1';clearTimeout(panT);panT=setTimeout(function(){pan.style.opacity='0';},2600);}"
                 + "document.addEventListener('mousemove',panUkaz);document.addEventListener('touchstart',panUkaz);panUkaz();"
@@ -3517,10 +3695,10 @@ public class MainActivity extends Activity {
                 + "var nowMs=Date.now(),dur=h264LastFeedMs?Math.max(4,Math.min(200,nowMs-h264LastFeedMs)):20;h264LastFeedMs=nowMs;if(first){first=false;clog('first chunk bytes='+res.value.length);}try{jm.feed({video:res.value,duration:dur});}catch(e){clog('feed err '+e);}pump();"
                 + "}).catch(function(e){clog('read err '+e);});}pump();"
                 + "}).catch(function(e){clog('fetch FAILED '+e);h264Active=false;v.style.display='';h264v.style.display='none';});}" // BUILD2SK57+SK59: syrovy H.264 (Annex-B) ze serveru -> JMuxer.js remuxuje na fMP4 primo v prohlizeci -> MSE -> <video>
-                + "function fallback(){fb=true;function tick(){v.onload=v.onerror=function(){setTimeout(tick,45)};v.src='/frame.jpg?'+Date.now();if((++n%40)===0)label('JPEG');}tick();}"
+                + "function fallback(){fb=true;function tick(){if(ap&&ap.chce){setTimeout(tick,300);return;}v.onload=v.onerror=function(){setTimeout(tick,45)};v.src='/frame.jpg?'+Date.now();if((++n%40)===0)label('JPEG');}tick();}"
                 + "function startAudio(){if(aon)return;try{var C=window.AudioContext||window.webkitAudioContext;if(!C){a.textContent='AUDIO NENI';return;}ac=new C({latencyHint:'interactive'});if(ac.resume)ac.resume();g=ac.createGain();g.gain.value=1;g.connect(ac.destination);next=ac.currentTime+AVD;aon=true;a.textContent='AUDIO ON';pollAudio();label(fb?'JPEG':'MJPEG');}catch(e){a.textContent='AUDIO ERR';}}" // BUILD2SB1: jitter polstar 350 ms + master gain pro fady
                 + "function cutover(){if(!ac||!g)return;var t=ac.currentTime;try{g.gain.cancelScheduledValues(t);g.gain.setValueAtTime(g.gain.value,t);g.gain.linearRampToValueAtTime(0,t+0.01);}catch(e){}for(var i=0;i<active.length;i++){try{active[i].stop(t+0.012);}catch(e){}}active=[];next=t+AVD;try{g.gain.setValueAtTime(0,next-0.012);g.gain.linearRampToValueAtTime(1,next);}catch(e){}}" // BUILD2SB1: 10ms fade-out/in misto lepeni
-                + "async function pollAudio(){if(!aon||!ac)return;try{var r=await fetch('/audio.raw?after='+aseq+'&t='+Date.now(),{cache:'no-store'});var sq=parseInt(r.headers.get('x-nap-audio-seq')||aseq,10);var st=parseInt(r.headers.get('x-nap-audio-start')||aseq,10);var rate=parseInt(r.headers.get('x-nap-audio-rate')||'44100',10);var dis=(r.headers.get('x-nap-audio-discontinuity')||'0')==='1';var ab=await r.arrayBuffer();var expected=aseq;if(!isNaN(sq))aseq=sq;if(ab.byteLength>=4){var now=ac.currentTime;if(dis||next<now+0.04||next>now+AVD+0.5)cutover();var dv=new DataView(ab),frames=Math.floor(ab.byteLength/4),buf=ac.createBuffer(2,frames,rate),L=buf.getChannelData(0),R=buf.getChannelData(1);for(var i=0,p=0;i<frames;i++,p+=4){L[i]=dv.getInt16(p,true)/32768;R[i]=dv.getInt16(p+2,true)/32768;}var src=ac.createBufferSource();src.buffer=buf;src.connect(g);if(next<ac.currentTime+0.02)next=ac.currentTime+AVD;src.start(next);next+=frames/rate;active.push(src);src.onended=function(){var k=active.indexOf(src);if(k>=0)active.splice(k,1);};if(active.length>60)active.splice(0,active.length-60);}}catch(e){}setTimeout(pollAudio,20);}" // BUILD2SB1: planovane buffery (jitter buffer), zadne tvrde resety next, cutover s fadem
+                + "async function pollAudio(){if(!aon||!ac)return;if(ap&&ap.chce){setTimeout(pollAudio,150);return;}try{var r=await fetch('/audio.raw?after='+aseq+'&t='+Date.now(),{cache:'no-store'});var sq=parseInt(r.headers.get('x-nap-audio-seq')||aseq,10);var st=parseInt(r.headers.get('x-nap-audio-start')||aseq,10);var rate=parseInt(r.headers.get('x-nap-audio-rate')||'44100',10);var dis=(r.headers.get('x-nap-audio-discontinuity')||'0')==='1';var ab=await r.arrayBuffer();var expected=aseq;if(!isNaN(sq))aseq=sq;if(ab.byteLength>=4){var now=ac.currentTime;if(dis||next<now+0.04||next>now+AVD+0.5)cutover();var dv=new DataView(ab),frames=Math.floor(ab.byteLength/4),buf=ac.createBuffer(2,frames,rate),L=buf.getChannelData(0),R=buf.getChannelData(1);for(var i=0,p=0;i<frames;i++,p+=4){L[i]=dv.getInt16(p,true)/32768;R[i]=dv.getInt16(p+2,true)/32768;}var src=ac.createBufferSource();src.buffer=buf;src.connect(g);if(next<ac.currentTime+0.02)next=ac.currentTime+AVD;src.start(next);next+=frames/rate;active.push(src);src.onended=function(){var k=active.indexOf(src);if(k>=0)active.splice(k,1);};if(active.length>60)active.splice(0,active.length-60);}}catch(e){}setTimeout(pollAudio,20);}" // BUILD2SB1: planovane buffery (jitter buffer), zadne tvrde resety next, cutover s fadem
                 + "a.onclick=startAudio;function toggleFs(){var el=document.documentElement;try{if(!(document.fullscreenElement||document.webkitFullscreenElement)){(el.requestFullscreen||el.webkitRequestFullscreen||el.msRequestFullscreen).call(el);}else{(document.exitFullscreen||document.webkitExitFullscreen||document.msExitFullscreen).call(document);}}catch(e){}}document.addEventListener('click',toggleFs,true);document.addEventListener('keydown',function(e){if(window.napVAtari||window.napVSeze)return;if(e.key==='ArrowUp'){setAvd(AVD+0.05);e.preventDefault();}else if(e.key==='ArrowDown'){setAvd(AVD-0.05);e.preventDefault();}else if(e.key==='0'){setAvd(0.30);e.preventDefault();}},true);setTimeout(function(){try{startAudio();}catch(e){}},80);var aTry=setInterval(function(){if(aon){clearInterval(aTry);return;}try{startAudio();if(ac&&ac.state==='suspended'&&ac.resume)ac.resume();}catch(e){}},1000);"
                 + "(function(){var qs=document.querySelectorAll('#q button');function mark(t){for(var i=0;i<qs.length;i++)qs[i].classList.toggle('on',qs[i].getAttribute('data-t')===(''+t));}"
                 + "fetch('/quality').then(function(r){return r.text();}).then(function(t){var m=/tier=(\\d)/.exec(t);mark(m?m[1]:'0');}).catch(function(){});"
@@ -3530,7 +3708,75 @@ public class MainActivity extends Activity {
                 + "fb.onclick=function(){var el=document.documentElement;try{if(!isFs()){(el.requestFullscreen||el.webkitRequestFullscreen||el.msRequestFullscreen).call(el);}else{(document.exitFullscreen||document.webkitExitFullscreen||document.msExitFullscreen).call(document);}}catch(e){}};"
                 + "document.addEventListener('fullscreenchange',upd);document.addEventListener('webkitfullscreenchange',upd);document.addEventListener('msfullscreenchange',upd);upd();})();"
                 + "v.onerror=function(){if(!fb)fallback();};v.src='/stream.mjpg?'+Date.now();label('MJPEG');"
-                + "function pollFps(){fetch('/status').then(function(r){return r.text();}).then(function(t){var m=/seq=(\\d+)/.exec(t);var m2=/h264Seq=(\\d+)/.exec(t);if(!h264Active&&!h264Loading){clog('pollFps calling startH264 (universal)');startH264();}var useM=h264Active&&m2?m2:m;if(useM){var sq=parseInt(useM[1],10),now=Date.now();if(lastSeqT>0){var dt=(now-lastSeqT)/1000;if(dt>0)curFps=Math.round((sq-lastSeq)/dt*10)/10;}if(sq===lastSeq&&sq>0){staleTicks++;}else{staleTicks=0;}lastSeq=sq;lastSeqT=now;if(staleTicks>=4&&!fb&&!h264Active){staleTicks=0;v.src='/stream.mjpg?'+Date.now();}}var ma=/atari=(\\d)/.exec(t), ms=/sega=(\\d)/.exec(t);var vA=!!(ma&&ma[1]==='1'), vS=!!(ms&&ms[1]==='1');window.napVAtari=vA;window.napVSeze=vS;var mc=/atariCpp=(\\d)/.exec(t), mr=/klavRezim=(\\w+)/.exec(t);window.napVAtariCpp=!!(mc&&mc[1]==='1');if(window.napVAtariCpp&&mr)window.napRezim=mr[1];if(window.napKlavesnicePopis)window.napKlavesnicePopis(vA||vS);label(h264Active?'H264':(fb?'JPEG':'MJPEG'));}).catch(function(e){clog('pollFps fetch err '+e);label(h264Active?'H264':(fb?'JPEG':'MJPEG'));});}" // BUILD2SK45+SK57+SK59: stale-reconnect jen v MJPEG rezimu; "seq" v /status je porad ta sama zachytavaci sekvence i v H264 rezimu
+                + "function pollFps(){fetch('/status').then(function(r){return r.text();}).then(function(t){var mp=/atariProud=(\\d)/.exec(t);window.napAtariProud=!!(mp&&mp[1]==='1');if(window.napAtariProud&&apLze()){if(!ap.on&&!ap.rd)apStart();}else if(ap.chce){apStop();}var m=/seq=(\\d+)/.exec(t);var m2=/h264Seq=(\\d+)/.exec(t);if(!h264Active&&!h264Loading&&!ap.chce&&!(window.napAtariProud&&apLze())){clog('pollFps calling startH264 (universal)');startH264();}var useM=h264Active&&m2?m2:m;if(useM){var sq=parseInt(useM[1],10),now=Date.now();if(lastSeqT>0){var dt=(now-lastSeqT)/1000;if(dt>0)curFps=Math.round((sq-lastSeq)/dt*10)/10;}if(sq===lastSeq&&sq>0){staleTicks++;}else{staleTicks=0;}lastSeq=sq;lastSeqT=now;if(staleTicks>=4&&!fb&&!h264Active&&!ap.chce){staleTicks=0;v.src='/stream.mjpg?'+Date.now();}}var ma=/atari=(\\d)/.exec(t), ms=/sega=(\\d)/.exec(t);var vA=!!(ma&&ma[1]==='1'), vS=!!(ms&&ms[1]==='1');window.napVAtari=vA;window.napVSeze=vS;var mc=/atariCpp=(\\d)/.exec(t), mr=/klavRezim=(\\w+)/.exec(t);window.napVAtariCpp=!!(mc&&mc[1]==='1');if(window.napVAtariCpp&&mr)window.napRezim=mr[1];if(window.napKlavesnicePopis)window.napKlavesnicePopis(vA||vS);label(h264Active?'H264':(fb?'JPEG':'MJPEG'));}).catch(function(e){clog('pollFps fetch err '+e);label(h264Active?'H264':(fb?'JPEG':'MJPEG'));});}" // BUILD2SK45+SK57+SK59: stale-reconnect jen v MJPEG rezimu; "seq" v /status je porad ta sama zachytavaci sekvence i v H264 rezimu
+                // ===== B303: ATARI 130XE (C++) - OBRAZ A ZVUK PRIMO Z C++ =====
+                // Rene: "ma to na TV zpozdeni - nejde to vylepsit?" Misto H.264 / JPEG
+                // z Javy (zvetsovani, komprese, buffer prohlizece) posila C++ kazdy
+                // snimek Atari jako paletu + zmenene radky a zvuk v jednom proudu
+                // (/atari.stream, nap_atari_tv_proud.h). Tady se to jen rozbali do
+                // canvasu (672x240, zvetsi prohlizec) a zvuk se zaradi s malym
+                // polstarem (50-300 ms podle site). Kdyz prohlizec proud neumi,
+                // jede to postaru.
+                // on = spojeni bezi, chce = proud se ma pouzivat (i v mezere pri znovupripojeni -
+                // stare cesty MJPEG / JPEG / zvuk se pak nerozbehnou)
+                + "var ap={on:false,chce:false,rd:null,cv:null,cx:null,img:null,u32:null,idx:null,pal:new Uint32Array(256),W:0,H:0,buf:null,nA:0,pak:0,chyb:0,pod:0,"
+                + "zv:0,zah:0,cil:0.06,tPak:0,mez:0,okno:0,tl:0,pl:0,podl:0,zahl:0};window.napAp=ap;"
+                // polstar zvuku se prizpusobi siti: nejdelsi mezera mezi pakety + 20 ms
+                // (rychle nahoru, po 3 s klidu zpet dolu), 50..300 ms
+                + "function apPrichod(){var t=performance.now();if(ap.tPak){var d=(t-ap.tPak)/1000;if(d>ap.mez)ap.mez=d;"
+                + "if(d+0.02>ap.cil)ap.cil=Math.min(0.3,d+0.02);}ap.tPak=t;"
+                + "if(t-ap.okno>3000){ap.cil=Math.max(0.05,Math.min(0.3,ap.mez+0.02));ap.mez=0;ap.okno=t;}}"
+                + "function apLze(){try{var t=new Response(new Uint8Array(1));return !!(window.fetch&&window.ReadableStream&&window.DataView&&t.body&&t.body.getReader);}catch(e){return false;}}"
+                + "function apRozmer(){if(!ap.cv||!ap.W)return;var W=window.innerWidth,H=window.innerHeight,asp=(ap.W/2)/(ap.H/0.88),w=W,h=Math.round(W/asp);if(h>H){h=H;w=Math.round(H*asp);}"
+                + "ap.cv.style.width=w+'px';ap.cv.style.height=h+'px';ap.cv.style.left=Math.round((W-w)/2)+'px';ap.cv.style.top=Math.round((H-h)/2)+'px';}"
+                + "window.addEventListener('resize',apRozmer);"
+                + "function apStart(){if(ap.on||!apLze())return;ap.on=true;ap.chce=true;ap.buf=null;ap.nA=0;clog('B303 ATARI PROUD start');stopH264();"
+                + "ap.tl=Date.now();ap.pl=ap.pak;ap.podl=ap.pod;ap.zahl=ap.zah;"
+                + "try{v.onerror=null;v.removeAttribute('src');}catch(e){}v.style.display='none';h264v.style.display='none';"
+                + "if(!ap.cv){ap.cv=document.createElement('canvas');ap.cv.id='ap';ap.cv.style.cssText='position:fixed;left:0;top:0;background:#000';"
+                + "document.body.insertBefore(ap.cv,document.body.firstChild);ap.cx=ap.cv.getContext('2d');}"
+                + "ap.cv.style.imageRendering=napV?'auto':'pixelated';ap.tPak=0;"
+                + "ap.cv.style.display='';napF();apRozmer();"
+                + "fetch('/atari.stream?'+Date.now(),{cache:'no-store'}).then(function(r){if(!ap.on){try{r.body.cancel();}catch(e){}return;}ap.rd=r.body.getReader();apCti();})"
+                + ".catch(function(e){clog('B303 proud chyba '+e);apKonec();});}"
+                + "function apCti(){var rd=ap.rd;if(!ap.on||!rd)return;rd.read().then(function(res){if(rd!==ap.rd)return;if(res.done){apKonec();return;}"
+                + "try{apPrichod();apPridej(res.value);}catch(e){ap.chyb++;ap.buf=null;clog('B303 paket chyba '+e);}apCti();}).catch(function(e){if(rd===ap.rd)apKonec();});}"
+                + "function apKonec(){ap.rd=null;ap.buf=null;if(!ap.on)return;ap.on=false;setTimeout(function(){if(window.napAtariProud)apStart();else apStop();},400);}"
+                + "function apStop(){ap.on=false;ap.chce=false;if(ap.rd){try{ap.rd.cancel();}catch(e){}ap.rd=null;}if(ap.cv)ap.cv.style.display='none';"
+                + "v.style.display='';v.onerror=function(){if(!fb)fallback();};v.src='/stream.mjpg?'+Date.now();clog('B303 ATARI PROUD konec');}"
+                // proud = 4 B delka + paket, porad dokola; kus z site muze koncit kdekoli
+                + "function apPridej(ch){var b=ap.buf;if(b&&b.length){var nb=new Uint8Array(b.length+ch.length);nb.set(b,0);nb.set(ch,b.length);b=nb;}else b=ch;"
+                + "var o=0;while(b.length-o>=4){var len=(b[o]|(b[o+1]<<8)|(b[o+2]<<16)|(b[o+3]<<24))>>>0;if(len>8000000)throw new Error('delka '+len);"
+                + "if(b.length-o-4<len)break;apPaket(b.subarray(o+4,o+4+len));o+=4+len;}ap.buf=(o<b.length)?b.slice(o):null;}"
+                + "function apPaket(p){if(p.length<16||p[0]!==78||p[1]!==65||p[2]!==1)return;"
+                + "var dv=new DataView(p.buffer,p.byteOffset,p.byteLength),W=dv.getUint16(4,true),H=dv.getUint16(6,true),o=12,i,j;"
+                + "if(W!==ap.W||H!==ap.H||!ap.img){ap.W=W;ap.H=H;ap.cv.width=W;ap.cv.height=H;ap.img=ap.cx.createImageData(W,H);"
+                + "ap.u32=new Uint32Array(ap.img.data.buffer);ap.idx=new Uint8Array(W*H);apRozmer();}"
+                // paleta: pridane barvy (ImageData = R,G,B,A v pameti)
+                + "var po=dv.getUint16(o,true),pc=dv.getUint16(o+2,true);o+=4;"
+                + "for(i=0;i<pc;i++){ap.pal[po+i]=(0xFF000000|(p[o+2]<<16)|(p[o+1]<<8)|p[o])>>>0;o+=3;}"
+                // zmenene radky: 0 primo, 1 RLE, 2 = jako radek nad nim; sirka bodu 1/2/4
+                + "var rows=dv.getUint16(o,true);o+=2;var y0=H,y1=-1,idx=ap.idx,u32=ap.u32,pal=ap.pal;"
+                + "for(var r=0;r<rows;r++){var y=dv.getUint16(o,true),x0=dv.getUint16(o+2,true),n=dv.getUint16(o+4,true),typ=p[o+6],del=dv.getUint16(o+7,true);o+=9;"
+                + "var druh=typ&3,f=1<<((typ>>2)&3),zac=y*W+x0;"
+                + "if(druh===2){idx.copyWithin(y*W,(y-1)*W,y*W);zac=y*W;n=W;}"
+                + "else if(druh===0){var m=n/f;for(i=0;i<m;i++){var c=p[o+i];for(j=0;j<f;j++)idx[zac+i*f+j]=c;}o+=del;}"
+                + "else{var w=zac,e=o+del;while(o<e){var cnt=p[o]*f,c2=p[o+1];o+=2;for(j=0;j<cnt;j++)idx[w++]=c2;}}"
+                + "for(i=zac;i<zac+n;i++)u32[i]=pal[idx[i]];if(y<y0)y0=y;if(y>y1)y1=y;}"
+                + "if(y1>=y0)ap.cx.putImageData(ap.img,0,0,0,y0,W,y1-y0+1);"
+                + "var an=dv.getUint16(o,true),kan=p[o+2];o+=3;if(an>0)apZvuk(dv,o,an,kan);ap.pak++;}"
+                // zvuk: hned za sebou s polstarem ap.cil; kdyz je ho moc napred, zahodit (zpozdeni neroste)
+                + "function apZvuk(dv,o,an,kan){if(!aon||!ac||!g)return;try{var b=ac.createBuffer(2,an,44100),L=b.getChannelData(0),R=b.getChannelData(1),i;"
+                + "if(kan===1){for(i=0;i<an;i++){L[i]=R[i]=dv.getInt16(o+i*2,true)/32768;}}"
+                + "else{for(i=0;i<an;i++){L[i]=dv.getInt16(o+i*4,true)/32768;R[i]=dv.getInt16(o+i*4+2,true)/32768;}}"
+                + "var now=ac.currentTime;if(ap.nA<now+0.005){if(ap.nA>0)ap.pod++;ap.nA=now+ap.cil;}else if(ap.nA>now+ap.cil+0.08){ap.zah++;return;}"
+                + "var s=ac.createBufferSource();s.buffer=b;s.connect(g);s.start(ap.nA);ap.nA+=an/44100;ap.zv+=an;}catch(e){}}"
+                // kazdych 30 s do logu appky, jak proud v prohlizeci jede (diagnostika zpozdeni)
+                + "setInterval(function(){if(!ap.on)return;var t=Date.now(),s=(t-ap.tl)/1000;"
+                + "if(ap.tl&&s>0)clog('B303 PROHLIZEC: '+(Math.round((ap.pak-ap.pl)/s*10)/10)+' snimku/s, zvuk '+(aon&&ac&&ac.state==='running'?'hraje, napred '"
+                + "+Math.round((ap.nA-ac.currentTime)*1000)+' ms (cil '+Math.round(ap.cil*1000)+')':'NEHRAJE - klikni do okna')+', podteceni '+(ap.pod-ap.podl)"
+                + "+', zahozeno '+(ap.zah-ap.zahl)+', chyb '+ap.chyb+', okno '+window.innerWidth+'x'+window.innerHeight);"
+                + "ap.tl=t;ap.pl=ap.pak;ap.podl=ap.pod;ap.zahl=ap.zah;},30000);"
                 + "setInterval(pollFps,1000);"
                 + "})();</script>"
                 // ===== BUILD2SA54: KLAVESNICE Z POCITACE =====
@@ -3651,6 +3897,8 @@ public class MainActivity extends Activity {
                 // BUILD2SA76: Alt a Ctrl uz neresime - prohlizec si je bral
                 // pro sebe a nestalo to za to. Skok je K, vystrel L.
                 + "  if(e.key==='F2'){ posli('Break','',true,false,md); e.preventDefault(); return; }"
+                // B303: Ctrl+V (Mac Cmd+V) = VLOZIT - nechat prohlizeci, prijde udalost 'paste'
+                + "  if(window.napVAtariCpp && (e.ctrlKey||e.metaKey) && !e.altKey && e.code==='KeyV') return;"
                 // B302: CapsLock = klavesa CAPS na Atari 130XE (C++)
                 + "  if(PREHAZOVACE[e.key] && !(window.napVAtariCpp && e.key==='CapsLock')) return;"
                 + "  drzim[e.code]=1;"
@@ -3660,10 +3908,55 @@ public class MainActivity extends Activity {
                 + "document.addEventListener('keyup',function(e){"
                 + "  var t=e.target;"
                 + "  if(t&&(t.tagName==='INPUT'||t.tagName==='TEXTAREA')) return;"
-                + "  delete drzim[e.code];"
+                + "  var byla=drzim[e.code]; delete drzim[e.code];"
                 + "  if(PREHAZOVACE[e.key]) return;"
+                + "  if(window.napVAtariCpp && e.code==='KeyV' && !byla) return;"   // V z Ctrl+V do Atari nesla
                 + "  posli(e.code,e.key,false,false,0);"
                 + "},true);"
+                // ===== B303: VLOZIT PROGRAM / TEXT Z PC DO ATARI 130XE (C++) =====
+                // Rene: "slo by i vkladat kod do okna monitoru PC?" Ctrl+V v tomhle
+                // okne nebo pretazeny TXT soubor: radky s cislem napise appka do
+                // BASICu (bez NEW - prida se k programu), jiny text napise jako klavesy.
+                + "function vlozZprava(t){ window.napPosledni=t; var o=document.getElementById('vlozmsg');"
+                + "  if(!o){ o=document.createElement('div'); o.id='vlozmsg';"
+                + "    o.style.cssText='position:fixed;left:50%;top:8%;transform:translateX(-50%);background:rgba(0,0,0,.82);"
+                + "color:#9fdcff;font:18px monospace;padding:8px 16px;border-radius:6px;z-index:99999;pointer-events:none';"
+                + "    document.body.appendChild(o); }"
+                + "  o.textContent=t; o.style.display='block'; clearTimeout(window._vlozT);"
+                + "  window._vlozT=setTimeout(function(){ o.style.display='none'; },6000); }"
+                + "function utf8(t){ if(window.TextEncoder) return new TextEncoder().encode(t);"
+                + "  var s=unescape(encodeURIComponent(t)), u=new Uint8Array(s.length);"
+                + "  for(var i=0;i<s.length;i++) u[i]=s.charCodeAt(i); return u; }"
+                + "function vloz(data){"
+                + "  if(!window.napVAtariCpp){ vlozZprava('VLOZIT JDE JEN DO ATARI 130XE (HELP)'); return; }"
+                + "  if(!data||!data.length){ vlozZprava('VLOZENI: PRAZDNE'); return; }"
+                + "  if(data.length>512*1024){ vlozZprava('VLOZENI: MOC VELKE (NEJVYS 512 kB)'); return; }"
+                + "  vlozZprava('POSILAM DO ATARI: '+data.length+' B');"
+                + "  var x=new XMLHttpRequest(); x.open('POST','/vloz',true); x.timeout=15000;"
+                + "  x.onload=function(){ vlozZprava(x.responseText||'VLOZENI: BEZ ODPOVEDI'); };"
+                + "  x.onerror=x.ontimeout=function(){ vlozZprava('VLOZENI: SPOJENI SELHALO'); };"
+                + "  try{ x.send(data); }catch(e){ vlozZprava('VLOZENI: '+e); } }"
+                + "function souborDoAtari(f){ if(!f) return;"
+                + "  if(f.size>512*1024){ vlozZprava('SOUBOR JE MOC VELKY: '+f.name); return; }"
+                + "  var r=new FileReader(); r.onload=function(){ vloz(new Uint8Array(r.result)); };"
+                + "  r.onerror=function(){ vlozZprava('SOUBOR NEJDE PRECIST: '+f.name); }; r.readAsArrayBuffer(f); }"
+                + "document.addEventListener('paste',function(e){"
+                + "  if(!window.napVAtariCpp) return;"
+                + "  var t=e.target; if(t&&(t.tagName==='INPUT'||t.tagName==='TEXTAREA')) return;"
+                + "  var cd=e.clipboardData||window.clipboardData; if(!cd) return;"
+                + "  e.preventDefault();"
+                + "  if(cd.files&&cd.files.length){ souborDoAtari(cd.files[0]); return; }"
+                + "  var s=''; try{ s=cd.getData('text/plain')||cd.getData('text')||''; }catch(_){}"
+                // prazdna schranka: CONTROL+V pro Atari (grafika), jako by nic nebylo
+                + "  if(!s){ posli('KeyV','v',true,true,2); posli('KeyV','v',false,false,0); return; }"
+                + "  vloz(utf8(s)); },true);"
+                + "document.addEventListener('dragover',function(e){ if(!window.napVAtariCpp) return;"
+                + "  e.preventDefault(); try{ e.dataTransfer.dropEffect='copy'; }catch(_){} },true);"
+                + "document.addEventListener('drop',function(e){ if(!window.napVAtariCpp) return;"
+                + "  e.preventDefault(); var dt=e.dataTransfer; if(!dt) return;"
+                + "  if(dt.files&&dt.files.length){ souborDoAtari(dt.files[0]); return; }"
+                + "  var s=''; try{ s=dt.getData('text/plain')||dt.getData('text')||''; }catch(_){}"
+                + "  if(s) vloz(utf8(s)); },true);"
                 // B302: drzi-li se klavesa, Atari (C++) dostava kazdych 0,8 s "jsem tu" -
                 // kdyz se prohlizec odmlci (zavreny panel, spadla Wi-Fi), C++ po 2,5 s
                 // vse pusti a drzena klavesa se neopakuje do nekonecna

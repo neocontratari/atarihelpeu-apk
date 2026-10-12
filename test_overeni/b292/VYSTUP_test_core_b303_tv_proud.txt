@@ -1,0 +1,21 @@
+BASIC READY (staticka obrazovka)    100 snimku: prumer   1809 B/snimek (obraz   2110 B/s), nejvic   4206 B, klicovych 1, zmenenych radku   2.4/snimek, celkem 0.72 Mbit/s (se zvukem), kodovani 83 us/snimek
+OK     BASIC READY (staticka obrazovka): po rozbaleni presne stejny obraz i zvuk (100 snimku)
+BASIC psani programu                900 snimku: prumer   1840 B/snimek (obraz   3631 B/s), nejvic   4206 B, klicovych 1, zmenenych radku   3.6/snimek, celkem 0.74 Mbit/s (se zvukem), kodovani 40 us/snimek
+OK     BASIC psani programu: po rozbaleni presne stejny obraz i zvuk (900 snimku)
+BASIC LIST (rolovani obrazovky)     300 snimku: prumer   1827 B/snimek (obraz   3022 B/s), nejvic  13644 B, klicovych 1, zmenenych radku   1.0/snimek, celkem 0.73 Mbit/s (se zvukem), kodovani 35 us/snimek
+OK     BASIC LIST (rolovani obrazovky): po rozbaleni presne stejny obraz i zvuk (300 snimku)
+OK     klicovy snimek jen prvni (pak jen zmeny)
+Commando                           1201 snimku: prumer   1828 B/snimek (obraz   3059 B/s), nejvic  53653 B, klicovych 1, zmenenych radku   0.2/snimek, celkem 0.73 Mbit/s (se zvukem), kodovani 37 us/snimek
+OK     Commando: po rozbaleni presne stejny obraz i zvuk (1201 snimku)
+Donkey Kong Junior                 1201 snimku: prumer   1803 B/snimek (obraz   1786 B/s), nejvic  23078 B, klicovych 1, zmenenych radku   0.2/snimek, celkem 0.72 Mbit/s (se zvukem), kodovani 33 us/snimek
+OK     Donkey Kong Junior: po rozbaleni presne stejny obraz i zvuk (1201 snimku)
+Activision Decathlon               1201 snimku: prumer   3587 B/snimek (obraz  91006 B/s), nejvic   9823 B, klicovych 1, zmenenych radku  22.6/snimek, celkem 1.43 Mbit/s (se zvukem), kodovani 82 us/snimek
+OK     Activision Decathlon: po rozbaleni presne stejny obraz i zvuk (1201 snimku)
+rrumble                            1201 snimku: prumer   3790 B/snimek (obraz 101136 B/s), nejvic  17992 B, klicovych 1, zmenenych radku  30.2/snimek, celkem 1.52 Mbit/s (se zvukem), kodovani 106 us/snimek
+OK     rrumble: po rozbaleni presne stejny obraz i zvuk (1201 snimku)
+Popeye (VBXE)                      1501 snimku: prumer   1793 B/snimek (obraz   1324 B/s), nejvic  14520 B, klicovych 1, zmenenych radku   0.2/snimek, celkem 0.72 Mbit/s (se zvukem), kodovani 33 us/snimek
+OK     Popeye (VBXE): po rozbaleni presne stejny obraz i zvuk (1501 snimku)
+OK     plna paleta (200 + 230 barev): klicovy snimek s novou paletou, obraz presne
+OK     600 barev v jednom snimku: paket v poradku (barvy navic = nejblizsi)
+OK     POWER vypnuto: cerna obrazovka a priznak vypnuto
+tv-proud: chyb 0

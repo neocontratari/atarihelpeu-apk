@@ -8,3 +8,6 @@ local.properties
 
 # B291: obrazky z testu na PC (vznikaji pri kazdem spusteni, ~7 MB kazdy)
 test_overeni/**/*.ppm
+
+# B303: knihovny z testu na PC (prekladaji se podle JAK_SPUSTIT.txt)
+test_overeni/**/*.so

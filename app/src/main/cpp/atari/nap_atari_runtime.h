@@ -52,6 +52,45 @@ inline int scanZakladni(int c) {
     default: return -1;
   }
 }
+// B303: platne UTF-8? (text z PC - Ctrl+V v prohlizeci, TXT z Windows / Linuxu)
+inline bool napJeUtf8(const uint8_t *d, size_t n) {
+  for (size_t j = 0; j < n;) {
+    const uint8_t b = d[j];
+    const int dl = b < 0x80 ? 1 : (b & 0xE0) == 0xC0 ? 2 : (b & 0xF0) == 0xE0 ? 3 : (b & 0xF8) == 0xF0 ? 4 : 0;
+    if (!dl || j + (size_t)dl > n) return false;
+    for (int k = 1; k < dl; k++) if ((d[j + (size_t)k] & 0xC0) != 0x80) return false;
+    j += (size_t)dl;
+  }
+  return true;
+}
+// B303: pismena s diakritikou -> zakladni pismeno (Atari ceske znaky nema).
+// "Příliš žluťoučký kůň" se napise jako "Prilis zlutoucky kun" (klavesnice
+// z PC, vlozeni textu z PC i TXT soubor). -1 = jiny znak.
+inline int napBezDiakritiky(long cp) {
+  struct P { uint16_t cp; char z; };
+  static const P T[] = {
+    {0xE1,'a'},{0xE0,'a'},{0xE2,'a'},{0xE4,'a'},{0xE3,'a'},{0xE5,'a'},{0x103,'a'},{0x105,'a'},{0x101,'a'},
+    {0xC1,'A'},{0xC0,'A'},{0xC2,'A'},{0xC4,'A'},{0xC3,'A'},{0xC5,'A'},{0x102,'A'},{0x104,'A'},{0x100,'A'},
+    {0x10D,'c'},{0x107,'c'},{0xE7,'c'},{0x10C,'C'},{0x106,'C'},{0xC7,'C'},
+    {0x10F,'d'},{0x111,'d'},{0x10E,'D'},{0x110,'D'},
+    {0xE9,'e'},{0xE8,'e'},{0xEA,'e'},{0xEB,'e'},{0x11B,'e'},{0x119,'e'},{0x113,'e'},
+    {0xC9,'E'},{0xC8,'E'},{0xCA,'E'},{0xCB,'E'},{0x11A,'E'},{0x118,'E'},{0x112,'E'},
+    {0xED,'i'},{0xEC,'i'},{0xEE,'i'},{0xEF,'i'},{0xCD,'I'},{0xCC,'I'},{0xCE,'I'},{0xCF,'I'},
+    {0x13E,'l'},{0x13A,'l'},{0x142,'l'},{0x13D,'L'},{0x139,'L'},{0x141,'L'},
+    {0x148,'n'},{0x144,'n'},{0xF1,'n'},{0x147,'N'},{0x143,'N'},{0xD1,'N'},
+    {0xF3,'o'},{0xF2,'o'},{0xF4,'o'},{0xF6,'o'},{0xF5,'o'},{0x151,'o'},{0xF8,'o'},
+    {0xD3,'O'},{0xD2,'O'},{0xD4,'O'},{0xD6,'O'},{0xD5,'O'},{0x150,'O'},{0xD8,'O'},
+    {0x159,'r'},{0x155,'r'},{0x158,'R'},{0x154,'R'},
+    {0x161,'s'},{0x15B,'s'},{0xDF,'s'},{0x160,'S'},{0x15A,'S'},
+    {0x165,'t'},{0x164,'T'},
+    {0xFA,'u'},{0xF9,'u'},{0xFB,'u'},{0xFC,'u'},{0x16F,'u'},{0x171,'u'},
+    {0xDA,'U'},{0xD9,'U'},{0xDB,'U'},{0xDC,'U'},{0x16E,'U'},{0x170,'U'},
+    {0xFD,'y'},{0xFF,'y'},{0xDD,'Y'},
+    {0x17E,'z'},{0x17A,'z'},{0x17C,'z'},{0x17D,'Z'},{0x179,'Z'},{0x17B,'Z'},
+  };
+  for (const P &x : T) if (x.cp == cp) return x.z;
+  return -1;
+}
 inline int asciiNaScan(int c) {
   if (c >= 'A' && c <= 'Z') return scanZakladni(c - 'A' + 'a');   // BASIC pise velka bez SHIFT (caps)
   int z = scanZakladni(c);
@@ -511,19 +550,14 @@ struct PsaniProgramu {
   // soubor -> radky jako ATASCII kody (-1 = znak, ktery v ATASCII neni)
   static std::vector<std::vector<int>> radkySouboru(const uint8_t *d, size_t n, bool &atascii) {
     std::vector<std::vector<int>> out;
+    const bool bom = n >= 3 && d[0] == 0xEF && d[1] == 0xBB && d[2] == 0xBF;   // UTF-8 BOM
+    // B303: platne UTF-8 = text z PC. Bajt $9B je v nem kus pismene (e s hackem
+    // = C4 9B), NE konec radku ATASCII - driv se pak cely soubor bral jako ATASCII
+    // a radky s "e" s hackem se rozsypaly. ATASCII (vypis z Atari) v UTF-8 neni.
+    const bool utf8 = napJeUtf8(d + (bom ? 3 : 0), n - (bom ? 3 : 0));
     atascii = false;
-    for (size_t i = 0; i < n; i++) if (d[i] == 0x9B) { atascii = true; break; }
-    size_t i = 0;
-    if (!atascii && n >= 3 && d[0] == 0xEF && d[1] == 0xBB && d[2] == 0xBF) i = 3;   // UTF-8 BOM
-    // platne UTF-8? (jinak 8bitove ATASCII s PC konci radku)
-    bool utf8 = !atascii;
-    for (size_t j = i; utf8 && j < n; ) {
-      const uint8_t b = d[j];
-      int dl = b < 0x80 ? 1 : (b & 0xE0) == 0xC0 ? 2 : (b & 0xF0) == 0xE0 ? 3 : (b & 0xF8) == 0xF0 ? 4 : 0;
-      if (!dl || j + dl > n) { utf8 = false; break; }
-      for (int k = 1; k < dl; k++) if ((d[j + k] & 0xC0) != 0x80) { utf8 = false; break; }
-      j += dl;
-    }
+    if (!utf8) for (size_t k = 0; k < n; k++) if (d[k] == 0x9B) { atascii = true; break; }
+    size_t i = (!atascii && bom) ? 3 : 0;
     std::vector<int> r;
     auto konec = [&]() { out.push_back(r); r.clear(); };
     while (i < n) {
@@ -534,7 +568,10 @@ struct PsaniProgramu {
       if (b == '\t') { r.push_back(' '); i++; continue; }
       if (b < 0x80 || !utf8) { r.push_back(b); i++; continue; }
       int dl = (b & 0xE0) == 0xC0 ? 2 : (b & 0xF0) == 0xE0 ? 3 : 4;
-      r.push_back(-1); i += dl;                          // ceske znaky, emoji... na Atari nejsou
+      // B303: ceske znaky bez hacku a carek (ě -> e); emoji apod. na Atari nejsou
+      long cp = dl == 2 ? ((long)(b & 0x1F) << 6) | (d[i + 1] & 0x3F)
+              : dl == 3 ? ((long)(b & 0x0F) << 12) | ((long)(d[i + 1] & 0x3F) << 6) | (d[i + 2] & 0x3F) : -1;
+      r.push_back(napBezDiakritiky(cp)); i += dl;
     }
     if (!r.empty()) konec();
     return out;
@@ -572,10 +609,12 @@ struct PsaniProgramu {
     }
   }
 
-  // pripravi frontu klaves; tbxl jen do logu (TBXL nahrava volajici pres XexLoader)
-  void start(const uint8_t *d, size_t n, bool tb, const std::string &nm, bool rychlyTimeout) {
+  // pripravi frontu klaves; tbxl jen do logu (TBXL nahrava volajici pres XexLoader).
+  // B303: sNew = false - bez NEW (program vlozeny z PC se prida k tomu, co v Atari je)
+  bool sNew = true;
+  void start(const uint8_t *d, size_t n, bool tb, const std::string &nm, bool rychlyTimeout, bool sNewPrikaz = true) {
     q.clear(); log.clear(); status.clear();
-    tbxl = tb; jmeno = nm; rychlyTimeoutVypnout = rychlyTimeout;
+    tbxl = tb; jmeno = nm; rychlyTimeoutVypnout = rychlyTimeout; sNew = sNewPrikaz;
     radku = prazdnych = bezCisla = dlouhych = znakuNelze = klaves = 0;
     dlouhe.clear(); bezCislaUkazka.clear();
     snimku = klid = cekaInv = snimkuPsani = 0;
@@ -584,7 +623,7 @@ struct PsaniProgramu {
     std::vector<Klav> k;
     auto pridej = [&](const std::vector<Klav> &v) { for (const auto &x : v) q.push_back(x); };
     // NEW
-    k.clear(); for (int c : {'N', 'E', 'W'}) klavesy(c, k); k.push_back({12, -1}); pridej(k);
+    if (sNew) { k.clear(); for (int c : {'N', 'E', 'W'}) klavesy(c, k); k.push_back({12, -1}); pridej(k); }
     for (auto &r : radky) {
       size_t a = 0; while (a < r.size() && r[a] == ' ') a++;
       size_t b = r.size();
@@ -637,6 +676,21 @@ struct PsaniProgramu {
     return false;
   }
 
+  // B303: editor ceka na novy radek, i kdyz nad kurzorem READY neni - po zadanem
+  // radku programu ani po chybe syntaxe BASIC READY nepise (vlozeni z PC by jinak
+  // 45 s cekalo a vzdalo to). Textova obrazovka, klavesa prevzata, kurzor na
+  // zacatku prazdneho radku a procesor ve smycce K: GET (ceka na klavesu). Bezici
+  // program (i "20 GOTO 20") je v BASICu, ne tady; INPUT ma kurzor za otaznikem.
+  static bool cekaNaRadek(Machine &m) {
+    if (m.mem.ram[0x57] != 0 || m.mem.ram[0x2FC] != 0xFF) return false;
+    const int row = m.mem.ram[0x54], col = m.mem.ram[0x55] | (m.mem.ram[0x56] << 8);
+    if (row > 23 || col > m.mem.ram[0x52]) return false;     // (po psani z TXT je kurzor na sloupci 0, LMARGN zase 2)
+    const int sav = m.mem.ram[0x58] | (m.mem.ram[0x59] << 8);
+    for (int c = 0; c < 40; c++) if (m.mem.ram[(sav + row * 40 + c) & 0xFFFF] & 0x7F) return false;   // (kurzor = inverzni mezera)
+    const int kget = (m.peek(0xE424) | (m.peek(0xE425) << 8)) + 1;                                     // K: GET z tabulky klavesnice
+    return m.cpu.pc >= kget && m.cpu.pc < kget + 0x20;
+  }
+
   // vola se na zacatku kazdeho radku obrazu behem psani (PISE)
   void radek(Machine &m) {
     if (stav != PISE || q.empty()) return;
@@ -659,7 +713,7 @@ struct PsaniProgramu {
     snimku++;
     char b[400];
     if (stav == CEKA_READY) {
-      klid = ready(m) ? klid + 1 : 0;
+      klid = (ready(m) || (!sNew && cekaNaRadek(m))) ? klid + 1 : 0;   // B303: vlozeni z PC i bez READY
       if (klid >= 8) {
         if (rychlyTimeoutVypnout) m.sioRychlyTimeout = false;
         puvLmargn = m.mem.ram[0x52]; puvShflok = m.mem.ram[0x2BE]; puvNoclik = m.mem.ram[0x2DB];
@@ -667,7 +721,7 @@ struct PsaniProgramu {
         m.mem.ram[0x2BE] = 0x00;   // SHFLOK: mala pismena, velka se pisou se SHIFT
         m.mem.ram[0x2DB] = 0xFF;   // NOCLIK: bez klapani klaves (rychleji)
         stav = PISE; snimkuPsani = 0; klid = 0;
-        std::snprintf(b, sizeof(b), "B299 TXT PROGRAM: READY po %d snimcich - pisu NEW a %d radku", snimku, radku);
+        std::snprintf(b, sizeof(b), "B299 TXT PROGRAM: READY po %d snimcich - pisu %s%d radku", snimku, sNew ? "NEW a " : "(bez NEW) ", radku);
         log.push_back(b);
         status = "PÍŠU PROGRAM: " + std::to_string(radku) + " ŘÁDKŮ"; statusMs = 60000;
       } else if (snimku > 50 * 45) {

@@ -25,6 +25,7 @@
 #include <string>
 #include <vector>
 #include <set>
+#include <algorithm>
 
 // ---------- nahrady OpenSL: zvuk "neni k dispozici" ----------
 static const SLInterfaceID_ iidE{1}, iidP{2}, iidQ{3};
@@ -112,6 +113,14 @@ static void napis(const char *t) {
   Java_eu_atarihelp_emu10_NativeAtariCoreBridge_devTypeTextNative(&g_env, nullptr, (jstring)&s, JNI_FALSE);
 }
 static int pocet(const std::string &s, char c) { int n = 0; for (char x : s) if (x == c) n++; return n; }
+// B303: Ctrl+V / pretazeny TXT z prohlizece -> devVlozNative (jako POST /vloz z Javy)
+static std::string vlozPc(const std::string &t) {
+  FakeArr a; a.b.assign(t.begin(), t.end());
+  jstring r = Java_eu_atarihelp_emu10_NativeAtariCoreBridge_devVlozNative(&g_env, nullptr, (jbyteArray)&a);
+  const std::string s = ((FakeStr *)r)->s;
+  printf("vloz %zu B -> %s\n", t.size(), s.c_str());
+  return s;
+}
 
 int main() {
   std::memset(&g_tbl, 0, sizeof(g_tbl));
@@ -557,6 +566,143 @@ int main() {
       spi(500);
       printf("%s", obrazovka().c_str());
       logTed();
+    }
+    // g) B303: TV/PC cely v C++ - proud /atari.stream (devTvProud*): kazdy snimek
+    //    jako paleta + zmenene radky + zvuk; po rozbaleni presne obraz z jadra,
+    //    50 snimku/s, a jak rychle je stisk klavesy z PC videt v proudu
+    using hodiny = std::chrono::steady_clock;
+    auto ms = [](hodiny::time_point a, hodiny::time_point b) { return std::chrono::duration<double, std::milli>(b - a).count(); };
+    nap::TvProudDekoder dek;
+    FakeArr pk; pk.b.resize(256 * 1024);
+    const jint tvId = Java_eu_atarihelp_emu10_NativeAtariCoreBridge_devTvProudOtevriNative(&g_env, nullptr);
+    auto dalsi = [&](int cekej) {
+      const jint n = Java_eu_atarihelp_emu10_NativeAtariCoreBridge_devTvProudDalsiNative(&g_env, nullptr, tvId, (jbyteArray)&pk, cekej);
+      if (n <= 0) return (int)n;
+      const uint32_t len = pk.b[0] | (pk.b[1] << 8) | (pk.b[2] << 16) | ((uint32_t)pk.b[3] << 24);
+      return (len + 4 == (uint32_t)n && dek.paket(pk.b.data() + 4, len)) ? (int)n : -999999;
+    };
+    auto stejneJakoJadro = [&]() {
+      FakeIntArr obr; obr.b.resize(672 * 240); obr.v.assign(672 * 240, 0);
+      if (Java_eu_atarihelp_emu10_NativeAtariCoreBridge_devGrabFrameNative(&g_env, nullptr, (jintArray)&obr) != ((672 << 16) | 240)) return -1;
+      if (dek.W != 672 || dek.H != 240) return -2;
+      int rozdil = 0;
+      for (int y = 0; y < 240; y++)
+        for (int x = 0; x < 672; x++) if ((0xFF000000u | dek.barva(x, y)) != (uint32_t)obr.v[(size_t)y * 672 + x]) rozdil++;
+      return rozdil;
+    };
+    {
+      FakeArr mala; mala.b.resize(64);
+      const jint r0 = Java_eu_atarihelp_emu10_NativeAtariCoreBridge_devTvProudDalsiNative(&g_env, nullptr, tvId, (jbyteArray)&mala, 200);
+      int paketu = 0, spatnych = 0, klicovych = 0; size_t zvuk = 0, bajtu = 0;
+      double nejdelsi = 0;
+      const auto t0 = hodiny::now(); auto tp = t0;
+      while (ms(t0, hodiny::now()) < 3000) {
+        const int n = dalsi(250);
+        if (n == 0) continue;
+        if (n < 0) { spatnych++; continue; }
+        const auto t = hodiny::now();
+        if (paketu) nejdelsi = std::max(nejdelsi, ms(tp, t));
+        tp = t;
+        paketu++; bajtu += (size_t)n; zvuk += dek.zvuk.size() / 2; if (dek.klic) klicovych++;
+      }
+      int rozdil = -3;
+      for (int pokus = 0; pokus < 6 && rozdil != 0; pokus++) { dalsi(100); rozdil = stejneJakoJadro(); }
+      printf("B303 proud: male pole -> %d, za 3 s %d paketu (%.1f/s), nejdelsi mezera %.0f ms, spatnych %d, klicovych %d, zvuk %zu vzorku (%.0f/s), %.2f Mbit/s, rozdil proti jadru %d bodu\n",
+             (int)r0, paketu, paketu / 3.0, nejdelsi, spatnych, klicovych, zvuk, zvuk / 3.0, bajtu * 8.0 / 3.0 / 1e6, rozdil);
+      over(r0 < -1000 && spatnych == 0 && klicovych == 1 && paketu >= 140 && paketu <= 156 && nejdelsi < 120 && rozdil == 0,
+           "B303: proud pro TV/PC z C++ - kazdy snimek (50/s), prvni klicovy, pak jen zmeny; po rozbaleni presne obraz z jadra");
+      over(zvuk > 44100 * 3 * 0.85 && zvuk < 44100 * 3 * 1.1, "B303: v proudu je i zvuk Atari (44100 vzorku/s, bez mezer)");
+    }
+    // zpozdeni v C++: stisk klavesy z PC -> zmena v proudu (bez site a prohlizece)
+    {
+      auto pkl = [&](const char *code, const char *znak, bool dolu) {
+        FakeStr c{code}, z{znak};
+        Java_eu_atarihelp_emu10_NativeAtariCoreBridge_devPcKlavesaNative(&g_env, nullptr, (jstring)&c, (jstring)&z, 0, dolu ? JNI_TRUE : JNI_FALSE);
+      };
+      std::vector<double> zp;
+      const char *kl[][2] = {{"KeyA", "a"}, {"KeyB", "b"}, {"KeyC", "c"}, {"KeyD", "d"}, {"KeyE", "e"}, {"KeyF", "f"}, {"KeyG", "g"}, {"KeyH", "h"}};
+      for (auto &k : kl) {
+        for (int i = 0; i < 20; i++) if (dalsi(60) > 0 && dek.radku == 0) break;   // dobrat, co uz je (obraz v klidu)
+        const auto t0 = hodiny::now();
+        pkl(k[0], k[1], true);
+        double t = -1;
+        while (ms(t0, hodiny::now()) < 1000) {
+          const int n = dalsi(100);
+          if (n > 0 && dek.radku > 0) { t = ms(t0, hodiny::now()); break; }
+        }
+        pkl(k[0], k[1], false);
+        if (t >= 0) zp.push_back(t);
+        spi(150);
+      }
+      std::sort(zp.begin(), zp.end());
+      const double med = zp.empty() ? 9999 : zp[zp.size() / 2], max = zp.empty() ? 9999 : zp.back();
+      printf("B303 zpozdeni v C++ (klavesa z PC -> zmeneny radek v proudu): %zu z 8, median %.0f ms, nejvic %.0f ms\n", zp.size(), med, max);
+      over(zp.size() == 8 && med <= 70 && max <= 110, "B303: klavesa z PC je v proudu do 2-3 snimku (median <= 70 ms)");
+      for (int i = 0; i < 8; i++) { pkl("Backspace", "Backspace", true); pkl("Backspace", "Backspace", false); }
+      // az Atari vsechny klavesy z PC vezme (8x stejna klavesa = KEYDEL mezi nimi, ~1,3 s)
+      for (int i = 0; i < 100; i++) {
+        spi(50);
+        std::lock_guard<std::mutex> l(g_mStroj);
+        std::lock_guard<std::mutex> p(g_mPc);
+        if (g_pcHrac.q.empty() && g_pcVstup.empty() && g_pcHrac.drzene.empty()) break;
+      }
+      spi(300);
+    }
+    // h) B303: vlozeni z PC (Ctrl+V v prohlizeci / pretazeny TXT) pres devVlozNative
+    {
+      auto vloz = vlozPc;
+      auto stavPsani = []() { std::lock_guard<std::mutex> l(g_mStroj); return (int)g_psani.stav; };
+      napis("? 1\n"); spi(1500);                   // READY nad kurzorem (psani programu na nej ceka)
+      // program BEZ NEW: radky 30 a 40 se pridaji k 10 a 20, cestina bez hacku a carek
+      // (UTF-8: "e s hackem" = C4 9B - bajt $9B je v ATASCII konec radku; do B303 se kvuli nemu
+      //  cely text bral jako ATASCII a radek se rozsypal)
+      const std::string r1 = vloz("30 ? \"P\xC5\x99\xC3\xAD\xC5\xA1" "ern\xC4\x9B \xC5\xBElu\xC5\xA5ou\xC4\x8Dk\xC3\xBD k\xC5\xAF\xC5\x88\"\r\n40 ? 6*7\r\n");
+      bool hotovo = false;
+      for (int i = 0; i < 300 && !hotovo; i++) { spi(100); hotovo = stavPsani() == nap::PsaniProgramu::HOTOVO; }
+      vypisLog();
+      napis("LIST\n"); spi(2500);
+      const std::string sl = obrazovka();
+      printf("--- vlozeny program (bez NEW), LIST ---\n%s---\n", sl.c_str());
+      over(r1.find("VLOZENO: 2 RADKU PROGRAMU (BEZ NEW)") != std::string::npos && hotovo &&
+           sl.find("10 DPOKE 1536,4660") != std::string::npos && sl.find("Priserne zlutoucky kun") != std::string::npos &&
+           sl.find("40 ") != std::string::npos && sl.find("ERROR") == std::string::npos,
+           "B303: Ctrl+V program - radky 30 a 40 pridane k programu (bez NEW), cestina bez hacku");
+      // obycejny text (ne program) se napise jako klavesy
+      const std::string r2 = vloz("? 7*8\n");
+      spi(3000);
+      const std::string st = obrazovka();
+      printf("--- vlozeny text '? 7*8' ---\n%s---\n", st.c_str());
+      over(r2 == "NAPSANO: 6 ZNAKU" && st.find("? 7*8") != std::string::npos && st.find("\n  56\n") != std::string::npos,
+           "B303: Ctrl+V text - napsany jako klavesy a spocitany (56)");
+      // binarka (XEX) a UTF-16 se nepise
+      const std::string r3 = vloz(std::string("\xFF\xFF\x00\x06\x05\x06\xA9\x42\x8D\x00\x06\x60", 12));
+      const std::string r4 = vloz(std::string("1\x00" "0\x00 \x00?\x00", 8));
+      over(r3.find("NENI TEXT") != std::string::npos && r4.find("NENI TEXT") != std::string::npos, "B303: XEX / UTF-16 vlozeny omylem - nic se nepise");
+      std::string lg; { jstring j = Java_eu_atarihelp_emu10_NativeAtariCoreBridge_devPollLogNative(&g_env, nullptr); if (j) lg = ((FakeStr *)j)->s; }
+      printf("%s", lg.c_str());
+      over(lg.find("B303 VLOZENI z PC: text") != std::string::npos && lg.find("neni text") != std::string::npos, "B303: vlozeni je v logu");
+    }
+    // i) B303: POWER vypnuto = v proudu cerna obrazovka s priznakem; odpojeni prohlizece
+    {
+      klep(8 + 17, 393 + 25);                      // POWER vyp
+      bool cerna = false;
+      for (int i = 0; i < 20 && !cerna; i++) {
+        if (dalsi(250) <= 0) continue;
+        cerna = dek.vypnuto && dek.W == 672;
+        for (int y = 0; cerna && y < 240; y += 7) for (int x = 0; x < 672; x += 5) if (dek.barva(x, y) != 0) { cerna = false; break; }
+      }
+      over(cerna, "B303: POWER vypnuto - v proudu cerna obrazovka a priznak vypnuto");
+      over(vlozPc("? 1\n").find("VYPNUTE") != std::string::npos, "B303: vlozeni pri vypnutem Atari se odmitne (nenapise se po zapnuti)");
+      klep(8 + 17, 393 + 25);                      // POWER zap
+      bool obraz = false;
+      for (int i = 0; i < 40 && !obraz; i++) if (dalsi(250) > 0 && !dek.vypnuto) obraz = true;
+      Java_eu_atarihelp_emu10_NativeAtariCoreBridge_devTvProudZavriNative(&g_env, nullptr, tvId);
+      std::string lg; { jstring j = Java_eu_atarihelp_emu10_NativeAtariCoreBridge_devPollLogNative(&g_env, nullptr); if (j) lg = ((FakeStr *)j)->s; }
+      printf("%s", lg.c_str());
+      over(obraz && lg.find("B303 TV PROUD: prohlizec") != std::string::npos && lg.find("odpojen po") != std::string::npos,
+           "B303: po zapnuti zase obraz; odpojeni prohlizece v logu (snimku, MB, klicovych)");
+      bool rdy = false;
+      for (int i = 0; i < 100 && !rdy; i++) { spi(100); rdy = obrazovka().find("READY") != std::string::npos; }
     }
   }
 

@@ -10,10 +10,13 @@
 #include <set>
 #include <map>
 #include <algorithm>
+#include <chrono>
 #include "nap_atari_machine.h"
 #include "nap_atari_roms.h"
 #include "nap_atari_runtime.h"
 #include "nap_atari_pc_klavesnice.h"
+#include "nap_atari_tv_proud.h"
+#include "nap_atari_audio_ring.h"
 #include "syntaz_kazeta.h"
 using namespace nap;
 
@@ -217,6 +220,110 @@ static std::string cloadList(const std::vector<uint8_t> &wav, bool tbxl, Machine
 
 int main(int argc, char **argv) {
   std::string mode = argc > 1 ? argv[1] : "boot";
+  if (mode == "tv-proud") {
+    // B303: ./test_core tv-proud - prenos Atari na TV/PC cely v C++: kazdy snimek -> paket
+    // (paleta, jen zmenene radky, zvuk) -> rozbaleni jako v prohlizeci -> musi byt PRESNE
+    // stejny obraz jako na displeji telefonu (vyrez 672x240) a stejny zvuk. K tomu
+    // velikosti paketu (datovy tok) pro BASIC, psani, LIST, hry a VBXE.
+    int chyb = 0;
+    auto over = [&](bool ok, const std::string &co) { if (!ok) chyb++; printf("%s  %s\n", ok ? "OK   " : "CHYBA", co.c_str()); };
+    const int X0 = 48, W = 672, H = AnticView::H, FW = AnticView::FW;
+    auto vyrez = [&](Machine &m, std::vector<uint32_t> &rgb) {
+      rgb.resize((size_t)W * H);
+      for (int y = 0; y < H; y++)
+        for (int x = 0; x < W; x++) {
+          const uint32_t c = m.view->fb[(size_t)y * FW + X0 + x];      // ABGR (R v nizkem bajtu)
+          rgb[(size_t)y * W + x] = ((c & 0xFFu) << 16) | (c & 0xFF00u) | ((c >> 16) & 0xFFu);
+        }
+    };
+    struct Vysl { long long bajtu = 0, maxB = 0, paketu = 0, spatnych = 0, klic = 0, radku = 0, zvukB = 0; double us = 0; };
+    auto scena = [&](const std::string &jm, Machine &m, int snimku, XexLoader *xl, TypeQueue *tq, int odSnimku) {
+      TvProudKlient k; TvProudDekoder d;
+      std::vector<uint8_t> pk; std::vector<uint32_t> rgb; std::vector<float> mono(882); std::vector<int16_t> st(882 * 2);
+      Vysl v;
+      for (int f = 1; f <= snimku; f++) {
+        if (xl && !xl->aktivni()) m.consol = 7;
+        if (tq) tq->step(m);
+        m.runFrame();
+        if (xl) xl->poSnimku(m);
+        m.genAudio(mono.data(), 882, 44100.0);
+        nap::atariGainClampToStereoInt16(mono.data(), 882, 4.0f, st.data());
+        if (f < odSnimku) continue;
+        vyrez(m, rgb);
+        const auto t0 = std::chrono::steady_clock::now();
+        tvProudPaket(k, rgb.data(), W, H, (unsigned long long)f, true, st.data(), st.size(), pk);
+        v.us += std::chrono::duration<double, std::micro>(std::chrono::steady_clock::now() - t0).count();
+        bool ok = d.paket(pk.data(), pk.size()) && d.W == W && d.H == H && d.zvuk.size() == st.size() &&
+                  std::memcmp(d.zvuk.data(), st.data(), st.size() * 2) == 0;
+        for (size_t i = 0; ok && i < rgb.size(); i++) if (d.pal[d.idx[i]] != rgb[i]) ok = false;
+        if (!ok) v.spatnych++;
+        v.paketu++; v.bajtu += (long long)pk.size(); v.maxB = std::max<long long>(v.maxB, (long long)pk.size());
+        if (d.klic) v.klic++;
+        v.radku += d.radku;
+        v.zvukB += 3 + (long long)(d.zvuk.size() / 2) * 2 * d.kanalu;
+      }
+      const double sek = v.paketu / 50.0, obr = (double)(v.bajtu - v.zvukB) / std::max(1.0, sek);
+      printf("%-34s %4lld snimku: prumer %6.0f B/snimek (obraz %6.0f B/s), nejvic %6lld B, klicovych %lld, zmenenych radku %5.1f/snimek, "
+             "celkem %.2f Mbit/s (se zvukem), kodovani %.0f us/snimek\n",
+             jm.c_str(), v.paketu, (double)v.bajtu / std::max(1LL, v.paketu), obr, v.maxB, v.klic,
+             (double)v.radku / std::max(1LL, v.paketu), v.bajtu * 8.0 / 1e6 / std::max(1.0, sek), v.us / std::max(1LL, v.paketu));
+      over(v.spatnych == 0 && v.paketu > 0, jm + ": po rozbaleni presne stejny obraz i zvuk (" + std::to_string(v.paketu) + " snimku)");
+      return v;
+    };
+    // a) BASIC: start, psani programu, LIST (rolovani)
+    {
+      Machine *m = novy(true);
+      for (int f = 0; f < 400; f++) { m->runFrame(); if (f > 30 && obrazovka(*m).find("READY") != std::string::npos) break; }
+      scena("BASIC READY (staticka obrazovka)", *m, 100, nullptr, nullptr, 1);
+      TypeQueue tq; tq.addText(dlouhyProgram(false, 3));
+      scena("BASIC psani programu", *m, 900, nullptr, &tq, 1);
+      TypeQueue tq2; tq2.addText("LIST");
+      Vysl v = scena("BASIC LIST (rolovani obrazovky)", *m, 300, nullptr, &tq2, 1);
+      over(v.klic == 1, "klicovy snimek jen prvni (pak jen zmeny)");
+      delete m;
+    }
+    // b) hry (XEX jako v appce): titulky a hrani v demu
+    const char *hry[][3] = {
+      {"../../test_assets/commando230810.xex", "Commando", "1500"},
+      {"../../test_assets/Donkey Kong Junior (Title Version).xex", "Donkey Kong Junior", "1500"},
+      {"../../test_assets/The Activision Decathlon.xex", "Activision Decathlon", "1500"},
+      {"../../test_assets/rrumble.xex", "rrumble", "1500"},
+      {"../../test_assets/Popeye (VBXE, PAL Version)(2).xex", "Popeye (VBXE)", "1800"},
+    };
+    for (auto &h : hry) {
+      std::vector<uint8_t> dt = nacti(h[0]);
+      if (dt.empty()) { printf("%s chybi\n", h[0]); continue; }
+      Machine *m = novy(false);
+      XexLoader xl; xl.priprav(dt.data(), dt.size(), h[1]);
+      m->sioRychlyTimeout = true;
+      scena(h[1], *m, atoi(h[2]), &xl, nullptr, 300);
+      delete m;
+    }
+    // c) paleta plna (jina hra = jine barvy): klient dostane klicovy snimek s novou paletou
+    {
+      TvProudKlient k; TvProudDekoder d; std::vector<uint8_t> pk;
+      std::vector<uint32_t> a((size_t)W * H), b((size_t)W * H);
+      for (size_t i = 0; i < a.size(); i++) { a[i] = (uint32_t)((i / 7) % 200) * 0x010101u; b[i] = 0x800000u | (uint32_t)((i / 5) % 230); }
+      bool ok = true;
+      tvProudPaket(k, a.data(), W, H, 1, true, nullptr, 0, pk); ok = ok && d.paket(pk.data(), pk.size());
+      tvProudPaket(k, b.data(), W, H, 2, true, nullptr, 0, pk); ok = ok && d.paket(pk.data(), pk.size()) && d.klic;
+      for (size_t i = 0; ok && i < b.size(); i++) if (d.pal[d.idx[i]] != b[i]) ok = false;
+      over(ok, "plna paleta (200 + 230 barev): klicovy snimek s novou paletou, obraz presne");
+      // vic nez 256 barev v jednom snimku (VBXE prechody): nejblizsi barva, nic nespadne
+      std::vector<uint32_t> c((size_t)W * H);
+      for (size_t i = 0; i < c.size(); i++) c[i] = (uint32_t)(i % 600) * 0x00010203u;
+      tvProudPaket(k, c.data(), W, H, 3, true, nullptr, 0, pk);
+      over(d.paket(pk.data(), pk.size()) && d.klic && pk.size() > 1000, "600 barev v jednom snimku: paket v poradku (barvy navic = nejblizsi)");
+      // POWER vypnuto: cerna obrazovka a priznak
+      std::vector<uint32_t> z((size_t)W * H, 0);
+      tvProudPaket(k, z.data(), W, H, 4, false, nullptr, 0, pk);
+      bool cerne = d.paket(pk.data(), pk.size()) && d.vypnuto;
+      for (size_t i = 0; cerne && i < z.size(); i++) if (d.pal[d.idx[i]] != 0) cerne = false;
+      over(cerne, "POWER vypnuto: cerna obrazovka a priznak vypnuto");
+    }
+    printf("tv-proud: chyb %d\n", chyb);
+    return chyb ? 1 : 0;
+  }
   if (mode == "pc-klavesnice") {
     // B302: ./test_core pc-klavesnice - klavesnice pocitace (prohlizec na TV/PC) -> Atari 130XE:
     // PcKlavesnice (mapovani, rezim PSANI/HRANI, drzene klavesy) + PcPrehravac (tempo pro OS).
@@ -561,6 +668,103 @@ int main(int argc, char **argv) {
       return shoda && ps.stav == PsaniProgramu::HOTOVO ? 0 : 1;
     }
     return ps.stav == PsaniProgramu::HOTOVO ? 0 : 1;
+  }
+  if (mode == "vlozeni") {
+    // B303: ./test_core vlozeni - text vlozeny z PC (Ctrl+V v prohlizeci, pretazeny TXT):
+    // co je text / program, UTF-8 proti ATASCII (e s hackem = C4 9B, $9B je v ATASCII konec
+    // radku!), pak program BEZ NEW do BASICu, kde uz program je, a LIST.
+    int chyb = 0;
+    auto over = [&](bool ok, const std::string &co) { if (!ok) chyb++; printf("%s  %s\n", ok ? "OK   " : "CHYBA", co.c_str()); };
+    auto B = [](const std::string &s) { return std::vector<uint8_t>(s.begin(), s.end()); };
+    auto radky = [](const std::vector<uint8_t> &d, bool &at) { return PsaniProgramu::radkySouboru(d.data(), d.size(), at); };
+    auto txt = [](const std::vector<int> &r) { std::string s; for (int c : r) s.push_back(c >= 32 && c < 127 ? (char)c : '?'); return s; };
+    const std::string cz = "10 PRINT \"P\xC5\x99\xC3\xAD\xC5\xA1" "ern\xC4\x9B \xC5\xBElu\xC5\xA5ou\xC4\x8Dk\xC3\xBD k\xC5\xAF\xC5\x88 \xC3\xBAp\xC4\x9Bl "
+                           "\xC4\x8F\xC3\xA1" "belsk\xC3\xA9 \xC3\xB3" "dy\"\r\n20 ? 6*7\r\n";
+    {
+      bool at = true;
+      auto r = radky(B(cz), at);
+      printf("UTF-8 s e s hackem: %zu radky, ATASCII %d: [%s] [%s]\n", r.size(), at, r.size() > 0 ? txt(r[0]).c_str() : "", r.size() > 1 ? txt(r[1]).c_str() : "");
+      over(!at && r.size() == 2 && txt(r[0]) == "10 PRINT \"Priserne zlutoucky kun upel dabelske ody\"" && txt(r[1]) == "20 ? 6*7",
+           "UTF-8 cesky (e s hackem = C4 9B) neni ATASCII: 2 radky, bez hacku a carek");
+      auto r2 = radky(B("\xEF\xBB\xBF" + cz), at);
+      over(!at && r2.size() == 2 && txt(r2[0]) == txt(r[0]), "UTF-8 s BOM (Poznamkovy blok) - stejne");
+      // vypis z Atari (LIST "D:"): EOL $9B, inverzni znaky ($80+) a srdce ($00) v retezci
+      const std::string at8("10 PRINT \"\xC1\xC8\x00\"\x9B" "20 GOTO 10\x9B", 26);
+      auto r3 = radky(B(at8), at);
+      over(at && r3.size() == 2 && r3[0].size() == 14 && r3[0][10] == 0xC1 && r3[0][12] == 0x00 && txt(r3[1]) == "20 GOTO 10",
+           "vypis z Atari (ATASCII, EOL $9B, inverze a srdce) se pozna jako ATASCII");
+      over(nap::pcJeText((const uint8_t *)cz.data(), cz.size()) && nap::pcJeProgram((const uint8_t *)cz.data(), cz.size()),
+           "cesky program ze schranky = text a program");
+      over(nap::pcJeText((const uint8_t *)at8.data(), at8.size()) && nap::pcJeProgram((const uint8_t *)at8.data(), at8.size()),
+           "vypis z Atari (ATASCII se srdcem = $00) = text a program");
+      const std::string prik = "? 7*8\n";
+      over(nap::pcJeText((const uint8_t *)prik.data(), prik.size()) && !nap::pcJeProgram((const uint8_t *)prik.data(), prik.size()),
+           "prikaz bez cisla radku = text, ne program (napise se jako klavesy)");
+      const std::string xex("\xFF\xFF\x00\x06\x05\x06\xA9\x42\x8D\x00\x06\x60", 12), u16("\xFF\xFE" "1\x00" "0\x00 \x00?\x00", 10),
+          png("\x89PNG\r\n\x1A\n\x00\x00\x00\x0DIHDR", 16), bas("\x00\x00\x00\x01\x05\x01\x07\x01\x0A\x01\x0D\x01\x10\x01\x80\x81\x00\x00\x11\x16", 20);
+      over(!nap::pcJeText((const uint8_t *)xex.data(), xex.size()) && !nap::pcJeText((const uint8_t *)u16.data(), u16.size()) &&
+           !nap::pcJeText((const uint8_t *)png.data(), png.size()) && !nap::pcJeText((const uint8_t *)bas.data(), bas.size()),
+           "XEX, UTF-16, PNG, BAS (SAVE) = neni text - nic se nepise");
+      std::vector<nap::PcAkce> ak;
+      const std::string t2 = "a\xC4\x9B\tB\r\n\xE2\x82\xAC";       // a, e s hackem, TAB, B, CRLF, euro (na Atari neni)
+      const int nelze = nap::pcTextNaKlavesy((const uint8_t *)t2.data(), t2.size(), ak, 100);
+      std::string sc; for (size_t i = 0; i < ak.size(); i += 2) sc += std::to_string(ak[i].v) + " ";
+      printf("text 'a e TAB B CRLF euro' -> klavesy %s(na Atari neni %d)\n", sc.c_str(), nelze);
+      over(ak.size() == 10 && ak[0].v == 63 && ak[2].v == 42 && ak[4].v == 33 && ak[6].v == (21 | 0x40) && ak[8].v == 12 && nelze == 1,
+           "text jako klavesy: a, e (bez hacku), TAB = mezera, B = SHIFT+B, konec radku = RETURN, euro na Atari neni");
+    }
+    // program BEZ NEW do BASICu, kde uz radek 5 je
+    {
+      PutHook h; h.put = -1;
+      Machine *m = novy(true);
+      m->sioRychlyTimeout = true;
+      auto pis = [&](const std::string &t, bool sNew) {
+        PsaniProgramu ps;
+        ps.start((const uint8_t *)t.data(), t.size(), false, "vlozeno z PC", false, sNew);
+        int f = 0;
+        for (; f < 50 * 120 && (ps.aktivni() || f < 2); f++) {
+          if (ps.pise()) m->runFrameRadky([&](Machine &mm) { ps.radek(mm); });
+          else snimekH(*m, h);
+          ps.poSnimku(*m);
+        }
+        for (auto &s : ps.log) printf("%s\n", s.c_str());
+        return ps.stav == PsaniProgramu::HOTOVO;
+      };
+      const bool h1 = pis("5 REM PRVNI\n", true);
+      const bool h2 = pis(cz, false);
+      h.put = (m->peek(0xE406) | (m->peek(0xE407) << 8)) + 1;
+      const std::string l = listH(*m, h);
+      printf("--- LIST ---\n%s---\n", l.c_str());
+      over(h1 && h2 && l.find("5 REM PRVNI") != std::string::npos &&
+           l.find("10 PRINT \"Priserne zlutoucky kun upel dabelske ody\"") != std::string::npos && l.find("20 ? 6*7") != std::string::npos,
+           "program vlozeny BEZ NEW: radek 5 zustal, 10 a 20 pridane, cestina bez hacku a carek");
+      // po zadanem radku programu BASIC READY nepise - druhe vlozeni hned za prvnim musi jit taky
+      const bool h3 = pis("25 REM DRUHE VLOZENI\n", false);
+      over(h3, "druhe vlozeni hned po prvnim (nad kurzorem neni READY, editor ceka na radek)");
+      // bezici program (i "30 GOTO 30" s prazdnym radkem pod kurzorem): vlozeni ceka, nepise do nej
+      { TypeQueue tq; tq.addText("30 GOTO 30\nRUN\n"); for (int f = 0; f < 900 && !tq.empty(); f++) { tq.step(*m); snimekH(*m, h); } }
+      for (int k = 0; k < 30; k++) snimekH(*m, h);
+      const std::string t4 = "40 REM PO BREAK\n";
+      PsaniProgramu ps;
+      ps.start((const uint8_t *)t4.data(), t4.size(), false, "vlozeno z PC", false, false);
+      for (int f = 0; f < 150; f++) { snimekH(*m, h); ps.poSnimku(*m); }
+      const bool ceka = ps.stav == PsaniProgramu::CEKA_READY && m->mem.ram[0x2FC] == 0xFF;
+      m->breakKey();
+      for (int f = 0; f < 50 * 60 && ps.aktivni(); f++) {
+        if (ps.pise()) m->runFrameRadky([&](Machine &mm) { ps.radek(mm); });
+        else snimekH(*m, h);
+        ps.poSnimku(*m);
+      }
+      for (auto &s : ps.log) printf("%s\n", s.c_str());
+      const std::string l2 = listH(*m, h);
+      printf("--- LIST po RUN, BREAK a vlozeni ---\n%s---\n%s", l2.c_str(), obrazovka(*m).c_str());
+      over(ceka && ps.stav == PsaniProgramu::HOTOVO && l2.find("25 REM DRUHE VLOZENI") != std::string::npos &&
+           l2.find("30 GOTO 30") != std::string::npos && l2.find("40 REM PO BREAK") != std::string::npos,
+           "bezi program: vlozeni ceka (3 s nic), po BREAK (STOPPED, READY) se napise");
+      delete m;
+    }
+    printf("vlozeni: chyb %d\n", chyb);
+    return chyb ? 1 : 0;
   }
   if (mode == "tbxl-disketa") {
     // B299: ./test_core tbxl-disketa [stary] - Turbo-BASIC XL a disketa v D1: (DDEVIC $31).

@@ -53,6 +53,8 @@
 #include "nap_atari_device.h"
 #include "nap_atari_runtime.h"
 #include "nap_atari_pc_klavesnice.h"   // B302: klavesnice pocitace (prohlizec na TV/PC) -> Atari
+#include "nap_atari_tv_proud.h"         // B303: obraz a zvuk na TV/PC primo z C++ (male zpozdeni)
+#include <memory>
 #include <string>
 #include <thread>
 #include <mutex>
@@ -184,7 +186,7 @@ static std::atomic<long long> g_atariPodtekani{0};  // kolikrat OpenSL callback 
 static std::mutex g_mTvZvuk;
 static std::vector<int16_t> g_tvZvuk;
 static unsigned long long g_tvZvukZapis = 0, g_tvZvukCteni = 0;   // pocty shortu (stereo)
-static const size_t TV_ZVUK_KAP = 16384;
+static const size_t TV_ZVUK_KAP = 65536;   // B303: ~0,74 s (prohlizec s pomalejsi Wi-Fi nic neztrati)
 static void tvZvukZapis(const int16_t *s, size_t n) {
   std::lock_guard<std::mutex> l(g_mTvZvuk);
   if (g_tvZvuk.size() != TV_ZVUK_KAP) g_tvZvuk.assign(TV_ZVUK_KAP, 0);
@@ -721,6 +723,27 @@ static bool g_klavLogPc = false;                   // B302: v radku je klavesa z
 static std::mutex g_mFrame;
 static std::vector<uint32_t> g_sdilenySnimek;      // posledni snimek Atari pro kresleni
 static std::atomic<unsigned long long> g_snimekSeq{0};
+// B303: prohlizece na TV/PC (web viewer appky) - obraz a zvuk primo z C++.
+// Kazdy prohlizec ma vlastni vlakno v Jave (/atari.stream), ktere ceka v
+// devTvProudDalsiNative na novy snimek. Poradi zamku: g_mStroj -> g_mTvProud.
+struct TvKlientNat {
+  nap::TvProudKlient k;
+  std::vector<uint32_t> rgb;
+  std::vector<int16_t> zvuk;
+  std::vector<uint8_t> pk;
+  int id = 0;
+  long long startMs = 0, logMs = 0, logPaketu = 0, logBajtu = 0, paketu = 0, bajtu = 0;
+};
+static std::mutex g_mTvProud;
+static std::condition_variable g_cvTvProud;
+static std::map<int, std::unique_ptr<TvKlientNat>> g_tvKlienti;   // pod g_mTvProud
+static int g_tvDalsiId = 1;
+static std::atomic<int> g_tvKlientu{0};
+static void tvProudSnimek() {
+  if (g_tvKlientu.load() <= 0) return;
+  { std::lock_guard<std::mutex> l(g_mTvProud); }   // kdo uz overil, ze snimek neni, ted opravdu ceka - zadne ztracene probuzeni
+  g_cvTvProud.notify_all();
+}
 static std::atomic<bool> g_motorOn{false};
 static std::atomic<bool> g_strojBezi{false};       // POWER (z pohledu emulace)
 static std::atomic<bool> g_run{false};
@@ -764,6 +787,7 @@ static nap::PcKlavesnice g_pcMapa;
 static std::vector<nap::PcAkce> g_pcVstup;
 static bool g_pcPrvni = false;
 static int g_pcNeznamych = 0;
+static std::deque<nap::PcAkce> g_pcText;            // B303: text vlozeny z PC (Ctrl+V) - pod g_mPc, do g_pcHrac po malych davkach
 static int consolEfektivni() {
   int m = g_consolChtene & 7;
   long long f = g_snimkuCelkem.load();
@@ -860,6 +884,8 @@ static void pcKlavesniceSnimekLocked() {
   {
     std::lock_guard<std::mutex> p(g_mPc);
     a.swap(g_pcVstup);
+    // B303: vlozeny text - po malych davkach (PcPrehravac drzi nejvys 256 akci)
+    if (g_pcHrac.q.size() < 16) for (int i = 0; i < 32 && !g_pcText.empty(); i++) { a.push_back(g_pcText.front()); g_pcText.pop_front(); }
     ticho = g_pcMapa.hlidej(nap_ted_ms(), a);   // prohlizec se odmlcel - vse pustit
   }
   if (ticho) devLog("B302 PC KLAVESNICE: prohlizec se 2,5 s neozval (zavreny, spadla Wi-Fi?) - drzene klavesy, joystick a konzole pusteny");
@@ -952,7 +978,7 @@ static void emuVlaknoMain() {
           case nap::dev::Ev::POWER_OFF:
             g_strojBezi = false; g_typeQ.clear(); g_rec.reset(); g_xex.zrus(); g_atariRing.clear(); g_psani.zrus();
             g_pcHrac.zrus();                                       // B302: klavesy z PC ve fronte zahodit
-            { std::lock_guard<std::mutex> p(g_mPc); g_pcVstup.clear(); }
+            { std::lock_guard<std::mutex> p(g_mPc); g_pcVstup.clear(); g_pcText.clear(); }
             devLog("B291 POWER VYPNUTO");
             break;
           case nap::dev::Ev::KEY:
@@ -1166,6 +1192,7 @@ static void emuVlaknoMain() {
       }
       g_snimekSeq++;
       g_snimkuCelkem++;
+      tvProudSnimek();                                   // B303: prohlizec na TV/PC - novy snimek
       vyzvednoutVystupyLocked();
       statusText.swap(g_statusText); statusMs = g_statusMs; g_statusText.clear();
     }
@@ -1285,7 +1312,7 @@ Java_eu_atarihelp_emu10_NativeAtariCoreBridge_devStartNative(JNIEnv *, jclass, j
       g_joyDotyk = g_joyPad = g_padConsol = g_padKlav = 0;   // B296: joystick pusteny
       g_joyPc = g_pcConsol = 0;                              // B302: klavesnice pocitace pustena
       g_pcHrac.zrus();
-      { std::lock_guard<std::mutex> p(g_mPc); g_pcVstup.clear(); g_pcMapa.drzene.clear(); }
+      { std::lock_guard<std::mutex> p(g_mPc); g_pcVstup.clear(); g_pcMapa.drzene.clear(); g_pcText.clear(); }
       // B298: START/OPTION drzene pri POWER plati (boot z kazety) - novy vstup do
       // HELP ale zacina s pustenou konzoli
       g_consolChtene = 7; g_consolDrzetDo[0] = g_consolDrzetDo[1] = g_consolDrzetDo[2] = 0;
@@ -1320,6 +1347,9 @@ Java_eu_atarihelp_emu10_NativeAtariCoreBridge_devStartNative(JNIEnv *, jclass, j
       devLog("B302 KLAVESNICE POCITACE (prohlizec na TV/PC) -> Atari 130XE primo v C++: psani podle rozlozeni "
              "(cesky: diakritika bez hacku, AltGr znaky), sipky = kurzor, F1/F3/F4 START/SELECT/OPTION, F2 BREAK, "
              "F6 HELP, F8 INVERZE, F9 HRANI (WASD/sipky joystick, K skok, L FIRE); klavesy v tempu, ktere OS stihne.");
+      devLog("B303 TV/PC CELE V C++: kazdy snimek Atari (50/s) jako paleta + jen zmenene radky a zvuk v jednom proudu "
+             "(/atari.stream) - Java uz nezvetsuje ani nekomprimuje (H.264/JPEG); Ctrl+V nebo pretazeny TXT v prohlizeci "
+             "= program do BASICu bez NEW (UTF-8 s e s hackem uz neni ATASCII), jiny text = klavesy.");
     }
     g_strojBezi = zapnuto;
   }
@@ -1701,6 +1731,172 @@ Java_eu_atarihelp_emu10_NativeAtariCoreBridge_devPullTvAudioNative(JNIEnv *env, 
   }
   if (!tmp.empty()) env->SetShortArrayRegion(out, 0, (jsize)tmp.size(), (const jshort *)tmp.data());
   return (jint)tmp.size();
+}
+
+// ===================================================================
+//  B303: PRENOS NA TV / PC CELY V C++ (male zpozdeni)
+//  Rene: "ma to na TV zpozdeni ... Opravdu prevod jede jak ma v C++?"
+//  Java jen otevre spojeni a posila, co jsme tady zabalili: kazdy snimek
+//  Atari (50/s) jako paleta + zmenene radky + zvuk (nap_atari_tv_proud.h).
+// ===================================================================
+/** Novy prohlizec. Vraci cislo klienta (> 0). */
+extern "C" JNIEXPORT jint JNICALL
+Java_eu_atarihelp_emu10_NativeAtariCoreBridge_devTvProudOtevriNative(JNIEnv *, jclass) {
+  int id, celkem;
+  {
+    std::lock_guard<std::mutex> l(g_mTvProud);
+    id = g_tvDalsiId++;
+    auto kn = std::make_unique<TvKlientNat>();
+    kn->id = id; kn->startMs = kn->logMs = nap_ted_ms();
+    g_tvKlienti[id] = std::move(kn);
+    celkem = (int)g_tvKlienti.size();
+    g_tvKlientu = celkem;
+  }
+  char b[200];
+  snprintf(b, sizeof(b), "B303 TV PROUD: prohlizec %d pripojen (celkem %d) - obraz a zvuk Atari jdou primo z C++, 50 snimku/s, jen zmeny", id, celkem);
+  devLog(b);
+  return id;
+}
+
+/** Ceka (nejvys cekejMs) na novy snimek a zabali ho pro prohlizec do out:
+ *  4 bajty delka (LE) + paket. Vraci pocet bajtu, 0 = nic noveho, zaporne =
+ *  out je male (potreba -n bajtu; pristi paket bude klicovy), INT32_MIN =
+ *  neznamy klient (Java spojeni zavre - smycka se nesmi tocit naprazdno). */
+extern "C" JNIEXPORT jint JNICALL
+Java_eu_atarihelp_emu10_NativeAtariCoreBridge_devTvProudDalsiNative(JNIEnv *env, jclass, jint id, jbyteArray out, jint cekejMs) {
+  if (!out) return INT32_MIN;
+  TvKlientNat *kn = nullptr;
+  {
+    std::unique_lock<std::mutex> l(g_mTvProud);
+    auto it = g_tvKlienti.find((int)id);
+    if (it == g_tvKlienti.end()) return INT32_MIN;
+    kn = it->second.get();
+    nap::TvProudKlient &k0 = kn->k;
+    auto jeNovy = [&]() { return k0.obraz.empty() || g_snimekSeq.load() != k0.snimek || g_strojBezi.load() != k0.zapnuto; };
+    if (!jeNovy()) g_cvTvProud.wait_for(l, std::chrono::milliseconds(std::max(1, std::min(1000, (int)cekejMs))), jeNovy);
+    if (!jeNovy()) return 0;
+  }
+  // klienta meni jen tohle vlakno (prohlizec ma svoje); vymaze ho az devTvProudZavriNative z nej
+  nap::TvProudKlient &k = kn->k;
+  const int X0 = 48, W = 672, H = AnticView::H, FW = AnticView::FW;
+  const bool zap = g_strojBezi.load();
+  unsigned long long seq;
+  kn->rgb.resize((size_t)W * H);
+  {
+    std::lock_guard<std::mutex> f(g_mFrame);
+    seq = g_snimekSeq.load();
+    if (!zap || g_sdilenySnimek.size() != (size_t)FW * H) std::fill(kn->rgb.begin(), kn->rgb.end(), 0u);   // POWER vypnuto = cerna
+    else
+      for (int y = 0; y < H; y++) {
+        const uint32_t *src = &g_sdilenySnimek[(size_t)y * FW + X0];
+        uint32_t *dst = &kn->rgb[(size_t)y * W];
+        for (int x = 0; x < W; x++) { const uint32_t c = src[x]; dst[x] = ((c & 0xFFu) << 16) | (c & 0xFF00u) | ((c >> 16) & 0xFFu); }   // ABGR -> RGB
+      }
+  }
+  // zvuk od minula (nejvys 0,25 s - kdyz prohlizec zaostal, stare se zahodi, zpozdeni neroste)
+  kn->zvuk.clear();
+  {
+    std::lock_guard<std::mutex> z(g_mTvZvuk);
+    const unsigned long long konec = g_tvZvukZapis;
+    const unsigned long long MAXZ = 44100ULL * 2 / 4;
+    if (!k.zvukJede || konec < k.zvukPoz) { k.zvukPoz = konec; k.zvukJede = true; }
+    else if (konec - k.zvukPoz > MAXZ) k.zvukPoz = konec - 882 * 2;
+    if (g_tvZvuk.size() == TV_ZVUK_KAP) {
+      const size_t kolik = (size_t)((konec - k.zvukPoz) & ~1ULL);
+      kn->zvuk.resize(kolik);
+      for (size_t i = 0; i < kolik; i++) kn->zvuk[i] = g_tvZvuk[(size_t)((k.zvukPoz + i) % TV_ZVUK_KAP)];
+      k.zvukPoz += kolik;
+    }
+  }
+  nap::tvProudPaket(k, kn->rgb.data(), W, H, seq, zap, kn->zvuk.data(), kn->zvuk.size(), kn->pk);
+  const size_t delka = kn->pk.size() + 4;
+  if ((jsize)delka > env->GetArrayLength(out)) { k.zapomen(); return -(jint)delka; }
+  const uint32_t n32 = (uint32_t)kn->pk.size();
+  const uint8_t hl[4] = {(uint8_t)n32, (uint8_t)(n32 >> 8), (uint8_t)(n32 >> 16), (uint8_t)(n32 >> 24)};
+  env->SetByteArrayRegion(out, 0, 4, (const jbyte *)hl);
+  env->SetByteArrayRegion(out, 4, (jsize)kn->pk.size(), (const jbyte *)kn->pk.data());
+  kn->paketu++; kn->bajtu += (long long)delka; kn->logPaketu++; kn->logBajtu += (long long)delka;
+  const long long ted = nap_ted_ms();
+  if (ted - kn->logMs >= 30000) {
+    const double s = (ted - kn->logMs) / 1000.0;
+    char b[260];
+    snprintf(b, sizeof(b), "B303 TV PROUD: prohlizec %d - %.1f snimku/s, %.2f Mbit/s (obraz + zvuk), prumer %.1f kB na snimek, klicovych celkem %lld",
+             kn->id, kn->logPaketu / s, kn->logBajtu * 8.0 / 1e6 / s, kn->logBajtu / 1024.0 / std::max(1LL, kn->logPaketu), k.klicovych);
+    devLog(b);
+    kn->logMs = ted; kn->logPaketu = kn->logBajtu = 0;
+  }
+  return (jint)delka;
+}
+
+/** Prohlizec odpojen. */
+extern "C" JNIEXPORT void JNICALL
+Java_eu_atarihelp_emu10_NativeAtariCoreBridge_devTvProudZavriNative(JNIEnv *, jclass, jint id) {
+  std::unique_ptr<TvKlientNat> kn;
+  int celkem;
+  {
+    std::lock_guard<std::mutex> l(g_mTvProud);
+    auto it = g_tvKlienti.find((int)id);
+    if (it == g_tvKlienti.end()) return;
+    kn = std::move(it->second);
+    g_tvKlienti.erase(it);
+    celkem = (int)g_tvKlienti.size();
+    g_tvKlientu = celkem;
+  }
+  const double s = std::max(0.001, (nap_ted_ms() - kn->startMs) / 1000.0);
+  char b[260];
+  snprintf(b, sizeof(b), "B303 TV PROUD: prohlizec %d odpojen po %.0f s - %lld snimku (%.1f/s), %.1f MB celkem, klicovych %lld (zbyva %d)",
+           kn->id, s, kn->paketu, kn->paketu / s, kn->bajtu / 1048576.0, kn->k.klicovych, celkem);
+  devLog(b);
+}
+
+/** B303: text vlozeny z PC (Ctrl+V v prohlizeci, pretazeny TXT). Program (radky
+ *  s cislem) napise appka do BASICu / TBXL bez NEW, jiny text napise jako klavesy.
+ *  Vraci zpravu pro prohlizec. */
+extern "C" JNIEXPORT jstring JNICALL
+Java_eu_atarihelp_emu10_NativeAtariCoreBridge_devVlozNative(JNIEnv *env, jclass, jbyteArray data) {
+  if (!data) return env->NewStringUTF("VLOZENI: PRAZDNE");
+  const jsize n = env->GetArrayLength(data);
+  if (n <= 0) return env->NewStringUTF("VLOZENI: PRAZDNE");
+  std::vector<uint8_t> buf((size_t)n);
+  env->GetByteArrayRegion(data, 0, n, (jbyte *)buf.data());
+  std::string vysl;
+  if (!nap::pcJeText(buf.data(), buf.size())) {
+    vysl = "VLOZENI: TO NENI TEXT (XEX / ATR / BAS NAHRAJ V APPCE)";
+    devLog("B303 VLOZENI z PC: " + std::to_string(n) + " B neni text - nic se nepise");
+  } else if (!g_strojBezi.load()) {
+    vysl = "VLOZENI: ATARI JE VYPNUTE";                // text by se jinak napsal az po zapnuti
+    devLog("B303 VLOZENI z PC: " + std::to_string(n) + " B - Atari je vypnute, nic se nepise");
+  } else if (nap::pcJeProgram(buf.data(), buf.size())) {
+    {
+      std::lock_guard<std::mutex> l(g_mStroj);
+      if (!g_stroj || !g_strojBezi.load()) vysl = "VLOZENI: ATARI JE VYPNUTE";
+      else if (g_psani.aktivni()) vysl = "VLOZENI: APPKA PRAVE PISE JINY PROGRAM - POCKEJ";
+      else {
+        const bool tbxl = !(g_stroj->mem.portB() & 1);    // TBXL bezi s vypnutou ROM OS
+        g_psani.start(buf.data(), buf.size(), tbxl, "vlozeno z PC", false, false);
+        // pise se, az editor ceka na novy radek (READY / po radku programu); bezi-li program
+        // nebo hra, ceka nejvys 45 s
+        const bool ready = nap::PsaniProgramu::ready(*g_stroj) || nap::PsaniProgramu::cekaNaRadek(*g_stroj);
+        char b[160];
+        snprintf(b, sizeof(b), "VLOZENO: %d RADKU PROGRAMU (BEZ NEW) - %s", g_psani.radku, ready ? "PISU" : "PISU AZ BUDE READY (NEJVYS 45 S)");
+        vysl = b;
+        if (g_psani.bezCisla) vysl += " (BEZ CISLA PRESKOCENO " + std::to_string(g_psani.bezCisla) + ")";
+        vyzvednoutVystupyLocked();
+      }
+    }
+    devLog("B303 VLOZENI z PC: program " + std::to_string(n) + " B -> " + vysl);
+  } else {
+    std::vector<nap::PcAkce> a;
+    const int nelze = nap::pcTextNaKlavesy(buf.data(), buf.size(), a, 4000);
+    {
+      std::lock_guard<std::mutex> p(g_mPc);
+      if (g_pcText.size() + a.size() > 20000) g_pcText.clear();
+      g_pcText.insert(g_pcText.end(), a.begin(), a.end());
+    }
+    vysl = "NAPSANO: " + std::to_string(a.size() / 2) + " ZNAKU" + (nelze ? " (" + std::to_string(nelze) + " NA ATARI NENI)" : "");
+    devLog("B303 VLOZENI z PC: text " + std::to_string(n) + " B -> " + vysl);
+  }
+  return env->NewStringUTF(nap::pcAscii(vysl, 120, true).c_str());
 }
 
 /** Spustit XEX (XEX/MOBIL, TURBO/BASIC, NET HRY). */

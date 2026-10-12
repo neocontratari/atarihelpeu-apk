@@ -1,0 +1,69 @@
+UTF-8 s e s hackem: 2 radky, ATASCII 0: [10 PRINT "Priserne zlutoucky kun upel dabelske ody"] [20 ? 6*7]
+OK     UTF-8 cesky (e s hackem = C4 9B) neni ATASCII: 2 radky, bez hacku a carek
+OK     UTF-8 s BOM (Poznamkovy blok) - stejne
+OK     vypis z Atari (ATASCII, EOL $9B, inverze a srdce) se pozna jako ATASCII
+OK     cesky program ze schranky = text a program
+OK     vypis z Atari (ATASCII se srdcem = $00) = text a program
+OK     prikaz bez cisla radku = text, ne program (napise se jako klavesy)
+OK     XEX, UTF-16, PNG, BAS (SAVE) = neni text - nic se nepise
+text 'a e TAB B CRLF euro' -> klavesy 63 42 33 85 12 (na Atari neni 1)
+OK     text jako klavesy: a, e (bez hacku), TAB = mezera, B = SHIFT+B, konec radku = RETURN, euro na Atari neni
+B299 TXT PROGRAM vlozeno z PC -> ATARI BASIC: 1 radku programu, 16 stisku klaves (textovy soubor); cekam na READY
+B299 TXT PROGRAM: READY po 85 snimcich - pisu NEW a 1 radku
+B299 TXT PROGRAM HOTOVO za 0.3 s: napsano 1 radku, v pameti 1 radku, s chybou syntaxe 0; preskoceno: prazdnych 0, bez cisla radku 0, delsich nez 120 znaku 0; znaku, ktere na Atari nejsou: 0
+B299 TXT PROGRAM vlozeno z PC -> ATARI BASIC: 2 radku programu, 61 stisku klaves (textovy soubor); cekam na READY
+B299 TXT PROGRAM: READY po 8 snimcich - pisu (bez NEW) 2 radku
+B299 TXT PROGRAM HOTOVO za 0.5 s: napsano 2 radku, v pameti 3 radku, s chybou syntaxe 0; preskoceno: prazdnych 0, bez cisla radku 0, delsich nez 120 znaku 0; znaku, ktere na Atari nejsou: 0
+--- LIST ---
+
+5 REM PRVNI
+10 PRINT "Priserne zlutoucky kun upel dabelske ody"
+20 ? 6*7
+
+READY
+---
+OK     program vlozeny BEZ NEW: radek 5 zustal, 10 a 20 pridane, cestina bez hacku a carek
+B299 TXT PROGRAM vlozeno z PC -> ATARI BASIC: 1 radku programu, 21 stisku klaves (textovy soubor); cekam na READY
+B299 TXT PROGRAM: READY po 8 snimcich - pisu (bez NEW) 1 radku
+B299 TXT PROGRAM HOTOVO za 0.3 s: napsano 1 radku, v pameti 4 radku, s chybou syntaxe 0; preskoceno: prazdnych 0, bez cisla radku 0, delsich nez 120 znaku 0; znaku, ktere na Atari nejsou: 0
+OK     druhe vlozeni hned po prvnim (nad kurzorem neni READY, editor ceka na radek)
+B299 TXT PROGRAM vlozeno z PC -> ATARI BASIC: 1 radku programu, 16 stisku klaves (textovy soubor); cekam na READY
+B299 TXT PROGRAM: READY po 160 snimcich - pisu (bez NEW) 1 radku
+B299 TXT PROGRAM HOTOVO za 0.3 s: napsano 1 radku, v pameti 6 radku, s chybou syntaxe 0; preskoceno: prazdnych 0, bez cisla radku 0, delsich nez 120 znaku 0; znaku, ktere na Atari nejsou: 0
+--- LIST po RUN, BREAK a vlozeni ---
+
+5 REM PRVNI
+10 PRINT "Priserne zlutoucky kun upel dabelske ody"
+20 ? 6*7
+25 REM DRUHE VLOZENI
+30 GOTO 30
+40 REM PO BREAK
+
+READY
+---
+  20 ? 6*7                              
+                                        
+  READY                                 
+  25 REM DRUHE VLOZENI                  
+30 GOTO 30                              
+  RUN                                   
+  Priserne zlutoucky kun upel dabelske o
+  dy                                    
+  42                                    
+                                        
+  STOPPED  AT LINE 30                   
+  40 REM PO BREAK                       
+LIST                                    
+                                        
+  5 REM PRVNI                           
+  10 PRINT "Priserne zlutoucky kun upel 
+  dabelske ody"                         
+  20 ? 6*7                              
+  25 REM DRUHE VLOZENI                  
+  30 GOTO 30                            
+  40 REM PO BREAK                       
+                                        
+  READY                                 
+                                        
+OK     bezi program: vlozeni ceka (3 s nic), po BREAK (STOPPED, READY) se napise
+vlozeni: chyb 0
