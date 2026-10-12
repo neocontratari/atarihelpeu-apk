@@ -1,0 +1,11 @@
+DEMO START
+introNaplnZvuk pred pripravou -> 1024 (ma byt 1024 ticha)
+hotovo=false pripraveno=false snimku=0 casMs=0 grab=0 info=' || '
+DEMO: plocha odpojena
+DEMO: zvuk spocitan za 88 ms
+DEMO STOP
+introNaplnZvuk po zastaveni -> -1 (ma byt -1)
+Safe: grab=0 hotovo=false pripraveno=false info=' || '
+DEMO: plocha odpojena
+DEMO STOP
+VYSLEDEK: vsech 12 native metod se zavolalo, podpisy sedi (0 chyb)

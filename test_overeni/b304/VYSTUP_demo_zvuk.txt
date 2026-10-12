@@ -1,0 +1,48 @@
+vyrobeno 2010959 ramcu (45.6 s zvuku) za 1.14 s = 40x rychleji nez prehravani; prvni vterina za 0.015 s
+ 0 s  RMS  -34.2 dBFS  spicka  -18.0 dBFS
+ 1 s  RMS  -24.4 dBFS  spicka   -9.5 dBFS
+ 2 s  RMS  -24.3 dBFS  spicka  -12.7 dBFS
+ 3 s  RMS  -23.8 dBFS  spicka  -13.4 dBFS
+ 4 s  RMS  -20.6 dBFS  spicka   -7.0 dBFS
+ 5 s  RMS  -19.4 dBFS  spicka   -7.3 dBFS
+ 6 s  RMS  -20.1 dBFS  spicka   -9.6 dBFS
+ 7 s  RMS  -26.8 dBFS  spicka  -11.9 dBFS
+ 8 s  RMS  -23.1 dBFS  spicka  -10.7 dBFS
+ 9 s  RMS  -23.7 dBFS  spicka   -9.2 dBFS
+10 s  RMS  -22.2 dBFS  spicka   -8.7 dBFS
+11 s  RMS  -24.3 dBFS  spicka   -9.1 dBFS
+12 s  RMS  -26.1 dBFS  spicka  -13.4 dBFS
+13 s  RMS  -21.5 dBFS  spicka   -8.9 dBFS
+14 s  RMS  -21.2 dBFS  spicka  -10.5 dBFS
+15 s  RMS  -17.6 dBFS  spicka   -4.2 dBFS
+16 s  RMS  -16.9 dBFS  spicka   -3.1 dBFS
+17 s  RMS  -17.6 dBFS  spicka   -1.9 dBFS
+18 s  RMS  -20.1 dBFS  spicka   -8.7 dBFS
+19 s  RMS  -20.2 dBFS  spicka   -9.0 dBFS
+20 s  RMS  -19.0 dBFS  spicka   -7.4 dBFS
+21 s  RMS  -20.1 dBFS  spicka   -8.3 dBFS
+22 s  RMS  -20.2 dBFS  spicka   -8.9 dBFS
+23 s  RMS  -19.2 dBFS  spicka   -7.7 dBFS
+24 s  RMS  -20.3 dBFS  spicka   -9.7 dBFS
+25 s  RMS  -18.9 dBFS  spicka   -5.9 dBFS
+26 s  RMS  -18.4 dBFS  spicka   -5.4 dBFS
+27 s  RMS  -17.9 dBFS  spicka   -5.8 dBFS
+28 s  RMS  -12.5 dBFS  spicka   -1.8 dBFS
+29 s  RMS  -12.6 dBFS  spicka   -1.7 dBFS
+30 s  RMS  -12.7 dBFS  spicka   -0.6 dBFS
+31 s  RMS  -12.3 dBFS  spicka   -0.6 dBFS
+32 s  RMS  -12.2 dBFS  spicka   -0.2 dBFS
+33 s  RMS  -12.4 dBFS  spicka   -0.3 dBFS
+34 s  RMS  -12.6 dBFS  spicka   -0.6 dBFS
+35 s  RMS  -13.2 dBFS  spicka   -2.2 dBFS
+36 s  RMS  -11.8 dBFS  spicka   -1.2 dBFS
+37 s  RMS  -16.9 dBFS  spicka   -2.0 dBFS
+38 s  RMS  -11.5 dBFS  spicka   -2.6 dBFS
+39 s  RMS  -14.9 dBFS  spicka   -5.1 dBFS
+40 s  RMS  -16.0 dBFS  spicka   -5.1 dBFS
+41 s  RMS  -18.4 dBFS  spicka   -8.6 dBFS
+42 s  RMS  -17.6 dBFS  spicka   -7.0 dBFS
+43 s  RMS  -17.9 dBFS  spicka   -6.9 dBFS
+44 s  RMS  -22.3 dBFS  spicka  -10.1 dBFS
+45 s  RMS -180.0 dBFS  spicka -180.0 dBFS
+vzorku na hranici (orez): 4

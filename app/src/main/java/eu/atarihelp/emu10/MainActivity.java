@@ -1434,6 +1434,27 @@ public class MainActivity extends Activity {
     private long introHoldMs = 0;
     private boolean napTvWebCaptureIntro(int bw, int bh) {
         try {
+            // B304: nove uvodni demo (C++) kresli pro TV vlastni obraz 16:9.
+            // Okno se behem nej NESNIMA - pod demem se uz nacita menu.
+            if (demoPlocha != null) {
+                if (tvDemoArgb == null) tvDemoArgb = new int[854 * 480];
+                int wh = NativeIntroBridge.grabFrameSafe(tvDemoArgb);
+                if (wh < 0) {
+                    tvDemoArgb = new int[((-wh) >> 16) * ((-wh) & 0xFFFF)];
+                    wh = NativeIntroBridge.grabFrameSafe(tvDemoArgb);
+                }
+                if (wh > 0) {
+                    final int sw = wh >> 16, sh = wh & 0xFFFF;
+                    if (tvDemoBmp == null || tvDemoBmp.getWidth() != sw || tvDemoBmp.getHeight() != sh) {
+                        if (tvDemoBmp != null) { try { tvDemoBmp.recycle(); } catch (Throwable ignored) {} }
+                        tvDemoBmp = Bitmap.createBitmap(sw, sh, Bitmap.Config.ARGB_8888);
+                        try { tvDemoBmp.setHasAlpha(false); } catch (Throwable ignored) {}
+                    }
+                    tvDemoBmp.setPixels(tvDemoArgb, 0, sw, 0, 0, sw, sh);
+                    napTvWebPublishBitmap(tvDemoBmp, "INTRO_DEMO");
+                }
+                return true;
+            }
             if (!introZivaCast) return false;
             boolean jeSega = (segaPlocha != null);
             int wh = jeSega ? NativeSegaCoreBridge.grabFrameSafe(tvCoreArgb)
@@ -4151,6 +4172,8 @@ public class MainActivity extends Activity {
         @JavascriptInterface public void znovu() {
             appendNativeLog("BUILD2SA23 INTRO_NA_POZADANI");
             ui.post(() -> {
+                // B304: nove uvodni demo (C++); stare intro jen kdyby knihovna chybela
+                if (demoSpust("OPTIONS")) return;
                 introOknoPruhledne(false);
                 web.loadUrl("file:///android_asset/intro/etapa1.html");
             });
@@ -7097,6 +7120,89 @@ public class MainActivity extends Activity {
         }
     };
 
+    // ===== B304: UVODNI DEMO N&P (cele v C++) =====
+    // Rene: "udelej uvodni demo nove podle tohoto navrhu a nechat to na tobe -
+    // grafika muze byt HD a nemusi splnovat pozadavky atari sega a ps1".
+    // 45 s podle jeho scenare (garaz, mraky, blesk, Atari 130XE, energie do
+    // mobilu, logo a titulky). Kresli C++ (OpenGL ES) do NapDemoView, zvuk je
+    // spocitany v C++. Dotek / zpet = preskocit. Viz CO_JE_V_B304.md.
+    private NapDemoView demoPlocha = null;
+    private long demoStartMs = 0;
+    private boolean demoHlaseno = false;
+    private int[] tvDemoArgb = null;
+    private Bitmap tvDemoBmp = null;
+    private final Runnable demoTik = new Runnable() {
+        @Override public void run() { demoKontrola(); }
+    };
+
+    /** Pusti demo nad vsim ostatnim. false = nejde (chybi knihovna) - pak puvodni intro. */
+    private boolean demoSpust(String proc) {
+        if (demoPlocha != null) return true;
+        if (rootFrame == null || !NativeIntroBridge.jeNactena()) {
+            appendNativeLog("B304 DEMO_NELZE knihovna napintro: " + NativeIntroBridge.chybaNacteni());
+            return false;
+        }
+        try {
+            NativeIntroBridge.introNastavAssety(getAssets());
+            NativeIntroBridge.introStart();
+            NapDemoView v = new NapDemoView(this, () -> demoKonec("preskoceno dotykem"));
+            rootFrame.addView(v, new FrameLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+            demoPlocha = v;
+            v.requestFocus();
+            demoStartMs = System.currentTimeMillis();
+            demoHlaseno = false;
+            NativeIntroBridge.zvukStart((pcm, shortu, sr) -> napTvWebAudioPush(pcm, 0, shortu, sr, "INTRO"));
+            ui.removeCallbacks(demoTik);
+            ui.postDelayed(demoTik, 250);
+            appendNativeLog("B304 DEMO_START (" + proc + ") - uvodni demo cele v C++ (obraz OpenGL ES, zvuk spocitany v C++)");
+            return true;
+        } catch (Throwable t) {
+            appendNativeLog("B304 DEMO_CHYBA_STARTU " + safeMsg(t));
+            if (demoPlocha == null) {
+                NativeIntroBridge.zvukStop();
+                NativeIntroBridge.stopSafe();
+            } else {
+                demoKonec("chyba startu");
+            }
+            return false;
+        }
+    }
+
+    private void demoKontrola() {
+        if (demoPlocha == null) return;
+        final long bezi = System.currentTimeMillis() - demoStartMs;
+        if (NativeIntroBridge.hotovoSafe()) { demoKonec("dobehlo"); return; }
+        if (!NativeIntroBridge.pripravenoSafe() && bezi > 7000) { demoKonec("nenabehlo do 7 s"); return; }
+        if (bezi > 70000) { demoKonec("pojistka 70 s"); return; }
+        if (!demoHlaseno && bezi > 3000) {
+            demoHlaseno = true;
+            appendNativeLog("B304 DEMO_BEZI " + NativeIntroBridge.infoSafe());
+        }
+        ui.postDelayed(demoTik, 200);
+    }
+
+    private void demoKonec(String proc) {
+        if (demoPlocha == null) return;
+        final NapDemoView v = demoPlocha;
+        demoPlocha = null;
+        ui.removeCallbacks(demoTik);
+        final long snimku = NativeIntroBridge.snimkuSafe();
+        final int casMs = NativeIntroBridge.casMsSafe();
+        final String info = NativeIntroBridge.infoSafe();
+        final long trvalo = Math.max(1, System.currentTimeMillis() - demoStartMs);
+        NativeIntroBridge.zvukStop();
+        // odebranim plochy C++ zastavi kreslici vlakno (surfaceDestroyed)
+        try { if (v.getParent() instanceof ViewGroup) ((ViewGroup) v.getParent()).removeView(v); } catch (Throwable ignored) {}
+        NativeIntroBridge.stopSafe();
+        napIntroUkazano = true;
+        napTvWebAudioLastPushMs = 0;           // uvolnit zvukovou cestu na TV
+        appendNativeLog("B304 DEMO_KONEC (" + proc + ") cas dema=" + casMs + " ms, snimku=" + snimku
+                + " (~" + (snimku * 1000 / trvalo) + " snimku/s)");
+        appendNativeLog("B304 DEMO_INFO " + info);
+        try { if (web != null) web.requestFocus(); } catch (Throwable ignored) {}
+    }
+
     /** onPageStarted: HELP -> pristroj zapnout, jinam -> vypnout. */
     private void atariZarizeniPodleUrl(String url) {
         try {
@@ -9671,10 +9777,14 @@ public class MainActivity extends Activity {
             final Runnable spustIntro = () -> {
                 if (uzJede[0]) return;
                 uzJede[0] = true;
-                final String cil = napIntroUkazano ? menu : intro;
+                // B304: uvodni demo je ted C++ plocha NAD strankou - pod ni se
+                // rovnou nacita menu (po konci dema je hned videt). Puvodni
+                // intro (etapy ve WebView) jen kdyby knihovna napintro chybela.
+                final boolean demo = !napIntroUkazano && demoSpust("start aplikace");
+                final String cil = (napIntroUkazano || demo) ? menu : intro;
                 applyWebViewVisualMode(cil, "startup");
                 appendNativeLog("BUILD2SA28 START url=" + cil
-                        + " intro=" + (napIntroUkazano ? "PRESKOCENO" : "SPOUSTIM"));
+                        + " intro=" + (napIntroUkazano ? "PRESKOCENO" : (demo ? "DEMO_CPP" : "SPOUSTIM")));
                 web.loadUrl(cil);
             };
 
@@ -12159,6 +12269,11 @@ public class MainActivity extends Activity {
         }
         backPosledniStisk = ted;
         try {
+            // B304: tlacitko zpet behem dema = preskocit demo
+            if (demoPlocha != null) {
+                demoKonec("tlacitko zpet");
+                return;
+            }
             // B291: ze stranky s logem (LOG/CHYBA) se zpet vraci na pristroj
             if (atariZarizeni != null && atariZarizeniSkryte) {
                 atariZarizeniSkryj(false);
@@ -12200,6 +12315,8 @@ public class MainActivity extends Activity {
     protected void onPause() {
         zapisOdchod("PAUZA");
         super.onPause();
+        // B304: demo na pozadi nehraje - ukoncit (po navratu je videt menu)
+        if (demoPlocha != null) demoKonec("appka na pozadi");
         if (ps1GameWindowOwnsCore) {
             // Jadro si prevzalo okno hry - appka ho NESMI zastavovat.
             appendNativeLog("PS1_PAUZA_APPKY jadro patri oknu hry, nesaham na nej");
@@ -12228,6 +12345,7 @@ public class MainActivity extends Activity {
     @Override
     protected void onDestroy() {
         zapisOdchod("ZRUSENA");
+        if (demoPlocha != null) demoKonec("appka zrusena");   // B304
         try { napTvWebStop("activityDestroy"); } catch (Throwable ignored) {} // BUILD2SA13C
         try { if (napTvPresentation != null) napTvPresentation.dismiss(); } catch (Throwable ignored) {} // BUILD2SA13
         try { if (napDisplayManager != null) napDisplayManager.unregisterDisplayListener(napTvListener); } catch (Throwable ignored) {}

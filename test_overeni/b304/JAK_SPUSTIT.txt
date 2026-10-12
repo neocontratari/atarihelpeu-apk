@@ -1,0 +1,48 @@
+B304 - uvodni demo N&P (cele v C++) - overeni na PC
+====================================================
+
+Stejny C++ kod jako v appce (app/src/main/cpp/intro/nap_demo*.h). Obraz se
+kresli pres Mesa (EGL bez okna, OpenGL ES 2.0) do framebufferu, zvuk se
+spocita do WAV. Spoustet z adresare test_overeni/b304.
+
+Hlavicky EGL / GLES2 / KHR (Khronos) musi byt v ceste (napr. balicek
+libegl-dev a libgles-dev, nebo adresar INC s EGL/, GLES2/, KHR/).
+
+1) Snimky dema (PNG):
+
+   g++ -std=c++17 -O2 -I$INC -o demo_snimky demo_snimky.cpp \
+       -l:libEGL.so.1 -l:libGLESv2.so.2 -lz
+   ./demo_snimky VYSTUP 1080 2340 0.6 3.5 10 17.05 23 30.7 34.8 40   (na vysku, vybrane casy)
+   ./demo_snimky VYSTUP 854 480 --vse 0.5                            (TV 16:9, cele demo po 0,5 s)
+
+   Vypise, jestli se vsechny shadery prelozily (radek "DEMO pripraveno: ANO"),
+   prumerny jas a cas kazdeho snimku. Logo se hleda v app/src/main/assets/design
+   (nebo promenna NAPDEMO_LOGO).
+
+2) Zvuk (WAV + hlasitost po vterinach):
+
+   g++ -std=c++17 -O2 -pthread -o demo_zvuk demo_zvuk.cpp
+   ./demo_zvuk demo.wav
+
+   Vypise, za jak dlouho se cela stopa spocitala (ve vlakne, jako v appce),
+   RMS a spicku kazde vteriny a pocet vzorku na hranici.
+
+3) Most do Androidu (skutecny nap_intro_gl.cpp) konec-koncu - plocha telefonu
+   je pbuffer pres Mesa, Java a AudioTrack dela test (nahradni hlavicky Androidu
+   v ./stub a ../b291/stub, JNIEnv sestaveny rucne):
+
+   g++ -std=c++17 -O2 -pthread -Istub -I../b291/stub -I$INC -I$JAVA_HOME/include \
+       -I$JAVA_HOME/include/linux -o test_b304_jni_host test_b304_jni_host.cpp \
+       -l:libEGL.so.1 -l:libGLESv2.so.2
+   ./test_b304_jni_host            -> VYSTUP_test_b304_jni_host.txt (cca 30 s)
+
+   Stejne s -O1 -g -fsanitize=thread = ThreadSanitizer (hlaseni uvnitr Mesy
+   - libgallium - se nepocitaji, v nasem kodu ma byt 0).
+
+4) Podpisy JNI se skutecnou Java tridou NativeIntroBridge (z appky) v JVM:
+   jvm/jni_lib.cpp = nap_intro_gl.cpp jako libnapintro.so pro PC, jvm/TestPodpisu.java
+   zavola vsech 12 native metod (Android tridy jen jako prazdne nahrady pro javac).
+
+5) Shadery prisne jako v telefonu (GLSL ES 1.00, referencni prekladac Khronos):
+
+   GLSLANG=/cesta/glslangValidator python3 kontrola_shaderu.py   -> VYSTUP_kontrola_shaderu.txt

@@ -9,8 +9,16 @@ android {
         applicationId "eu.atarihelp.emu10.test"  // TEST vedle prave apky (neprepise ji)
         minSdk 24
         targetSdk 34
-        versionCode 346
-        versionName "EMU10-B303-ATARI-CPP-TV-PROUD"
+        versionCode 347
+        versionName "EMU10-B304-UVODNI-DEMO"
+        // B304: Rene - "udelej uvodni demo nove podle tohoto navrhu a nechat to
+        // na tobe - grafika muze byt HD a nemusi splnovat pozadavky atari sega
+        // a ps1". Nove uvodni demo podle jeho scenare (N&P STUDIO MASTER SCI-FI
+        // PROMO MANIFEST, 45 s, 5 scen, titulky CZ + EN) cele v C++: OpenGL ES
+        // 2.0 na vlastnim vlakne (knihovna napintro, NapDemoView), 3D Atari
+        // 130XE, mraky, blesky, energie do mobilu, zlate logo; zvuk spocitany
+        // v C++ (AudioTrack jen prehrava), obraz se ridi podle zvuku; TV / PC
+        // dostava vlastni obraz 16:9. Viz CO_JE_V_B304.md.
         // B291: Rene po B290 - "to preved v helpu presne tak vcetne kazetaku a
         // obrazovky - podle toho navrhu na kterem jsme se dohodli". Cele Atari
         // 130XE ze schvaleneho navrhu (obrazovka, klavesnice, konzole, kazetak,

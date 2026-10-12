@@ -1,0 +1,33 @@
+DEMO START
+DEMO: GL OpenGL ES 3.2 Mesa 25.2.8-0ubuntu0.24.04.4 | llvmpipe (LLVM 20.1.2, 256 bits)
+DEMO model Atari 130XE: 686 trojuhelniku
+DEMO pripraveno: ANO (pisma 1, model 686 tri)
+DEMO: pripraveno za 174 ms (360x780)
+DEMO: zvuk spocitan za 1308 ms
+DEMO t=1.80 s snimek 51.4 ms meritko 0.45 (360x780)
+DEMO t=16.46 s snimek 40.5 ms meritko 0.30 (360x780)
+DEMO: dobehlo (571 snimku)
+DEMO: plocha uvolnena
+DEMO: plocha odpojena
+DEMO STOP
+DEMO START
+DEMO: GL OpenGL ES 3.2 Mesa 25.2.8-0ubuntu0.24.04.4 | llvmpipe (LLVM 20.1.2, 256 bits)
+DEMO model Atari 130XE: 686 trojuhelniku
+DEMO pripraveno: ANO (pisma 1, model 686 tri)
+DEMO: pripraveno za 256 ms (360x780)
+DEMO: zvuk spocitan za 1212 ms
+DEMO t=0.29 s snimek 30.0 ms meritko 0.45 (360x780)
+DEMO: plocha uvolnena
+DEMO: plocha odpojena
+DEMO STOP
+beh: 23.7 s, snimku telefonu 578, info: GPU llvmpipe (LLVM 20.1.2, 256 bits) | OpenGL ES 3.2 Mesa 25.2.8-0ubuntu0.24.04.4 | priprava 174 ms, plocha 360x780 || t=44.7 s, snimek 21.8 ms, mraky/garaz 30 %, plocha 360x780, zvuk ridi cas, odchylka obrazu 217 ms
+OK     1) demo se pripravilo (shadery, texty, logo z assets)
+OK     1) do pripravy dostava Java ticho  -- 18 davek ticha
+OK     2) cas obrazu jde za prehranym zvukem  -- prumer 34 ms, nejvic 82 ms (39 mereni)
+OK     3) TV snimky 854x480 chodi  -- 199 snimku 854x480, svetlych 187, cernych 12
+OK     4) Java dostala presne stopu dema  -- porovnano 2010959 ramcu (stopa 2010959), rozdilnych 0, pred stopou 18432 ramcu ticha
+OK     5) po cele stope introNaplnZvuk = -1 a demo hlasi hotovo (ne driv)
+OK     5) po konci vlakna skoncila, okno uvolnene  -- refs=1
+OK     6) preskoceni: kresleni i zvuk stoji  -- snimku za 3 s: 109, po zastaveni pribylo 0, zvuk vraci -1
+
+VYSLEDEK: 8 OK, 0 CHYB

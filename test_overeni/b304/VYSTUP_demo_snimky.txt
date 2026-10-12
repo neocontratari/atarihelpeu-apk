@@ -1,0 +1,78 @@
+=== telefon na vysku 1080x2340, vybrane casy ===
+DEMO model Atari 130XE: 686 trojuhelniku
+DEMO pripraveno: ANO (pisma 1, model 686 tri)
+GL OpenGL ES 3.2 Mesa 25.2.8-0ubuntu0.24.04.4 | llvmpipe (LLVM 20.1.2, 256 bits)
+logo 516x520
+init OK za 160 ms
+t=  0.60  jas    0.9      285 ms  out_v/f_00.60.png
+t=  3.50  jas   27.6      242 ms  out_v/f_03.50.png
+t=  6.50  jas   50.3      258 ms  out_v/f_06.50.png
+t= 10.00  jas   31.5      196 ms  out_v/f_10.00.png
+t= 12.58  jas   53.2      223 ms  out_v/f_12.58.png
+t= 16.98  jas   47.1      237 ms  out_v/f_16.98.png
+t= 17.05  jas   62.1      269 ms  out_v/f_17.05.png
+t= 20.00  jas   57.9      317 ms  out_v/f_20.00.png
+t= 25.60  jas   53.8      319 ms  out_v/f_25.60.png
+t= 28.90  jas   30.7      299 ms  out_v/f_28.90.png
+t= 30.70  jas   36.4      137 ms  out_v/f_30.70.png
+t= 31.70  jas   94.1      107 ms  out_v/f_31.70.png
+t= 32.70  jas   28.4      122 ms  out_v/f_32.70.png
+t= 33.70  jas   31.4      123 ms  out_v/f_33.70.png
+t= 34.90  jas   19.3      116 ms  out_v/f_34.90.png
+t= 36.20  jas   44.8      322 ms  out_v/f_36.20.png
+t= 38.50  jas    3.8       98 ms  out_v/f_38.50.png
+t= 40.00  jas   23.8      120 ms  out_v/f_40.00.png
+t= 43.50  jas   26.5      120 ms  out_v/f_43.50.png
+
+=== TV 854x480, cele demo po 1 s ===
+DEMO model Atari 130XE: 686 trojuhelniku
+DEMO pripraveno: ANO (pisma 1, model 686 tri)
+GL OpenGL ES 3.2 Mesa 25.2.8-0ubuntu0.24.04.4 | llvmpipe (LLVM 20.1.2, 256 bits)
+logo 516x520
+init OK za 144 ms
+t=  0.00  jas    0.6       68 ms  out_tv/f_00.00.png
+t=  1.00  jas    2.0       48 ms  out_tv/f_01.00.png
+t=  2.00  jas    8.7       50 ms  out_tv/f_02.00.png
+t=  3.00  jas   19.7       45 ms  out_tv/f_03.00.png
+t=  4.00  jas   25.9       47 ms  out_tv/f_04.00.png
+t=  5.00  jas   30.5       47 ms  out_tv/f_05.00.png
+t=  6.00  jas   34.3       48 ms  out_tv/f_06.00.png
+t=  7.00  jas   41.0       43 ms  out_tv/f_07.00.png
+t=  8.00  jas   34.9       49 ms  out_tv/f_08.00.png
+t=  9.00  jas   32.5       48 ms  out_tv/f_09.00.png
+t= 10.00  jas   33.2       44 ms  out_tv/f_10.00.png
+t= 11.00  jas   32.3       34 ms  out_tv/f_11.00.png
+t= 12.00  jas   28.3       42 ms  out_tv/f_12.00.png
+t= 13.00  jas   25.8       49 ms  out_tv/f_13.00.png
+t= 14.00  jas   25.2       51 ms  out_tv/f_14.00.png
+t= 15.00  jas   26.9       57 ms  out_tv/f_15.00.png
+t= 16.00  jas   28.5       43 ms  out_tv/f_16.00.png
+t= 17.00  jas   34.2       38 ms  out_tv/f_17.00.png
+t= 18.00  jas   34.3       68 ms  out_tv/f_18.00.png
+t= 19.00  jas   29.5       65 ms  out_tv/f_19.00.png
+t= 20.00  jas   37.1       49 ms  out_tv/f_20.00.png
+t= 21.00  jas   30.6       49 ms  out_tv/f_21.00.png
+t= 22.00  jas   33.0       74 ms  out_tv/f_22.00.png
+t= 23.00  jas   41.9       59 ms  out_tv/f_23.00.png
+t= 24.00  jas   42.6       52 ms  out_tv/f_24.00.png
+t= 25.00  jas   46.5       61 ms  out_tv/f_25.00.png
+t= 26.00  jas   48.5       60 ms  out_tv/f_26.00.png
+t= 27.00  jas   42.5       56 ms  out_tv/f_27.00.png
+t= 28.00  jas   21.0       57 ms  out_tv/f_28.00.png
+t= 29.00  jas   21.7       64 ms  out_tv/f_29.00.png
+t= 30.00  jas   25.3       67 ms  out_tv/f_30.00.png
+t= 31.00  jas   37.8       41 ms  out_tv/f_31.00.png
+t= 32.00  jas   82.6       38 ms  out_tv/f_32.00.png
+t= 33.00  jas   23.5       42 ms  out_tv/f_33.00.png
+t= 34.00  jas   28.1       43 ms  out_tv/f_34.00.png
+t= 35.00  jas   27.4       39 ms  out_tv/f_35.00.png
+t= 36.00  jas   25.2       73 ms  out_tv/f_36.00.png
+t= 37.00  jas    0.3       21 ms  out_tv/f_37.00.png
+t= 38.00  jas    0.3       27 ms  out_tv/f_38.00.png
+t= 39.00  jas   17.4       34 ms  out_tv/f_39.00.png
+t= 40.00  jas   26.8       51 ms  out_tv/f_40.00.png
+t= 41.00  jas   27.1       27 ms  out_tv/f_41.00.png
+t= 42.00  jas   30.5       27 ms  out_tv/f_42.00.png
+t= 43.00  jas   31.5       31 ms  out_tv/f_43.00.png
+t= 44.00  jas   29.6       31 ms  out_tv/f_44.00.png
+t= 45.00  jas    0.2       35 ms  out_tv/f_45.00.png
