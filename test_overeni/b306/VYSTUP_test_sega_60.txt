@@ -1,0 +1,27 @@
+B306: skutecne vlakno emulace Segy + jadro clownmdemu (program pro 68000 misto hry)
+
+REAL_CORE_THREAD_START_OK
+a) S8, bez prohlizece: displej 30.0 snimku/s, snimku pro prenos 30.0/s, nizka fronta zvuku 0x
+OK     a) rezim S8: displej telefonu 30 snimku/s (jako dosud, B306 ho nemeni)
+b) S8 + prohlizec: displej 30.0/s, TV snimku 60.0/s, paketu 60.0/s, zvuk 48042 vzorku/s, nizka fronta zvuku 0x
+OK     b) rezim S8 + prohlizec: TV dostava 60 snimku/s (B305: 30)
+OK     b) displej telefonu pri tom dal 30/s (telefon nema praci navic)
+OK     e) zvuk na TV 48000 vzorku/s primo z jadra (FM + PSG)
+OK     b) fronta zvuku telefonu se s prenosem 60/s nezhorsila (bez prohlizece 0x, s nim 0x)
+c) S8 + LOW + prohlizec: displej 30.0/s, TV 30.0/s
+OK     c) zvoleny rezim LOW: TV taky jen 30/s (volba plati)
+d) bez S8 + prohlizec: displej 60.0/s, TV 60.0/s
+OK     d) jiny telefon: displej i TV 60 snimku/s
+f) S8, reproduktor bere o 40 % vic: bez prohlizece displej 40.8/s nizka fronta 102x; s prohlizecem displej 42.0/s, TV 83.8/s, nizka fronta 105x
+OK     f) kdyz zvuk telefonu hladovi, prenos na TV ho nezhorsi (pri hladu se pro TV nesnima)
+
+B306 TV PROUD SEGA: prohlizec 1 pripojen (celkem 1) - obraz a zvuk primo z C++ (paleta + LZ (bez ztraty)), kazdy snimek, zvuk 48000 Hz v tomtez paketu
+B306 TV PROUD SEGA: prohlizec 1 odpojen po 5 s - 271 paketu (60.1/s), 0.4 MB celkem, klicovych 1, prestaveb palety 0, beze zmeny 270 z 271, zvuk preskoku 0, paketu jen se zvukem 0 (zbyva 0)
+B306 TV PROUD SEGA: prohlizec 2 pripojen (celkem 1) - obraz a zvuk primo z C++ (paleta + LZ (bez ztraty)), kazdy snimek, zvuk 48000 Hz v tomtez paketu
+B306 TV PROUD SEGA: prohlizec 2 odpojen po 4 s - 106 paketu (30.0/s), 0.3 MB celkem, klicovych 1, prestaveb palety 0, beze zmeny 105 z 106, zvuk preskoku 0, paketu jen se zvukem 0 (zbyva 0)
+B306 TV PROUD SEGA: prohlizec 3 pripojen (celkem 1) - obraz a zvuk primo z C++ (paleta + LZ (bez ztraty)), kazdy snimek, zvuk 48000 Hz v tomtez paketu
+B306 TV PROUD SEGA: prohlizec 3 odpojen po 4 s - 211 paketu (60.0/s), 0.3 MB celkem, klicovych 1, prestaveb palety 0, beze zmeny 210 z 211, zvuk preskoku 0, paketu jen se zvukem 0 (zbyva 0)
+B306 TV PROUD SEGA: prohlizec 4 pripojen (celkem 1) - obraz a zvuk primo z C++ (paleta + LZ (bez ztraty)), kazdy snimek, zvuk 48000 Hz v tomtez paketu
+B306 TV PROUD SEGA: prohlizec 4 odpojen po 5 s - 376 paketu (83.3/s), 0.6 MB celkem, klicovych 1, prestaveb palety 0, beze zmeny 375 z 376, zvuk preskoku 0, paketu jen se zvukem 0 (zbyva 0)
+
+VYSLEDEK: 8 kontrol, 0 chyb

@@ -9,8 +9,16 @@ android {
         applicationId "eu.atarihelp.emu10.test"  // TEST vedle prave apky (neprepise ji)
         minSdk 24
         targetSdk 34
-        versionCode 348
-        versionName "EMU10-B305-SEGA-PS1-TV-CPP"
+        versionCode 349
+        versionName "EMU10-B306-TV-ZVUK-CPP"
+        // B306: Rene po B305 - "zvuk nabehl v sega az po urcite dobe a po refresh
+        // stranky zase se zvuk odmlcel ... u prenosu segy a ps1 by to mohlo byt jeste
+        // lepsi ... vse predelat postupne do cisteho c++". Prohlizec: vyzva + zvuk po
+        // kliknuti / klavese (autoplay), zvuk prevzorkovany a dorovnavany plynule
+        // (bez zahazovani). C++: zvuk na TV rovnou z jadra (Sega FM+PSG, PS1 retro_run)
+        // ve stejnem paketu jako snimek, Sega na TV 60 snimku/s i na S8, pakety jen
+        // se zvukem kdyz obraz stoji; demo: zvuk prehrava C++ (OpenSL ES) a na TV
+        // jde proudem z C++ (/intro.stream). Viz CO_JE_V_B306.md.
         // B305: Rene - "udelas ten tv prenos u segi a ps1 na tv a pc jako si
         // udelal u atari emu c++, aby to bylo taky v c++ a tak super jak v emu
         // atari c++?" Sega a PS1 na TV / PC cele v C++ (app/src/main/cpp/tvproud):

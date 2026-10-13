@@ -1,0 +1,6 @@
+introZvukStartNative -> true (C++ OpenSL)
+proudOtevriNative -> 1, proudDalsiNative -> 0 (bez plochy zadny snimek), proudStavNative -> 2, proudLogNative -> B306 TV PROUD INTRO: prohlizec 1 pripojen (celkem 1) - obraz a zvuk primo z C++ (JPEG po castech), kazdy snimek, zvuk 44100 Hz v tomtez paketu
+obaly: proudOtevriSafe 2, proudDalsiSafe 0, proudStavSafe 2, zvukKdo po zvukStart 'C++ OpenSL ES', po zvukStop 'nic'
+Sega: proudOtevriSafe 1, proudDalsiSafe 8732 B, proudStavSafe 3, log 2 radky
+PS1: proudOtevriSafe 1, proudDalsiSafe 15453 B, proudStavSafe 3, log 2 radky
+VYSLEDEK: nove native metody B306 (demo: 7) + prenos Sega / PS1 (10) - nazvy i typy sedi (0 chyb)

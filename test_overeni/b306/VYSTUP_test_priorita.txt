@@ -1,0 +1,3 @@
+hlavni vlakno nice 0, pomocnych vlaken 1, z toho s nice -4: 1 (root ano)
+OK    pomocna vlakna JPEG (pasy) maji prioritu jako vykreslovani (nice -4), hlavni vlakno beze zmeny
+VYSLEDEK: 0 chyb

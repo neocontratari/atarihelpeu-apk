@@ -1438,6 +1438,9 @@ public class MainActivity extends Activity {
             // B304: nove uvodni demo (C++) kresli pro TV vlastni obraz 16:9.
             // Okno se behem nej NESNIMA - pod demem se uz nacita menu.
             if (demoPlocha != null) {
+                // B306: prohlizec bere demo primo z C++ (/intro.stream) - tady nic
+                // nezvetsovat ani nekomprimovat
+                if (napTvIntroProudKlientu.get() > 0) return true;
                 if (tvDemoArgb == null) tvDemoArgb = new int[854 * 480];
                 int wh = NativeIntroBridge.grabFrameSafe(tvDemoArgb);
                 if (wh < 0) {
@@ -3045,17 +3048,21 @@ public class MainActivity extends Activity {
     // ===================================================================
     private final java.util.concurrent.atomic.AtomicInteger napTvSegaProudKlientu = new java.util.concurrent.atomic.AtomicInteger();
     private final java.util.concurrent.atomic.AtomicInteger napTvPs1ProudKlientu = new java.util.concurrent.atomic.AtomicInteger();
+    private final java.util.concurrent.atomic.AtomicInteger napTvIntroProudKlientu = new java.util.concurrent.atomic.AtomicInteger();   // B306
 
-    /** Je jadro (SEGA / PS1) na obrazovce telefonu? (stejne podminky jako snimani pro TV) */
+    /** Je jadro (SEGA / PS1) nebo uvodni demo (INTRO) na obrazovce telefonu? (stejne podminky jako snimani pro TV) */
     private boolean napTvJadroNaObrazovce(String druh) {
+        if ("INTRO".equals(druh)) return demoPlocha != null;      // B306: demo lezi nad vsim
         String u = napTvWebCurrentUrl;
         if (u == null) return false;
         if ("SEGA".equals(druh)) return u.contains("emu_sega");
         return u.contains("emu_ps1") && (ps1SessionActive || ps1GameWindowOwnsCore || ps1BiosRunning);
     }
 
-    /** Ktery proud z C++ ted prohlizec ma brat: atari / sega / ps1 / 0 (do /status). */
+    /** Ktery proud z C++ ted prohlizec ma brat: intro / atari / sega / ps1 / 0 (do /status). */
     private String napTvProudDruh() {
+        // B306: uvodni demo lezi nad vsim ostatnim - kdyz bezi, na TV patri ono
+        if (napTvJadroNaObrazovce("INTRO") && (NativeIntroBridge.proudStavSafe() & 1) != 0) return "intro";
         if (atariCppNaObrazovce && NativeAtariCoreBridge.isLoaded()) return "atari";
         try {
             if (napTvJadroNaObrazovce("SEGA") && (NativeSegaCoreBridge.proudStavSafe() & 1) != 0) return "sega";
@@ -3064,11 +3071,37 @@ public class MainActivity extends Activity {
         return "0";
     }
 
-    private void napTvProudLog(boolean sega) {
+    private void napTvProudLog(String druh) {
         String s;
-        try { s = sega ? NativeSegaCoreBridge.proudLogSafe() : NativePs1CoreBridge.proudLogSafe(); } catch (Throwable t) { return; }
+        try {
+            if ("SEGA".equals(druh)) s = NativeSegaCoreBridge.proudLogSafe();
+            else if ("INTRO".equals(druh)) s = NativeIntroBridge.proudLogSafe();
+            else s = NativePs1CoreBridge.proudLogSafe();
+        } catch (Throwable t) { return; }
         if (s == null || s.isEmpty()) return;
         for (String r : s.split("\n")) if (!r.isEmpty()) appendNativeLog(r);
+    }
+
+    // B306: jedno misto pro Segu, PS1 a uvodni demo (proud z C++)
+    private int napTvProudOtevri(String druh) {
+        if ("SEGA".equals(druh)) return NativeSegaCoreBridge.proudOtevriSafe();
+        if ("INTRO".equals(druh)) return NativeIntroBridge.proudOtevriSafe();
+        return NativePs1CoreBridge.proudOtevriSafe();
+    }
+    private int napTvProudDalsi(String druh, int id, byte[] b, int zapisMs) {
+        if ("SEGA".equals(druh)) return NativeSegaCoreBridge.proudDalsiSafe(id, b, 250, zapisMs);
+        if ("INTRO".equals(druh)) return NativeIntroBridge.proudDalsiSafe(id, b, 250, zapisMs);
+        return NativePs1CoreBridge.proudDalsiSafe(id, b, 250, zapisMs);
+    }
+    private int napTvProudStav(String druh) {
+        if ("SEGA".equals(druh)) return NativeSegaCoreBridge.proudStavSafe();
+        if ("INTRO".equals(druh)) return NativeIntroBridge.proudStavSafe();
+        return NativePs1CoreBridge.proudStavSafe();
+    }
+    private void napTvProudZavri(String druh, int id) {
+        if ("SEGA".equals(druh)) NativeSegaCoreBridge.proudZavriSafe(id);
+        else if ("INTRO".equals(druh)) NativeIntroBridge.proudZavriSafe(id);
+        else NativePs1CoreBridge.proudZavriSafe(id);
     }
 
     private void napTvWebJadroProud(OutputStream out, Socket sock, final String druh) throws IOException {
@@ -3081,18 +3114,27 @@ public class MainActivity extends Activity {
         out.write(h.getBytes("ISO-8859-1"));
         out.flush();
         final boolean sega = "SEGA".equals(druh);
+        final boolean intro = "INTRO".equals(druh);
         if (!napTvJadroNaObrazovce(druh)) return;
-        if (!sega && !NativePs1CoreBridge.isLoaded()) return;
+        if (!sega && !intro && !NativePs1CoreBridge.isLoaded()) return;
         // maly odesilaci buffer: kdyz Wi-Fi nestiha, nesmi se ve fronte systemu
         // nahromadit sekundy obrazu (zpozdeni) - radsi se snimky preskoci
         try { sock.setSendBufferSize(64 * 1024); } catch (Throwable ignored) {}
         int id0;
-        try { id0 = sega ? NativeSegaCoreBridge.proudOtevriSafe() : NativePs1CoreBridge.proudOtevriSafe(); } catch (Throwable t) { id0 = 0; }
+        try { id0 = napTvProudOtevri(druh); } catch (Throwable t) { id0 = 0; }
         final int id = id0;
         if (id <= 0) return;
-        final java.util.concurrent.atomic.AtomicInteger klientu = sega ? napTvSegaProudKlientu : napTvPs1ProudKlientu;
+        final java.util.concurrent.atomic.AtomicInteger klientu = sega ? napTvSegaProudKlientu : (intro ? napTvIntroProudKlientu : napTvPs1ProudKlientu);
         klientu.incrementAndGet();
-        napTvProudLog(sega);
+        napTvProudLog(druh);
+        // B306: v tomhle vlakne C++ balí pakety (Sega LZ, PS1 / demo JPEG) - o kousek vys
+        // nez bezna vlakna (jako vykreslovani), at se na telefonu neztrati; jadro a zvuk
+        // maji porad prednost. Vlakno je ze zasoby - na konci se priorita vrati.
+        int predPrio = 0;
+        try {
+            predPrio = android.os.Process.getThreadPriority(android.os.Process.myTid());
+            android.os.Process.setThreadPriority(android.os.Process.THREAD_PRIORITY_DISPLAY);
+        } catch (Throwable ignored) {}
         final long[] zapsanoMs = { System.currentTimeMillis() };
         final boolean[] konec = { false };
         // hlidac: zapis visi pres 8 s (prohlizec zmizel bez rozlouceni, spadla Wi-Fi) - zavrit
@@ -3101,7 +3143,7 @@ public class MainActivity extends Activity {
                 while (!konec[0] && !sock.isClosed()) {
                     Thread.sleep(2000);
                     if (!konec[0] && System.currentTimeMillis() - zapsanoMs[0] > 8000L) {
-                        appendNativeLog("B305 TV PROUD " + druh + ": prohlizec " + id + " 8 s nic neprevzal - zaviram spojeni");
+                        appendNativeLog("B306 TV PROUD " + druh + ": prohlizec " + id + " 8 s nic neprevzal - zaviram spojeni");
                         try { sock.close(); } catch (Throwable ignored) {}
                         return;
                     }
@@ -3115,18 +3157,18 @@ public class MainActivity extends Activity {
         long logMs = 0, snimekMs = System.currentTimeMillis();
         try {
             while (napTvWebRunning && !sock.isClosed() && napTvJadroNaObrazovce(druh)) {
-                int n = sega ? NativeSegaCoreBridge.proudDalsiSafe(id, b, 250, zapisMs) : NativePs1CoreBridge.proudDalsiSafe(id, b, 250, zapisMs);
+                int n = napTvProudDalsi(druh, id, b, zapisMs);
                 long ted = System.currentTimeMillis();
-                if (ted - logMs >= 1000L) { logMs = ted; napTvProudLog(sega); }
-                if (n == Integer.MIN_VALUE) { appendNativeLog("B305 TV PROUD " + druh + ": chyba jadra - spojeni " + id + " zaviram"); break; }
+                if (ted - logMs >= 1000L) { logMs = ted; napTvProudLog(druh); }
+                if (n == Integer.MIN_VALUE) { appendNativeLog("B306 TV PROUD " + druh + ": chyba jadra - spojeni " + id + " zaviram"); break; }
                 if (n < 0) { b = new byte[Math.min(-n, 32 * 1024 * 1024) + 65536]; continue; }
                 zapsanoMs[0] = ted;
                 if (n == 0) {
                     // jadro neposila snimky (hra skoncila, nacitani se zaseklo) - po 3 s
                     // konec, prohlizec se vrati na snimani okna appky
-                    int st = sega ? NativeSegaCoreBridge.proudStavSafe() : NativePs1CoreBridge.proudStavSafe();
+                    int st = napTvProudStav(druh);
                     if ((st & 1) == 0 && ted - snimekMs > 3000L) {
-                        appendNativeLog("B305 TV PROUD " + druh + ": jadro 3 s neposila snimky - proud " + id + " koncim");
+                        appendNativeLog("B306 TV PROUD " + druh + ": jadro 3 s neposila snimky - proud " + id + " koncim");
                         break;
                     }
                     continue;
@@ -3141,8 +3183,9 @@ public class MainActivity extends Activity {
         } finally {
             konec[0] = true;
             klientu.decrementAndGet();
-            if (sega) NativeSegaCoreBridge.proudZavriSafe(id); else NativePs1CoreBridge.proudZavriSafe(id);
-            napTvProudLog(sega);
+            napTvProudZavri(druh, id);
+            napTvProudLog(druh);
+            try { android.os.Process.setThreadPriority(predPrio); } catch (Throwable ignored) {}
         }
     }
 
@@ -3624,6 +3667,9 @@ public class MainActivity extends Activity {
             } else if ("/ps1.stream".equals(path)) {
                 // B305: PS1 na TV/PC - obraz a zvuk primo z C++
                 napTvWebJadroProud(out, s, "PS1");
+            } else if ("/intro.stream".equals(path)) {
+                // B306: uvodni demo na TV/PC - obraz a zvuk primo z C++
+                napTvWebJadroProud(out, s, "INTRO");
             } else if ("/vloz".equals(path)) {
                 // B303: Ctrl+V / pretazeny TXT v prohlizeci -> program do Atari
                 // (telo POSTu se docita - kdyby nedoslo, vlakno nesmi viset navzdy)
@@ -3777,7 +3823,15 @@ public class MainActivity extends Activity {
                 + "#q{position:fixed;right:10px;bottom:48px;display:flex;gap:4px}"
                 + "#q button{padding:7px 9px;background:rgba(10,30,40,.78);border:1px solid #3a6a78;border-radius:5px;color:#9fdcff;font:700 12px monospace}"
                 + "#q button.on{background:rgba(20,90,60,.85);border-color:#5aff9a;color:#eaffea}"
+                // B306: vyzva ke zvuku - prohlizec (Chrome, Edge, Firefox) pusti zvuk stranky az po
+                // kliknuti / klavese do ni (a po F5 znovu). Drive o tom stranka mlcela: v logu Reneho
+                // "zvuk NEHRAJE" 3 minuty u PS1, u Segy zvuk naskocil az nahodou po case.
+                + "#zv{position:fixed;left:50%;top:6%;transform:translateX(-50%);z-index:100;pointer-events:none;"
+                + "background:rgba(0,0,0,.82);border:2px solid #ffd54a;border-radius:10px;padding:12px 22px;color:#ffe9a8;"
+                + "font:700 26px sans-serif;text-align:center;box-shadow:0 0 24px rgba(0,0,0,.6)}"
+                + "#zv small{display:block;font:400 15px sans-serif;color:#d8d2b8;margin-top:5px}"
                 + "</style></head><body><img id='v' alt='AtariHelp TV'><video id='h264v' muted autoplay playsinline style='display:none;position:fixed;inset:0;width:100%;height:100%;object-fit:contain;background:#000'></video><div id='s' style='display:none'>AtariHelp TV WEB CAST</div><button id='a' type='button' style='display:none'>AUDIO OK</button>"
+                + "<div id='zv' style='display:none'>ZVUK: KLIKNI KAMKOLI DO OBRAZU<small>prohlizec pusti zvuk az po kliknuti nebo klavese (po obnoveni stranky znovu)</small></div>"
                 // ===== RUCNI DOLADENI OBRAZU =====
                 // Rene chtel jas a kontrast nastavitelne primo v prohlizeci -
                 // ruzne hry maji ruzne tmavy obraz a nastavit to natvrdo v kodu
@@ -3847,7 +3901,21 @@ public class MainActivity extends Activity {
                 + "}).catch(function(e){clog('read err '+e);});}pump();"
                 + "}).catch(function(e){clog('fetch FAILED '+e);h264Active=false;v.style.display='';h264v.style.display='none';});}" // BUILD2SK57+SK59: syrovy H.264 (Annex-B) ze serveru -> JMuxer.js remuxuje na fMP4 primo v prohlizeci -> MSE -> <video>
                 + "function fallback(){fb=true;function tick(){if(ap&&ap.chce){setTimeout(tick,300);return;}v.onload=v.onerror=function(){setTimeout(tick,45)};v.src='/frame.jpg?'+Date.now();if((++n%40)===0)label('JPEG');}tick();}"
-                + "function startAudio(){if(aon)return;try{var C=window.AudioContext||window.webkitAudioContext;if(!C){a.textContent='AUDIO NENI';return;}ac=new C({latencyHint:'interactive'});if(ac.resume)ac.resume();g=ac.createGain();g.gain.value=1;g.connect(ac.destination);next=ac.currentTime+AVD;aon=true;a.textContent='AUDIO ON';pollAudio();label(fb?'JPEG':'MJPEG');}catch(e){a.textContent='AUDIO ERR';}}" // BUILD2SB1: jitter polstar 350 ms + master gain pro fady
+                + "function startAudio(){if(aon)return;try{var C=window.AudioContext||window.webkitAudioContext;if(!C){a.textContent='AUDIO NENI';return;}ac=new C({latencyHint:'interactive'});ac.onstatechange=zvukStav;if(ac.resume){var pr=ac.resume();if(pr&&pr.catch)pr.catch(function(){});}g=ac.createGain();g.gain.value=1;g.connect(ac.destination);next=ac.currentTime+AVD;aon=true;a.textContent='AUDIO ON';pollAudio();label(fb?'JPEG':'MJPEG');zvukStav();}catch(e){a.textContent='AUDIO ERR';}}" // BUILD2SB1: jitter polstar 350 ms + master gain pro fady
+                // ===== B306: ZVUK SE ODEMKNE JAKYMKOLI KLIKNUTIM NEBO KLAVESOU =====
+                // Prohlizec (autoplay) nechava AudioContext "suspended", dokud uzivatel do stranky
+                // neklikne / nestiskne klavesu - a po obnoveni stranky (F5) znovu. Drive se o to
+                // pokusila stranka jen jednou hned po nacteni (to prohlizec odmitne) a pak uz ne:
+                // zvuk naskocil az nahodou (Sega v logu Reneho po case), nebo vubec (PS1, 3 minuty).
+                // Ted: viditelna vyzva, dokud zvuk nehraje, a kazde kliknuti / klavesa / dotyk
+                // (zachyceno driv, nez to dostane klavesnice Segy nebo Atari) zvuk pusti.
+                + "var zvEl=document.getElementById('zv'),zvCekaOd=0,zvHlaseno=0;"
+                + "function zvukStav(){var b=!!(ac&&ac.state==='running'),t=Date.now();if(zvEl)zvEl.style.display=b?'none':'';"
+                + "if(!b){if(!zvCekaOd)zvCekaOd=t;if(!zvHlaseno&&t-zvCekaOd>3000){zvHlaseno=1;clog('B306 ZVUK: prohlizec zvuk nepustil (autoplay - ceka na kliknuti nebo klavesu), na obrazovce je vyzva');}}"
+                + "else if(zvCekaOd){if(zvHlaseno||t-zvCekaOd>1500)clog('B306 ZVUK: hraje - prohlizec ho pustil po '+(Math.round((t-zvCekaOd)/100)/10)+' s');zvCekaOd=0;zvHlaseno=0;}}"
+                + "function zvukOdemkni(){try{if(!ac)startAudio();if(ac&&ac.state!=='running'&&ac.resume){var p=ac.resume();if(p&&p.then)p.then(zvukStav,function(){});}}catch(e){}}"
+                + "['pointerdown','mousedown','touchend','keydown','click'].forEach(function(t){window.addEventListener(t,zvukOdemkni,true);});"
+                + "setInterval(zvukStav,1000);"
                 + "function cutover(){if(!ac||!g)return;var t=ac.currentTime;try{g.gain.cancelScheduledValues(t);g.gain.setValueAtTime(g.gain.value,t);g.gain.linearRampToValueAtTime(0,t+0.01);}catch(e){}for(var i=0;i<active.length;i++){try{active[i].stop(t+0.012);}catch(e){}}active=[];next=t+AVD;try{g.gain.setValueAtTime(0,next-0.012);g.gain.linearRampToValueAtTime(1,next);}catch(e){}}" // BUILD2SB1: 10ms fade-out/in misto lepeni
                 + "async function pollAudio(){if(!aon||!ac)return;if(ap&&ap.chce){setTimeout(pollAudio,150);return;}try{var r=await fetch('/audio.raw?after='+aseq+'&t='+Date.now(),{cache:'no-store'});var sq=parseInt(r.headers.get('x-nap-audio-seq')||aseq,10);var st=parseInt(r.headers.get('x-nap-audio-start')||aseq,10);var rate=parseInt(r.headers.get('x-nap-audio-rate')||'44100',10);var dis=(r.headers.get('x-nap-audio-discontinuity')||'0')==='1';var ab=await r.arrayBuffer();var expected=aseq;if(!isNaN(sq))aseq=sq;if(ab.byteLength>=4){var now=ac.currentTime;if(dis||next<now+0.04||next>now+AVD+0.5)cutover();var dv=new DataView(ab),frames=Math.floor(ab.byteLength/4),buf=ac.createBuffer(2,frames,rate),L=buf.getChannelData(0),R=buf.getChannelData(1);for(var i=0,p=0;i<frames;i++,p+=4){L[i]=dv.getInt16(p,true)/32768;R[i]=dv.getInt16(p+2,true)/32768;}var src=ac.createBufferSource();src.buffer=buf;src.connect(g);if(next<ac.currentTime+0.02)next=ac.currentTime+AVD;src.start(next);next+=frames/rate;active.push(src);src.onended=function(){var k=active.indexOf(src);if(k>=0)active.splice(k,1);};if(active.length>60)active.splice(0,active.length-60);}}catch(e){}setTimeout(pollAudio,20);}" // BUILD2SB1: planovane buffery (jitter buffer), zadne tvrde resety next, cutover s fadem
                 + "a.onclick=startAudio;function toggleFs(){var el=document.documentElement;try{if(!(document.fullscreenElement||document.webkitFullscreenElement)){(el.requestFullscreen||el.webkitRequestFullscreen||el.msRequestFullscreen).call(el);}else{(document.exitFullscreen||document.webkitExitFullscreen||document.msExitFullscreen).call(document);}}catch(e){}}document.addEventListener('click',toggleFs,true);document.addEventListener('keydown',function(e){if(window.napVAtari||window.napVSeze)return;if(e.key==='ArrowUp'){setAvd(AVD+0.05);e.preventDefault();}else if(e.key==='ArrowDown'){setAvd(AVD-0.05);e.preventDefault();}else if(e.key==='0'){setAvd(0.30);e.preventDefault();}},true);setTimeout(function(){try{startAudio();}catch(e){}},80);var aTry=setInterval(function(){if(aon){clearInterval(aTry);return;}try{startAudio();if(ac&&ac.state==='suspended'&&ac.resume)ac.resume();}catch(e){}},1000);"
@@ -3875,12 +3943,19 @@ public class MainActivity extends Activity {
                 // stare cesty MJPEG / JPEG / zvuk se pak nerozbehnou)
                 + "var ap={on:false,chce:false,rd:null,cv:null,cx:null,img:null,u32:null,idx:null,pal:new Uint32Array(256),W:0,H:0,buf:null,nA:0,pak:0,chyb:0,pod:0,"
                 + "zv:0,zah:0,cil:0.06,tPak:0,mez:0,okno:0,tl:0,pl:0,podl:0,zahl:0,"
-                + "druh:'',ver:0,gen:0,ox:0,oy:0,ow:0,oh:0,px:4,py:3,rozm:'',lz:null,radky:null,ky0:1e9,ky1:-1,kv:false,jq:[],jbusy:false,jpg:0,jzah:0,jl:0,jzl:0};window.napAp=ap;"
-                // polstar zvuku se prizpusobi siti: nejdelsi mezera mezi pakety + 20 ms
-                // (rychle nahoru, po 3 s klidu zpet dolu), 50..300 ms
-                + "function apPrichod(){var t=performance.now();if(ap.tPak){var d=(t-ap.tPak)/1000;if(d>ap.mez)ap.mez=d;"
-                + "if(d+0.02>ap.cil)ap.cil=Math.min(0.3,d+0.02);}ap.tPak=t;"
-                + "if(t-ap.okno>3000){ap.cil=Math.max(0.05,Math.min(0.3,ap.mez+0.02));ap.mez=0;ap.okno=t;}}"
+                + "druh:'',ver:0,gen:0,ox:0,oy:0,ow:0,oh:0,px:4,py:3,rozm:'',lz:null,radky:null,ky0:1e9,ky1:-1,kv:false,jq:[],jbusy:false,jpg:0,jzah:0,jl:0,jzl:0,"
+                // B306: zvuk - nF = kde (ve vzorcich AudioContextu) zacne dalsi kus, rs* = prevzorkovani,
+                // mins = nejmensi rezerva za kazdou vterinu, r = jemne zrychleni / zpomaleni
+                + "nF:0,rsFs:0,rsPos:0,rsP:new Float32Array(6),rsX:null,mins:[],lbM:1e9,lbT:0,r:1,rMin:1,rMax:1,uber:0,dPosl:0,fade:true,"
+                + "zahS:0,zahSl:0,fsIn:0,vyn:0,m10:0,lsum:0,lcnt:0,lmin:1e9,vsum:0,vcnt:0};window.napAp=ap;"
+                // mezery mezi pakety: ap.dPosl = posledni (pro apZvuk), ap.cil = nejdelsi za 3 s
+                // + 15 ms (jen do logu "pri rozjezdu"); rezervu zvuku ridi apZvuk
+                + "function apPrichod(){var t=performance.now();if(ap.tPak){var d=(t-ap.tPak)/1000;ap.dPosl=d;if(d>ap.mez)ap.mez=d;"
+                + "if(d+0.015>ap.cil)ap.cil=Math.min(0.3,d+0.015);}ap.tPak=t;"
+                + "if(t-ap.okno>3000){ap.cil=Math.max(0.03,Math.min(0.3,ap.mez+0.015));ap.mez=0;ap.okno=t;}}"
+                // novy proud (Sega -> PS1, znovupripojeni): polstar od zacatku (ne ten nafouknuty z minula)
+                + "function apZvukReset(){ap.nF=0;ap.rsFs=0;ap.rsPos=0;ap.rsP.fill(0);ap.mins=[];ap.m10=0;ap.lbM=1e9;ap.lbT=0;ap.r=1;ap.uber=0;ap.dPosl=0;ap.fade=true;"
+                + "ap.cil=0.035;ap.mez=0;ap.okno=performance.now();}"
                 + "function apLze(){try{var t=new Response(new Uint8Array(1));return !!(window.fetch&&window.ReadableStream&&window.DataView&&t.body&&t.body.getReader);}catch(e){return false;}}"
                 // velikost canvasu: Atari jako na telefonu; Sega / PS1 bud "vyplnit obrazovku"
                 // (obsah bez cernych okraju na 16:9 pres cele okno - jako doted z Javy), nebo
@@ -3892,9 +3967,9 @@ public class MainActivity extends Activity {
                 + "else{var a2=ap.px/ap.py;w=W;h=Math.round(W/a2);if(h>H){h=H;w=Math.round(H*a2);}x=Math.round((W-w)/2);y=Math.round((H-h)/2);}"
                 + "c.width=w+'px';c.height=h+'px';c.left=x+'px';c.top=y+'px';}"
                 + "window.addEventListener('resize',apRozmer);"
-                + "function apStart(){if(ap.on||!apLze())return;var d=window.napProud||'atari';ap.on=true;ap.chce=true;ap.druh=d;ap.gen++;ap.buf=null;ap.nA=0;"
+                + "function apStart(){if(ap.on||!apLze())return;var d=window.napProud||'atari';ap.on=true;ap.chce=true;ap.druh=d;ap.gen++;ap.buf=null;ap.nA=0;apZvukReset();"
                 + "ap.W=0;ap.H=0;ap.img=null;ap.ver=0;ap.rozm='';ap.jq=[];ap.jbusy=false;"
-                + "clog(d==='atari'?'B303 ATARI PROUD start':'B305 '+d.toUpperCase()+' PROUD start');stopH264();"
+                + "clog(d==='atari'?'B303 ATARI PROUD start':'B306 '+d.toUpperCase()+' PROUD start');stopH264();"
                 + "ap.tl=Date.now();ap.pl=ap.pak;ap.podl=ap.pod;ap.zahl=ap.zah;ap.jl=ap.jpg;ap.jzl=ap.jzah;"
                 + "try{v.onerror=null;v.removeAttribute('src');}catch(e){}v.style.display='none';h264v.style.display='none';"
                 + "if(!ap.cv){ap.cv=document.createElement('canvas');ap.cv.id='ap';ap.cv.style.cssText='position:fixed;left:0;top:0;background:#000';"
@@ -3910,7 +3985,7 @@ public class MainActivity extends Activity {
                 // jiny proud (Sega -> PS1, chyba v datech): zavrit a hned otevrit znovu (server zacne klicovym snimkem)
                 + "function apZnovu(){var rd=ap.rd;ap.rd=null;ap.on=false;ap.buf=null;if(rd){try{rd.cancel();}catch(e){}}apStart();}"
                 + "function apStop(){var d=ap.druh;ap.on=false;ap.chce=false;ap.druh='';ap.gen++;ap.jq=[];if(ap.rd){try{ap.rd.cancel();}catch(e){}ap.rd=null;}if(ap.cv)ap.cv.style.display='none';"
-                + "v.style.display='';v.onerror=function(){if(!fb)fallback();};v.src='/stream.mjpg?'+Date.now();clog(d&&d!=='atari'?'B305 '+d.toUpperCase()+' PROUD konec':'B303 ATARI PROUD konec');}"
+                + "v.style.display='';v.onerror=function(){if(!fb)fallback();};v.src='/stream.mjpg?'+Date.now();clog(d&&d!=='atari'?'B306 '+d.toUpperCase()+' PROUD konec':'B303 ATARI PROUD konec');}"
                 // proud = 4 B delka + paket, porad dokola; kus z site muze koncit kdekoli
                 + "function apPridej(ch){var gen=ap.gen,b=ap.buf;if(b&&b.length){var nb=new Uint8Array(b.length+ch.length);nb.set(b,0);nb.set(ch,b.length);b=nb;}else b=ch;"
                 + "var o=0;while(b.length-o>=4){var len=(b[o]|(b[o+1]<<8)|(b[o+2]<<16)|(b[o+3]<<24))>>>0;if(len>8000000)throw new Error('delka '+len);"
@@ -3945,7 +4020,7 @@ public class MainActivity extends Activity {
                 + "var k=ap.ox+','+ap.oy+','+ap.ow+','+ap.oh+','+ap.px+','+ap.py+','+W+','+H+','+ver;if(k!==ap.rozm){ap.rozm=k;apRozmer();}"
                 + "var rate=dv.getUint32(24,true)||44100;"
                 + "o=(ver===2)?apObraz2(p,dv,o,pr,W,H):apObraz3(p,dv,o);"
-                + "if(o<0||o+3>p.length){ap.chyb++;clog('B305 paket '+ver+' chyba v datech - spojuji znovu');apZnovu();return;}"
+                + "if(o<0||o+3>p.length){ap.chyb++;clog('B306 paket '+ver+' chyba v datech - spojuji znovu');apZnovu();return;}"
                 + "var an=dv.getUint16(o,true),kan=p[o+2];o+=3;if(an>0)apZvuk(dv,o,an,kan,rate);ap.pak++;}"
                 // ---- verze 2: Sega - paleta + LZ nad [minuly snimek | novy snimek] v indexech barev ----
                 // op = horni 2 bity: 0 primo, 1 stejna barva, 2 kopie ze vzdalenosti (0 = jako minule), 3 jako minule na stejnem miste
@@ -3992,21 +4067,78 @@ public class MainActivity extends Activity {
                 + "var blob=new Blob([f.j],{type:'image/jpeg'});"
                 + "if(window.createImageBitmap){createImageBitmap(blob).then(hotovo,function(){ap.chyb++;hotovo(null);});}"
                 + "else{var u=URL.createObjectURL(blob),im=new Image();im.onload=function(){URL.revokeObjectURL(u);hotovo(im);};im.onerror=function(){URL.revokeObjectURL(u);ap.chyb++;hotovo(null);};im.src=u;}}"
-                // zvuk: hned za sebou s polstarem ap.cil; kdyz je ho moc napred, zahodit (zpozdeni neroste)
-                + "function apZvuk(dv,o,an,kan,rate){if(!aon||!ac||!g)return;try{var b=ac.createBuffer(2,an,rate),L=b.getChannelData(0),R=b.getChannelData(1),i;"
-                + "if(kan===1){for(i=0;i<an;i++){L[i]=R[i]=dv.getInt16(o+i*2,true)/32768;}}"
-                + "else{for(i=0;i<an;i++){L[i]=dv.getInt16(o+i*4,true)/32768;R[i]=dv.getInt16(o+i*4+2,true)/32768;}}"
-                + "var now=ac.currentTime;if(ap.nA<now+0.005){if(ap.nA>0)ap.pod++;ap.nA=now+ap.cil;}else if(ap.nA>now+ap.cil+0.08){ap.zah++;return;}"
-                + "var s=ac.createBufferSource();s.buffer=b;s.connect(g);s.start(ap.nA);ap.nA+=an/rate;ap.zv+=an;}catch(e){}}"
+                // ===== B306: ZVUK - MENSI ZPOZDENI, PLYNULE DOROVNANI, ZADNE ZAHAZOVANI =====
+                // B305: kusy zvuku se radily s polstarem 50-300 ms a kdyz ho bylo moc, cely kus se
+                // zahodil (v logu Reneho zvuk 120-210 ms za obrazem, obcas "zahozeno" = skok ve zvuku).
+                // Ted: zvuk se prevzorkuje primo na vzorkovani zvukove karty prohlizece (Catmull-Rom,
+                // kusy navazuji presne vzorek na vzorek) a rezerva se ridi jednim pravidlem:
+                //  - za kazdou vterinu se zmeri, kolik zvuku jeste zbyvalo, kdyz prisel dalsi paket
+                //    (nejmensi hodnota); pamatuje se poslednich 10 vterin,
+                //  - i v nejhorsi z nich zbyvalo vic nez 15 ms -> prebytek se ubira zrychlenim o nejvys
+                //    0,8 % (neslysitelne); je-li ho pres 60 ms (rozjezd hry, po zadrhnuti), vynecha se
+                //    najednou (jeden kratky skok misto dlouheho zpozdeni),
+                //  - kdyz zvuk dobehl (Wi-Fi stala), zacne hned znovu; zvuk nahromadeny behem vypadku
+                //    prijde v dalsich paketech a stane se rezervou na pristi vypadek - deset vterin se
+                //    pak rezerva nezmensuje (zadrhnuti se muze opakovat).
+                + "var ZV_BEZP=0.015;"
+                + "function apZvuk(dv,o,an,kan,rate){ap.fsIn=rate;if(!aon||!ac||!g)return;"
+                + "if(ac.state!=='running'){ap.nF=0;ap.zahS+=an;return;}"   // prohlizec zvuk jeste nepustil - nic se nehromadi
+                + "try{var fs=ac.sampleRate,now=ac.currentTime,i,k;"
+                + "if(rate!==ap.rsFs){ap.rsFs=rate;ap.rsPos=0;ap.rsP.fill(0);ap.nF=0;}"
+                + "var lb=ap.nF/fs-now;"
+                + "if(ap.nF<=0||lb<0.003){var dob=ap.nF>0;"
+                // dobehl: znovu hned (15 ms) - zvuk, ktery se behem vypadku nahromadil, prijde v dalsich
+                // paketech a sam se stane rezervou na pristi vypadek; 10 s se pak rezerva nezmensuje
+                + "if(dob){ap.pod++;ap.cil=ZV_BEZP;ap.lbM=-1;}"
+                // zacatek proudu: 35 ms; dlouhy prvni kus (rozjezd hry) - jen jeho konec
+                + "else{ap.cil=0.035;var dl=an/rate;if(dl>0.06){var vyn=Math.floor((dl-0.04)*rate);o+=vyn*(kan===1?2:4);an-=vyn;ap.vyn+=vyn;}}"
+                + "ap.nF=Math.ceil((now+ap.cil)*fs);lb=ap.nF/fs-now;ap.fade=true;ap.uber=0;ap.rsPos=0;ap.rsP.fill(0);}"
+                + "else if(lb>0.35||(ap.uber>0&&an/rate<=ap.uber+0.005)){ap.uber=Math.max(0,ap.uber-an/rate);ap.zah++;ap.fade=true;return;}"
+                // rezerva: minimum za kazdou vterinu (poslednich 10) -> zrychleni / zpomaleni / vynechani
+                + "if(lb<ap.lbM)ap.lbM=lb;if(lb<ap.lmin)ap.lmin=lb;"
+                + "if(now-ap.lbT>=1){if(ap.lbT>0){ap.mins.push(ap.lbM);if(ap.mins.length>10)ap.mins.shift();}ap.lbM=1e9;ap.lbT=now;"
+                + "var m10=1e9;for(i=0;i<ap.mins.length;i++)if(ap.mins[i]<m10)m10=ap.mins[i];"
+                + "ap.m10=m10;var e=m10-ZV_BEZP;"
+                + "if(ap.mins.length<3||e<=0)ap.r=1;"
+                + "else{ap.r=1+Math.min(0.008,e*0.15);if(e>0.06&&!(ap.uber>0))ap.uber=e-0.02;}"
+                + "if(ap.r>ap.rMax)ap.rMax=ap.r;if(ap.r<ap.rMin)ap.rMin=ap.r;}"
+                // prevzorkovani rate -> fs (s jemnym ap.r); X = [3 posledni vzorky minuleho kusu | kus], L pak R
+                + "var step=rate/fs*ap.r,pos=ap.rsPos,P=ap.rsP,NL=an+3,X=ap.rsX;"
+                + "if(!X||X.length<NL*2)X=ap.rsX=new Float32Array(NL*2+256);"
+                + "X[0]=P[0];X[1]=P[1];X[2]=P[2];X[NL]=P[3];X[NL+1]=P[4];X[NL+2]=P[5];"
+                + "if(kan===1){for(i=0;i<an;i++){X[3+i]=X[NL+3+i]=dv.getInt16(o+i*2,true)/32768;}}"
+                + "else{for(i=0;i<an;i++){X[3+i]=dv.getInt16(o+i*4,true)/32768;X[NL+3+i]=dv.getInt16(o+i*4+2,true)/32768;}}"
+                + "var n=Math.ceil((an-2-pos)/step);if(!(n>0))n=0;"
+                + "if(n>0){var b=ac.createBuffer(2,n,fs),L=b.getChannelData(0),R=b.getChannelData(1),p,j,t,q,a0,a1,a2,a3;"
+                + "for(k=0;k<n;k++){p=pos+k*step;j=Math.floor(p);t=p-j;q=j+3;"
+                + "a0=X[q-1];a1=X[q];a2=X[q+1];a3=X[q+2];L[k]=a1+0.5*t*(a2-a0+t*(2*a0-5*a1+4*a2-a3+t*(3*(a1-a2)+a3-a0)));"
+                + "a0=X[NL+q-1];a1=X[NL+q];a2=X[NL+q+1];a3=X[NL+q+2];R[k]=a1+0.5*t*(a2-a0+t*(2*a0-5*a1+4*a2-a3+t*(3*(a1-a2)+a3-a0)));}"
+                + "if(ap.fade){var fm=Math.min(n,Math.round(fs*0.003));for(k=0;k<fm;k++){L[k]*=k/fm;R[k]*=k/fm;}ap.fade=false;}"
+                + "var s=ac.createBufferSource();s.buffer=b;s.connect(g);s.start(ap.nF/fs);ap.nF+=n;}"
+                + "ap.rsPos=pos+n*step-an;P[0]=X[an];P[1]=X[an+1];P[2]=X[an+2];P[3]=X[NL+an];P[4]=X[NL+an+1];P[5]=X[NL+an+2];"
+                + "ap.zv+=an;"
+                // statistika: rezerva po zarazeni a odhad, o kolik zvuk zaostava za obrazem (vcetne zvukove karty)
+                + "var kon=ap.nF/fs;ap.lsum+=kon-now;ap.lcnt++;"
+                + "var ts=ac.getOutputTimestamp?ac.getOutputTimestamp():null,lag;"
+                + "if(ts&&ts.contextTime>0&&ts.performanceTime>0)lag=ts.performanceTime+(kon-ts.contextTime)*1000-performance.now();"
+                + "else lag=(kon-now+(ac.baseLatency||0)+(ac.outputLatency||0))*1000;"
+                + "if(lag>-1000&&lag<5000){ap.vsum+=lag;ap.vcnt++;}"
+                + "}catch(e){}}"
                 // kazdych 30 s do logu appky, jak proud v prohlizeci jede (diagnostika zpozdeni)
                 + "setInterval(function(){if(!ap.on)return;var t=Date.now(),s=(t-ap.tl)/1000;"
-                + "if(ap.tl&&s>0)clog((ap.druh==='atari'?'B303 PROHLIZEC: ':'B305 PROHLIZEC '+ap.druh.toUpperCase()+': ')+(Math.round((ap.pak-ap.pl)/s*10)/10)+' snimku/s'"
+                + "if(ap.tl&&s>0)clog((ap.druh==='atari'?'B303 PROHLIZEC: ':'B306 PROHLIZEC '+ap.druh.toUpperCase()+': ')+(Math.round((ap.pak-ap.pl)/s*10)/10)+' snimku/s'"
                 + "+(ap.ver===3?', JPEG '+(Math.round((ap.jpg-ap.jl)/s*10)/10)+'/s (prekrytych zahozeno '+(ap.jzah-ap.jzl)+')':'')"
                 + "+', zvuk '+(aon&&ac&&ac.state==='running'?'hraje, napred '"
-                + "+Math.round((ap.nA-ac.currentTime)*1000)+' ms (cil '+Math.round(ap.cil*1000)+')':'NEHRAJE - klikni do okna')+', podteceni '+(ap.pod-ap.podl)"
+                + "+(ap.lcnt?Math.round(ap.lsum/ap.lcnt*1000):0)+' ms (min '+(ap.lmin<1e8?Math.round(ap.lmin*1000):0)+', pri rozjezdu '+Math.round(ap.cil*1000)+')'"
+                + "+', zvuk za obrazem ~'+(ap.vcnt?Math.round(ap.vsum/ap.vcnt):0)+' ms'"
+                + "+', rychlost '+(Math.round((ap.rMin-1)*1000)/10)+'..+'+(Math.round((ap.rMax-1)*1000)/10)+' %, '+(ap.rsFs||0)+'->'+ac.sampleRate+' Hz'"
+                + ":'NEHRAJE - prohlizec ceka na kliknuti / klavesu (vyzva na obrazovce)')"
+                + "+(ap.zahS>ap.zahSl&&ap.fsIn?', bez zvuku '+(Math.round((ap.zahS-ap.zahSl)/ap.fsIn*10)/10)+' s':'')"
+                + "+', podteceni '+(ap.pod-ap.podl)"
                 + "+', zahozeno '+(ap.zah-ap.zahl)+', chyb '+ap.chyb+', okno '+window.innerWidth+'x'+window.innerHeight"
                 + "+(ap.ver>1?', obraz '+ap.W+'x'+ap.H+(napFill?' vyplnit':' cely 4:3'):''));"
-                + "ap.tl=t;ap.pl=ap.pak;ap.podl=ap.pod;ap.zahl=ap.zah;ap.jl=ap.jpg;ap.jzl=ap.jzah;},30000);"
+                + "ap.tl=t;ap.pl=ap.pak;ap.podl=ap.pod;ap.zahl=ap.zah;ap.jl=ap.jpg;ap.jzl=ap.jzah;"
+                + "ap.zahSl=ap.zahS;ap.lsum=0;ap.lcnt=0;ap.lmin=1e9;ap.vsum=0;ap.vcnt=0;ap.rMin=ap.r;ap.rMax=ap.r;},30000);"
                 + "setInterval(pollFps,1000);"
                 + "})();</script>"
                 // ===== BUILD2SA54: KLAVESNICE Z POCITACE =====
@@ -7366,6 +7498,7 @@ public class MainActivity extends Activity {
             ui.removeCallbacks(demoTik);
             ui.postDelayed(demoTik, 250);
             appendNativeLog("B304 DEMO_START (" + proc + ") - uvodni demo cele v C++ (obraz OpenGL ES, zvuk spocitany v C++)");
+            appendNativeLog("B306 DEMO_ZVUK prehrava " + NativeIntroBridge.zvukKdo() + ", na TV / PC proudem z C++ (/intro.stream)");
             return true;
         } catch (Throwable t) {
             appendNativeLog("B304 DEMO_CHYBA_STARTU " + safeMsg(t));

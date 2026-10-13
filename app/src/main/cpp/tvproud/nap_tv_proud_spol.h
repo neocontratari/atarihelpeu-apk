@@ -6,9 +6,26 @@
 #include <cstdint>
 #include <cstring>
 #include <vector>
+#if defined(__linux__) || defined(__ANDROID__)
+#include <sys/resource.h>
+#endif
 
 namespace nap {
 namespace proud {
+
+// B306: vlakno prenosu (pasy JPEG) o kousek vys nez bezna vlakna - jako Android
+// THREAD_PRIORITY_DISPLAY (-4). Na telefonu se tak kodovani neztrati mezi ostatnimi
+// vlakny appky; jadro emulace (-8) i zvuk (-19) maji porad prednost. Na Linuxu /
+// Androidu plati setpriority(PRIO_PROCESS, 0) jen pro volajici vlakno. Kdyz to
+// system nedovoli, nic se nedeje. Vraci vysledek (0 = ok) pro log / test.
+inline int zvysPrioritu(int nice = -4) {
+#if defined(__linux__) || defined(__ANDROID__)
+  return setpriority(PRIO_PROCESS, 0, nice);
+#else
+  (void)nice;
+  return -1;
+#endif
+}
 
 inline long long tedMs() {
   return (long long)std::chrono::duration_cast<std::chrono::milliseconds>(

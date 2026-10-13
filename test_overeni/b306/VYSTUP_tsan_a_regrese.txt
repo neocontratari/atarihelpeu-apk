@@ -1,0 +1,8 @@
+B306 - ThreadSanitizer a regrese B305 (vystupy z vse.sh)
+TSan, skutecne vlakno emulace Segy + jadro + rozbocovac + zvuk (test_sega_60): 0 hlaseni; VYSLEDEK: 8 kontrol, 0 chyb
+TSan, demo (GL vlakno, OpenSL zpetne volani, rozbocovac, test_intro_host): v nasem kodu 0, uvnitr Mesy (libgallium) 18; VYSLEDEK: 6 OK, 0 CHYB
+TSan, rozbocovac - pakety jen se zvukem (test_hub6): 0 hlaseni
+B305 test_kodeky: VYSLEDEK: 35 kontrol, 0 chyb
+B305 test_pasy (koder JPEG na vic jadrech, TSan): 0 hlaseni; VYSLEDEK: OK
+B305 test_hub: VYSLEDEK: 16 kontrol, 0 chyb
+B305 test_hub pod TSan: 0 hlaseni; VYSLEDEK: 14 kontrol, 0 chyb

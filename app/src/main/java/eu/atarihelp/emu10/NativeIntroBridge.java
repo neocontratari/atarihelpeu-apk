@@ -14,10 +14,12 @@ import android.view.Surface;
  * video. Pro TV / PC kresli C++ zvlast obraz 16:9 (introGrabFrame).
  *
  * Zvuk je cela stopa spocitana v C++ (bzuceni obrazovky, vrata, vitr,
- * ptaci, hromy, dest, hudba). Tady se jen prehrava pres AudioTrack a
- * stejne vzorky jdou na TV. C++ se po kazdem zapisu dozvi, kolik uz
- * reproduktor opravdu prehral - podle toho bezi obraz, takze sedi se
- * zvukem i na pomalejsim telefonu.
+ * ptaci, hromy, dest, hudba). B306: prehrava ji take C++ (OpenSL ES) a na
+ * TV / PC jde demo proudem z C++ (/intro.stream - obraz JPEG + zvuk v jednom
+ * paketu, jako Sega a PS1 v B305). AudioTrack tady zustal jen jako zaloha,
+ * kdyby OpenSL na telefonu nesel. C++ vi, kolik uz reproduktor opravdu
+ * prehral - podle toho bezi obraz, takze sedi se zvukem i na pomalejsim
+ * telefonu (i na TV).
  */
 public final class NativeIntroBridge {
 
@@ -60,6 +62,38 @@ public final class NativeIntroBridge {
     public static native void introCasZvuku(long hlava);
     /** Kratka zprava do logu: GPU, priprava, rychlost kresleni, zvuk. */
     public static native String introInfo();
+    /** B306: zvuk prehrava C++ (OpenSL ES). false = nejde (pak AudioTrack). */
+    private static native boolean introZvukStartNative();
+    private static native void introZvukStopNative();
+    // B306: TV / PC proudem z C++ (stejne jako NativeSegaCoreBridge / NativePs1CoreBridge)
+    private static native int proudOtevriNative();
+    private static native int proudDalsiNative(int id, byte[] out, int cekejMs, int zapisMs);
+    private static native void proudZavriNative(int id);
+    private static native int proudStavNative();
+    private static native String proudLogNative();
+
+    public static int proudOtevriSafe() {
+        if (!nactena) return 0;
+        try { return proudOtevriNative(); } catch (Throwable t) { return 0; }
+    }
+    /** pocet bajtu (4 B delka + paket), 0 = nic noveho, zaporne = male pole, MIN_VALUE = chyba */
+    public static int proudDalsiSafe(int id, byte[] out, int cekejMs, int zapisMs) {
+        if (!nactena) return Integer.MIN_VALUE;
+        try { return proudDalsiNative(id, out, cekejMs, zapisMs); } catch (Throwable t) { return Integer.MIN_VALUE; }
+    }
+    public static void proudZavriSafe(int id) {
+        if (!nactena) return;
+        try { proudZavriNative(id); } catch (Throwable ignored) {}
+    }
+    /** bit0 = demo kresli, bit1 = nekdo se diva */
+    public static int proudStavSafe() {
+        if (!nactena) return 0;
+        try { return proudStavNative(); } catch (Throwable t) { return 0; }
+    }
+    public static String proudLogSafe() {
+        if (!nactena) return null;
+        try { return proudLogNative(); } catch (Throwable t) { return null; }
+    }
 
     // ---- bezpecne obaly (kdyz knihovna chybi, nic se nestane) ----
     public static int grabFrameSafe(int[] ven) {
@@ -103,9 +137,20 @@ public final class NativeIntroBridge {
     private static Thread zvukVlakno = null;
     private static volatile boolean zvukBezi = false;
     private static volatile AudioTrack zvukTrack = null;
+    private static boolean zvukNativni = false;     // B306: prehrava C++ (OpenSL ES)
+
+    /** Kdo prehrava zvuk dema (do logu). */
+    public static synchronized String zvukKdo() {
+        return zvukNativni ? "C++ OpenSL ES" : (zvukBezi ? "Java AudioTrack (zaloha)" : "nic");
+    }
 
     public static synchronized void zvukStart(final NaTv naTv) {
-        if (!nactena || zvukBezi) return;
+        if (!nactena || zvukBezi || zvukNativni) return;
+        // B306: nejdriv C++ (OpenSL ES) - zvuk na TV / PC pak jde proudem z C++
+        // (naTv je jen pro starou cestu, kdyz OpenSL nejde)
+        try {
+            if (introZvukStartNative()) { zvukNativni = true; return; }
+        } catch (Throwable ignored) {}
         zvukBezi = true;
         zvukVlakno = new Thread(() -> {
             AudioTrack at = null;
@@ -154,6 +199,10 @@ public final class NativeIntroBridge {
     }
 
     public static synchronized void zvukStop() {
+        if (zvukNativni) {
+            zvukNativni = false;
+            try { introZvukStopNative(); } catch (Throwable ignored) {}
+        }
         zvukBezi = false;
         AudioTrack at = zvukTrack;
         // blokujici zapis do AudioTrack se pauzou hned uvolni

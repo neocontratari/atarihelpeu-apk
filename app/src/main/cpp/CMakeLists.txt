@@ -327,9 +327,11 @@ if(NAP_ENABLE_INTRO)
             ${CMAKE_CURRENT_LIST_DIR}/intro/nap_intro_gl.cpp)
     target_compile_features(napintro PRIVATE cxx_std_17)
     target_compile_options(napintro PRIVATE ${NAP_CORE_OPT_FLAGS})
-    target_include_directories(napintro PRIVATE ${CMAKE_CURRENT_LIST_DIR}/intro)
+    target_include_directories(napintro PRIVATE ${CMAKE_CURRENT_LIST_DIR}/intro ${CMAKE_CURRENT_LIST_DIR}/tvproud)
     find_package(Threads REQUIRED)
-    target_link_libraries(napintro ${log-lib} ${android-lib} EGL GLESv2 Threads::Threads)
+    # B306: zvuk dema prehrava C++ (OpenSL ES, jako PS1 / Atari) a na TV / PC jde
+    # demo proudem z C++ (tvproud, JPEG) - Java uz jen predava bajty
+    target_link_libraries(napintro ${log-lib} ${android-lib} EGL GLESv2 OpenSLES Threads::Threads)
     # stejna prisnost jako NDK: chybejici symbol shodi build, ne az appku
     target_link_options(napintro PRIVATE -Wl,--no-undefined -Wl,-z,max-page-size=16384)
 endif()

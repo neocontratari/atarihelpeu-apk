@@ -96,6 +96,19 @@ static const int NAP_AUDIO_OUT_RATE = 48000;
 // ===================================================================
 static nap::proud::Hub<nap::proud::KodekIndex> &g_segaProud =
         *new nap::proud::Hub<nap::proud::KodekIndex>("SEGA", NAP_AUDIO_OUT_RATE);
+// ===================================================================
+//  B306: ZVUK PRO TV / PC HNED Z JADRA, SNIMEK AZ PO KROKU JADRA
+//  V B305 se zvuk pro TV bral az v pullAudioStereo, tedy az PROJDE frontou
+//  pro reproduktor telefonu. Ta na S8 drzi ~6000 vzorku (~130 ms), aby
+//  reproduktor nikdy nehladovel - na TV tak zvuk zaostaval za obrazem o celou
+//  tu frontu. Ted se FM a PSG pro TV smichaji hned, jak je jadro vyrobi
+//  (stejne zesileni a omezovac jako pro reproduktor), a snimek jde do prenosu
+//  az po celem kroku jadra (FM / PSG se dopocitavaji na konci kroku) - v paketu
+//  je tak obraz i zvuk tehoz okamziku hry. Kdyz se nikdo nediva, nic se nedeje.
+// ===================================================================
+static std::vector<jshort> g_tv_fm_l, g_tv_fm_r, g_tv_psg;   // jen pod g_audio_mutex
+static std::atomic<bool> g_tv_snimek_hotov{false};           // posledni radek snimku je venku
+static std::atomic<int> g_render_display_current{1};         // B306: tento snimek i na displej telefonu
 static const int NAP_AUDIO_STARTUP_MUTE_FRAMES = 0;
 static std::atomic<int> g_native_perf_low{0};
 // BUILD2RV: Android 9/S8 needs a no-starve audio reservoir and less native video capture work.
@@ -325,21 +338,61 @@ static void nap_audio_clock_governor_sleep() {
     std::lock_guard<std::mutex> lock(g_audio_mutex);
     g_audio_clock_sleep_events++;
 }
+// B306: FM + PSG pro TV hned po vyrobe (stejne jako v nap_audio_pull_stereo pro
+// reproduktor: soucet, omezovac, oriznuti). Mixuje se, co je od obou zdroju;
+// kdyz jeden zdroj chybi dele nez 50 ms (hra ho nepouziva), jde ten druhy sam.
+static void nap_tv_zvuk_mix_locked(std::vector<int16_t> &ven) {
+    ven.clear();
+    if (g_segaProud.klientu() <= 0) {
+        g_tv_fm_l.clear(); g_tv_fm_r.clear(); g_tv_psg.clear();
+        return;
+    }
+    const size_t BEZ = NAP_AUDIO_OUT_RATE / 20;
+    size_t nf = std::min(g_tv_fm_l.size(), g_tv_fm_r.size());
+    size_t np = g_tv_psg.size();
+    if (nf >= np + BEZ) { g_tv_psg.resize(nf, 0); np = nf; }
+    else if (np >= nf + BEZ) { g_tv_fm_l.resize(np, 0); g_tv_fm_r.resize(np, 0); nf = np; }
+    const size_t n = std::min(nf, np);
+    if (n == 0) return;
+    ven.resize(n * 2);
+    for (size_t i = 0; i < n; i++) {
+        ven[i * 2 + 0] = nap_clip16(nap_master_limiter((int32_t)g_tv_fm_l[i] + (int32_t)g_tv_psg[i]));
+        ven[i * 2 + 1] = nap_clip16(nap_master_limiter((int32_t)g_tv_fm_r[i] + (int32_t)g_tv_psg[i]));
+    }
+    g_tv_fm_l.erase(g_tv_fm_l.begin(), g_tv_fm_l.begin() + (std::ptrdiff_t)n);
+    g_tv_fm_r.erase(g_tv_fm_r.begin(), g_tv_fm_r.begin() + (std::ptrdiff_t)n);
+    g_tv_psg.erase(g_tv_psg.begin(), g_tv_psg.begin() + (std::ptrdiff_t)n);
+}
 static void nap_audio_push_fm_batch(const std::vector<jshort>& left, const std::vector<jshort>& right) {
     if (left.empty() && right.empty()) return;
-    std::lock_guard<std::mutex> lock(g_audio_mutex);
-    const size_t n = std::min(left.size(), right.size());
-    g_audio_fm_l_fifo.insert(g_audio_fm_l_fifo.end(), left.begin(), left.begin() + n);
-    g_audio_fm_r_fifo.insert(g_audio_fm_r_fifo.end(), right.begin(), right.begin() + n);
-    g_audio_fm_pushed += n;
-    nap_audio_balance_locked();
+    thread_local std::vector<int16_t> tv;
+    {
+        std::lock_guard<std::mutex> lock(g_audio_mutex);
+        const size_t n = std::min(left.size(), right.size());
+        g_audio_fm_l_fifo.insert(g_audio_fm_l_fifo.end(), left.begin(), left.begin() + n);
+        g_audio_fm_r_fifo.insert(g_audio_fm_r_fifo.end(), right.begin(), right.begin() + n);
+        g_audio_fm_pushed += n;
+        nap_audio_balance_locked();
+        if (g_segaProud.klientu() > 0) {
+            g_tv_fm_l.insert(g_tv_fm_l.end(), left.begin(), left.begin() + n);
+            g_tv_fm_r.insert(g_tv_fm_r.end(), right.begin(), right.begin() + n);
+        }
+        nap_tv_zvuk_mix_locked(tv);
+    }
+    if (!tv.empty()) g_segaProud.zvuk(tv.data(), tv.size());   // B306: na TV hned (mimo zamek zvuku)
 }
 static void nap_audio_push_psg_batch(const std::vector<jshort>& samples) {
     if (samples.empty()) return;
-    std::lock_guard<std::mutex> lock(g_audio_mutex);
-    g_audio_psg_fifo.insert(g_audio_psg_fifo.end(), samples.begin(), samples.end());
-    g_audio_psg_pushed += samples.size();
-    nap_audio_balance_locked();
+    thread_local std::vector<int16_t> tv;
+    {
+        std::lock_guard<std::mutex> lock(g_audio_mutex);
+        g_audio_psg_fifo.insert(g_audio_psg_fifo.end(), samples.begin(), samples.end());
+        g_audio_psg_pushed += samples.size();
+        nap_audio_balance_locked();
+        if (g_segaProud.klientu() > 0) g_tv_psg.insert(g_tv_psg.end(), samples.begin(), samples.end());
+        nap_tv_zvuk_mix_locked(tv);
+    }
+    if (!tv.empty()) g_segaProud.zvuk(tv.data(), tv.size());
 }
 static bool nap_audio_pop_locked(std::deque<jshort>& q, jshort &v) {
     if (q.empty()) { v = 0; return false; }
@@ -403,6 +456,7 @@ static void nap_audio_clear() {
     g_audio_fm_l_fifo.clear();
     g_audio_fm_r_fifo.clear();
     g_audio_psg_fifo.clear();
+    g_tv_fm_l.clear(); g_tv_fm_r.clear(); g_tv_psg.clear();   // B306
     g_audio_fm_phase = 0.0;
     g_audio_psg_phase = 0.0;
     g_audio_fm_sum_l = 0;
@@ -652,8 +706,10 @@ static void nap_real_scanline_rendered(void *user_data, cc_u16f scanline, const 
         else g_audit_leftcol_nonblack_frames.fetch_add(1);
     }
     if (y >= sh - 1) {
-        g_render_captured_frames.fetch_add(1);
-        {
+        // B306: snimek, ktery se snima jen kvuli TV (telefon v rezimu S8 kresli
+        // kazdy druhy), na displej telefonu nejde - telefon ma stejnou praci jako dosud
+        if (g_render_display_current.load() != 0) {
+            g_render_captured_frames.fetch_add(1);
             // BUILD2RV: worker writes into frame_argb, renderer reads only display_argb.
             // This avoids blocking mobile video on the full emulator iterate mutex and prevents torn partial frames.
             std::lock_guard<std::mutex> flock(g_frame_mutex);
@@ -664,10 +720,19 @@ static void nap_real_scanline_rendered(void *user_data, cc_u16f scanline, const 
             st->frame_counter = st->display_frame_counter;
             st->frame_ready = true;
         }
-        // B305: hotovy snimek do prenosu na TV / PC (kopie jen kdyz se nekdo diva;
-        // frame_argb pise jen tohle vlakno, zamek netreba)
-        g_segaProud.snimek(g_segaProud.klientu() > 0 ? st->frame_argb.data() : nullptr, st->frame_w, st->frame_h);
+        // B305/B306: hotovy snimek do prenosu na TV / PC - preda se az po kroku
+        // jadra (nap_tv_po_kroku), kdy je vyrobeny i zvuk celeho snimku
+        g_tv_snimek_hotov.store(true);
     }
+}
+
+// B306: po kazdem kroku jadra (vlakno emulace): hotovy snimek do prenosu na TV / PC
+// (kopie jen kdyz se nekdo diva; frame_argb pise jen tohle vlakno, zamek netreba).
+// Zvuk tehoz kroku uz je v prenosu (nap_audio_push_*_batch), takze paket nese
+// obraz i zvuk stejneho okamziku hry.
+static void nap_tv_po_kroku(NapRealCoreState *st) {
+    if (!g_tv_snimek_hotov.exchange(false)) return;
+    g_segaProud.snimek(g_segaProud.klientu() > 0 ? st->frame_argb.data() : nullptr, st->frame_w, st->frame_h);
 }
 
 static cc_bool nap_real_input_requested(void *user_data, cc_u8f player_id, ClownMDEmu_Button button_id) {
@@ -1001,20 +1066,31 @@ static void nap_real_worker_thread(int generation) {
                 // Audio frontend timing and FIFO sizes stay identical in both modes.
                 uint32_t preIt = g_real_thread_iterations.load();
                 int divisor = g_native_perf_low.load() ? 2 : 1;
+                bool audioHungry = false;
                 // BUILD2RV: S8 no-starve mode reduces native scanline capture when audio FIFO is low.
                 // The WebView/TextureView can keep presenting the cached frame, while the core spends
                 // less time copying video and more time producing YM/PSG audio.
                 if (nap_mobile_no_starve()) {
                     size_t aq = nap_audio_min_fifo();
-                    if (aq < nap_audio_low_water() / 2u) divisor = 4;
+                    audioHungry = aq < nap_audio_low_water() / 2u;
+                    if (audioHungry) divisor = 4;
                     else divisor = std::max(divisor, 2);
                 }
-                bool captureFrame = ((preIt % (uint32_t)divisor) == 0u);
+                bool displayFrame = ((preIt % (uint32_t)divisor) == 0u);
+                // B306: kdyz se nekdo diva na TV / PC, snima se KAZDY snimek (60/s) - jen pro
+                // prenos; displej telefonu dal kazdy druhy (stejna prace jako dosud). Snimani
+                // radku je ~0,2 ms z 16,7 ms (jadro na S8 ~8 ms, viz log). Kdyz zvuk hladovi
+                // nebo je zvoleny rezim LOW, plati puvodni deleni i pro TV.
+                bool tvFrame = !audioHungry && g_native_perf_low.load() == 0 && g_segaProud.klientu() > 0;
+                bool captureFrame = displayFrame || tvFrame;
                 g_render_capture_current.store(captureFrame ? 1 : 0);
-                if (!captureFrame) g_render_skipped_frames.fetch_add(1);
+                g_render_display_current.store(displayFrame ? 1 : 0);
+                if (!displayFrame) g_render_skipped_frames.fetch_add(1);
                 auto iter_start = std::chrono::steady_clock::now();
                 ClownMDEmu_Iterate(&g_real.emu);
                 g_render_capture_current.store(1);
+                g_render_display_current.store(1);
+                nap_tv_po_kroku(&g_real);   // B306: snimek + zvuk tehoz kroku do prenosu na TV / PC
                 auto iter_end = std::chrono::steady_clock::now();
                 uint64_t iter_ns = (uint64_t)std::chrono::duration_cast<std::chrono::nanoseconds>(iter_end - iter_start).count();
                 nap_scene_stress_record(iter_ns);
@@ -1753,8 +1829,8 @@ Java_eu_atarihelp_emu10_NativeSegaCoreBridge_pullAudioStereo(JNIEnv* env, jclass
     jshort* out = env->GetShortArrayElements(pcmOut, nullptr);
     if (!out) return 0;
     int got = nap_audio_pull_stereo(out, n);
-    // B305: presne to, co jde do reproduktoru (vcetne ticha pri podteceni), i na TV / PC
-    g_segaProud.zvuk((const int16_t *)out, (size_t)n * 2);
+    // (B306: zvuk na TV / PC uz jde hned z jadra - nap_audio_push_*_batch - ne az odsud,
+    //  za frontou reproduktoru telefonu, ktera na S8 drzi ~130 ms)
     env->ReleaseShortArrayElements(pcmOut, out, 0);
     return got;
 #else

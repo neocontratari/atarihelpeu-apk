@@ -8,9 +8,14 @@
 //    snimek a Java si ho vyzvedne (introGrabFrame) - telefon na vysku,
 //    televize na sirku, obe se svou kompozici
 //  - zvuk: cela stopa se spocita dopredu ve vlakne (nap_demo_zvuk.h),
-//    Java ji prehrava pres AudioTrack a zaroven posila na TV
+//    B306: prehrava ji C++ pres OpenSL ES (drive Java AudioTrack; ten zustal
+//    jen jako zaloha, kdyby OpenSL na telefonu nesel)
 //  - cas obrazu se ridi podle toho, co reproduktor UZ PREHRAL
-//    (AudioTrack.getPlaybackHeadPosition), takze obraz a zvuk sedi
+//    (OpenSL GetPosition, v zaloze AudioTrack.getPlaybackHeadPosition),
+//    takze obraz a zvuk sedi
+//  - B306: na TV / PC jde demo proudem z C++ (/intro.stream, jako Sega a PS1
+//    v B305): obraz 16:9 jako JPEG (nap_tv_proud_jpeg.h) + zvuk, ktery
+//    reproduktor prave dohral, v jednom paketu - Java jen predava bajty
 // ====================================================================
 #include <jni.h>
 #include <android/asset_manager.h>
@@ -20,6 +25,12 @@
 #include <android/native_window_jni.h>
 #include <EGL/egl.h>
 #include <GLES2/gl2.h>
+#include <SLES/OpenSLES.h>
+#include <SLES/OpenSLES_Android.h>
+
+#include <climits>
+#include <cmath>
+#include <cstring>
 
 #include <atomic>
 #include <chrono>
@@ -46,6 +57,8 @@
 
 #include "nap_demo.h"
 #include "nap_demo_zvuk.h"
+#include "nap_tv_proud.h"
+#include "nap_tv_proud_jpeg.h"
 
 namespace {
 
@@ -87,6 +100,27 @@ int g_tvW = 0, g_tvH = 0;
 bool g_tvNovy = false;
 std::atomic<long long> g_tvChceNs{0};
 constexpr int TV_W = 854, TV_H = 480;
+
+// ---- B306: TV / PC proudem z C++ (jako Sega / PS1 v B305) ----
+// Obraz 16:9 (854x480) jako JPEG jen zmenenych casti, zvuk 44,1 kHz ve stejnem
+// paketu. Zamerne "new" bez delete - vlakna prohlizecu nesmi pri ukonceni
+// procesu narazit na zniceny objekt.
+nap::proud::Hub<nap::proud::KodekJpeg> &g_introProud =
+    *new nap::proud::Hub<nap::proud::KodekJpeg>("INTRO", napdemo::zv::SR, 16, 9, false);
+
+// ---- B306: zvuk dema prehrava C++ (OpenSL ES) ----
+namespace sl {
+SLObjectItf engObj = nullptr, mixObj = nullptr, hracObj = nullptr;
+SLEngineItf eng = nullptr;
+SLPlayItf hrac = nullptr;
+SLAndroidSimpleBufferQueueItf fronta = nullptr;
+constexpr int BLOK = 1024;           // ramcu na blok (23 ms)
+constexpr int BLOKU = 4;             // ve fronte ~93 ms (jako PS1)
+int16_t bloky[BLOKU][BLOK * 2];
+int dalsi = 0;
+std::atomic<bool> bezi{false};
+std::atomic<long long> bloku{0};
+}  // namespace sl
 
 // Cas dema podle zvuku. Dokud reproduktor nezacal hrat stopu, stoji na 0
 // (prvni ctvrt vteriny dema je stejne tma). Kdyz zvuk nejde, bezi podle hodin.
@@ -202,6 +236,7 @@ void vlaknoDema(ANativeWindow *okno) {
     tv.w = TV_W; tv.h = TV_H; tv.tv = true;
     napdemo::Fbo tvFbo;
     std::vector<unsigned char> tvBuf;
+    std::vector<uint32_t> tvArgb;      // B306: snimek pro proud na TV / PC
     if (ok) {
       // texty pro telefon vysadit hned (pak uz se jen kresli)
       EGLint w = 0, h = 0;
@@ -264,16 +299,32 @@ void vlaknoDema(ANativeWindow *okno) {
       snimekCislo++;
 
       // TV / PC: vlastni obraz 16:9, kazdy druhy snimek, jen kdyz si ho nekdo bere
-      if ((snimekCislo & 1) == 0 && ted - g_tvChceNs.load() < 2000000000LL) {
+      // (B306: proud z C++ - g_introProud; postaru Java - introGrabFrame)
+      const bool tvProud = g_introProud.klientu() > 0;
+      const bool tvJava = ted - g_tvChceNs.load() < 2000000000LL;
+      if (!tvProud) g_introProud.snimek(nullptr, 0, 0);   // jen "demo bezi" (pro /status proud=intro)
+      if ((snimekCislo & 1) == 0 && (tvProud || tvJava)) {
         tvFbo.priprav(TV_W, TV_H, false);
         demo->snimek(t, tv, tvFbo.fbo);
         glBindFramebuffer(GL_FRAMEBUFFER, tvFbo.fbo);
         tvBuf.resize((size_t)TV_W * TV_H * 4);
         glReadPixels(0, 0, TV_W, TV_H, GL_RGBA, GL_UNSIGNED_BYTE, tvBuf.data());
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
-        std::lock_guard<std::mutex> z(g_tvZamek);
-        g_tvBody.swap(tvBuf);
-        g_tvW = TV_W; g_tvH = TV_H; g_tvNovy = true;
+        if (tvProud) {
+          // OpenGL cte zdola nahoru; RGBA -> 0x00RRGGBB shora dolu, a hned do prenosu
+          tvArgb.resize((size_t)TV_W * TV_H);
+          for (int y = 0; y < TV_H; y++) {
+            const unsigned char *r = &tvBuf[(size_t)(TV_H - 1 - y) * TV_W * 4];
+            uint32_t *w = &tvArgb[(size_t)y * TV_W];
+            for (int x = 0; x < TV_W; x++, r += 4) w[x] = ((uint32_t)r[0] << 16) | ((uint32_t)r[1] << 8) | (uint32_t)r[2];
+          }
+          g_introProud.snimek(tvArgb.data(), TV_W, TV_H);
+        }
+        if (tvJava) {
+          std::lock_guard<std::mutex> z(g_tvZamek);
+          g_tvBody.swap(tvBuf);
+          g_tvW = TV_W; g_tvH = TV_H; g_tvNovy = true;
+        }
       }
 
       // rychlost GPU: tezke vrstvy (mraky, garaz) v mensim rozliseni, kdyz to nestiha
@@ -319,6 +370,105 @@ void zastavZvuk() {
   g_stopa.reset();
 }
 
+// Davka zvuku pro reproduktor (stereo, 44,1 kHz). Dokud neni obraz pripraveny,
+// ticho; pak stopa od zacatku. Vraci pocet ramcu, -1 = konec (demo zastavene
+// nebo cela stopa venku) - p je pak ticho.
+int naplnZvuk(int16_t *p, int ramcu) {
+  std::memset(p, 0, sizeof(int16_t) * (size_t)ramcu * 2);
+  const long long zapsano = g_zapsano.load();
+  bool konec = false;
+  {
+    std::lock_guard<std::mutex> z(g_zvukZamek);
+    if (!g_stopa) konec = true;                       // demo uz skoncilo
+    else if (g_pripraveno.load() || g_zacatekStopy.load() >= 0) {
+      if (g_zacatekStopy.load() < 0) g_zacatekStopy.store(zapsano);
+      const long long pos = zapsano - g_zacatekStopy.load();
+      const long long hotovo = g_stopa->hotovo();
+      if (pos >= g_stopa->celkem()) konec = true;     // cela stopa uz je venku
+      const long long k = std::max(0LL, std::min((long long)ramcu, hotovo - pos));
+      if (k > 0) std::memcpy(p, g_stopa->data() + pos * 2, sizeof(int16_t) * (size_t)k * 2);
+    }
+  }
+  if (konec) return -1;
+  g_zapsano.fetch_add(ramcu);
+  return ramcu;
+}
+
+// Kolik ramcu uz reproduktor opravdu prehral - podle toho bezi obraz.
+void casZvuku(long long hlava) {
+  if (hlava != g_hlava.load()) {
+    g_hlava.store(hlava);
+    g_hlavaNs.store(tedNs());
+  } else if (g_hlavaNs.load() == 0) {
+    g_hlavaNs.store(tedNs());
+  }
+}
+
+// ====================================================================
+//  B306: ZVUK DEMA PREHRAVA C++ (OpenSL ES) - jako PS1 a Atari
+//  Drive Java vlakno s AudioTrack: si chodilo do C++ pro davky a zpatky
+//  hlasilo, kolik reproduktor prehral. Ted si OpenSL rekne o dalsi blok
+//  primo tady (zpetne volani, ~23 ms), cas prehraneho zvuku da GetPosition
+//  a blok, ktery se prave DOHRAL, jde na TV / PC - presne to, co je slyset
+//  z telefonu, a obraz dema se ridi stejnym casem, takze na TV sedi spolu.
+// ====================================================================
+void slZpetneVolani(SLAndroidSimpleBufferQueueItf bq, void *) {
+  int16_t *blk = sl::bloky[sl::dalsi];
+  sl::dalsi = (sl::dalsi + 1) % sl::BLOKU;
+  // 1) tenhle blok se prave dohral -> na TV / PC (kdyz se nikdo nediva, nic se nedeje)
+  g_introProud.zvuk(blk, (size_t)sl::BLOK * 2);
+  // 2) kolik reproduktor prehral (ms -> ramce)
+  SLmillisecond ms = 0;
+  if (sl::hrac && (*sl::hrac)->GetPosition(sl::hrac, &ms) == SL_RESULT_SUCCESS)
+    casZvuku((long long)ms * napdemo::zv::SR / 1000LL);
+  // 3) dalsi blok ze stopy (po konci ticho - cas dema bezi dal, Java demo ukonci)
+  naplnZvuk(blk, sl::BLOK);
+  sl::bloku.fetch_add(1);
+  (*bq)->Enqueue(bq, blk, (SLuint32)(sizeof(int16_t) * sl::BLOK * 2));
+}
+
+void slZavri() {
+  sl::bezi.store(false);
+  if (sl::hracObj) { (*sl::hracObj)->Destroy(sl::hracObj); sl::hracObj = nullptr; }   // zastavi i zpetna volani
+  if (sl::mixObj) { (*sl::mixObj)->Destroy(sl::mixObj); sl::mixObj = nullptr; }
+  if (sl::engObj) { (*sl::engObj)->Destroy(sl::engObj); sl::engObj = nullptr; }
+  sl::eng = nullptr; sl::hrac = nullptr; sl::fronta = nullptr;
+}
+
+bool slOtevri() {
+  if (sl::bezi.load()) return true;
+  auto chyba = [](const char *co) { NAPDEMO_LOG("DEMO: OpenSL %s nejde - zvuk prehraje Java (AudioTrack)", co); slZavri(); return false; };
+  if (slCreateEngine(&sl::engObj, 0, nullptr, 0, nullptr, nullptr) != SL_RESULT_SUCCESS) return chyba("engine");
+  if ((*sl::engObj)->Realize(sl::engObj, SL_BOOLEAN_FALSE) != SL_RESULT_SUCCESS) return chyba("Realize");
+  if ((*sl::engObj)->GetInterface(sl::engObj, SL_IID_ENGINE, &sl::eng) != SL_RESULT_SUCCESS) return chyba("ENGINE");
+  if ((*sl::eng)->CreateOutputMix(sl::eng, &sl::mixObj, 0, nullptr, nullptr) != SL_RESULT_SUCCESS) return chyba("OutputMix");
+  if ((*sl::mixObj)->Realize(sl::mixObj, SL_BOOLEAN_FALSE) != SL_RESULT_SUCCESS) return chyba("OutputMix Realize");
+  SLDataLocator_AndroidSimpleBufferQueue loc = {SL_DATALOCATOR_ANDROIDSIMPLEBUFFERQUEUE, (SLuint32)sl::BLOKU};
+  SLDataFormat_PCM fmt = {SL_DATAFORMAT_PCM, 2, SL_SAMPLINGRATE_44_1, SL_PCMSAMPLEFORMAT_FIXED_16, SL_PCMSAMPLEFORMAT_FIXED_16,
+                          SL_SPEAKER_FRONT_LEFT | SL_SPEAKER_FRONT_RIGHT, SL_BYTEORDER_LITTLEENDIAN};
+  SLDataSource src = {&loc, &fmt};
+  SLDataLocator_OutputMix locMix = {SL_DATALOCATOR_OUTPUTMIX, sl::mixObj};
+  SLDataSink snk = {&locMix, nullptr};
+  const SLInterfaceID ids[1] = {SL_IID_ANDROIDSIMPLEBUFFERQUEUE};
+  const SLboolean req[1] = {SL_BOOLEAN_TRUE};
+  if ((*sl::eng)->CreateAudioPlayer(sl::eng, &sl::hracObj, &src, &snk, 1, ids, req) != SL_RESULT_SUCCESS) return chyba("AudioPlayer");
+  if ((*sl::hracObj)->Realize(sl::hracObj, SL_BOOLEAN_FALSE) != SL_RESULT_SUCCESS) return chyba("AudioPlayer Realize");
+  if ((*sl::hracObj)->GetInterface(sl::hracObj, SL_IID_PLAY, &sl::hrac) != SL_RESULT_SUCCESS) return chyba("PLAY");
+  if ((*sl::hracObj)->GetInterface(sl::hracObj, SL_IID_ANDROIDSIMPLEBUFFERQUEUE, &sl::fronta) != SL_RESULT_SUCCESS) return chyba("BUFFERQUEUE");
+  if ((*sl::fronta)->RegisterCallback(sl::fronta, slZpetneVolani, nullptr) != SL_RESULT_SUCCESS) return chyba("RegisterCallback");
+  // nakopnout: celou frontu naplnit (zacatek je ticho, dokud obraz neni pripraveny)
+  sl::dalsi = 0;
+  sl::bloku.store(0);
+  for (int i = 0; i < sl::BLOKU; i++) {
+    naplnZvuk(sl::bloky[i], sl::BLOK);
+    (*sl::fronta)->Enqueue(sl::fronta, sl::bloky[i], (SLuint32)sizeof(sl::bloky[i]));
+  }
+  sl::bezi.store(true);
+  if ((*sl::hrac)->SetPlayState(sl::hrac, SL_PLAYSTATE_PLAYING) != SL_RESULT_SUCCESS) return chyba("PLAYING");
+  NAPDEMO_LOG("DEMO: zvuk prehrava C++ (OpenSL ES 44100/2/i16, %d x %d ramcu)", sl::BLOKU, sl::BLOK);
+  return true;
+}
+
 }  // namespace
 
 // ====================================================================
@@ -336,6 +486,7 @@ JNIEXPORT void JNICALL Java_eu_atarihelp_emu10_NativeIntroBridge_introNastavAsse
 /** Novy beh dema: vynulovat stav a zacit pocitat zvuk. */
 JNIEXPORT void JNICALL Java_eu_atarihelp_emu10_NativeIntroBridge_introStart(JNIEnv *, jclass) {
   zastavKresleni();
+  slZavri();          // B306: prehravac z minuleho behu (jeho cas by nesedel s novym)
   zastavZvuk();
   g_pripraveno.store(false);
   g_chyba.store(false);
@@ -367,6 +518,7 @@ JNIEXPORT void JNICALL Java_eu_atarihelp_emu10_NativeIntroBridge_introStart(JNIE
 /** Konec (dobehlo, preskoceno, pauza): zastavit kresleni i zvuk. */
 JNIEXPORT void JNICALL Java_eu_atarihelp_emu10_NativeIntroBridge_introStop(JNIEnv *, jclass) {
   zastavKresleni();
+  slZavri();          // B306 (Java uz ho zastavila v zvukStop - tady jen pro jistotu)
   zastavZvuk();
   g_pripraveno.store(false);
   {
@@ -423,35 +575,61 @@ JNIEXPORT jint JNICALL Java_eu_atarihelp_emu10_NativeIntroBridge_introNaplnZvuk(
   if (env->GetArrayLength(jbuf) < ramcu * 2) return 0;
   jshort *p = env->GetShortArrayElements(jbuf, nullptr);
   if (!p) return 0;
-  std::memset(p, 0, sizeof(jshort) * (size_t)ramcu * 2);
-  const long long zapsano = g_zapsano.load();
-  bool konec = false;
-  {
-    std::lock_guard<std::mutex> z(g_zvukZamek);
-    if (!g_stopa) konec = true;                       // demo uz skoncilo
-    else if (g_pripraveno.load() || g_zacatekStopy.load() >= 0) {
-      if (g_zacatekStopy.load() < 0) g_zacatekStopy.store(zapsano);
-      const long long pos = zapsano - g_zacatekStopy.load();
-      const long long hotovo = g_stopa->hotovo();
-      if (pos >= g_stopa->celkem()) konec = true;     // cela stopa uz je venku
-      const long long k = std::max(0LL, std::min((long long)ramcu, hotovo - pos));
-      if (k > 0) std::memcpy(p, g_stopa->data() + pos * 2, sizeof(jshort) * (size_t)k * 2);
-    }
-  }
+  const int n = naplnZvuk((int16_t *)p, (int)ramcu);
   env->ReleaseShortArrayElements(jbuf, p, 0);
-  if (konec) return -1;
-  g_zapsano.fetch_add(ramcu);
-  return ramcu;
+  return n;
 }
 
 /** Kolik ramcu uz reproduktor opravdu prehral (AudioTrack.getPlaybackHeadPosition). */
 JNIEXPORT void JNICALL Java_eu_atarihelp_emu10_NativeIntroBridge_introCasZvuku(JNIEnv *, jclass, jlong hlava) {
-  if (hlava != g_hlava.load()) {
-    g_hlava.store((long long)hlava);
-    g_hlavaNs.store(tedNs());
-  } else if (g_hlavaNs.load() == 0) {
-    g_hlavaNs.store(tedNs());
+  casZvuku((long long)hlava);
+}
+
+/** B306: zvuk dema prehrava C++ (OpenSL ES). false = nejde, Java pusti AudioTrack (zaloha). */
+JNIEXPORT jboolean JNICALL Java_eu_atarihelp_emu10_NativeIntroBridge_introZvukStartNative(JNIEnv *, jclass) {
+  return slOtevri() ? JNI_TRUE : JNI_FALSE;
+}
+
+JNIEXPORT void JNICALL Java_eu_atarihelp_emu10_NativeIntroBridge_introZvukStopNative(JNIEnv *, jclass) {
+  slZavri();
+}
+
+// ===================================================================
+//  B306: DEMO NA TV / PC PROUDEM Z C++ (Java /intro.stream jen posila bajty)
+//  stejne rozhrani jako NativeSegaCoreBridge / NativePs1CoreBridge (B305)
+// ===================================================================
+JNIEXPORT jint JNICALL Java_eu_atarihelp_emu10_NativeIntroBridge_proudOtevriNative(JNIEnv *, jclass) {
+  return (jint)g_introProud.otevri();
+}
+
+JNIEXPORT jint JNICALL Java_eu_atarihelp_emu10_NativeIntroBridge_proudDalsiNative(JNIEnv *env, jclass, jint id, jbyteArray out, jint cekejMs, jint zapisMs) {
+  if (!out) return INT_MIN;
+  thread_local std::vector<uint8_t> pk;
+  const int r = g_introProud.dalsi((int)id, (int)cekejMs, (int)zapisMs, pk);
+  if (r < 0) return INT_MIN;
+  if (r == 0) return 0;
+  if ((jsize)pk.size() > env->GetArrayLength(out)) {
+    const jint potreba = (jint)pk.size();
+    g_introProud.odloz((int)id, pk);
+    return -potreba;
   }
+  env->SetByteArrayRegion(out, 0, (jsize)pk.size(), (const jbyte *)pk.data());
+  return (jint)pk.size();
+}
+
+JNIEXPORT void JNICALL Java_eu_atarihelp_emu10_NativeIntroBridge_proudZavriNative(JNIEnv *, jclass, jint id) {
+  g_introProud.zavri((int)id);
+}
+
+/** bit0 = demo kresli (posledni snimek pred < 2 s), bit1 = nekdo se diva */
+JNIEXPORT jint JNICALL Java_eu_atarihelp_emu10_NativeIntroBridge_proudStavNative(JNIEnv *, jclass) {
+  return (g_introProud.bezi(2000) ? 1 : 0) | (g_introProud.klientu() > 0 ? 2 : 0);
+}
+
+JNIEXPORT jstring JNICALL Java_eu_atarihelp_emu10_NativeIntroBridge_proudLogNative(JNIEnv *env, jclass) {
+  const std::string s = g_introProud.vezmiLog();
+  if (s.empty()) return nullptr;
+  return env->NewStringUTF(s.c_str());
 }
 
 /**

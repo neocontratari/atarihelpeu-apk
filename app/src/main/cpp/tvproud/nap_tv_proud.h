@@ -98,9 +98,11 @@ template <class Kodek>
 class Hub {
  public:
   static constexpr size_t ZVUK_KAP = 1u << 16;        // shortu (~0,68 s stereo 48 kHz)
+  static constexpr long long ZVUK_SAM_MS = 60;        // B306: bez noveho snimku dele -> paket jen se zvukem
 
-  Hub(const char *jmeno, int vzorkovani, int pomerX = 4, int pomerY = 3)
-      : jmeno_(jmeno), vzorkovani_(vzorkovani), pomerX_(pomerX), pomerY_(pomerY) {}
+  // orez = hledat cerne okraje (hry); B306: uvodni demo je navrzene 16:9 cele - bez orezu
+  Hub(const char *jmeno, int vzorkovani, int pomerX = 4, int pomerY = 3, bool orez = true)
+      : jmeno_(jmeno), vzorkovani_(vzorkovani), pomerX_(pomerX), pomerY_(pomerY), orez_(orez) {}
 
   // ---- jadro (vlakno emulace): hotovy snimek 0x??RRGGBB ----
   void snimek(const uint32_t *argb, int w, int h) {
@@ -143,7 +145,7 @@ class Hub {
       pocet_.store(celkem, std::memory_order_release);
     }
     char b[300];
-    snprintf(b, sizeof(b), "B305 TV PROUD %s: prohlizec %d pripojen (celkem %d) - obraz a zvuk primo z C++ (%s), kazdy snimek, zvuk %d Hz v tomtez paketu",
+    snprintf(b, sizeof(b), "B306 TV PROUD %s: prohlizec %d pripojen (celkem %d) - obraz a zvuk primo z C++ (%s), kazdy snimek, zvuk %d Hz v tomtez paketu",
              jmeno_, id, celkem, Kodek::nazev(), vzorkovani_);
     log(b);
     return id;
@@ -168,12 +170,30 @@ class Hub {
         return 1;
       }
       auto novy = [&]() { return seq_ != k.seq; };
-      if (!novy()) cv_.wait_for(l, std::chrono::milliseconds(std::max(1, std::min(1000, cekejMs))), novy);
-      if (!novy()) return 0;
-      seq = seq_; W = sw_; H = sh_;
-      k.seq = seq;
-      k.rgb.resize((size_t)W * H);
-      std::memcpy(k.rgb.data(), snimek_.data(), (size_t)W * H * 4);
+      // B306: kdyz novy snimek dlouho neprijde (obraz se zadrhl - demo na pomalem GPU,
+      // nacitani hry), ale zvuk bezi dal, posle se paket jen se zvukem (obraz stejny =
+      // "beze zmeny"), at zvuk na TV nevypadne. Pri 30-60 snimcich/s se to nestane.
+      bool jenZvuk = false;
+      if (!novy()) {
+        const long long konecMs = tedMs() + std::max(1, std::min(1000, cekejMs));
+        while (!novy()) {
+          if (!k.rgb.empty() && k.zvukJede && zvZapis_ > k.zvukPoz && tedMs() - k.poslMs >= ZVUK_SAM_MS) { jenZvuk = true; break; }
+          const long long zb = konecMs - tedMs();
+          if (zb <= 0) break;
+          cv_.wait_for(l, std::chrono::milliseconds(std::min<long long>(zb, 15)), novy);
+        }
+      }
+      if (!novy() && !jenZvuk) return 0;
+      if (!jenZvuk) {
+        seq = seq_; W = sw_; H = sh_;
+        k.seq = seq;
+        k.rgb.resize((size_t)W * H);
+        std::memcpy(k.rgb.data(), snimek_.data(), (size_t)W * H * 4);
+        k.W = W; k.H = H;
+      } else {
+        seq = k.seq; W = k.W; H = k.H;          // stejny obraz jako minule
+        k.jenZvuk++;
+      }
       // zvuk od minula (nejvys 0,25 s - kdyz prohlizec zaostal, stare se zahodi)
       k.zvuk.clear();
       const unsigned long long konec = zvZapis_;
@@ -191,7 +211,9 @@ class Hub {
     // klienta meni jen tohle vlakno - koduje se bez zamku (jadro bezi dal)
     Klient &k = *kp;
     const long long ted = tedMs();
-    k.orez.spocti(k.rgb.data(), W, H);
+    k.poslMs = ted;
+    if (orez_) k.orez.spocti(k.rgb.data(), W, H);
+    else { k.orez.x0 = 0; k.orez.y0 = 0; k.orez.x1 = W; k.orez.y1 = H; }
     pk.clear();
     pk.reserve(64 + k.zvuk.size() * 2 + (size_t)W * H / 2);
     p32(pk, 0);                                   // delka - doplni se
@@ -224,10 +246,10 @@ class Hub {
       const double s = (ted - k.logMs) / 1000.0;
       const long long zmen = k.logPaketu - k.logBeze;
       char b[520];
-      snprintf(b, sizeof(b), "B305 TV PROUD %s: prohlizec %d - %.1f paketu/s (%.1f snimku/s se zmenou), %.2f Mbit/s, prumer %.1f kB na snimek, %dx%d, "
-               "baleni prumer %.2f ms max %.1f ms, zvuk %.0f vzorku/s (preskoku %lld), %s",
+      snprintf(b, sizeof(b), "B306 TV PROUD %s: prohlizec %d - %.1f paketu/s (%.1f snimku/s se zmenou), %.2f Mbit/s, prumer %.1f kB na snimek, %dx%d, "
+               "baleni prumer %.2f ms max %.1f ms, zvuk %.0f vzorku/s (preskoku %lld, paketu jen se zvukem %lld), %s",
                jmeno_, k.id, k.logPaketu / s, zmen / s, k.logBajtu * 8.0 / 1e6 / s, k.logBajtu / 1024.0 / std::max(1LL, k.logPaketu), W, H,
-               k.kodMs / std::max(1LL, k.logPaketu), k.kodMax, k.logZvuku / s, k.zvukSkoku, k.kodek.info().c_str());
+               k.kodMs / std::max(1LL, k.logPaketu), k.kodMax, k.logZvuku / s, k.zvukSkoku, k.jenZvuk, k.kodek.info().c_str());
       log(b);
       k.logMs = ted; k.logPaketu = k.logBajtu = k.logBeze = k.logZvuku = 0; k.kodMs = 0; k.kodMax = 0;
     }
@@ -255,9 +277,9 @@ class Hub {
       pocet_.store(celkem, std::memory_order_release);
     }
     const double s = std::max(0.001, (tedMs() - k->startMs) / 1000.0);
-    char b[460];
-    snprintf(b, sizeof(b), "B305 TV PROUD %s: prohlizec %d odpojen po %.0f s - %lld paketu (%.1f/s), %.1f MB celkem, %s (zbyva %d)",
-             jmeno_, k->id, s, k->paketu, k->paketu / s, k->bajtu / 1048576.0, k->kodek.info().c_str(), celkem);
+    char b[520];
+    snprintf(b, sizeof(b), "B306 TV PROUD %s: prohlizec %d odpojen po %.0f s - %lld paketu (%.1f/s), %.1f MB celkem, %s, zvuk preskoku %lld, paketu jen se zvukem %lld (zbyva %d)",
+             jmeno_, k->id, s, k->paketu, k->paketu / s, k->bajtu / 1048576.0, k->kodek.info().c_str(), k->zvukSkoku, k->jenZvuk, celkem);
     log(b);
   }
 
@@ -268,6 +290,11 @@ class Hub {
     return t > 0 && tedMs() - t <= maxStariMs;
   }
   unsigned long long snimkuCelkem() const { return snimku_.load(std::memory_order_relaxed); }
+  // cislo posledniho snimku pro prohlizece (v paketu na 8) - pro testy a log
+  unsigned long long posledniSeq() {
+    std::lock_guard<std::mutex> l(m_);
+    return seq_;
+  }
 
   // radky pro log appky (Java si je vyzvedava)
   std::string vezmiLog() {
@@ -289,6 +316,9 @@ class Hub {
     Kodek kodek;
     Orez orez;
     std::vector<uint32_t> rgb;
+    int W = 0, H = 0;                    // rozmer rgb (posledni poslany snimek)
+    long long poslMs = 0;                // kdy se balil posledni paket
+    long long jenZvuk = 0;               // B306: paketu jen se zvukem (obraz se zadrhl)
     std::vector<int16_t> zvuk;
     std::vector<uint8_t> odlozeny;
     unsigned long long seq = 0;
@@ -300,6 +330,7 @@ class Hub {
   };
   const char *jmeno_;
   int vzorkovani_, pomerX_, pomerY_;
+  bool orez_ = true;
   std::mutex m_;
   std::condition_variable cv_;
   std::vector<uint32_t> snimek_;

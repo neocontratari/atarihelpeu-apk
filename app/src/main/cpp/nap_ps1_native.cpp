@@ -593,6 +593,11 @@ static void nap_audio_clear(void) {
 static void nap_audio_push(const int16_t *data, size_t frames) {
   if (!data || !frames) return;
   nap_aring_write(data, (unsigned)(frames * 2));   // bez zamku
+  // B306: zvuk pro TV / PC hned, jak ho jadro vyrobi (vlakno emulace, behem
+  // retro_run - snimek tehoz kroku jde do prenosu hned po nem). V B305 se bral
+  // az v OpenSL callbacku, tedy za frontou reproduktoru telefonu (~90 ms) - na TV
+  // pak zvuk zaostaval za obrazem. Kdyz se nikdo nediva, nic se nedeje.
+  g_ps1Proud.zvuk(data, frames * 2);
 }
 
 // ==================================================================
@@ -641,7 +646,7 @@ static void nap_sl_callback(SLAndroidSimpleBufferQueueItf bq, void*) {
     }
   }
   nap_tvring_write(blk, (unsigned)need);   // kopie pro TV (hlavni cestu nezdrzuje)
-  g_ps1Proud.zvuk(blk, need);              // B305: prenos z C++ (nic nedela, kdyz se nikdo nediva)
+  // (B306: prenos na TV / PC z C++ bere zvuk uz pri vyrobe - nap_audio_push)
   (*bq)->Enqueue(bq, blk, need * sizeof(int16_t));
 }
 

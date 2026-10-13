@@ -11,3 +11,7 @@ test_overeni/**/*.ppm
 
 # B303: knihovny z testu na PC (prekladaji se podle JAK_SPUSTIT.txt)
 test_overeni/**/*.so
+
+# B306: pracovni soubory testu na PC (vznikaji pri kazdem spusteni)
+test_overeni/**/prac_*/
+__pycache__/

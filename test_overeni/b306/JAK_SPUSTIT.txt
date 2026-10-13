@@ -1,0 +1,79 @@
+B306 - zvuk na TV / PC (autoplay, bliz obrazu), Sega 60/s i na S8, demo: zvuk v C++ a proud z C++
+==================================================================================================
+
+Kod v appce:
+  MainActivity.java         stranka prohlizece: vyzva "ZVUK: KLIKNI KAMKOLI DO OBRAZU", zvuk se odemkne
+                            kazdym kliknutim / klavesou; zvuk prevzorkovany (Catmull-Rom) na vzorkovani
+                            zvukove karty, rezerva rizena minimem poslednich 10 s (zrychleni <= 0,8 %,
+                            vynechani jen pri velkem prebytku); /intro.stream; vlakno proudu priorita
+                            DISPLAY
+  nap_sega_native_proof.cpp zvuk pro TV hned z jadra (FM + PSG smichane v nap_audio_push_*_batch),
+                            snimek az po kroku jadra (nap_tv_po_kroku), pro TV kazdy snimek i v rezimu S8
+  nap_ps1_native.cpp        zvuk pro TV hned z retro_run (nap_audio_push), ne z OpenSL callbacku
+  tvproud/nap_tv_proud.h    pakety jen se zvukem, kdyz se obraz zadrhne; demo bez orezu; posledniSeq
+  tvproud/nap_tv_proud_spol.h + jpegenc.h   pomocna vlakna JPEG s prioritou (nice -4)
+  intro/nap_intro_gl.cpp    zvuk dema prehrava C++ (OpenSL ES, cas = GetPosition), proud na TV (JPEG 16:9)
+  NativeIntroBridge.java    introZvukStartNative / StopNative, proud* (AudioTrack jen zaloha)
+
+Spoustet z adresare test_overeni/b306. Hlavicky EGL / GLES2 / KHR v $INC (jako ../b304),
+JAVA_HOME = JDK, knihovny Mesa (libEGL, libGLESv2), objekty jadra clownmdemu jako v
+../b305/JAK_SPUSTIT.txt (3a), snimky 320x240 / 640x480 jako v ../b305/JAK_SPUSTIT.txt (0).
+Vse najednou: PRAC=... PNG320=... PNG640=... CLOWN=... INC=... bash vse.sh
+(stejne prikazy jako nize; vystupy VYSTUP_* sem).
+
+Prepinace:
+  SEGA  = -DNAP_SEGA_VENDOR_CORE_PRESENT=1 -DCC_USE_C99_INTEGERS=1 -I../b291/stub -I$INC -I$JAVA_HOME/include
+          -I$JAVA_HOME/include/linux + 4x -I jadra clownmdemu (viz ../b305/JAK_SPUSTIT.txt)
+  PS1   = -DANDROID -I../b305/stub -I../b291/stub -I$INC -I$JAVA_HOME/include -I$JAVA_HOME/include/linux
+          -I../../app/src/main/cpp/vendor/stb
+  INTRO = -Istub -I../b304/stub -I../b291/stub -I$INC -I$JAVA_HOME/include -I$JAVA_HOME/include/linux
+          -I../../app/src/main/cpp/tvproud -I../../app/src/main/cpp/intro
+  (./stub = nahrada OpenSL ES s GetPosition - zvuk dema)
+
+1) KONEC-KONCU v prohlizeci - Chromium BEZ --autoplay-policy (chova se jako Chrome u Reneho):
+   g++ -std=c++17 -O2 -shared -fPIC -pthread $SEGA  -o libsega_b306.so  tv_sega6.cpp <objekty jadra> -l:libEGL.so.1 -l:libGLESv2.so.2
+   g++ -std=c++17 -O2 -shared -fPIC -pthread $PS1   -o libps1_b306.so   tv_ps1_6.cpp -l:libEGL.so.1 -l:libGLESv2.so.2
+   g++ -std=c++17 -O2 -shared -fPIC -pthread $INTRO -o libintro_b306.so tv_intro.cpp -l:libEGL.so.1 -l:libGLESv2.so.2
+   python3 test_b306_prohlizec.py ADRESAR_PNG_320x240            -> VYSTUP_test_b306_prohlizec.txt
+     zvuk: bez kliknuti suspended + vyzva, kliknuti -> hraje, F5 -> zase vyzva, klavesa -> hraje;
+     Sega bod po bodu, 60/s, 48000/s; znacka zvuku ve STEJNEM paketu jako snimek (C++);
+     zvuk za obrazem (marker: ctverec + 2000 Hz v tomtez kroku jadra, cas vystupu zvukove
+     karty pres getOutputTimestamp); navaznost kusu zvuku a lupance (druha diference);
+     zadrhavajici sit (0-25 ms + vypadek 150 ms kazde 3 s); PS1; demo (/intro.stream, zvuk
+     v paketech bit po bitu = stopa dema, zvuk paketu konci v case obrazu dema).
+
+2) SROVNANI B305 / B306 (stranka i C++ z commitu B305 34c5fa3 proti B306, stejne mereni):
+   libsega_b305srovnani.so / libps1_b305srovnani.so = nap_sega_native_proof.cpp /
+   nap_ps1_native.cpp z B305 s tv_sega6.cpp (-DNAP_STARY_B305) / tv_ps1_6.cpp (viz vse.sh)
+   python3 test_b306_prohlizec.py ADRESAR_PNG_320x240 --srovnani -> VYSTUP_srovnani_b305_b306.txt
+     B305: zvuk po kliknuti nehraje, naskoci az po zadrhnuti site (Reneho log), po F5 znovu ticho.
+     Sega s frontou reproduktoru jako na S8 (~6000 vzorku): zvuk za obrazem B305 / B306.
+
+3) SKUTECNE vlakno emulace Segy + skutecne jadro clownmdemu (program pro 68000 misto hry):
+   g++ -std=c++17 -O2 -pthread $SEGA -o test_sega_60 test_sega_60.cpp <objekty jadra> -l:libEGL.so.1 -l:libGLESv2.so.2
+   ./test_sega_60                                                -> VYSTUP_test_sega_60.txt
+     S8: displej 30/s, s prohlizecem TV 60/s (displej dal 30), LOW -> TV 30, jiny telefon 60/60,
+     zvuk 48000/s z jadra, hlad zvuku se prenosem nezhorsi. Totez s -O1 -g -fsanitize=thread.
+
+4) Demo: zvuk prehrava C++ (OpenSL ES):
+   g++ -std=c++17 -O2 -pthread $INTRO -o test_intro_host test_intro_host.cpp -l:libEGL.so.1 -l:libGLESv2.so.2
+   ./test_intro_host                                             -> VYSTUP_test_intro_host.txt
+     do OpenSL presne stopa (bit po bitu), cas obrazu za GetPosition, zastaveni, novy start,
+     zaloha Java AudioTrack. Totez s -fsanitize=thread (hlaseni uvnitr Mesy se nepocitaji).
+
+5) Rozbocovac - pakety jen se zvukem, kdyz obraz stoji:
+   g++ -std=c++17 -O2 -pthread -I../../app/src/main/cpp/tvproud -o test_hub6 test_hub6.cpp && ./test_hub6
+                                                                 -> VYSTUP_test_hub6.txt
+   (TSan: -O1 -g -fsanitize=thread, spustit s NAP_TSAN=1)
+
+6) Priorita pomocnych vlaken JPEG: test_priorita.cpp             -> VYSTUP_test_priorita.txt
+
+7) Podpisy JNI se SKUTECNYMI tridami NativeIntroBridge, NativeSegaCoreBridge, NativePs1CoreBridge v JVM:
+   tv_intro.cpp -> libnapintro.so, tv_sega6.cpp -> libnapsega_native_proof.so, tv_ps1_6.cpp -> libnapps1core.so
+   javac -d OUT -sourcepath jvm/stub <3 tridy z appky> jvm/TestPodpisu.java
+   NAP_JVM_TEST=1 NAP_JVM_PNG=ADR_320 NAP_JVM_PRAC=PRAC EGL_PLATFORM=surfaceless java -Djava.library.path=<.so> -cp OUT TestPodpisu
+                                                                 -> jvm/VYSTUP_TestPodpisu.txt
+
+8) Regrese: ../b305 test_kodeky, test_pasy (TSan), test_hub (+TSan) a ../b303/test_b303_prohlizec.py
+   se strankou B306 (Atari)                                      -> VYSTUP_tsan_a_regrese.txt,
+                                                                    VYSTUP_b303_atari_se_strankou_b306.txt

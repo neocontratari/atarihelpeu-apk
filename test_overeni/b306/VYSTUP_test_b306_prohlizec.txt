@@ -1,0 +1,89 @@
+B306: prohlizec (Chromium BEZ --autoplay-policy, jako Chrome u Reneho) <- server jako Java <- SKUTECNE C++ appky
+stranka z MainActivity.java: 35400 bajtu
+OK     Sega: jadro bezi (krok jako vlakno emulace: radky, zvuk FM/PSG, nap_tv_po_kroku)
+
+--- 1) ZVUK: prohlizec ho pusti az po kliknuti (autoplay) ---
+po nacteni (bez kliknuti): {'stav': 'suspended', 'vyzva': True, 'zdroju': 0}, paketu Segy 182
+OK     bez kliknuti prohlizec zvuk nepusti (AudioContext suspended) - stranka to vi: VYZVA na obrazovce, obraz bezi, zvuk se nehromadi
+OK     do logu appky: "B306 ZVUK: prohlizec zvuk nepustil (autoplay ...)"
+po jednom kliknuti: {'stav': 'running', 'vyzva': False, 'zdroju': 55}
+OK     jedno kliknuti kamkoli -> zvuk HNED hraje (running), vyzva zmizela
+OK     do logu appky: "B306 ZVUK: hraje - prohlizec ho pustil po X s"
+po F5: {'stav': 'suspended', 'vyzva': True, 'zdroju': 0}
+OK     po F5 prohlizec zvuk zastavil - VYZVA je zpet (driv ticho bez vysvetleni)
+OK     po F5 + klavese zvuk hraje
+nove okno prohlizece: pred klavesou {'stav': 'suspended', 'vyzva': True, 'zdroju': 0}, po klavese {'stav': 'running', 'vyzva': False, 'zdroju': 61}
+OK     nove okno: vyzva, pak klavesa (napr. hra z klavesnice PC) zvuk pusti take
+
+--- 2) SEGA (/sega.stream) ---
+OK     Sega: obraz v prohlizeci PRESNE snimek jadra (0 ruznych bodu z 71680)
+za 4 s: 59.5 snimku/s, zvuk 48000 vzorku/s, podteceni 0, zahozeno 0, chyb 0, 3.43 Mbit/s
+OK     Sega: 60 snimku/s, zadna chyba paketu
+OK     Sega: zvuk 48000 vzorku/s, zadne zahozeni, nejvys 1 podteceni (testovaci stroj ma 2 jadra: Chromium + emulatory + server)
+A/V Sega: obraz 22 / zvuk 143 ms, obraz 16 / zvuk 132 ms, obraz 22 / zvuk 143 ms, obraz 15 / zvuk 132 ms, obraz 26 / zvuk 144 ms, obraz 28 / zvuk 145 ms
+  rizeni rezervy: {'r': 1, 'mins': [23, 40, 18, 43, 80, 81, 78, 78, 77, 13], 'pod': 0, 'zah': 0, 'uber': 0}
+  rozpis (paket se zvukem prisel / rezerva pred nim / znacka v kusu / vystup prohlizece): 20/88/0/34, 13/84/0/34, 21/89/0/33, 14/85/0/34, 23/89/0/32, 28/82/0/35
+C++: prvni snimek se ctvercem = paket 1109, znacka zvuku o 0 paketu pozdeji
+OK     Sega C++: zvuk tehoz kroku jadra je ve STEJNEM paketu jako obraz (B305: az za frontou reproduktoru)
+zvuk za obrazem v prohlizeci (vcetne vystupu zvukove karty): median 117 ms, 120, 115, 121, 117, 118, 116
+OK     Sega: zvuk za obrazem median 117 ms <= 200 ms (z toho ~35 ms vystup zvuku prohlizece; rezerva se drzi nad nejhorsim zakolisanim poslednich 10 s; B305 se S8 frontou 254-348 ms, viz --srovnani)
+zvuk v prohlizeci: {'zdroju': 174, 'mezer': 0, 'useku': 1, 'vzorku': 127829, 'lupancu': 0, 'max_d2': 0.00126, 'fs': 44100, 'rezerva_ms': '77/81/85/90', 'mezi_pakety_ms': '17/21/22'}
+OK     Sega: kusy zvuku navazuji vzorek na vzorek, zadny lupanec (mezer 0, lupancu 0; prevzorkovano 48000 -> 44100 Hz)
+zpozdeni zmena v jadru -> canvas: 22, 16, 22, 15, 26, 28 ms
+OK     Sega: zmena v jadru je v obraze do 1-2 snimku (median 22 ms)
+
+--- 3) SEGA pres zadrhavajici sit (kolisani 0-25 ms, kazde 3 s vypadek 150 ms) ---
+zadrhavani: podteceni 2, zahozeno 0, zvuk za obrazem median 194 ms (178, 209, 195, 192, 190, 197, 208, 174), zvuk: {'zdroju': 223, 'mezer': 0, 'useku': 1, 'vzorku': 178605, 'lupancu': 0, 'max_d2': 0.00125, 'fs': 44100, 'rezerva_ms': '13/147/160/182', 'mezi_pakety_ms': '18/37/156'}
+OK     Sega pres zadrhavajici sit: zvuk se srovna sam (podteceni 2 za ~20 s, lupance jen u nich)
+OK     Sega pres zadrhavajici sit: zvuk za obrazem median 194 ms (rezerva se prizpusobi siti)
+
+--- 4) PS1 (/ps1.stream) ---
+OK     PS1: skutecny start pres JNI (vlakno emulace, OpenSL zvuk) - PS1_BIOS_OK
+OK     Sega -> PS1: stranka sama prepnula proud (bez obnoveni stranky) {'W': 320, 'H': 240, 'ver': 3, 'druh': 'ps1'}
+OK     PS1: obraz odpovida snimku jadra (PSNR 36.7 dB)
+za 4 s: 51.5 paketu/s, 30.2 JPEG/s, zvuk 44284 vzorku/s, podteceni 0, zahozeno 0
+OK     PS1: hra na 30 snimku/s = 30 obrazku/s, zadna chyba
+OK     PS1: zvuk 44100 vzorku/s (uz pri vyrobe v retro_run), zadne zahozeni, nejvys 1 podteceni
+A/V PS1: obraz 37 / zvuk 91 ms, obraz 23 / zvuk 93 ms, obraz 30 / zvuk 94 ms, obraz 30 / zvuk 89 ms, obraz 32 / zvuk 84 ms, obraz 29 / zvuk 96 ms
+  prubeh rezervy od prepnuti [ms, rezerva, min/s, rychlost, vynechat, podteceni, zahozeno]: [[500, 59, None, 1, 0, 2, 0], [1000, 59, 36, 1, 0, 2, 0], [1500, 57, 36, 1, 0, 2, 0], [2000, 58, 34, 1, 0, 2, 0], [2500, 59, 34, 1, 0, 2, 0], [3000, 59, 35, 1.0029, 0, 2, 0], [3500, 55, 35, 1.0029, 0, 2, 0], [4003, 71, 32, 1.0025, 0, 2, 0], [4500, 54, 32, 1.0025, 0, 2, 0], [5001, 67, 33, 1.0025, 0, 2, 0], [5500, 50, 33, 1.0025, 0, 2, 0], [6000, 66, 28, 1.0019, 0, 2, 0], [6501, 50, 28, 1.0019, 0, 2, 0], [7000, 63, 25, 1.0014, 0, 2, 0], [7500, 47, 25, 1.0014, 0, 2, 0], [8000, 47, 25, 1.0014, 0, 2, 0], [8500, 47, 25, 1.0014, 0, 2, 0], [9000, 44, 22, 1.0011, 0, 2, 0], [9500, 44, 22, 1.0011, 0, 2, 0], [10000, 44, 22, 1.001, 0, 2, 0], [10501, 45, 22, 1.001, 0, 2, 0], [11000, 42, 17, 1.0003, 0, 2, 0], [11502, 60, 17, 1.0003, 0, 2, 0], [12001, 43, 19, 1.0003, 0, 2, 0], [12500, 58, 19, 1.0003, 0, 2, 0], [13000, 42, 22, 1.0003, 0, 2, 0], [13500, 59, 22, 1.0003, 0, 2, 0], [14000, 43, 22, 1.0003, 0, 2, 0], [14500, 57, 22, 1.0003, 0, 2, 0], [15000, 41, 21, 1.0003, 0, 2, 0], [15516, 22, 21, 1.0003, 0, 2, 0], [16000, 43, 20, 1.0003, 0, 2, 0], [16500, 98, 20, 1.0003, 0, 3, 0]]
+  rizeni rezervy: {'r': 1.0003146258503404, 'mins': [25, 25, 22, 22, 17, 19, 22, 22, 21, 20], 'pod': 3, 'zah': 0, 'uber': 0}
+  rozpis (paket se zvukem prisel / rezerva pred nim / znacka v kusu / vystup prohlizece): 32/23/0/37, 22/32/0/40, 26/36/0/32, 25/29/0/35, 24/22/0/38, 24/31/0/40
+C++: prvni snimek se ctvercem = paket 982, znacka zvuku o 0 paketu pozdeji
+OK     PS1 C++: zvuk z retro_run je ve STEJNEM paketu jako jeho snimek (B305: az z OpenSL callbacku)
+zvuk za obrazem v prohlizeci: median 61 ms, 54, 70, 63, 59, 53, 67
+OK     PS1: zvuk za obrazem median 61 ms <= 200 ms (B305 236-257 ms, viz --srovnani)
+zvuk v prohlizeci: {'zdroju': 133, 'mezer': 0, 'useku': 1, 'vzorku': 130789, 'lupancu': 0, 'max_d2': 0.00076, 'fs': 44100, 'rezerva_ms': '20/24/32/48', 'mezi_pakety_ms': '23/28/29'}
+OK     PS1: kusy zvuku navazuji vzorek na vzorek, zadny lupanec (mezer 0, lupancu 0)
+OK     PS1: spadle spojeni - prohlizec se pripojil znovu sam (PSNR 38.3 dB)
+
+--- 5) UVODNI DEMO (/intro.stream, C++: OpenSL ES + proud) ---
+OK     demo: zvuk prehrava C++ (OpenSL ES) - Java AudioTrack jen zaloha
+OK     PS1 -> demo: stranka sama prepnula na /intro.stream - 854x480 16:9 bez orezu {'W': 854, 'H': 480, 'ver': 3, 'druh': 'intro', 'px': 16, 'py': 9, 'ow': 854, 'oh': 480}
+demo za 6 s: 15.8 obrazku/s (Mesa bez GPU kresli pomalu), zvuk 43814 vzorku/s, podteceni 2, jas canvasu 35.5, cas dema 6319 ms
+OK     demo: obraz z C++ chodi do prohlizece (JPEG 854x480)
+OK     demo: zvuk 44100 vzorku/s jde proudem i kdyz obraz kresli pomalu (pakety jen se zvukem)
+zvuk dema v paketech proti stope (bit po bitu): porovnano 324608 ramcu (7.4 s), rozdilnych 0
+OK     demo: zvuk na TV = PRESNE stopa dema, vzorek po vzorku bez mezer
+zvuk paketu konci proti casu dema (obraz): median -9 ms, min -30, max 64 (143 paketu)
+OK     demo: v paketu je zvuk prave prehraneho okamziku dema (obraz a zvuk spolu)
+OK     demo konec: prehravac OpenSL zniceny, okno uvolnene
+OK     demo pryc z obrazovky -> proud konci, stranka zpet postaru (MJPEG / JPEG)
+z prohlizece do logu appky: ['B306 SEGA PROUD start', 'B306 ZVUK: prohlizec zvuk nepustil (autoplay - ceka na kliknuti nebo klavesu), na obrazovce je vyzva', 'B306 ZVUK: hraje - prohlizec ho pustil po 4 s', 'B306 SEGA PROUD start', 'B306 ZVUK: hraje - prohlizec ho pustil po 2.5 s', 'B306 SEGA PROUD start', 'B306 ZVUK: hraje - prohlizec ho pustil po 2.5 s', 'B306 PS1 PROUD start', 'B306 PROHLIZEC PS1: 52.1 snimku/s, JPEG 29.7/s (prekrytych zahozeno 0), zvuk hraje, napred 110 ms (min 13, pri rozjezdu 45), zvuk za obrazem ~147 ms, rychlost 0..+0.1 %, 44100->44100 Hz, bez zvuku 1.6 s, podteceni 0, zahozeno 0, chyb 0, okno 1280x720, obraz 320x240 vyplnit', 'B306 PS1 PROUD start', 'B306 INTRO PROUD start', 'B306 INTRO PROUD konec']
+OK     prohlizec hlasi do logu appky kazdych 30 s i zvuk: napred, zvuk za obrazem, rychlost, vzorkovani
+OK     zadna chyba JavaScriptu na strance []
+log appky (B306):
+  B306 TV PROUD SEGA: prohlizec 1 pripojen (celkem 1) - obraz a zvuk primo z C++ (paleta + LZ (bez ztraty)), kazdy snimek, zvuk 48000 Hz v tomtez paketu
+  B306 TV PROUD SEGA: prohlizec 1 odpojen po 5 s - 282 paketu (60.1/s), 2.6 MB celkem, klicovych 1, prestaveb palety 43, beze zmeny 0 z 282, zvuk preskoku 0, paketu jen se zvukem 0 (zbyva 0)
+  B306 TV PROUD SEGA: prohlizec 2 pripojen (celkem 1) - obraz a zvuk primo z C++ (paleta + LZ (bez ztraty)), kazdy snimek, zvuk 48000 Hz v tomtez paketu
+  B306 TV PROUD SEGA: prohlizec 3 pripojen (celkem 2) - obraz a zvuk primo z C++ (paleta + LZ (bez ztraty)), kazdy snimek, zvuk 48000 Hz v tomtez paketu
+  B306 TV PROUD SEGA: prohlizec 3 odpojen po 3 s - 155 paketu (59.9/s), 1.1 MB celkem, klicovych 1, prestaveb palety 0, beze zmeny 0 z 155, zvuk preskoku 0, paketu jen se zvukem 0 (zbyva 1)
+  B306 TV PROUD SEGA: prohlizec 2 odpojen po 26 s - 1436 paketu (54.8/s), 10.2 MB celkem, klicovych 1, prestaveb palety 697, beze zmeny 0 z 1436, zvuk preskoku 0, paketu jen se zvukem 0 (zbyva 0)
+  B306 TV PROUD PS1: prohlizec 1 pripojen (celkem 1) - obraz a zvuk primo z C++ (JPEG po castech), kazdy snimek, zvuk 44100 Hz v tomtez paketu
+  B306 TV PROUD PS1: prohlizec 1 odpojen po 17 s - 881 paketu (51.3/s), 11.3 MB celkem, JPEG kvalita 88 (max 88, snizeno 0x), kodovani prumer 1.2 ms max 17.5 ms (pasu 1), castecnych 0, zjemneni 0, beze zmeny 363 z 881, zvuk preskoku 0, paketu jen se zvukem 0 (zbyva 0)
+  B306 TV PROUD PS1: prohlizec 2 pripojen (celkem 1) - obraz a zvuk primo z C++ (JPEG po castech), kazdy snimek, zvuk 44100 Hz v tomtez paketu
+  B306 TV PROUD PS1: prohlizec 2 odpojen po 2 s - 104 paketu (43.9/s), 1.4 MB celkem, JPEG kvalita 88 (max 88, snizeno 0x), kodovani prumer 1.2 ms max 2.9 ms (pasu 1), castecnych 0, zjemneni 0, beze zmeny 40 z 104, zvuk preskoku 0, paketu jen se zvukem 0 (zbyva 0)
+  B306 TV PROUD INTRO: prohlizec 1 pripojen (celkem 1) - obraz a zvuk primo z C++ (JPEG po castech), kazdy snimek, zvuk 44100 Hz v tomtez paketu
+  B306 TV PROUD INTRO: prohlizec 1 odpojen po 8 s - 145 paketu (18.8/s), 4.1 MB celkem, JPEG kvalita 76 (max 76, snizeno 0x), kodovani prumer 5.7 ms max 14.1 ms (pasu 2), castecnych 0, zjemneni 0, beze zmeny 32 z 145, zvuk preskoku 0, paketu jen se zvukem 32 (zbyva 0)
+OK     log appky: Sega, PS1 i demo - pripojen / odpojen / statistika
+
+VYSLEDEK: 37 kontrol, 0 chyb

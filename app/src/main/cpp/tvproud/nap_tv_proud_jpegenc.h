@@ -25,6 +25,7 @@
 #include <mutex>
 #include <thread>
 #include <vector>
+#include "nap_tv_proud_spol.h"
 
 namespace nap {
 namespace proud {
@@ -410,6 +411,7 @@ class JpegEnc {
   void spustPomocniky(int kolik) {
     while ((int)pomocnici_.size() < kolik) {
       pomocnici_.emplace_back([this] {
+        zvysPrioritu();   // B306: jako vlakno proudu (Java THREAD_PRIORITY_DISPLAY)
         while (true) {
           int i;
           {

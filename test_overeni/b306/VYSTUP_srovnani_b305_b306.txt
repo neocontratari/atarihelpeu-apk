@@ -1,0 +1,31 @@
+
+=============== B305 (stranka i C++ z B305 34c5fa3) ===============
+B305: po nacteni bez kliknuti: {'stav': 'suspended', 'vyzva': None, 'zdroju': 4}
+B305: 4 s po kliknuti do stranky: {'stav': 'suspended', 'vyzva': None, 'zdroju': 5}
+B305: po kliknuti zvuk NEHRAJE (Reneho log "zvuk NEHRAJE")
+B305: po zadrhnuti site (200 ms): {'stav': 'running', 'vyzva': None, 'zdroju': 97}
+B305: po F5 a kliknuti: {'stav': 'suspended', 'vyzva': None, 'zdroju': 4}
+B305: po zadrhnuti site: {'stav': 'running', 'vyzva': None, 'zdroju': 97}
+OK     B305: zvuk naskocil az po zadrhnuti site - "zvuk nabehl v sega az po urcite dobe"
+B305: fronta reproduktoru telefonu (jako S8): 9504 vzorku = 198 ms
+B305 Sega: znacka zvuku o 12 paketu za obrazem (C++), v prohlizeci zvuk za obrazem median 350 ms (346, 353, 351, 353, 349, 350); zvuk {'zdroju': 193, 'mezer': 0, 'useku': 1, 'vzorku': 197632, 'lupancu': 0, 'max_d2': 0.00107, 'fs': 48000, 'rezerva_ms': '96/107/116/130', 'mezi_pakety_ms': '17/37/40'}
+B305 Sega + zadrhavajici sit: podteceni 0, zahozeno 0, zvuk za obrazem median 416 ms; zvuk {'zdroju': 236, 'mezer': 0, 'useku': 1, 'vzorku': 270336, 'lupancu': 0, 'max_d2': 0.00107, 'fs': 48000, 'rezerva_ms': '39/174/188/212', 'mezi_pakety_ms': '22/66/152'}
+B305 PS1: znacka zvuku o 5 paketu za obrazem (C++), v prohlizeci zvuk za obrazem median 247 ms (243, 246, 250, 252, 238, 247)
+
+=============== B306 (stranka i C++ z B306) ===============
+B306: po nacteni bez kliknuti: {'stav': 'suspended', 'vyzva': True, 'zdroju': 0}
+B306: 4 s po kliknuti do stranky: {'stav': 'running', 'vyzva': False, 'zdroju': 235}
+OK     B306: vyzva, jedno kliknuti - zvuk hraje hned
+B306: fronta reproduktoru telefonu (jako S8): 4448 vzorku = 93 ms
+B306 Sega: znacka zvuku o 0 paketu za obrazem (C++), v prohlizeci zvuk za obrazem median 115 ms (118, 114, 114, 106, 115, 118); zvuk {'zdroju': 177, 'mezer': 0, 'useku': 1, 'vzorku': 130095, 'lupancu': 0, 'max_d2': 0.00125, 'fs': 44100, 'rezerva_ms': '67/77/81/86', 'mezi_pakety_ms': '17/22/24'}
+B306 Sega + zadrhavajici sit: podteceni 1, zahozeno 0, zvuk za obrazem median 179 ms; zvuk {'zdroju': 210, 'mezer': 0, 'useku': 1, 'vzorku': 175665, 'lupancu': 0, 'max_d2': 0.00125, 'fs': 44100, 'rezerva_ms': '9/129/145/169', 'mezi_pakety_ms': '18/38/156'}
+B306 PS1: znacka zvuku o 0 paketu za obrazem (C++), v prohlizeci zvuk za obrazem median 64 ms (68, 63, 57, 69, 65, 62)
+
+=============== SROVNANI ===============
+zvuk za obrazem (Sega, S8 fronta): B305 350 ms -> B306 115 ms
+zvuk za obrazem (PS1):            B305 247 ms -> B306 64 ms
+zadrhavajici sit (Sega): B305 (416, 0, 0, 0) -> B306 (179, 1, 0, 0)  (median ms, podteceni, zahozeno, lupance)
+OK     B306 ma zvuk vyrazne blize obrazu nez B305 (Sega i PS1)
+OK     C++: B306 posila zvuk se snimkem tehoz okamziku, B305 o 12 (Sega) / 5 (PS1) paketu pozdeji
+
+VYSLEDEK: 4 kontrol, 0 chyb

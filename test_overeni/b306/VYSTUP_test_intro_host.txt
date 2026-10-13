@@ -1,0 +1,8 @@
+OK     1) introZvukStartNative: zvuk prehrava C++ (OpenSL ES)
+OK     2) cas obrazu jde za tim, co OpenSL prehral (GetPosition)  -- prumer 6 ms, nejvic 18 ms (35 mereni; blok OpenSL = 23 ms)
+OK     1) do reproduktoru jde PRESNE stopa dema (bit po bitu), pred pripravou ticho  -- do OpenSL zarazeno 366592 ramcu, stopa od ramce 13312, porovnano 353280 (8.0 s), rozdilnych 0, pred stopou ticho ano
+OK     3) zastaveni: prehravac OpenSL zniceny, zpetna volani skoncila, okno uvolnene  -- prehravacu vytvoreno 1, zniceno 1, okno refs 1, vlakno kresleni konec
+OK     4) druhy start: novy prehravac, cas dema zase od zacatku  -- cas dema 1,5 s po pripraveni: 1399 ms, prehravacu 2 / zniceno 1
+OK     5) zaloha Java AudioTrack: presne stopa, cas obrazu za zvukem (jako B304)  -- porovnano 346112 ramcu, rozdilnych 0, cas obrazu proti zvuku nejvic 21 ms (291 mereni)
+
+VYSLEDEK: 6 OK, 0 CHYB
