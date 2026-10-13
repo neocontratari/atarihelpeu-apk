@@ -51,4 +51,31 @@ public final class NativeSegaCoreBridge {
     // BUILD2RV: tvrdy lifecycle stop pro normalni app stranky.
     // Vypne native worker + audio FIFO, aby Sega obraz/zvuk nezustaval pres Intro/VBXE/Atari/PS1.
     public static native String shutdown();
+
+    // ===== B305: SEGA NA TV / PC CELA V C++ (jako Atari 130XE v B303) =====
+    // C++ zabali kazdy snimek (bez ztraty: paleta + LZ, jen zmeny) i zvuk do
+    // jednoho paketu, Java (/sega.stream) jen posila bajty do prohlizece.
+    private static native int proudOtevriNative();
+    /** 4 B delka + paket; 0 = nic noveho, zaporne = male pole (-n), MIN_VALUE = chyba */
+    private static native int proudDalsiNative(int id, byte[] out, int cekejMs, int zapisMs);
+    private static native void proudZavriNative(int id);
+    /** bit0 = jadro posila snimky, bit1 = nekdo se diva */
+    private static native int proudStavNative();
+    private static native String proudLogNative();
+
+    public static int proudOtevriSafe() {
+        try { return proudOtevriNative(); } catch (Throwable t) { return 0; }
+    }
+    public static int proudDalsiSafe(int id, byte[] out, int cekejMs, int zapisMs) {
+        try { return proudDalsiNative(id, out, cekejMs, zapisMs); } catch (Throwable t) { return Integer.MIN_VALUE; }
+    }
+    public static void proudZavriSafe(int id) {
+        try { proudZavriNative(id); } catch (Throwable ignored) {}
+    }
+    public static int proudStavSafe() {
+        try { return proudStavNative(); } catch (Throwable t) { return 0; }
+    }
+    public static String proudLogSafe() {
+        try { return proudLogNative(); } catch (Throwable t) { return null; }
+    }
 }

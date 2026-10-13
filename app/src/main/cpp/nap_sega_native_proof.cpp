@@ -33,6 +33,9 @@
 #if NAP_SEGA_VENDOR_CORE_PRESENT
 #include "clownmdemu.h"
 #endif
+// B305: Sega na TV / PC cela v C++ (jako Atari 130XE v B303)
+#include "tvproud/nap_tv_proud.h"
+#include "tvproud/nap_tv_proud_index.h"
 
 #define NAP_LOG_TAG "NAP_SEGA_NATIVE_PROOF"
 #define NAPLOG(...) __android_log_print(ANDROID_LOG_INFO, NAP_LOG_TAG, __VA_ARGS__)
@@ -80,6 +83,19 @@ static uint64_t g_audio_trim_events = 0;
 static uint64_t g_audio_clock_sleep_events = 0;
 static std::atomic<int> g_worker_priority_nice_result{999};
 static const int NAP_AUDIO_OUT_RATE = 48000;
+// ===================================================================
+//  B305: SEGA NA TV / PC CELA V C++ (jako Atari 130XE v B303)
+//  Rene: "udelas ten tv prenos u segi a ps1 na tv a pc jako si udelal u
+//  atari emu c++, aby to bylo taky v c++ a tak super jak v emu atari c++?"
+//  Snimek si prenos bere hned, jak ho jadro dokresli (konec posledniho
+//  radku), zvuk primo z toho, co jde do reproduktoru. Kazdy prohlizec
+//  (/sega.stream) ma vlastni vlakno, ktere ceka v proudDalsiNative a dostane
+//  paket: obraz bez ztraty (paleta + LZ, nap_tv_proud_index.h) + zvuk.
+//  Java jen posila bajty. Zamerne "new" bez delete - vlakna prohlizecu
+//  nesmi pri ukonceni procesu narazit na zniceny objekt.
+// ===================================================================
+static nap::proud::Hub<nap::proud::KodekIndex> &g_segaProud =
+        *new nap::proud::Hub<nap::proud::KodekIndex>("SEGA", NAP_AUDIO_OUT_RATE);
 static const int NAP_AUDIO_STARTUP_MUTE_FRAMES = 0;
 static std::atomic<int> g_native_perf_low{0};
 // BUILD2RV: Android 9/S8 needs a no-starve audio reservoir and less native video capture work.
@@ -637,15 +653,20 @@ static void nap_real_scanline_rendered(void *user_data, cc_u16f scanline, const 
     }
     if (y >= sh - 1) {
         g_render_captured_frames.fetch_add(1);
-        // BUILD2RV: worker writes into frame_argb, renderer reads only display_argb.
-        // This avoids blocking mobile video on the full emulator iterate mutex and prevents torn partial frames.
-        std::lock_guard<std::mutex> flock(g_frame_mutex);
-        st->display_w = st->frame_w;
-        st->display_h = st->frame_h;
-        st->display_argb = st->frame_argb;
-        st->display_frame_counter++;
-        st->frame_counter = st->display_frame_counter;
-        st->frame_ready = true;
+        {
+            // BUILD2RV: worker writes into frame_argb, renderer reads only display_argb.
+            // This avoids blocking mobile video on the full emulator iterate mutex and prevents torn partial frames.
+            std::lock_guard<std::mutex> flock(g_frame_mutex);
+            st->display_w = st->frame_w;
+            st->display_h = st->frame_h;
+            st->display_argb = st->frame_argb;
+            st->display_frame_counter++;
+            st->frame_counter = st->display_frame_counter;
+            st->frame_ready = true;
+        }
+        // B305: hotovy snimek do prenosu na TV / PC (kopie jen kdyz se nekdo diva;
+        // frame_argb pise jen tohle vlakno, zamek netreba)
+        g_segaProud.snimek(g_segaProud.klientu() > 0 ? st->frame_argb.data() : nullptr, st->frame_w, st->frame_h);
     }
 }
 
@@ -1732,6 +1753,8 @@ Java_eu_atarihelp_emu10_NativeSegaCoreBridge_pullAudioStereo(JNIEnv* env, jclass
     jshort* out = env->GetShortArrayElements(pcmOut, nullptr);
     if (!out) return 0;
     int got = nap_audio_pull_stereo(out, n);
+    // B305: presne to, co jde do reproduktoru (vcetne ticha pri podteceni), i na TV / PC
+    g_segaProud.zvuk((const int16_t *)out, (size_t)n * 2);
     env->ReleaseShortArrayElements(pcmOut, out, 0);
     return got;
 #else
@@ -1768,3 +1791,51 @@ Java_eu_atarihelp_emu10_NativeSegaCoreBridge_pullAudio(JNIEnv* env, jclass, jsho
 #endif
 }
 
+// ===================================================================
+//  B305: PRENOS SEGY NA TV / PC (Java /sega.stream jen posila bajty)
+// ===================================================================
+/** Novy prohlizec. Vraci cislo klienta (> 0). */
+extern "C" JNIEXPORT jint JNICALL
+Java_eu_atarihelp_emu10_NativeSegaCoreBridge_proudOtevriNative(JNIEnv *, jclass) {
+    return (jint)g_segaProud.otevri();
+}
+
+/** Ceka (nejvys cekejMs) na novy snimek a zabali ho do out: 4 B delka + paket.
+ *  zapisMs = jak dlouho trval zapis minuleho paketu do site.
+ *  Vraci pocet bajtu, 0 = nic noveho, zaporne = out je male (potreba -n bajtu,
+ *  paket pocka na dalsi volani), INT32_MIN = neznamy klient. */
+extern "C" JNIEXPORT jint JNICALL
+Java_eu_atarihelp_emu10_NativeSegaCoreBridge_proudDalsiNative(JNIEnv *env, jclass, jint id, jbyteArray out, jint cekejMs, jint zapisMs) {
+    if (!out) return INT32_MIN;
+    thread_local std::vector<uint8_t> pk;
+    const int r = g_segaProud.dalsi((int)id, (int)cekejMs, (int)zapisMs, pk);
+    if (r < 0) return INT32_MIN;
+    if (r == 0) return 0;
+    if ((jsize)pk.size() > env->GetArrayLength(out)) {
+        const jint potreba = (jint)pk.size();
+        g_segaProud.odloz((int)id, pk);
+        return -potreba;
+    }
+    env->SetByteArrayRegion(out, 0, (jsize)pk.size(), (const jbyte *)pk.data());
+    return (jint)pk.size();
+}
+
+/** Prohlizec odpojen. */
+extern "C" JNIEXPORT void JNICALL
+Java_eu_atarihelp_emu10_NativeSegaCoreBridge_proudZavriNative(JNIEnv *, jclass, jint id) {
+    g_segaProud.zavri((int)id);
+}
+
+/** bit0 = jadro posila snimky (posledni pred < 2 s), bit1 = nekdo se diva */
+extern "C" JNIEXPORT jint JNICALL
+Java_eu_atarihelp_emu10_NativeSegaCoreBridge_proudStavNative(JNIEnv *, jclass) {
+    return (g_segaProud.bezi(2000) ? 1 : 0) | (g_segaProud.klientu() > 0 ? 2 : 0);
+}
+
+/** Radky pro log appky (pripojen / odpojen / kazdych 30 s), null = nic. */
+extern "C" JNIEXPORT jstring JNICALL
+Java_eu_atarihelp_emu10_NativeSegaCoreBridge_proudLogNative(JNIEnv *env, jclass) {
+    const std::string s = g_segaProud.vezmiLog();
+    if (s.empty()) return nullptr;
+    return env->NewStringUTF(s.c_str());
+}

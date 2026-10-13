@@ -113,6 +113,12 @@ Tenhle test pousti jadro na desetitisicich nahodnych stavu a porovnava vysledek
 s cislem, ktere vyslo na pocitaci. Delam to proto, ze pocitac je x86 a telefon
 ARM - a na ARM se nektere veci chovaji jinak. Kdyz se to rozejde, ma se to
 poznat ted, a ne az podle spatneho obrazu.<br><br>
+B305: SEGA A PS1 NA TV / PC CELE V C++ (jako Atari v B303) - snimek jde do
+prohlizece hned z jadra i se zvukem v jednom proudu, Java uz obraz nezvetsuje
+ani nekomprimuje. SEGA bez ztraty kvality (presne jako v telefonu, jen zmeny,
+i kdyz se obraz hybe), PS1 v puvodnim rozliseni hry (JPEG jen tam, kde se neco
+zmenilo; kdyz obraz stoji, zaostri). Mensi zpozdeni. Panel OBRAZ v prohlizeci:
+"vyplnit obrazovku" (jako doted) nebo "cely, bez orezu" (4:3).
 B304: NOVE UVODNI DEMO podle tveho scenare (45 s, 5 scen, titulky cesky i
 anglicky) - cele v C++: obraz kresli OpenGL ES na vlastnim vlakne (garaz,
 mraky a blesky, Atari 130XE ve 3D, energie do mobilu, zlate logo N&P),
@@ -165,33 +171,37 @@ try{ if(window.AHATARICPP && !AHATARICPP.jeNactene()){
 } }catch(e){}
 function set(id,t,cls){var e=$(id); if(!e)return; e.textContent=t; if(cls)e.className='v '+cls;}
 var KROKY=[
+ // B305: Sega a PS1 na TV / PC cele v C++ (jako Atari v B303)
+ {n:1,co:'TV / PC SEGA: zapni prenos, spust hru na Seze (napr. Sonic) a v prohlizeci na PC / TV obnov stranku (F5)',
+  ok:'Obraz Segy na TV ostry presne jako v telefonu (zadne kostky ani rozmazani), plynuly (60 snimku/s), zvuk sedi s obrazem a MENSI ZPOZDENI: Sonic skoci na TV hned s telefonem. Pohni mysi - panel OBRAZ: vyplnit obrazovku (jako doted) / cely, bez orezu (4:3).',
+  ne:'Zpozdeni, trhani, spatne barvy, chybi zvuk nebo obraz - napis co (a kolik zhruba zpozdeni) a posli log (radky B305 TV PROUD SEGA a B305 PROHLIZEC SEGA).'},
+ {n:2,co:'TV / PC PS1: totez s hrou na PS1 (i menu BIOSu a hra ve vysokem rozliseni)',
+  ok:'Obraz PS1 plynuly, zvuk sedi, mensi zpozdeni nez driv. Kdyz obraz stoji (menu, text), po chvilce zaostri. Prepnes-li v telefonu ze Segy na PS1 (nebo na Atari), prohlizec se prepne sam.',
+  ne:'Zpozdeni, trhani, kostky, chybi zvuk - napis co a posli log (radky B305 TV PROUD PS1 a B305 PROHLIZEC PS1).'},
  // B304: nove uvodni demo podle Reneho scenare, cele v C++
- {n:1,co:'UVODNI DEMO - pri startu appky (nebo OPTIONS - PUSTIT INTRO), na vysku, na sirku a se zapnutym prenosem i na TV / PC',
+ {n:3,co:'UVODNI DEMO - pri startu appky (nebo OPTIONS - PUSTIT INTRO), na vysku, na sirku a se zapnutym prenosem i na TV / PC',
   ok:'45 s podle scenare: tma a bzuceni stare TV, seda garaz, vrata se zvednou, valici se cerna mracna, hromy, ptaci, dest, obrovsky blesk, kamera najede na Atari 130XE na stole, energie rozsviti mobily, strihy (Atari, Sega, PS1, TV), tma a zlate logo s titulky. Plynule, zvuk sedi s obrazem, titulky citelne. Dotek = preskocit, pak je hned menu. Na TV demo na sirku i se zvukem.',
   ne:'Trha se, je cerne, zvuk nesedi nebo chybi, titulky nejsou videt, neco nesouhlasi se scenarem - napis co a v kolikate vterine a posli log (radky B304 DEMO).'},
  // B300: POKEY casovac (Ghostbusters), zvuk her, TBXL LIST s dlouhym WALLS, TXT
- {n:2,co:'TEST JADRA (tlacitko SPUSTIT TEST JADRA nize)',
+ {n:4,co:'TEST JADRA (tlacitko SPUSTIT TEST JADRA nize)',
   ok:'Procesor i Pamet = SEDI (29C55806 / D3949DC5), Rychlost aspon 2x realny cas.',
   ne:'NESEDI, nebo rychlost pod 1x (Atari by se zpomalovalo).'},
  // B303: TV / PC cele v C++ (proud z C++, mensi zpozdeni) a vlozeni kodu z PC (Ctrl+V)
- {n:3,co:'TV / PC: zapni prenos, otevri HELP (Atari 130XE C++) a v prohlizeci na PC / TV obnov stranku (F5)',
-  ok:'Obraz Atari a zvuk jako v B302, ale MENSI ZPOZDENI: pises z PC v BASICu a pismeno je na TV hned (jako na telefonu); v Ghostbusters / jine hre se postava hne hned po klavese. Obraz plynuly (50 snimku/s).',
-  ne:'Porad zpozdeni, trhani, chybi zvuk nebo obraz - napis kolik zhruba (napr. pul vteriny) a posli log (radky B303 TV PROUD, B303 PROHLIZEC, B303 WIFI).'},
+ {n:5,co:'TV / PC ATARI: zapni prenos, otevri HELP (Atari 130XE C++) a v prohlizeci na PC / TV obnov stranku (F5)',
+  ok:'Jako v B303 / B304: obraz a zvuk 1 ku 1 s telefonem, pismeno z PC je na TV hned, obraz plynuly (50 snimku/s).',
+  ne:'Neco hur nez v B304 - napis co a posli log (radky B303 TV PROUD, B303 PROHLIZEC, B303 WIFI).'},
  // B302: klavesnice pocitace v prohlizeci (TV / PC) -> Atari 130XE v C++
- {n:4,co:'TV / PC: KLAVESNICE POCITACE - v prohlizeci na PC pis do Atari (vpravo dole je napoveda)',
+ {n:6,co:'TV / PC: KLAVESNICE POCITACE - v prohlizeci na PC pis do Atari (vpravo dole je napoveda)',
   ok:'Jako v B302: 10 PRINT "Ahoj" + Enter, LIST, RUN; Backspace, sipky = kurzor, F2 = BREAK, F1/F3/F4 = START/SELECT/OPTION. F9 = HRANI: WASD/sipky joystick, L = FIRE, K/mezernik skok.',
   ne:'Neco nejde, pise jinak nebo se ztraci znaky - napis co a posli log (radky B302 a B299 KLAVESY (PC)).'},
- {n:5,co:'TV / PC: VLOZIT KOD - na PC zkopiruj program (napr. 10 PRINT "Ahoj" a 20 GOTO 10) a v okne prohlizece dej Ctrl+V; pak LIST a RUN',
+ {n:7,co:'TV / PC: VLOZIT KOD - na PC zkopiruj program (napr. 10 PRINT "Ahoj" a 20 GOTO 10) a v okne prohlizece dej Ctrl+V; pak LIST a RUN',
   ok:'Nahore se ukaze VLOZENO: 2 RADKU PROGRAMU (BEZ NEW) - PISU a appka radky napise; program, ktery uz v Atari byl, zustane. Totez pretazenim TXT souboru do okna. Text bez cisel radku (napr. RUN) se napise jako klavesy.',
   ne:'Nic se nestane, napise se spatne nebo se program smaze - posli log (radky B303 VLOZENI a B299 TXT PROGRAM).'},
- {n:6,co:'BASIC/TBXL TXT - TXT SOUBOR (i s ceskymi znaky jako e s hackem v textu) do ATARI BASICu i TURBO-BASICu',
-  ok:'Napise se cely, ceske znaky bez hacku a carek (Priserne), RUN funguje.',
-  ne:'Radky s e s hackem se rozsypou nebo chybi (tak to bylo do B302).'},
- {n:7,co:'Hry jako minule: Ghostbusters, Popeye, Moon Patrol, Donkey Kong, W3D (i zvuk)',
-  ok:'Stejne jako v B303.',
-  ne:'Neco hur nez v B303 (napis ktera hra a kde).'},
- {n:8,co:'ATARI 130XE EMULATOR, PS1 a SEGA v hlavni nabidce (i prenos na TV a klavesnice z PC u nich)',
-  ok:'Bezi UPLNE STEJNE jako dosud.',
+ {n:8,co:'Hry jako minule: Ghostbusters, Popeye, Moon Patrol, Donkey Kong, W3D (i zvuk)',
+  ok:'Stejne jako v B304.',
+  ne:'Neco hur nez v B304 (napis ktera hra a kde).'},
+ {n:9,co:'V TELEFONU: ATARI 130XE EMULATOR z hlavni nabidky, hry na Seze a PS1 (obraz, zvuk, ovladani, klavesnice z PC u Segy)',
+  ok:'Bezi UPLNE STEJNE jako dosud - menil se jen prenos na TV / PC.',
   ne:'Jakakoli zmena proti minule verzi.'}
 ];
 var vysledky={};

@@ -1,0 +1,5 @@
+300 zakodovani (pasy 1/2/3 stridave, 2 snimky): 0 jinych nez vzor; obdelnik 400x300 opakovane stejny: ANO
+VYSLEDEK: OK
+
+ThreadSanitizer (stejny test, -fsanitize=thread): hlaseni 0
+VYSLEDEK: OK

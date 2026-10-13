@@ -26,6 +26,8 @@
 #include <android/native_window_jni.h>
 #include <unistd.h>          // CESTA A: zvuk bez Javy (od API 9)
 #include <SLES/OpenSLES_Android.h>
+#include "tvproud/nap_tv_proud.h"        // B305: PS1 na TV / PC cela v C++
+#include "tvproud/nap_tv_proud_jpeg.h"
 #include <signal.h>   // A10: zachytavac padu (sigaction)
 #include <fcntl.h>    // A10: open() - zapis padu do log souboru (async-signal-safe)
 #include <unistd.h>   // A10: write()/close()
@@ -204,6 +206,19 @@ static std::atomic<int> g_fw{0}, g_fh{0};
 static std::atomic<uint32_t> g_input_bits{0}; // BUILD2SA4: libretro joypad bits
 static std::mutex g_frame_mutex;
 static std::vector<uint32_t> g_frame_argb; // SA2b si tenhle buffer vyzvedne pro TextureView
+// ===================================================================
+//  B305: PS1 NA TV / PC CELA V C++ (jako Atari 130XE v B303)
+//  Rene: "udelas ten tv prenos u segi a ps1 na tv a pc jako si udelal u
+//  atari emu c++, aby to bylo taky v c++ a tak super jak v emu atari c++?"
+//  Vlakno emulace da snimek hned po retro_run (stejny, jaky jde na displej),
+//  zvuk jde z OpenSL - presne to, co hraje reproduktor. Kazdy prohlizec
+//  (/ps1.stream) ma vlastni vlakno: JPEG jen zmenene casti, v puvodnim
+//  rozliseni hry (nap_tv_proud_jpeg.h), zvuk ve stejnem paketu.
+//  Zamerne "new" bez delete - vlakna prohlizecu nesmi pri ukonceni procesu
+//  narazit na zniceny objekt.
+// ===================================================================
+static nap::proud::Hub<nap::proud::KodekJpeg> &g_ps1Proud =
+        *new nap::proud::Hub<nap::proud::KodekJpeg>("PS1", 44100);
 static std::mutex g_life_mutex;
 static std::mutex g_core_mutex; // BUILD2SA5: save/load state nesmi bezet soucasne s retro_run
 static double g_fps = 60.0;
@@ -626,6 +641,7 @@ static void nap_sl_callback(SLAndroidSimpleBufferQueueItf bq, void*) {
     }
   }
   nap_tvring_write(blk, (unsigned)need);   // kopie pro TV (hlavni cestu nezdrzuje)
+  g_ps1Proud.zvuk(blk, need);              // B305: prenos z C++ (nic nedela, kdyz se nikdo nediva)
   (*bq)->Enqueue(bq, blk, need * sizeof(int16_t));
 }
 
@@ -1721,6 +1737,15 @@ static void nap_core_thread_fn(void) {
                 // Kdyz snimek prisel z jadra, uz je hotovy - nesahat na nej.
                 if (!zJadra)
                     nap_publish_frame_for_app((const uint8_t*)g_frame_buf[slot ^ 1].data(), w, h);
+                // B305: tentyz snimek do prenosu na TV / PC (i kdyz se nezmenil -
+                // hra na 30 snimku/s: prohlizec pak dostane jen zvuk, 60x za vterinu)
+                if (g_ps1Proud.klientu() > 0) {
+                    std::lock_guard<std::mutex> fl(g_frame_mutex);
+                    const int pw = g_fw.load(), ph = g_fh.load();
+                    if (pw > 0 && ph > 0 && g_frame_argb.size() >= (size_t)pw * ph) g_ps1Proud.snimek(g_frame_argb.data(), pw, ph);
+                } else {
+                    g_ps1Proud.snimek(nullptr, 0, 0);    // jen "jadro bezi" (pro /status)
+                }
             }
         }
     }
@@ -1866,4 +1891,53 @@ Java_eu_atarihelp_emu10_NativePs1CoreBridge_ps1Stop(JNIEnv *env, jclass) {
   g_input_bits.store(0);
   NAPLOG("BUILD2SA2 PS1 stop frames=%llu", (unsigned long long)g_frames.load());
   return env->NewStringUTF("PS1_STOPPED");
+}
+
+// ===================================================================
+//  B305: PRENOS PS1 NA TV / PC (Java /ps1.stream jen posila bajty)
+// ===================================================================
+/** Novy prohlizec. Vraci cislo klienta (> 0). */
+extern "C" JNIEXPORT jint JNICALL
+Java_eu_atarihelp_emu10_NativePs1CoreBridge_proudOtevriNative(JNIEnv *, jclass) {
+  return (jint)g_ps1Proud.otevri();
+}
+
+/** Ceka (nejvys cekejMs) na novy snimek a zabali ho do out: 4 B delka + paket.
+ *  zapisMs = jak dlouho trval zapis minuleho paketu do site (rizeni kvality JPEG).
+ *  Vraci pocet bajtu, 0 = nic noveho, zaporne = out je male (potreba -n bajtu,
+ *  paket pocka na dalsi volani), INT32_MIN = neznamy klient. */
+extern "C" JNIEXPORT jint JNICALL
+Java_eu_atarihelp_emu10_NativePs1CoreBridge_proudDalsiNative(JNIEnv *env, jclass, jint id, jbyteArray out, jint cekejMs, jint zapisMs) {
+  if (!out) return INT32_MIN;
+  thread_local std::vector<uint8_t> pk;
+  const int r = g_ps1Proud.dalsi((int)id, (int)cekejMs, (int)zapisMs, pk);
+  if (r < 0) return INT32_MIN;
+  if (r == 0) return 0;
+  if ((jsize)pk.size() > env->GetArrayLength(out)) {
+    const jint potreba = (jint)pk.size();
+    g_ps1Proud.odloz((int)id, pk);
+    return -potreba;
+  }
+  env->SetByteArrayRegion(out, 0, (jsize)pk.size(), (const jbyte *)pk.data());
+  return (jint)pk.size();
+}
+
+/** Prohlizec odpojen. */
+extern "C" JNIEXPORT void JNICALL
+Java_eu_atarihelp_emu10_NativePs1CoreBridge_proudZavriNative(JNIEnv *, jclass, jint id) {
+  g_ps1Proud.zavri((int)id);
+}
+
+/** bit0 = jadro posila snimky (posledni pred < 2 s), bit1 = nekdo se diva */
+extern "C" JNIEXPORT jint JNICALL
+Java_eu_atarihelp_emu10_NativePs1CoreBridge_proudStavNative(JNIEnv *, jclass) {
+  return (g_ps1Proud.bezi(2000) ? 1 : 0) | (g_ps1Proud.klientu() > 0 ? 2 : 0);
+}
+
+/** Radky pro log appky (pripojen / odpojen / kazdych 30 s), null = nic. */
+extern "C" JNIEXPORT jstring JNICALL
+Java_eu_atarihelp_emu10_NativePs1CoreBridge_proudLogNative(JNIEnv *env, jclass) {
+  const std::string s = g_ps1Proud.vezmiLog();
+  if (s.empty()) return nullptr;
+  return env->NewStringUTF(s.c_str());
 }

@@ -1,0 +1,57 @@
+B305: prohlizec (Chromium) <- server jako Java <- SKUTECNY nap_sega_native_proof.cpp / nap_ps1_native.cpp
+stranka z MainActivity.java: 31027 bajtu, skriptu 2
+OK     Sega: jadro bezi (snimky pres skutecne zpetne volani VDP, zvuk pres JNI pullAudioStereo)
+
+--- SEGA (/sega.stream, paleta + LZ bez ztraty) ---
+po nacteni: {'W': 320, 'H': 224, 'ver': 2, 'cv': 'block', 'img': 'none', 'imgSrc': '', 'h264': 'none'}
+OK     stranka z appky (/status proud=sega) sama prepnula na proud z C++: canvas 320x224, paket verze 2
+OK     MJPEG obrazek i H.264 video vypnute (zadny JPEG ani H.264 z Javy)
+canvas proti snimku z jadra Segy: 0 ruznych bodu z 71680
+OK     Sega: obraz v prohlizeci je PRESNE snimek jadra (vsech 71680 bodu, bez ztraty)
+za 4 s: 60.0 snimku/s, zvuk 48128 vzorku/s, podteceni 0, zahozeno 0, polstar 50 ms, chyb 0, 4.50 Mbit/s
+OK     Sega: prohlizec dostava kazdy snimek (60/s), zadna chyba paketu
+OK     Sega: zvuk jde proudem a hraje ve WebAudio (48000 vzorku/s)
+vyplnit obrazovku: {'x': 0, 'y': 0, 'w': 1313, 'h': 720, 'ox': 0, 'oy': 0, 'ow': 312, 'oh': 224, 'W': 320, 'H': 224, 'fill': 1}
+OK     Sega "vyplnit obrazovku": obsah bez cerneho pruhu (levy sloupec, 312 bodu) presne na celou TV 16:9 jako doted
+cely, bez orezu: {'x': 160, 'y': 0, 'w': 960, 'h': 720, 'ox': 0, 'oy': 0, 'ow': 312, 'oh': 224, 'W': 320, 'H': 224, 'fill': 0}
+OK     Sega "cely, bez orezu": cely snimek 4:3 (960x720 uprostred, po stranach cerno)
+zpozdeni zmena v jadru Segy -> canvas (bez Wi-Fi): 14, 18, 16, 16, 19, 14 ms
+OK     Sega: zmena v jadru je v obraze prohlizece do 2-3 snimku (median 16 ms, snimek = 16,7 ms)
+OK     Sega: po zmenach obraz zase presne (0 ruznych bodu)
+
+--- PS1 (/ps1.stream, JPEG jen zmenenych casti v puvodnim rozliseni) ---
+ps1BootDoMonitoru: PS1_BIOS_OK, snimek 320x240
+OK     PS1: skutecny start pres JNI (vlakno emulace, OpenSL zvuk)
+po prepnuti: {'W': 320, 'H': 240, 'ver': 3, 'druh': 'ps1'}
+OK     Sega -> PS1: stranka sama prepnula proud (bez obnoveni stranky), canvas 320x240, verze 3
+canvas proti snimku z jadra PS1: PSNR 36.5 dB
+OK     PS1: obraz v prohlizeci odpovida snimku jadra (PSNR 36.5 dB >= 30)
+za 4 s: 50.8 paketu/s, 30.2 JPEG/s nakresleno (prekrytych zahozeno 0), zvuk 44032 vzorku/s, polstar 50 ms, chyb 0, 5.51 Mbit/s
+OK     PS1: hra na 30 snimku/s = vsech 30 obrazku/s v prohlizeci, mezi nimi pakety jen se zvukem (duplikat), zadna chyba
+OK     PS1: zvuk z OpenSL jde proudem a hraje ve WebAudio (44100 vzorku/s)
+zpozdeni zmena v jadru PS1 -> canvas (bez Wi-Fi): 58, 22, 25, 48, 24, 48 ms
+OK     PS1: zmena v jadru je v obraze prohlizece do 2-3 snimku hry (median 36 ms)
+obraz v pohybu PSNR 38.9 dB -> stoji 1,2 s: PSNR 43.2 dB
+OK     PS1: kdyz obraz stoji (menu, text), prijde jeste jednou ve vysoke kvalite (PSNR 38.9 -> 43.2 dB)
+spojeni zavreno serverem: pozadavku na /ps1.stream 1 -> 2, PSNR 36.1 dB, proud ps1
+OK     PS1: spadle spojeni - prohlizec se pripojil znovu sam, obraz zase spravne
+z prohlizece do logu appky: ['B305 SEGA PROUD start', 'B305 SEGA PROUD start', 'B305 SEGA PROUD start', 'B305 PS1 PROUD start', 'B305 PS1 PROUD start', 'B305 PROHLIZEC PS1: 53.2 snimku/s, JPEG 30/s (prekrytych zahozeno 0), zvuk hraje, napred 72 ms (cil 50), podteceni 0, zahozeno 0, chyb 0, okno 1280x720, obraz 320x240 vyplnit']
+OK     prohlizec hlasi do logu appky start proudu Segy i PS1 a kazdych 30 s snimky/s, JPEG/s a zvuk
+OK     behem proudu (i pri prepnuti Sega -> PS1 a znovupripojeni) zadne dotazy na JPEG / MJPEG / H.264 / stary zvuk (55 -> 55)
+PS1 pryc z obrazovky: {'on': False, 'cv': 'none', 'img': '', 'src': '/stream.mjpg'}
+OK     PS1 pryc z obrazovky -> proud konci, stranka zpet na MJPEG / JPEG (postaru)
+OK     Sega zpet na obrazovce -> proud z C++ zase bezi, obraz presne (0 ruznych bodu)
+OK     zadna chyba JavaScriptu na strance []
+log appky (B305):
+  B305 TV PROUD SEGA: prohlizec 1 pripojen (celkem 1) - obraz a zvuk primo z C++ (paleta + LZ (bez ztraty)), kazdy snimek, zvuk 48000 Hz v tomtez paketu
+  B305 TV PROUD SEGA: prohlizec 1 odpojen po 12 s - 716 paketu (59.1/s), 5.8 MB celkem, klicovych 1, prestaveb palety 247, beze zmeny 0 z 716 (zbyva 0)
+  B305 TV PROUD SEGA: prohlizec 2 pripojen (celkem 1) - obraz a zvuk primo z C++ (paleta + LZ (bez ztraty)), kazdy snimek, zvuk 48000 Hz v tomtez paketu
+  B305 TV PROUD SEGA: prohlizec 2 odpojen po 1 s - 54 paketu (60.9/s), 0.3 MB celkem, klicovych 1, prestaveb palety 0, beze zmeny 0 z 54 (zbyva 0)
+  B305 TV PROUD PS1: prohlizec 1 pripojen (celkem 1) - obraz a zvuk primo z C++ (JPEG po castech), kazdy snimek, zvuk 44100 Hz v tomtez paketu
+  B305 TV PROUD PS1: prohlizec 1 odpojen po 9 s - 459 paketu (52.8/s), 5.1 MB celkem, JPEG kvalita 88 (max 88, snizeno 0x), kodovani prumer 1.1 ms max 4.9 ms (pasu 1), castecnych 0, zjemneni 1, beze zmeny 234 z 459 (zbyva 0)
+  B305 TV PROUD PS1: prohlizec 2 pripojen (celkem 1) - obraz a zvuk primo z C++ (JPEG po castech), kazdy snimek, zvuk 44100 Hz v tomtez paketu
+  B305 TV PROUD PS1: prohlizec 2 odpojen po 7 s - 386 paketu (53.3/s), 4.8 MB celkem, JPEG kvalita 88 (max 88, snizeno 0x), kodovani prumer 1.1 ms max 3.9 ms (pasu 1), castecnych 0, zjemneni 0, beze zmeny 168 z 386 (zbyva 0)
+OK     log appky: prohlizec pripojen / odpojen (pakety, MB, kvalita JPEG, doba kodovani)
+doba zapisu paketu PS1 do site (localhost): median 0 ms, max 2 ms
+
+VYSLEDEK: 24 kontrol, 0 chyb

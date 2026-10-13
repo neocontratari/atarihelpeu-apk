@@ -9,8 +9,15 @@ android {
         applicationId "eu.atarihelp.emu10.test"  // TEST vedle prave apky (neprepise ji)
         minSdk 24
         targetSdk 34
-        versionCode 347
-        versionName "EMU10-B304-UVODNI-DEMO"
+        versionCode 348
+        versionName "EMU10-B305-SEGA-PS1-TV-CPP"
+        // B305: Rene - "udelas ten tv prenos u segi a ps1 na tv a pc jako si
+        // udelal u atari emu c++, aby to bylo taky v c++ a tak super jak v emu
+        // atari c++?" Sega a PS1 na TV / PC cele v C++ (app/src/main/cpp/tvproud):
+        // snimek hned z jadra, Sega bez ztraty (paleta + LZ i pri posunu obrazu),
+        // PS1 JPEG jen zmenenych casti v puvodnim rozliseni (vlastni rychly koder,
+        // velky obraz na 2 jadrech), zvuk ve stejnem paketu; Java (/sega.stream,
+        // /ps1.stream) jen posila bajty, prohlizec kresli do canvasu.
         // B304: Rene - "udelej uvodni demo nove podle tohoto navrhu a nechat to
         // na tobe - grafika muze byt HD a nemusi splnovat pozadavky atari sega
         // a ps1". Nove uvodni demo podle jeho scenare (N&P STUDIO MASTER SCI-FI

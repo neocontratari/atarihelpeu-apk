@@ -1,0 +1,21 @@
+=== NativeSegaCoreBridge ===
+proudOtevriNative -> 1, proudDalsiNative s malym polem -> potreba 9593 B, pak paket 9593 B: znacka NA, verze 2, delka 9589, zvuk 48000 Hz
+proudStavNative -> 3 (bit0 jadro bezi, bit1 nekdo se diva)
+proudLogNative ->
+B305 TV PROUD SEGA: prohlizec 1 pripojen (celkem 1) - obraz a zvuk primo z C++ (paleta + LZ (bez ztraty)), kazdy snimek, zvuk 48000 Hz v tomtez paketu
+B305 TV PROUD SEGA: prohlizec 1 odpojen po 0 s - 1 paketu (29.4/s), 0.0 MB celkem, klicovych 1, prestaveb palety 0, beze zmeny 0 z 1 (zbyva 0)
+proudDalsiNative po zavreni -> -2147483648 (ma byt Integer.MIN_VALUE)
+Sega Safe: otevri 2, dalsi 9411 B, stav 3
+pullAudioStereo (B305: kopie zvuku do prenosu) -> 1024
+BUILD2SA11 MEMCARD_NONE core nedava SAVE_RAM
+CESTA_A ZVUK OpenSL ES otevren (44100/2/i16, z g_afifo, bez Javy, funguje od API 9)
+PS1 knihovna nactena: true
+=== NativePs1CoreBridge ===
+proudOtevriNative -> 1, proudDalsiNative s malym polem -> potreba 15206 B, pak paket 15206 B: znacka NA, verze 3, delka 15202, zvuk 44100 Hz
+proudStavNative -> 3 (bit0 jadro bezi, bit1 nekdo se diva)
+proudLogNative ->
+B305 TV PROUD PS1: prohlizec 1 pripojen (celkem 1) - obraz a zvuk primo z C++ (JPEG po castech), kazdy snimek, zvuk 44100 Hz v tomtez paketu
+B305 TV PROUD PS1: prohlizec 1 odpojen po 0 s - 1 paketu (41.7/s), 0.0 MB celkem, JPEG kvalita 88 (max 88, snizeno 0x), kodovani prumer 1.4 ms max 1.4 ms (pasu 1), castecnych 0, zjemneni 0, beze zmeny 0 z 1 (zbyva 0)
+proudDalsiNative po zavreni -> -2147483648 (ma byt Integer.MIN_VALUE)
+PS1 Safe: otevri 2, dalsi 15206 B, stav 3
+VYSLEDEK: vsech 10 novych native metod B305 (Sega i PS1) se zavolalo, nazvy i typy sedi (0 chyb)

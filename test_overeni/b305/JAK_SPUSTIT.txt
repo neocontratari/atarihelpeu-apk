@@ -1,0 +1,97 @@
+B305 - Sega a PS1 na TV / PC cele v C++ (jako Atari 130XE v B303) - overeni na PC
+==================================================================================
+
+Kod v appce: app/src/main/cpp/tvproud/
+  nap_tv_proud.h         rozbocovac: snimek z jadra, zvuk, prohlizece (kazdy vlastni vlakno), paket
+  nap_tv_proud_index.h   SEGA: paleta + LZ s odkazem do minuleho snimku (bez ztraty)
+  nap_tv_proud_jpeg.h    PS1: JPEG jen zmeneneho obdelniku, zjemneni stojiciho obrazu, kvalita podle site
+  nap_tv_proud_jpegenc.h rychly koder JPEG (pasy soubezne, spojene znackami RST do jednoho JPEG)
+Hacky: nap_sega_native_proof.cpp (konec snimku ve scanline_rendered, zvuk v pullAudioStereo, JNI proud*),
+       nap_ps1_native.cpp (snimek po retro_run ve vlakne emulace, zvuk v OpenSL callbacku, JNI proud*),
+       MainActivity.java (/sega.stream, /ps1.stream, /status proud=..., stranka prohlizece).
+
+Spoustet z adresare test_overeni/b305. JAVA_HOME = JDK (jni.h). Hlavicky EGL / GLES2 / KHR
+v ceste ($INC jako v ../b304/JAK_SPUSTIT.txt), knihovny Mesa (libEGL, libGLESv2).
+
+0) Snimky 3D sceny jako "hra na PS1" (uvodni demo B304 pres Mesa, 30 snimku/s):
+
+   cd ../b304 && ./demo_snimky ADR_320 320 240 <casy 20.0 .. 21.97 po 1/30 s, 10.0 .. 10.97, 29.0 .. 29.97>
+              && ./demo_snimky ADR_640 640 480 <casy 20.0 .. 20.97 po 1/30 s>
+   (120 snimku 320x240 a 30 snimku 640x480)
+
+1) Kodeky (skutecne hlavicky z appky):
+
+   g++ -std=c++17 -O2 -pthread -I../../app/src/main/cpp/tvproud -I../../app/src/main/cpp/vendor/stb -I. \
+       -o test_kodeky test_kodeky.cpp
+   ./test_kodeky ADR_320 ADR_640                      -> VYSTUP_test_kodeky.txt
+
+   SEGA: synteticka hra jako Sonic (sega_hra.h: dve vrstvy dlazdic s paralaxou, vlnici se voda,
+   postavicky, skore, kolobeh barev, levy sloupec vypnuty), 10 s pri 60 snimcich/s, stmivani,
+   paleta pres 256 barev, staticky obraz, 320 -> 256 -> 320 bodu, nahodny sum. Kazdy snimek se
+   rozbali jako v prohlizeci a porovna bod po bodu.
+   PS1: snimky 3D sceny 320x240 a 640x480, PSNR prohlizece, stojici obraz, mala zmena, rizeni
+   kvality siti, srovnani s stb_image_write (stb_image_write.h je tu jen kvuli srovnani),
+   1 / 2 / 3 pasy, rozmery 368x240, 512x480, 640x512, 257x193, 256x224, 33x17 a obdelnik na kraji.
+
+1b) Koder JPEG na vic jadrech (pasy se meni kazdy snimek 1 / 2 / 3, vysledek bajt po bajtu stejny):
+
+   g++ -std=c++17 -O2 -pthread -I../../app/src/main/cpp/tvproud -o test_pasy test_pasy.cpp && ./test_pasy
+   totez s -O1 -g -fsanitize=thread (ThreadSanitizer)  -> VYSTUP_test_pasy.txt
+
+2) Rozbocovac s vlakny jako v appce (jadro 60 snimku/s, zvuk po 10 ms, rychly a pomaly prohlizec):
+
+   g++ -std=c++17 -O2 -pthread -I../../app/src/main/cpp/tvproud -I../../app/src/main/cpp/vendor/stb -I. \
+       -o test_hub test_hub.cpp
+   ./test_hub ADR_320                                  -> VYSTUP_test_hub.txt
+   ThreadSanitizer: totez s -O1 -g -fsanitize=thread, spustit s NAP_TSAN=1 (bez kontrol rychlosti,
+   pod TSan je vse ~10x pomalejsi)                     -> VYSTUP_test_hub_tsan.txt
+
+3) KONEC-KONCU v prohlizeci (Chromium pres Playwright), SKUTECNE C++ soubory appky:
+
+   a) jadro Segy (clownmdemu) - objekty presne podle CMakeLists.txt:
+      V=../../app/src/main/cpp/vendor/clownmdemu-core
+      gcc -O2 -fPIC -c -DCC_USE_C99_INTEGERS=1 -I$V/source -I$V/libraries/clowncommon \
+          -I$V/libraries/clown68000/source/interpreter -I$V/libraries/clown68000/source/common \
+          -I$V/libraries/clownz80/source $V/source/<bus-common ... vdp>.c   (23 souboru jako v CMake)
+      + clown68000 (common/opcode.c, interpreter/clown68000.c), clownz80 (common.c, interpreter.c)
+   b) g++ -std=c++17 -O2 -shared -fPIC -pthread -DNAP_SEGA_VENDOR_CORE_PRESENT=1 -DCC_USE_C99_INTEGERS=1 \
+          -I../b291/stub -I$INC -I$JAVA_HOME/include -I$JAVA_HOME/include/linux -I$V/source \
+          -I$V/libraries/clowncommon -I$V/libraries/clown68000/source/interpreter -I$V/libraries/clownz80/source \
+          -o libsega_b305.so tv_sega.cpp <objekty jadra> -Wl,--no-undefined -l:libEGL.so.1 -l:libGLESv2.so.2
+   c) g++ -std=c++17 -O2 -shared -fPIC -pthread -DANDROID -Istub -I../b291/stub -I$INC \
+          -I$JAVA_HOME/include -I$JAVA_HOME/include/linux -I../../app/src/main/cpp/vendor/stb \
+          -o libps1_b305.so tv_ps1.cpp -Wl,--no-undefined -l:libEGL.so.1 -l:libGLESv2.so.2
+   d) python3 test_b305_prohlizec.py ADR_320          -> VYSTUP_test_b305_prohlizec.txt (cca 1 minuta)
+      (EGL_PLATFORM=surfaceless si nastavi sam - PS1 si dela vlastni EGL kontext)
+
+   tv_sega.cpp: skutecny nap_sega_native_proof.cpp; misto ROM krmi skutecne zpetne volani VDP
+   (paleta CRAM + radek po radku, levy sloupec vypnuty), zvuk do front FM / PSG a "Java" si ho
+   bere pres skutecne JNI pullAudioStereo.
+   tv_ps1.cpp: skutecny nap_ps1_native.cpp - start pres JNI ps1BootDoMonitoru, skutecne vlakno
+   emulace, nap_video, OpenSL callback (nahrazena zvukova karta bere bloky v realnem case);
+   misto PCSX snimky 3D sceny jako hra na 30 snimku/s (kazdy druhy snimek duplikat).
+   Server v Pythonu dela to, co Java (napTvWebJadroProud, /status proud=...).
+
+   Overuje: stranka sama prepne na proud z C++ (Sega, pak PS1 bez obnoveni stranky, pak zpet
+   postaru a znovu Sega), Sega bod po bodu PRESNE, 60 snimku/s, 48000 Hz; PS1 PSNR, 30 obrazku/s,
+   44100 Hz, zjemneni stojiciho obrazu; "vyplnit obrazovku" / "cely, bez orezu"; zpozdeni zmena
+   v jadru -> obraz v prohlizeci; spadle spojeni; zadne stare cesty (MJPEG, H.264, /audio.raw);
+   log appky i z prohlizece; zadna chyba JavaScriptu.
+
+4) ThreadSanitizer nad skutecnymi soubory (vlakno jadra + zvuku + dva prohlizece):
+
+   g++ -std=c++17 -O1 -g -fsanitize=thread -pthread -DJADRO_SEGA <prepinace a objekty jako 3b> \
+       -o tsan_sega tsan_jadra.cpp ...           ./tsan_sega
+   g++ -std=c++17 -O1 -g -fsanitize=thread -pthread -DJADRO_PS1 <prepinace jako 3c> \
+       -o tsan_ps1 tsan_jadra.cpp ...            EGL_PLATFORM=surfaceless ./tsan_ps1 ADR_320 PRAC
+                                                   -> VYSTUP_tsan_jadra.txt
+
+5) Podpisy JNI se SKUTECNYMI Java tridami NativeSegaCoreBridge a NativePs1CoreBridge v JVM:
+   tv_sega.cpp prelozit jako libnapsega_native_proof.so a tv_ps1.cpp jako libnapps1core.so (3b, 3c),
+   javac -d OUT -sourcepath jvm/stub ../../app/src/main/java/eu/atarihelp/emu10/NativeSegaCoreBridge.java \
+         ../../app/src/main/java/eu/atarihelp/emu10/NativePs1CoreBridge.java jvm/TestPodpisu.java
+   NAP_JVM_TEST=1 NAP_JVM_PNG=ADR_320 NAP_JVM_PRAC=PRAC EGL_PLATFORM=surfaceless \
+         java -Djava.library.path=<adresar s .so> -cp OUT TestPodpisu   -> jvm/VYSTUP_TestPodpisu.txt
+
+6) Atari (B303) beze zmeny: ../b303/test_b303_prohlizec.py se strankou z B305 -> 23 / 23
+   (stranka prohlizece je pro Atari, Segu i PS1 spolecna).

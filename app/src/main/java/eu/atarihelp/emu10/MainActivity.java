@@ -1194,7 +1194,8 @@ public class MainActivity extends Activity {
                         // Vyzvedavat se musi VZDY, i kdyz se neposila - jinak
                         // by odbocka v jadre pretekala a po navratu do PS1 by
                         // na TV slo nekolik vterin stareho zvuku.
-                        if (got > 0 && !jinyZdrojPravePosila) {
+                        // B305: kdyz prohlizec bere PS1 primo z C++ (/ps1.stream), zvuk uz jde tam
+                        if (got > 0 && !jinyZdrojPravePosila && napTvPs1ProudKlientu.get() == 0) {
                             napTvWebAudioPush(tvPs1Pcm, 0, got, 44100, "PS1");
                         }
                     } catch (Throwable ignored) {}
@@ -1561,6 +1562,12 @@ public class MainActivity extends Activity {
             // Tim odpadnou vsechny tri kopie snimku v Jave (105 MB/s pri
             // 640x480 a 30 snimcich) a procesor zbude emulaci.
             if (tvPrimoBezi) return false;
+            // B305: prohlizec bere Segu / PS1 primo z C++ (/sega.stream, /ps1.stream) -
+            // tady nic nezvetsovat ani nekomprimovat (hlavni vlakno zustane volne)
+            if (napTvSegaProudKlientu.get() > 0 || napTvPs1ProudKlientu.get() > 0) {
+                String uP = napTvWebCurrentUrl;
+                if (uP != null && (uP.contains("emu_sega") || uP.contains("emu_ps1"))) return true;
+            }
             if (bw <= 0 || bh <= 0) return false;
             // Podrzeni posledniho snimku ma smysl jen ZA BEHU hry (kratky
             // vypadek pri nacitani). Kdyz uz hra nebezi, drzelo se to donekonecna
@@ -3025,6 +3032,120 @@ public class MainActivity extends Activity {
         }
     }
 
+    // ===================================================================
+    //  B305: SEGA A PS1 NA TV / PC CELE V C++ (jako Atari 130XE v B303)
+    //
+    //  Rene: "udelas ten tv prenos u segi a ps1 na tv a pc jako si udelal u
+    //  atari emu c++, aby to bylo taky v c++ a tak super jak v emu atari c++?"
+    //  Doted Java snimek z jadra zvetsovala na 1280x720 a komprimovala (H.264 /
+    //  JPEG), prohlizec H.264 bufferoval a zvuk chodil zvlast (/audio.raw).
+    //  Ted C++ zabali kazdy snimek (Sega bez ztraty, PS1 JPEG jen zmenenych
+    //  casti v puvodnim rozliseni) i zvuk do jednoho proudu a Java ho jen
+    //  posila. Kvalitu JPEG ridi C++ podle toho, jak dlouho tu trva zapis.
+    // ===================================================================
+    private final java.util.concurrent.atomic.AtomicInteger napTvSegaProudKlientu = new java.util.concurrent.atomic.AtomicInteger();
+    private final java.util.concurrent.atomic.AtomicInteger napTvPs1ProudKlientu = new java.util.concurrent.atomic.AtomicInteger();
+
+    /** Je jadro (SEGA / PS1) na obrazovce telefonu? (stejne podminky jako snimani pro TV) */
+    private boolean napTvJadroNaObrazovce(String druh) {
+        String u = napTvWebCurrentUrl;
+        if (u == null) return false;
+        if ("SEGA".equals(druh)) return u.contains("emu_sega");
+        return u.contains("emu_ps1") && (ps1SessionActive || ps1GameWindowOwnsCore || ps1BiosRunning);
+    }
+
+    /** Ktery proud z C++ ted prohlizec ma brat: atari / sega / ps1 / 0 (do /status). */
+    private String napTvProudDruh() {
+        if (atariCppNaObrazovce && NativeAtariCoreBridge.isLoaded()) return "atari";
+        try {
+            if (napTvJadroNaObrazovce("SEGA") && (NativeSegaCoreBridge.proudStavSafe() & 1) != 0) return "sega";
+        } catch (Throwable ignored) {}   // knihovna Segy chybi (NoClassDefFoundError)
+        if (napTvJadroNaObrazovce("PS1") && NativePs1CoreBridge.isLoaded() && (NativePs1CoreBridge.proudStavSafe() & 1) != 0) return "ps1";
+        return "0";
+    }
+
+    private void napTvProudLog(boolean sega) {
+        String s;
+        try { s = sega ? NativeSegaCoreBridge.proudLogSafe() : NativePs1CoreBridge.proudLogSafe(); } catch (Throwable t) { return; }
+        if (s == null || s.isEmpty()) return;
+        for (String r : s.split("\n")) if (!r.isEmpty()) appendNativeLog(r);
+    }
+
+    private void napTvWebJadroProud(OutputStream out, Socket sock, final String druh) throws IOException {
+        String h = "HTTP/1.1 200 OK\r\n"
+                + "Content-Type: application/octet-stream\r\n"
+                + "Cache-Control: no-store, no-cache, must-revalidate, max-age=0\r\n"
+                + "Pragma: no-cache\r\n"
+                + "X-Content-Type-Options: nosniff\r\n"
+                + "Connection: close\r\n\r\n";
+        out.write(h.getBytes("ISO-8859-1"));
+        out.flush();
+        final boolean sega = "SEGA".equals(druh);
+        if (!napTvJadroNaObrazovce(druh)) return;
+        if (!sega && !NativePs1CoreBridge.isLoaded()) return;
+        // maly odesilaci buffer: kdyz Wi-Fi nestiha, nesmi se ve fronte systemu
+        // nahromadit sekundy obrazu (zpozdeni) - radsi se snimky preskoci
+        try { sock.setSendBufferSize(64 * 1024); } catch (Throwable ignored) {}
+        int id0;
+        try { id0 = sega ? NativeSegaCoreBridge.proudOtevriSafe() : NativePs1CoreBridge.proudOtevriSafe(); } catch (Throwable t) { id0 = 0; }
+        final int id = id0;
+        if (id <= 0) return;
+        final java.util.concurrent.atomic.AtomicInteger klientu = sega ? napTvSegaProudKlientu : napTvPs1ProudKlientu;
+        klientu.incrementAndGet();
+        napTvProudLog(sega);
+        final long[] zapsanoMs = { System.currentTimeMillis() };
+        final boolean[] konec = { false };
+        // hlidac: zapis visi pres 8 s (prohlizec zmizel bez rozlouceni, spadla Wi-Fi) - zavrit
+        Thread hlidac = new Thread(() -> {
+            try {
+                while (!konec[0] && !sock.isClosed()) {
+                    Thread.sleep(2000);
+                    if (!konec[0] && System.currentTimeMillis() - zapsanoMs[0] > 8000L) {
+                        appendNativeLog("B305 TV PROUD " + druh + ": prohlizec " + id + " 8 s nic neprevzal - zaviram spojeni");
+                        try { sock.close(); } catch (Throwable ignored) {}
+                        return;
+                    }
+                }
+            } catch (InterruptedException ignored) {}
+        }, "nap-proud-hlidac-" + druh);
+        hlidac.setDaemon(true);
+        hlidac.start();
+        byte[] b = new byte[1024 * 1024];
+        int zapisMs = 0;
+        long logMs = 0, snimekMs = System.currentTimeMillis();
+        try {
+            while (napTvWebRunning && !sock.isClosed() && napTvJadroNaObrazovce(druh)) {
+                int n = sega ? NativeSegaCoreBridge.proudDalsiSafe(id, b, 250, zapisMs) : NativePs1CoreBridge.proudDalsiSafe(id, b, 250, zapisMs);
+                long ted = System.currentTimeMillis();
+                if (ted - logMs >= 1000L) { logMs = ted; napTvProudLog(sega); }
+                if (n == Integer.MIN_VALUE) { appendNativeLog("B305 TV PROUD " + druh + ": chyba jadra - spojeni " + id + " zaviram"); break; }
+                if (n < 0) { b = new byte[Math.min(-n, 32 * 1024 * 1024) + 65536]; continue; }
+                zapsanoMs[0] = ted;
+                if (n == 0) {
+                    // jadro neposila snimky (hra skoncila, nacitani se zaseklo) - po 3 s
+                    // konec, prohlizec se vrati na snimani okna appky
+                    int st = sega ? NativeSegaCoreBridge.proudStavSafe() : NativePs1CoreBridge.proudStavSafe();
+                    if ((st & 1) == 0 && ted - snimekMs > 3000L) {
+                        appendNativeLog("B305 TV PROUD " + druh + ": jadro 3 s neposila snimky - proud " + id + " koncim");
+                        break;
+                    }
+                    continue;
+                }
+                snimekMs = ted;
+                long t0 = System.nanoTime();
+                out.write(b, 0, n);                  // 4 B delka + paket - jednim zapisem (TCP_NODELAY)
+                out.flush();
+                zapisMs = (int) Math.min(1000L, (System.nanoTime() - t0) / 1000000L);
+                zapsanoMs[0] = System.currentTimeMillis();
+            }
+        } finally {
+            konec[0] = true;
+            klientu.decrementAndGet();
+            if (sega) NativeSegaCoreBridge.proudZavriSafe(id); else NativePs1CoreBridge.proudZavriSafe(id);
+            napTvProudLog(sega);
+        }
+    }
+
     /** B303: POST /vloz - text z PC (Ctrl+V v prohlizeci, pretazeny TXT soubor) do Atari. */
     private void napTvWebVloz(byte[] prvni, int n, InputStream in, OutputStream out) throws IOException {
         java.io.ByteArrayOutputStream vse = new java.io.ByteArrayOutputStream();
@@ -3497,6 +3618,12 @@ public class MainActivity extends Activity {
             } else if ("/atari.stream".equals(path)) {
                 // B303: Atari 130XE (C++) na TV/PC - obraz a zvuk primo z C++
                 napTvWebAtariProud(out, s);
+            } else if ("/sega.stream".equals(path)) {
+                // B305: Sega na TV/PC - obraz a zvuk primo z C++
+                napTvWebJadroProud(out, s, "SEGA");
+            } else if ("/ps1.stream".equals(path)) {
+                // B305: PS1 na TV/PC - obraz a zvuk primo z C++
+                napTvWebJadroProud(out, s, "PS1");
             } else if ("/vloz".equals(path)) {
                 // B303: Ctrl+V / pretazeny TXT v prohlizeci -> program do Atari
                 // (telo POSTu se docita - kdyby nedoslo, vlakno nesmi viset navzdy)
@@ -3550,10 +3677,13 @@ public class MainActivity extends Activity {
                 boolean vSeze  = (curUrl3 != null) && curUrl3.contains("emu_sega");
                 String klavRezim = null;
                 if (atariCpp) klavRezim = NativeAtariCoreBridge.devPcKlavesaSafe("STAV", "", 0, true);
+                // B305: ktery proud z C++ ma prohlizec brat (atari / sega / ps1 / 0)
+                final String proudDruh = napTvProudDruh();
                 byte[] body = ("running=" + napTvWebRunning
                         + " atari=" + (vAtari ? 1 : 0)
                         + " atariCpp=" + (atariCpp ? 1 : 0)
                         + " atariProud=" + (atariCpp && NativeAtariCoreBridge.isLoaded() ? 1 : 0)
+                        + " proud=" + proudDruh
                         + (klavRezim != null ? " klavRezim=" + klavRezim : "")
                         + " sega=" + (vSeze ? 1 : 0)
                         + " seq=" + napTvWebSeq
@@ -3685,7 +3815,7 @@ public class MainActivity extends Activity {
                 // protoze v prohlizecich zustalo "oriznout".
                 + "var napFill=1;function napSetFill(){if(!sF)return;var m=napFill?'cover':'contain';h264v.style.objectFit=m;v.style.objectFit=m;"
                 + "sF.textContent=napFill?'OBRAZ: vyplnit obrazovku':'OBRAZ: cely, bez orezu';"
-                + "try{localStorage.setItem('napFillV3',napFill);}catch(e){}}"
+                + "try{localStorage.setItem('napFillV3',napFill);}catch(e){}if(window.napAp&&napAp.W)apRozmer();}"
                 + "try{var uf=localStorage.getItem('napFillV3');if(uf!==null)napFill=parseInt(uf)||0;}catch(e){}"
                 + "napSetFill();if(sF)sF.onclick=function(){napFill=napFill?0:1;napSetFill();};"
                 + "var sV=document.getElementById('sV'),napV=1;"
@@ -3729,48 +3859,68 @@ public class MainActivity extends Activity {
                 + "fb.onclick=function(){var el=document.documentElement;try{if(!isFs()){(el.requestFullscreen||el.webkitRequestFullscreen||el.msRequestFullscreen).call(el);}else{(document.exitFullscreen||document.webkitExitFullscreen||document.msExitFullscreen).call(document);}}catch(e){}};"
                 + "document.addEventListener('fullscreenchange',upd);document.addEventListener('webkitfullscreenchange',upd);document.addEventListener('msfullscreenchange',upd);upd();})();"
                 + "v.onerror=function(){if(!fb)fallback();};v.src='/stream.mjpg?'+Date.now();label('MJPEG');"
-                + "function pollFps(){fetch('/status').then(function(r){return r.text();}).then(function(t){var mp=/atariProud=(\\d)/.exec(t);window.napAtariProud=!!(mp&&mp[1]==='1');if(window.napAtariProud&&apLze()){if(!ap.on&&!ap.rd)apStart();}else if(ap.chce){apStop();}var m=/seq=(\\d+)/.exec(t);var m2=/h264Seq=(\\d+)/.exec(t);if(!h264Active&&!h264Loading&&!ap.chce&&!(window.napAtariProud&&apLze())){clog('pollFps calling startH264 (universal)');startH264();}var useM=h264Active&&m2?m2:m;if(useM){var sq=parseInt(useM[1],10),now=Date.now();if(lastSeqT>0){var dt=(now-lastSeqT)/1000;if(dt>0)curFps=Math.round((sq-lastSeq)/dt*10)/10;}if(sq===lastSeq&&sq>0){staleTicks++;}else{staleTicks=0;}lastSeq=sq;lastSeqT=now;if(staleTicks>=4&&!fb&&!h264Active&&!ap.chce){staleTicks=0;v.src='/stream.mjpg?'+Date.now();}}var ma=/atari=(\\d)/.exec(t), ms=/sega=(\\d)/.exec(t);var vA=!!(ma&&ma[1]==='1'), vS=!!(ms&&ms[1]==='1');window.napVAtari=vA;window.napVSeze=vS;var mc=/atariCpp=(\\d)/.exec(t), mr=/klavRezim=(\\w+)/.exec(t);window.napVAtariCpp=!!(mc&&mc[1]==='1');if(window.napVAtariCpp&&mr)window.napRezim=mr[1];if(window.napKlavesnicePopis)window.napKlavesnicePopis(vA||vS);label(h264Active?'H264':(fb?'JPEG':'MJPEG'));}).catch(function(e){clog('pollFps fetch err '+e);label(h264Active?'H264':(fb?'JPEG':'MJPEG'));});}" // BUILD2SK45+SK57+SK59: stale-reconnect jen v MJPEG rezimu; "seq" v /status je porad ta sama zachytavaci sekvence i v H264 rezimu
-                // ===== B303: ATARI 130XE (C++) - OBRAZ A ZVUK PRIMO Z C++ =====
-                // Rene: "ma to na TV zpozdeni - nejde to vylepsit?" Misto H.264 / JPEG
-                // z Javy (zvetsovani, komprese, buffer prohlizece) posila C++ kazdy
-                // snimek Atari jako paletu + zmenene radky a zvuk v jednom proudu
-                // (/atari.stream, nap_atari_tv_proud.h). Tady se to jen rozbali do
-                // canvasu (672x240, zvetsi prohlizec) a zvuk se zaradi s malym
-                // polstarem (50-300 ms podle site). Kdyz prohlizec proud neumi,
+                + "function pollFps(){fetch('/status').then(function(r){return r.text();}).then(function(t){var mp=/ proud=(\\w+)/.exec(t),pd=(mp&&mp[1]!=='0')?mp[1]:'';if(!mp){var m0=/atariProud=(\\d)/.exec(t);if(m0&&m0[1]==='1')pd='atari';}window.napProud=pd;window.napAtariProud=(pd==='atari');if(pd&&apLze()){if(ap.chce&&ap.druh&&ap.druh!==pd)apZnovu();else if(!ap.on&&!ap.rd)apStart();}else if(ap.chce){apStop();}var m=/seq=(\\d+)/.exec(t);var m2=/h264Seq=(\\d+)/.exec(t);if(!h264Active&&!h264Loading&&!ap.chce&&!(window.napProud&&apLze())){clog('pollFps calling startH264 (universal)');startH264();}var useM=h264Active&&m2?m2:m;if(useM){var sq=parseInt(useM[1],10),now=Date.now();if(lastSeqT>0){var dt=(now-lastSeqT)/1000;if(dt>0)curFps=Math.round((sq-lastSeq)/dt*10)/10;}if(sq===lastSeq&&sq>0){staleTicks++;}else{staleTicks=0;}lastSeq=sq;lastSeqT=now;if(staleTicks>=4&&!fb&&!h264Active&&!ap.chce){staleTicks=0;v.src='/stream.mjpg?'+Date.now();}}var ma=/atari=(\\d)/.exec(t), ms=/sega=(\\d)/.exec(t);var vA=!!(ma&&ma[1]==='1'), vS=!!(ms&&ms[1]==='1');window.napVAtari=vA;window.napVSeze=vS;var mc=/atariCpp=(\\d)/.exec(t), mr=/klavRezim=(\\w+)/.exec(t);window.napVAtariCpp=!!(mc&&mc[1]==='1');if(window.napVAtariCpp&&mr)window.napRezim=mr[1];if(window.napKlavesnicePopis)window.napKlavesnicePopis(vA||vS);label(h264Active?'H264':(fb?'JPEG':'MJPEG'));}).catch(function(e){clog('pollFps fetch err '+e);label(h264Active?'H264':(fb?'JPEG':'MJPEG'));});}" // BUILD2SK45+SK57+SK59: stale-reconnect jen v MJPEG rezimu; "seq" v /status je porad ta sama zachytavaci sekvence i v H264 rezimu
+                // ===== B303 + B305: ATARI 130XE, SEGA A PS1 - OBRAZ A ZVUK PRIMO Z C++ =====
+                // B303 (Atari): "ma to na TV zpozdeni - nejde to vylepsit?" Misto H.264 / JPEG
+                // z Javy (zvetsovani, komprese, buffer prohlizece) posila C++ kazdy snimek
+                // jako paletu + zmenene radky a zvuk v jednom proudu (/atari.stream).
+                // B305 (Rene: "udelas ten tv prenos u segi a ps1 ... jako si udelal u atari
+                // emu c++?"): Sega (/sega.stream, verze 2: paleta + LZ bez ztraty, i posun
+                // obrazu) a PS1 (/ps1.stream, verze 3: JPEG jen zmenene casti v puvodnim
+                // rozliseni hry). Ktery proud brat, rika /status (proud=atari|sega|ps1|0).
+                // Tady se to jen rozbali do canvasu (zvetsi prohlizec) a zvuk se zaradi
+                // s malym polstarem (50-300 ms podle site). Kdyz prohlizec proud neumi,
                 // jede to postaru.
                 // on = spojeni bezi, chce = proud se ma pouzivat (i v mezere pri znovupripojeni -
                 // stare cesty MJPEG / JPEG / zvuk se pak nerozbehnou)
                 + "var ap={on:false,chce:false,rd:null,cv:null,cx:null,img:null,u32:null,idx:null,pal:new Uint32Array(256),W:0,H:0,buf:null,nA:0,pak:0,chyb:0,pod:0,"
-                + "zv:0,zah:0,cil:0.06,tPak:0,mez:0,okno:0,tl:0,pl:0,podl:0,zahl:0};window.napAp=ap;"
+                + "zv:0,zah:0,cil:0.06,tPak:0,mez:0,okno:0,tl:0,pl:0,podl:0,zahl:0,"
+                + "druh:'',ver:0,gen:0,ox:0,oy:0,ow:0,oh:0,px:4,py:3,rozm:'',lz:null,radky:null,ky0:1e9,ky1:-1,kv:false,jq:[],jbusy:false,jpg:0,jzah:0,jl:0,jzl:0};window.napAp=ap;"
                 // polstar zvuku se prizpusobi siti: nejdelsi mezera mezi pakety + 20 ms
                 // (rychle nahoru, po 3 s klidu zpet dolu), 50..300 ms
                 + "function apPrichod(){var t=performance.now();if(ap.tPak){var d=(t-ap.tPak)/1000;if(d>ap.mez)ap.mez=d;"
                 + "if(d+0.02>ap.cil)ap.cil=Math.min(0.3,d+0.02);}ap.tPak=t;"
                 + "if(t-ap.okno>3000){ap.cil=Math.max(0.05,Math.min(0.3,ap.mez+0.02));ap.mez=0;ap.okno=t;}}"
                 + "function apLze(){try{var t=new Response(new Uint8Array(1));return !!(window.fetch&&window.ReadableStream&&window.DataView&&t.body&&t.body.getReader);}catch(e){return false;}}"
-                + "function apRozmer(){if(!ap.cv||!ap.W)return;var W=window.innerWidth,H=window.innerHeight,asp=(ap.W/2)/(ap.H/0.88),w=W,h=Math.round(W/asp);if(h>H){h=H;w=Math.round(H*asp);}"
-                + "ap.cv.style.width=w+'px';ap.cv.style.height=h+'px';ap.cv.style.left=Math.round((W-w)/2)+'px';ap.cv.style.top=Math.round((H-h)/2)+'px';}"
+                // velikost canvasu: Atari jako na telefonu; Sega / PS1 bud "vyplnit obrazovku"
+                // (obsah bez cernych okraju na 16:9 pres cele okno - jako doted z Javy), nebo
+                // "cely, bez orezu" (cely snimek 4:3, po stranach cerno)
+                + "function apRozmer(){if(!ap.cv||!ap.W)return;var W=window.innerWidth,H=window.innerHeight,c=ap.cv.style,w,h,x,y;"
+                + "if(ap.ver===1){var asp=(ap.W/2)/(ap.H/0.88);w=W;h=Math.round(W/asp);if(h>H){h=H;w=Math.round(H*asp);}x=Math.round((W-w)/2);y=Math.round((H-h)/2);}"
+                + "else if(napFill&&ap.ow>0&&ap.oh>0){var A=16/9,bw=W,bh=W/A;if(W/H<A){bh=H;bw=H*A;}var sx=bw/ap.ow,sy=bh/ap.oh;w=Math.round(ap.W*sx);h=Math.round(ap.H*sy);"
+                + "x=Math.round((W-bw)/2-ap.ox*sx);y=Math.round((H-bh)/2-ap.oy*sy);}"
+                + "else{var a2=ap.px/ap.py;w=W;h=Math.round(W/a2);if(h>H){h=H;w=Math.round(H*a2);}x=Math.round((W-w)/2);y=Math.round((H-h)/2);}"
+                + "c.width=w+'px';c.height=h+'px';c.left=x+'px';c.top=y+'px';}"
                 + "window.addEventListener('resize',apRozmer);"
-                + "function apStart(){if(ap.on||!apLze())return;ap.on=true;ap.chce=true;ap.buf=null;ap.nA=0;clog('B303 ATARI PROUD start');stopH264();"
-                + "ap.tl=Date.now();ap.pl=ap.pak;ap.podl=ap.pod;ap.zahl=ap.zah;"
+                + "function apStart(){if(ap.on||!apLze())return;var d=window.napProud||'atari';ap.on=true;ap.chce=true;ap.druh=d;ap.gen++;ap.buf=null;ap.nA=0;"
+                + "ap.W=0;ap.H=0;ap.img=null;ap.ver=0;ap.rozm='';ap.jq=[];ap.jbusy=false;"
+                + "clog(d==='atari'?'B303 ATARI PROUD start':'B305 '+d.toUpperCase()+' PROUD start');stopH264();"
+                + "ap.tl=Date.now();ap.pl=ap.pak;ap.podl=ap.pod;ap.zahl=ap.zah;ap.jl=ap.jpg;ap.jzl=ap.jzah;"
                 + "try{v.onerror=null;v.removeAttribute('src');}catch(e){}v.style.display='none';h264v.style.display='none';"
                 + "if(!ap.cv){ap.cv=document.createElement('canvas');ap.cv.id='ap';ap.cv.style.cssText='position:fixed;left:0;top:0;background:#000';"
                 + "document.body.insertBefore(ap.cv,document.body.firstChild);ap.cx=ap.cv.getContext('2d');}"
                 + "ap.cv.style.imageRendering=napV?'auto':'pixelated';ap.tPak=0;"
                 + "ap.cv.style.display='';napF();apRozmer();"
-                + "fetch('/atari.stream?'+Date.now(),{cache:'no-store'}).then(function(r){if(!ap.on){try{r.body.cancel();}catch(e){}return;}ap.rd=r.body.getReader();apCti();})"
-                + ".catch(function(e){clog('B303 proud chyba '+e);apKonec();});}"
+                // (spojeni z drivejsiho pokusu, ktere se otevre az po prepnuti Sega -> PS1, se hned zavre)
+                + "var g0=ap.gen;fetch('/'+d+'.stream?'+Date.now(),{cache:'no-store'}).then(function(r){if(!ap.on||g0!==ap.gen){try{r.body.cancel();}catch(e){}return;}ap.rd=r.body.getReader();apCti();})"
+                + ".catch(function(e){if(g0!==ap.gen)return;clog('B303 proud chyba '+e);apKonec();});}"
                 + "function apCti(){var rd=ap.rd;if(!ap.on||!rd)return;rd.read().then(function(res){if(rd!==ap.rd)return;if(res.done){apKonec();return;}"
-                + "try{apPrichod();apPridej(res.value);}catch(e){ap.chyb++;ap.buf=null;clog('B303 paket chyba '+e);}apCti();}).catch(function(e){if(rd===ap.rd)apKonec();});}"
-                + "function apKonec(){ap.rd=null;ap.buf=null;if(!ap.on)return;ap.on=false;setTimeout(function(){if(window.napAtariProud)apStart();else apStop();},400);}"
-                + "function apStop(){ap.on=false;ap.chce=false;if(ap.rd){try{ap.rd.cancel();}catch(e){}ap.rd=null;}if(ap.cv)ap.cv.style.display='none';"
-                + "v.style.display='';v.onerror=function(){if(!fb)fallback();};v.src='/stream.mjpg?'+Date.now();clog('B303 ATARI PROUD konec');}"
+                + "try{apPrichod();apPridej(res.value);}catch(e){ap.chyb++;ap.buf=null;clog('B303 paket chyba '+e);}if(rd===ap.rd)apCti();}).catch(function(e){if(rd===ap.rd)apKonec();});}"
+                + "function apKonec(){ap.rd=null;ap.buf=null;if(!ap.on)return;ap.on=false;setTimeout(function(){if(window.napProud)apStart();else apStop();},400);}"
+                // jiny proud (Sega -> PS1, chyba v datech): zavrit a hned otevrit znovu (server zacne klicovym snimkem)
+                + "function apZnovu(){var rd=ap.rd;ap.rd=null;ap.on=false;ap.buf=null;if(rd){try{rd.cancel();}catch(e){}}apStart();}"
+                + "function apStop(){var d=ap.druh;ap.on=false;ap.chce=false;ap.druh='';ap.gen++;ap.jq=[];if(ap.rd){try{ap.rd.cancel();}catch(e){}ap.rd=null;}if(ap.cv)ap.cv.style.display='none';"
+                + "v.style.display='';v.onerror=function(){if(!fb)fallback();};v.src='/stream.mjpg?'+Date.now();clog(d&&d!=='atari'?'B305 '+d.toUpperCase()+' PROUD konec':'B303 ATARI PROUD konec');}"
                 // proud = 4 B delka + paket, porad dokola; kus z site muze koncit kdekoli
-                + "function apPridej(ch){var b=ap.buf;if(b&&b.length){var nb=new Uint8Array(b.length+ch.length);nb.set(b,0);nb.set(ch,b.length);b=nb;}else b=ch;"
+                + "function apPridej(ch){var gen=ap.gen,b=ap.buf;if(b&&b.length){var nb=new Uint8Array(b.length+ch.length);nb.set(b,0);nb.set(ch,b.length);b=nb;}else b=ch;"
                 + "var o=0;while(b.length-o>=4){var len=(b[o]|(b[o+1]<<8)|(b[o+2]<<16)|(b[o+3]<<24))>>>0;if(len>8000000)throw new Error('delka '+len);"
-                + "if(b.length-o-4<len)break;apPaket(b.subarray(o+4,o+4+len));o+=4+len;}ap.buf=(o<b.length)?b.slice(o):null;}"
-                + "function apPaket(p){if(p.length<16||p[0]!==78||p[1]!==65||p[2]!==1)return;"
-                + "var dv=new DataView(p.buffer,p.byteOffset,p.byteLength),W=dv.getUint16(4,true),H=dv.getUint16(6,true),o=12,i,j;"
+                + "if(b.length-o-4<len)break;apPaket(b.subarray(o+4,o+4+len));if(ap.gen!==gen||!ap.on)return;o+=4+len;}ap.buf=(o<b.length)?b.slice(o):null;"
+                // Sega: vic paketu v jednom kusu (Wi-Fi zadrhla) - rozbalit vsechny, nakreslit jednou
+                + "if(ap.ver===2)apKresliHotovo();}"
+                + "function apPaket(p){if(p.length<16||p[0]!==78||p[1]!==65)return;var ver=p[2];if(ver!==ap.ver){ap.ver=ver;ap.rozm='';}"
+                + "if(ver===1)apPaket1(p);else if(ver===2||ver===3)apPaket23(p,ver);}"
+                // ---- verze 1: Atari 130XE (B303) ----
+                + "function apPaket1(p){var dv=new DataView(p.buffer,p.byteOffset,p.byteLength),W=dv.getUint16(4,true),H=dv.getUint16(6,true),o=12,i,j;"
                 + "if(W!==ap.W||H!==ap.H||!ap.img){ap.W=W;ap.H=H;ap.cv.width=W;ap.cv.height=H;ap.img=ap.cx.createImageData(W,H);"
                 + "ap.u32=new Uint32Array(ap.img.data.buffer);ap.idx=new Uint8Array(W*H);apRozmer();}"
                 // paleta: pridane barvy (ImageData = R,G,B,A v pameti)
@@ -3785,19 +3935,78 @@ public class MainActivity extends Activity {
                 + "else{var w=zac,e=o+del;while(o<e){var cnt=p[o]*f,c2=p[o+1];o+=2;for(j=0;j<cnt;j++)idx[w++]=c2;}}"
                 + "for(i=zac;i<zac+n;i++)u32[i]=pal[idx[i]];if(y<y0)y0=y;if(y>y1)y1=y;}"
                 + "if(y1>=y0)ap.cx.putImageData(ap.img,0,0,0,y0,W,y1-y0+1);"
-                + "var an=dv.getUint16(o,true),kan=p[o+2];o+=3;if(an>0)apZvuk(dv,o,an,kan);ap.pak++;}"
+                + "var an=dv.getUint16(o,true),kan=p[o+2];o+=3;if(an>0)apZvuk(dv,o,an,kan,44100);ap.pak++;}"
+                // ---- verze 2 (Sega) a 3 (PS1): spolecna hlavicka ----
+                // 4 W, 6 H, 8 cislo snimku, 12 obsah bez cernych okraju (x,y,w,h), 20 pomer stran, 24 vzorkovani zvuku
+                + "function apPaket23(p,ver){var dv=new DataView(p.buffer,p.byteOffset,p.byteLength),pr=p[3],W=dv.getUint16(4,true),H=dv.getUint16(6,true),o=28;"
+                + "if(W!==ap.W||H!==ap.H||!ap.img){ap.W=W;ap.H=H;ap.cv.width=W;ap.cv.height=H;ap.img=ap.cx.createImageData(W,H);ap.u32=new Uint32Array(ap.img.data.buffer);"
+                + "ap.lz=new Uint8Array(2*W*H);ap.radky=new Uint8Array(H);ap.ky0=1e9;ap.ky1=-1;ap.kv=false;ap.jq=[];ap.rozm='';}"
+                + "ap.ox=dv.getUint16(12,true);ap.oy=dv.getUint16(14,true);ap.ow=dv.getUint16(16,true);ap.oh=dv.getUint16(18,true);ap.px=p[20]||4;ap.py=p[21]||3;"
+                + "var k=ap.ox+','+ap.oy+','+ap.ow+','+ap.oh+','+ap.px+','+ap.py+','+W+','+H+','+ver;if(k!==ap.rozm){ap.rozm=k;apRozmer();}"
+                + "var rate=dv.getUint32(24,true)||44100;"
+                + "o=(ver===2)?apObraz2(p,dv,o,pr,W,H):apObraz3(p,dv,o);"
+                + "if(o<0||o+3>p.length){ap.chyb++;clog('B305 paket '+ver+' chyba v datech - spojuji znovu');apZnovu();return;}"
+                + "var an=dv.getUint16(o,true),kan=p[o+2];o+=3;if(an>0)apZvuk(dv,o,an,kan,rate);ap.pak++;}"
+                // ---- verze 2: Sega - paleta + LZ nad [minuly snimek | novy snimek] v indexech barev ----
+                // op = horni 2 bity: 0 primo, 1 stejna barva, 2 kopie ze vzdalenosti (0 = jako minule), 3 jako minule na stejnem miste
+                + "function apObraz2(p,dv,o,pr,W,H){var N=W*H,N2=2*N,b=ap.lz,pal=ap.pal,rd=ap.radky,i,j;"
+                + "if(pr&1){b.fill(0);for(i=0;i<256;i++)pal[i]=0xFF000000;ap.kv=true;}"
+                + "var pz=dv.getUint16(o,true);o+=2;"
+                + "for(i=0;i<pz;i++){pal[p[o]]=(0xFF000000|(p[o+3]<<16)|(p[o+2]<<8)|p[o+1])>>>0;o+=4;}"
+                + "if(pz)ap.kv=true;"
+                + "var dl=dv.getUint32(o,true);o+=4;if(dl===0)return o;"
+                + "var e=o+dl;if(e>p.length)return -1;"
+                + "b.copyWithin(0,N,N2);"
+                + "var q=N,rep=0,y0=ap.ky0,y1=ap.ky1,c,kod,n,d,x,sh,vv,ya,yb;"
+                + "while(o<e){c=p[o++];kod=c>>6;n=c&63;"
+                + "if(n===63){vv=0;sh=0;do{x=p[o++];vv|=(x&127)<<sh;sh+=7;}while(x&128);n=64+vv;}else n++;"
+                + "if(q+n>N2)return -1;"
+                + "if(kod===3){b.copyWithin(q,q-N,q-N+n);}"
+                + "else{if(kod===0){b.set(p.subarray(o,o+n),q);o+=n;}"
+                + "else if(kod===1){b.fill(p[o++],q,q+n);}"
+                + "else{vv=0;sh=0;do{x=p[o++];vv|=(x&127)<<sh;sh+=7;}while(x&128);d=vv?vv:rep;rep=d;if(!d||d>q)return -1;"
+                + "if(d>=n)b.copyWithin(q,q-d,q-d+n);else for(j=0;j<n;j++)b[q+j]=b[q-d+j];}"
+                + "ya=((q-N)/W)|0;yb=((q+n-1-N)/W)|0;for(j=ya;j<=yb;j++)rd[j]=1;if(ya<y0)y0=ya;if(yb>y1)y1=yb;}"
+                + "q+=n;}"
+                + "if(q!==N2||o!==e)return -1;"
+                + "ap.ky0=y0;ap.ky1=y1;return o;}"
+                // prevod zmenenych radku na barvy a do canvasu (pri zmene palety cely snimek)
+                + "function apKresliHotovo(){if(!ap.img||!ap.lz)return;var W=ap.W,H=ap.H,N=W*H,b=ap.lz,u32=ap.u32,pal=ap.pal,rd=ap.radky,y,i,a,e;"
+                + "if(ap.kv){for(i=0;i<N;i++)u32[i]=pal[b[N+i]];ap.cx.putImageData(ap.img,0,0);ap.kv=false;rd.fill(0);ap.ky0=1e9;ap.ky1=-1;return;}"
+                + "if(ap.ky1<ap.ky0)return;"
+                + "for(y=ap.ky0;y<=ap.ky1;y++){if(!rd[y])continue;rd[y]=0;a=y*W;e=a+W;for(i=a;i<e;i++)u32[i]=pal[b[N+i]];}"
+                + "ap.cx.putImageData(ap.img,0,0,0,ap.ky0,W,ap.ky1-ap.ky0+1);ap.ky0=1e9;ap.ky1=-1;}"
+                // ---- verze 3: PS1 - JPEG obdelniku, ktery se zmenil (x, y, w, h, kvalita, delka, JPEG) ----
+                + "function apObraz3(p,dv,o){var x=dv.getUint16(o,true),y=dv.getUint16(o+2,true),w=dv.getUint16(o+4,true),h=dv.getUint16(o+6,true),dl=dv.getUint32(o+9,true);o+=13;"
+                + "if(o+dl>p.length)return -1;"
+                + "if(w>0&&dl>0)apJpeg(p.slice(o,o+dl),x,y,w,h);"
+                + "return o+dl;}"
+                // rozbaluje se jeden JPEG po druhem (poradi!); cekajici snimek, ktery novejsi
+                // cely prekryje, se zahodi - pomaly prohlizec nehromadi zpozdeni
+                + "function apJpeg(j,x,y,w,h){var q=ap.jq;"
+                + "for(var i=q.length-1;i>=0;i--){var f=q[i];if(f.x>=x&&f.y>=y&&f.x+f.w<=x+w&&f.y+f.h<=y+h){q.splice(i,1);ap.jzah++;}}"
+                + "q.push({j:j,x:x,y:y,w:w,h:h});apJdalsi();}"
+                + "function apJdalsi(){if(ap.jbusy||!ap.jq.length)return;var f=ap.jq.shift(),gen=ap.gen;ap.jbusy=true;"
+                + "var hotovo=function(img){if(gen!==ap.gen){if(img&&img.close)try{img.close();}catch(e){}return;}ap.jbusy=false;"
+                + "if(img){try{ap.cx.drawImage(img,f.x,f.y);}catch(e){}ap.jpg++;if(img.close)try{img.close();}catch(e){}}apJdalsi();};"
+                + "var blob=new Blob([f.j],{type:'image/jpeg'});"
+                + "if(window.createImageBitmap){createImageBitmap(blob).then(hotovo,function(){ap.chyb++;hotovo(null);});}"
+                + "else{var u=URL.createObjectURL(blob),im=new Image();im.onload=function(){URL.revokeObjectURL(u);hotovo(im);};im.onerror=function(){URL.revokeObjectURL(u);ap.chyb++;hotovo(null);};im.src=u;}}"
                 // zvuk: hned za sebou s polstarem ap.cil; kdyz je ho moc napred, zahodit (zpozdeni neroste)
-                + "function apZvuk(dv,o,an,kan){if(!aon||!ac||!g)return;try{var b=ac.createBuffer(2,an,44100),L=b.getChannelData(0),R=b.getChannelData(1),i;"
+                + "function apZvuk(dv,o,an,kan,rate){if(!aon||!ac||!g)return;try{var b=ac.createBuffer(2,an,rate),L=b.getChannelData(0),R=b.getChannelData(1),i;"
                 + "if(kan===1){for(i=0;i<an;i++){L[i]=R[i]=dv.getInt16(o+i*2,true)/32768;}}"
                 + "else{for(i=0;i<an;i++){L[i]=dv.getInt16(o+i*4,true)/32768;R[i]=dv.getInt16(o+i*4+2,true)/32768;}}"
                 + "var now=ac.currentTime;if(ap.nA<now+0.005){if(ap.nA>0)ap.pod++;ap.nA=now+ap.cil;}else if(ap.nA>now+ap.cil+0.08){ap.zah++;return;}"
-                + "var s=ac.createBufferSource();s.buffer=b;s.connect(g);s.start(ap.nA);ap.nA+=an/44100;ap.zv+=an;}catch(e){}}"
+                + "var s=ac.createBufferSource();s.buffer=b;s.connect(g);s.start(ap.nA);ap.nA+=an/rate;ap.zv+=an;}catch(e){}}"
                 // kazdych 30 s do logu appky, jak proud v prohlizeci jede (diagnostika zpozdeni)
                 + "setInterval(function(){if(!ap.on)return;var t=Date.now(),s=(t-ap.tl)/1000;"
-                + "if(ap.tl&&s>0)clog('B303 PROHLIZEC: '+(Math.round((ap.pak-ap.pl)/s*10)/10)+' snimku/s, zvuk '+(aon&&ac&&ac.state==='running'?'hraje, napred '"
+                + "if(ap.tl&&s>0)clog((ap.druh==='atari'?'B303 PROHLIZEC: ':'B305 PROHLIZEC '+ap.druh.toUpperCase()+': ')+(Math.round((ap.pak-ap.pl)/s*10)/10)+' snimku/s'"
+                + "+(ap.ver===3?', JPEG '+(Math.round((ap.jpg-ap.jl)/s*10)/10)+'/s (prekrytych zahozeno '+(ap.jzah-ap.jzl)+')':'')"
+                + "+', zvuk '+(aon&&ac&&ac.state==='running'?'hraje, napred '"
                 + "+Math.round((ap.nA-ac.currentTime)*1000)+' ms (cil '+Math.round(ap.cil*1000)+')':'NEHRAJE - klikni do okna')+', podteceni '+(ap.pod-ap.podl)"
-                + "+', zahozeno '+(ap.zah-ap.zahl)+', chyb '+ap.chyb+', okno '+window.innerWidth+'x'+window.innerHeight);"
-                + "ap.tl=t;ap.pl=ap.pak;ap.podl=ap.pod;ap.zahl=ap.zah;},30000);"
+                + "+', zahozeno '+(ap.zah-ap.zahl)+', chyb '+ap.chyb+', okno '+window.innerWidth+'x'+window.innerHeight"
+                + "+(ap.ver>1?', obraz '+ap.W+'x'+ap.H+(napFill?' vyplnit':' cely 4:3'):''));"
+                + "ap.tl=t;ap.pl=ap.pak;ap.podl=ap.pod;ap.zahl=ap.zah;ap.jl=ap.jpg;ap.jzl=ap.jzah;},30000);"
                 + "setInterval(pollFps,1000);"
                 + "})();</script>"
                 // ===== BUILD2SA54: KLAVESNICE Z POCITACE =====
@@ -6620,7 +6829,8 @@ public class MainActivity extends Activity {
                     // ho zahodila. V telefonu pritom hral normalne, takze to
                     // vypadalo, ze zvuk funguje - jen na webu ne.
                     // Davku posilame na TV HNED, jeste pred prehranim.
-                    if (framesToWrite > 0) napTvWebAudioPush(pcm, 0, framesToWrite, sampleRate, "SEGA");
+                    // B305: kdyz prohlizec bere Segu primo z C++ (/sega.stream), zvuk uz jde tam
+                    if (framesToWrite > 0 && napTvSegaProudKlientu.get() == 0) napTvWebAudioPush(pcm, 0, framesToWrite, sampleRate, "SEGA");
 
                     int off = 0;
                     while (off < framesToWrite && nativeCoreAudioRun && audioGen == nativeAudioGeneration) {

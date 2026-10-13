@@ -1,0 +1,24 @@
+B305: ThreadSanitizer nad SKUTECNYMI nap_sega_native_proof.cpp a nap_ps1_native.cpp (tsan_jadra.cpp):
+vlakno jadra + vlakno zvuku + dva prohlizece (rychly a pomaly) soubezne, 4 s.
+
+=== SEGA ===
+hlaseni ThreadSanitizer: 0
+paketu 250
+B305 TV PROUD SEGA: prohlizec 1 pripojen (celkem 1) - obraz a zvuk primo z C++ (paleta + LZ (bez ztraty)), kazdy snimek, zvuk 48000 Hz v tomtez paketu
+B305 TV PROUD SEGA: prohlizec 2 pripojen (celkem 2) - obraz a zvuk primo z C++ (paleta + LZ (bez ztraty)), kazdy snimek, zvuk 48000 Hz v tomtez paketu
+B305 TV PROUD SEGA: prohlizec 1 odpojen po 4 s - 211 paketu (52.6/s), 2.0 MB celkem, klicovych 1, prestaveb palety 0, beze zmeny 0 z 211 (zbyva 1)
+B305 TV PROUD SEGA: prohlizec 2 odpojen po 4 s - 39 paketu (9.5/s), 1.0 MB celkem, klicovych 1, prestaveb palety 0, beze zmeny 0 z 39 (zbyva 0)
+
+=== PS1 ===
+hlaseni ThreadSanitizer: 1 (z toho v kodu B305 / tvproud: 0)
+Jedine hlaseni je STARE (ne B305): nap_sl_open zapise s_sl_next = 0 az po Enqueue, zpetne volani OpenSL ho cte.
+Na telefonu prijde prvni zpetne volani az po dohrani bloku (23 ms), takze se to nepotka - beze zmeny.
+SUMMARY: ThreadSanitizer: data race ../../app/src/main/cpp/nap_ps1_native.cpp:627 in nap_sl_callback
+start: PS1_BIOS_OK
+paketu 262
+B305 TV PROUD PS1: prohlizec 1 pripojen (celkem 1) - obraz a zvuk primo z C++ (JPEG po castech), kazdy snimek, zvuk 44100 Hz v tomtez paketu
+B305 TV PROUD PS1: prohlizec 2 pripojen (celkem 2) - obraz a zvuk primo z C++ (JPEG po castech), kazdy snimek, zvuk 44100 Hz v tomtez paketu
+B305 TV PROUD PS1: prohlizec 1 odpojen po 4 s - 218 paketu (54.2/s), 2.5 MB celkem, JPEG kvalita 88 (max 88, snizeno 0x), kodovani prumer 8.8 ms max 39.0 ms (pasu 1), castecnych 0, zjemneni 0, beze zmeny 106 z 218 (zbyva 1)
+B305 TV PROUD PS1: prohlizec 2 odpojen po 4 s - 44 paketu (10.8/s), 1.1 MB celkem, JPEG kvalita 58 (max 88, snizeno 5x), kodovani prumer 9.7 ms max 20.4 ms (pasu 1), castecnych 0, zjemneni 0, beze zmeny 0 z 44 (zbyva 0)
+
+(kodovani je pod ThreadSanitizerem ~10x pomalejsi nez normalne - pocty paketu tu nejsou meritkem)

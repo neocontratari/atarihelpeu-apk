@@ -1,0 +1,41 @@
+B305: rozbocovac prenosu Sega / PS1 (nap_tv_proud.h) - vlakna jako v appce
+
+=== SEGA: rozbocovac + kodek indexy, vlakna jako v appce ===
+  prohlizec rychly: 361 paketu (60.2/s), presnych snimku 361, chybnych 0, starych 0, klicovych 3, beze zmeny 0, preskoceno snimku 0, zmen rozmeru 2
+     zvuk: 288000 vzorku (48000/s), navazuje 287999, skoku 0, chybnych 0
+  prohlizec POMALY: 124 paketu (20.7/s), presnych snimku 124, chybnych 0, starych 0, klicovych 3, beze zmeny 0, preskoceno snimku 228, zmen rozmeru 2
+     zvuk: 225600 vzorku (37600/s), navazuje 225596, skoku 3, chybnych 0
+OK     Sega: vsechny pakety se rozbali (hlavicka, obraz, zvuk do posledniho bajtu, verze 2, 48000 Hz, 4:3)
+OK     Sega: obraz v obou prohlizecich je vzdy PRESNE snimek jadra (rychly 361, pomaly 124 snimku)
+OK     Sega: rychly prohlizec dostava kazdy snimek (60.2/s z 60)
+OK     Sega: pomaly prohlizec dostava vzdy POSLEDNI snimek (preskoceno 228, zadna fronta)
+OK     Sega: klicovy snimek jen na zacatku a pri zmene rozmeru 320 -> 256 -> 320 (3 klicove, 2 zmeny)
+OK     Sega: paket, ktery se nevesel do pole Javy, prisel znovu pri dalsim volani (zadny klicovy snimek, zadny ztraceny zvuk)
+OK     Sega: zvuk rychleho prohlizece navazuje vzorek po vzorku (288000 vzorku, 0 skoku)
+OK     Sega: pomaly prohlizec - kdyz zaostane o vic nez 0,25 s, stary zvuk se zahodi (skoku 3)
+  log:
+B305 TV PROUD SEGA: prohlizec 1 pripojen (celkem 1) - obraz a zvuk primo z C++ (paleta + LZ (bez ztraty)), kazdy snimek, zvuk 48000 Hz v tomtez paketu
+B305 TV PROUD SEGA: prohlizec 2 pripojen (celkem 2) - obraz a zvuk primo z C++ (paleta + LZ (bez ztraty)), kazdy snimek, zvuk 48000 Hz v tomtez paketu
+B305 TV PROUD SEGA: prohlizec 1 odpojen po 6 s - 361 paketu (60.1/s), 3.1 MB celkem, klicovych 3, prestaveb palety 0, beze zmeny 0 z 361 (zbyva 1)
+B305 TV PROUD SEGA: prohlizec 2 odpojen po 6 s - 124 paketu (20.5/s), 1.6 MB celkem, klicovych 3, prestaveb palety 0, beze zmeny 0 z 124 (zbyva 0)
+OK     Sega: log appky - pripojen / odpojen se statistikou
+OK     Sega: po odpojeni zadny prohlizec, jadro hlasi beh
+
+=== PS1: rozbocovac + JPEG po castech, vlakna jako v appce ===
+  prohlizec rychly: 360 paketu (60.0/s), obrazu 180 (30.0/s), beze zmeny 180, PSNR prumer 37.2 dB nejhorsi 35.5 dB, nesedi 0, chyb 0
+     zvuk: 264159 vzorku (44026/s), navazuje 264158, skoku 0, chybnych 0
+  prohlizec POMALY: 97 paketu (16.2/s), obrazu 97 (16.2/s), beze zmeny 0, PSNR prumer 32.5 dB nejhorsi 29.5 dB, nesedi 0, chyb 0
+     zvuk: 263277 vzorku (43880/s), navazuje 263276, skoku 0, chybnych 0
+OK     PS1: vsechny pakety se rozbali (verze 3, 44100 Hz, JPEG se da otevrit)
+OK     PS1: hra na 30 snimku/s = 30 obrazu/s, druhy (stejny) snimek jen zvuk (180 obrazu, 180 beze zmeny)
+OK     PS1: obraz v prohlizeci odpovida snimku jadra (PSNR nejhorsi 35.5 / 29.5 dB)
+OK     PS1: zvuk navazuje vzorek po vzorku (264159 vzorku)
+  log:
+B305 TV PROUD PS1: prohlizec 1 pripojen (celkem 1) - obraz a zvuk primo z C++ (JPEG po castech), kazdy snimek, zvuk 44100 Hz v tomtez paketu
+B305 TV PROUD PS1: prohlizec 2 pripojen (celkem 2) - obraz a zvuk primo z C++ (JPEG po castech), kazdy snimek, zvuk 44100 Hz v tomtez paketu
+B305 TV PROUD PS1: prohlizec 2 odpojen po 6 s - 360 paketu (60.0/s), 3.9 MB celkem, JPEG kvalita 88 (max 88, snizeno 0x), kodovani prumer 1.1 ms max 1.8 ms (pasu 1), castecnych 0, zjemneni 0, beze zmeny 180 z 360 (zbyva 1)
+B305 TV PROUD PS1: prohlizec 1 odpojen po 6 s - 97 paketu (16.1/s), 1.9 MB celkem, JPEG kvalita 45 (max 88, snizeno 8x), kodovani prumer 1.0 ms max 2.4 ms (pasu 1), castecnych 0, zjemneni 0, beze zmeny 0 z 97 (zbyva 0)
+OK     PS1: log appky s kvalitou JPEG
+OK     PS1: pomaly prohlizec (zapis do site 30 ms) dostal nizsi kvalitu JPEG, rychly plnou (88)
+
+VYSLEDEK: 16 kontrol, 0 chyb

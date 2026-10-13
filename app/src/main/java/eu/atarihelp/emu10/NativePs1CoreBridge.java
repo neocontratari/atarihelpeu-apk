@@ -40,6 +40,39 @@ public final class NativePs1CoreBridge {
         if (!loaded) return;
         try { ps1SetDiagLogPath(path); } catch (Throwable ignored) {}
     }
+    // ===== B305: PS1 NA TV / PC CELA V C++ (jako Atari 130XE v B303) =====
+    // C++ zabali kazdy snimek (JPEG jen zmenenych casti, puvodni rozliseni
+    // hry) i zvuk do jednoho paketu, Java (/ps1.stream) jen posila bajty.
+    private static native int proudOtevriNative();
+    /** 4 B delka + paket; 0 = nic noveho, zaporne = male pole (-n), MIN_VALUE = chyba */
+    private static native int proudDalsiNative(int id, byte[] out, int cekejMs, int zapisMs);
+    private static native void proudZavriNative(int id);
+    /** bit0 = jadro posila snimky, bit1 = nekdo se diva */
+    private static native int proudStavNative();
+    private static native String proudLogNative();
+
+    public static boolean isLoaded() { return loaded; }
+    public static int proudOtevriSafe() {
+        if (!loaded) return 0;
+        try { return proudOtevriNative(); } catch (Throwable t) { return 0; }
+    }
+    public static int proudDalsiSafe(int id, byte[] out, int cekejMs, int zapisMs) {
+        if (!loaded) return Integer.MIN_VALUE;
+        try { return proudDalsiNative(id, out, cekejMs, zapisMs); } catch (Throwable t) { return Integer.MIN_VALUE; }
+    }
+    public static void proudZavriSafe(int id) {
+        if (!loaded) return;
+        try { proudZavriNative(id); } catch (Throwable ignored) {}
+    }
+    public static int proudStavSafe() {
+        if (!loaded) return 0;
+        try { return proudStavNative(); } catch (Throwable t) { return 0; }
+    }
+    public static String proudLogSafe() {
+        if (!loaded) return null;
+        try { return proudLogNative(); } catch (Throwable t) { return null; }
+    }
+
     public static int pullAudioSafe(short[] out, int frames) {
         if (!loaded) return 0;
         try { return ps1PullAudio(out, frames); } catch (Throwable t) { return 0; }

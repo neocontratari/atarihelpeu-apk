@@ -1,0 +1,77 @@
+B305: kodeky prenosu Sega / PS1 na TV / PC (skutecne hlavicky z appky)
+
+=== SEGA: paleta + LZ (bez ztraty) ===
+  prvni (klicovy) snimek                          1 snimku: prumer   9643 B, max   9643 B,  4.63 Mbit/s pri 60/s, kodovani prumer 0.87 ms, max 0.87 ms
+  hra: scrolling, paralaxa, postavicky (10 s)   600 snimku: prumer   5814 B, max   8123 B,  2.79 Mbit/s pri 60/s, kodovani prumer 0.48 ms, max 2.23 ms
+  operace LZ: LIT 239247, RUN 23445, COPY 699287, COPY stejna vzdalenost 78323, SKIP 140764
+OK     Sega hra 601 snimku: prohlizec ma po kazdem snimku PRESNE obraz jadra (vsech 71680 bodu)
+OK     scrolling hry pri 60 snimcich/s pod 6 Mbit/s (2.79 Mbit/s)
+OK     jen jeden klicovy snimek (na zacatku), dal jen rozdily (klicovych 1)
+  stmivani + rozsviceni (32 snimku)              32 snimku: prumer   5045 B, max   8077 B,  2.42 Mbit/s pri 60/s, kodovani prumer 0.48 ms, max 0.77 ms
+  prestaveb palety 0 (misto nich klicovy snimek: 0)
+OK     stmivani: barvy se meni kazdy snimek, obraz presny, zadny klicovy snimek (paleta se prestavi)
+  staticky obraz (120 snimku)                   120 snimku: prumer      6 B, max      6 B,  0.00 Mbit/s pri 60/s, kodovani prumer 0.00 ms, max 0.03 ms
+OK     staticky obraz: 120/120 snimku 'beze zmeny', paket obrazu 6 B
+OK     prepnuti 320 -> 256 -> 320 bodu: klicovy snimek, obraz presny
+  paleta kazdy snimek nova (40 snimku)           40 snimku: prumer   5762 B, max   6496 B,  2.77 Mbit/s pri 60/s, kodovani prumer 0.47 ms, max 0.54 ms
+  prestaveb palety 30, klicovych 0
+OK     plna paleta: nove barvy na mista nepouzitych (30 prestaveb), obraz presny, zadny klicovy snimek
+  nejhorsi pripad: nahodny sum (30 snimku)       30 snimku: prumer  71940 B, max  72005 B, 34.53 Mbit/s pri 60/s, kodovani prumer 3.20 ms, max 3.34 ms
+OK     nahodny sum: obraz presny
+OK     i nejhorsi snimek se zabali do 15 ms na PC (3.3 ms)
+OK     snimek s 71680 barvami: nespadne, barvy navic dostanou nejblizsi (nejblizsich 71119)
+OK     po snimku s mnoha barvami je hra zase presna
+
+=== PS1: JPEG po castech ===
+  320x240: 120 snimku 3D sceny (30/s): prumer 16.6 kB, max 18.5 kB, 4.07 Mbit/s pri 30/s (8.14 pri 60/s), kodovani prumer 1.07 ms, max 2.56 ms
+     PSNR prohlizece proti originalu: prumer 37.0 dB, nejhorsi 35.5 dB, kvalita 88, pasu 1
+     320x240 q88  stb_image_write: 1.70 ms, 18371 B, PSNR 35.53 dB
+     320x240 q88  vlastni koder, 1 pas: 1.00 ms (1.7x rychleji), 18371 B, PSNR 35.53 dB
+OK     320x240, 1 pas: platny JPEG (i se znackami RST), stejna kvalita jako stb (PSNR 35.53 / 35.53 dB)
+OK     320x240: vlastni koder rychlejsi nez stb (1.00 / 1.70 ms)
+     320x240 q88  vlastni koder, 2 pasy: 0.54 ms (3.2x rychleji), 18388 B, PSNR 35.53 dB
+OK     320x240, 2 pasy: platny JPEG (i se znackami RST), stejna kvalita jako stb (PSNR 35.53 / 35.53 dB)
+     320x240 q88  vlastni koder, 3 pasy: 0.56 ms (3.1x rychleji), 18395 B, PSNR 35.53 dB
+OK     320x240, 3 pasy: platny JPEG (i se znackami RST), stejna kvalita jako stb (PSNR 35.53 / 35.53 dB)
+OK     320x240: kazdy paket se rozbali a slozi (obdelniky, klicovy = cely snimek)
+OK     320x240: obraz v prohlizeci verny originalu (nejhorsi PSNR 35.5 dB >= 30)
+     stojici obraz 30 snimku: 29 beze zmeny, 1 zjemneni (32.0 kB), PSNR 35.5 -> 40.9 dB
+OK     320x240: stojici obraz = nic se neposila, jednou zjemneni ve vysoke kvalite (PSNR +5.4 dB)
+     mala zmena 10x10: obdelnik 16x16 na 144,96, paket 752 B
+OK     320x240: mala zmena = maly obdelnik (16x16, 752 B)
+     rizeni kvality siti: 88 -> pomala sit 64 -> volna sit 88
+OK     320x240: pomala sit = nizsi kvalita (64), volna sit = zpet nahoru (88)
+  640x480: 30 snimku 3D sceny (30/s): prumer 32.6 kB, max 35.2 kB, 8.02 Mbit/s pri 30/s (16.03 pri 60/s), kodovani prumer 2.45 ms, max 5.27 ms
+     PSNR prohlizece proti originalu: prumer 35.4 dB, nejhorsi 34.5 dB, kvalita 76, pasu 2
+     640x480 q76  stb_image_write: 5.54 ms, 32651 B, PSNR 35.66 dB
+     640x480 q76  vlastni koder, 1 pas: 3.92 ms (1.4x rychleji), 32651 B, PSNR 35.66 dB
+OK     640x480, 1 pas: platny JPEG (i se znackami RST), stejna kvalita jako stb (PSNR 35.66 / 35.66 dB)
+OK     640x480: vlastni koder rychlejsi nez stb (3.92 / 5.54 ms)
+     640x480 q76  vlastni koder, 2 pasy: 2.19 ms (2.5x rychleji), 32647 B, PSNR 35.66 dB
+OK     640x480, 2 pasy: platny JPEG (i se znackami RST), stejna kvalita jako stb (PSNR 35.66 / 35.66 dB)
+     640x480 q76  vlastni koder, 3 pasy: 1.90 ms (2.9x rychleji), 32648 B, PSNR 35.66 dB
+OK     640x480, 3 pasy: platny JPEG (i se znackami RST), stejna kvalita jako stb (PSNR 35.66 / 35.66 dB)
+OK     640x480: kazdy paket se rozbali a slozi (obdelniky, klicovy = cely snimek)
+OK     640x480: obraz v prohlizeci verny originalu (nejhorsi PSNR 34.5 dB >= 30)
+     stojici obraz 30 snimku: 29 beze zmeny, 1 zjemneni (89.3 kB), PSNR 35.7 -> 43.1 dB
+OK     640x480: stojici obraz = nic se neposila, jednou zjemneni ve vysoke kvalite (PSNR +7.4 dB)
+     mala zmena 10x10: obdelnik 16x16 na 144,96, paket 724 B
+OK     640x480: mala zmena = maly obdelnik (16x16, 724 B)
+     rizeni kvality siti: 76 -> pomala sit 52 -> volna sit 76
+OK     640x480: pomala sit = nizsi kvalita (52), volna sit = zpet nahoru (76)
+
+=== PS1: JPEG pro ruzne rozmery a obdelniky na kraji ===
+  368x240: klicovy PSNR 24.96 dB (stb 24.96 dB), zmena v rohu -> obdelnik 16x16 na 352,224, PSNR 24.92 dB
+OK     368x240: JPEG cely (stejny jako stb) i obdelnik na kraji obrazu se rozbali spravne
+  512x480: klicovy PSNR 23.70 dB (stb 23.70 dB), zmena v rohu -> obdelnik 16x16 na 496,464, PSNR 23.69 dB
+OK     512x480: JPEG cely (stejny jako stb) i obdelnik na kraji obrazu se rozbali spravne
+  640x512: klicovy PSNR 23.70 dB (stb 23.70 dB), zmena v rohu -> obdelnik 16x16 na 624,496, PSNR 23.69 dB
+OK     640x512: JPEG cely (stejny jako stb) i obdelnik na kraji obrazu se rozbali spravne
+  257x193: klicovy PSNR 24.86 dB (stb 24.86 dB), zmena v rohu -> obdelnik 17x17 na 240,176, PSNR 24.84 dB
+OK     257x193: JPEG cely (stejny jako stb) i obdelnik na kraji obrazu se rozbali spravne
+  256x224: klicovy PSNR 25.00 dB (stb 25.00 dB), zmena v rohu -> obdelnik 16x16 na 240,208, PSNR 24.93 dB
+OK     256x224: JPEG cely (stejny jako stb) i obdelnik na kraji obrazu se rozbali spravne
+  33x17: klicovy PSNR 24.89 dB (stb 24.89 dB), zmena v rohu -> obdelnik 17x17 na 16,0, PSNR 23.73 dB
+OK     33x17: JPEG cely (stejny jako stb) i obdelnik na kraji obrazu se rozbali spravne
+
+VYSLEDEK: 35 kontrol, 0 chyb
