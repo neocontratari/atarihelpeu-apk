@@ -1,0 +1,71 @@
+B307 - uvodni demo: nova scena 4 (pruty z klaves Atari 130XE, trojice N&P, CRT defile), SKIP v C++
+======================================================================================================
+
+Kod v appce:
+  intro/nap_demo_cas.h      casy sceny 4 (obraz i zvuk se ridi stejnymi cisly)
+  intro/nap_demo_konzole.h  konzole N&P 16 (cartridge) a N&P 32 (CD) se zlatym logem N&P, CRT monitor
+                            (modely z kvadru / hranolu / valcu, shader materialu, zhmotneni zdola nahoru,
+                            CRT: zakriveni, nabeh, radky, maska RGB, sum, prepnuti kanalu)
+  intro/nap_demo_16bit.h    16bitova ukazka - "VDP" na procesoru: 320x224, paleta 9 bit, gradient po
+                            radcich, paralaxa (mesto, hory), vlnici se more po pasech, sprity s obrysem,
+                            hra simulovana snimek po snimku (60/s), vybuchy, HUD
+  intro/nap_demo_32bit.h    32bitova ukazka - GPU: low-poly nocni mesto a zavod, chveni vrcholu (mrizka
+                            160x120), afinni textury, Gouraud, mlha, dithering 4x4 + 15 bit barvy
+  intro/nap_demo_klip.h     zabery z Reneho Pitt-Kitt Platinum (asset intro/pittkitt.klip): snimky jako
+                            rozdily (XOR + zlib), paleta, zvuk POKEY 44,1 kHz; rozbaluje se po snimcich
+  intro/nap_demo.h          scena 4: neonove pruty (Bezier), drat, zhmotneni, kamera, CRT, defile,
+                            popisky; tlacitko SKIP (Demo::skipObd / Demo::dotykNaSkip)
+  intro/nap_demo_zvuk.h     nova hudba sceny 4 + zvuk hry primichany do stopy (nastavZaznam)
+  intro/nap_intro_gl.cpp    introStart pusti zvuk sam (OpenSL ES), nacte klip (obraz pro CRT, zvuk do
+                            stopy), introDotyk (C++ rozhodne SKIP / jinam), zalozni Java zvuk pryc
+  NativeIntroBridge.java    introStart -> bity (zvuk C++, zvuk hry), introDotyk; AudioTrack pryc
+  NapDemoView.java          dotyk -> introDotyk -> demoKonec("tlacitko SKIP" / "dotyk mimo SKIP")
+  MainActivity.java         demoSpust / demoKonec bez Java zvuku, log B307 DEMO_ZVUK
+  assets/intro/pittkitt.klip  120 snimku 384x240 (titulek N&P, Kapitola 1 Las Vegas 1982, jizda) + zvuk
+
+Spoustet z adresare test_overeni/b307. Hlavicky EGL / GLES2 / KHR v $INC (jako ../b304),
+JAVA_HOME = JDK, knihovny Mesa (libEGL, libGLESv2), zlib, Chromium + Playwright pro Python,
+Khronos glslangValidator ($GLSLANG).
+Vse najednou: PRAC=... INC=... GLSLANG=... [HRA=PittKitt.xex] bash vse.sh   (vystupy VYSTUP_* sem)
+
+Prepinac INTRO = -I../b306/stub -I../b304/stub -I../b291/stub -I$INC -I$JAVA_HOME/include
+                 -I$JAVA_HOME/include/linux -I../../app/src/main/cpp/tvproud -I../../app/src/main/cpp/intro
+(../b306/stub = nahrada OpenSL ES s GetPosition, ../b304/stub = AssetManager, ../b291/stub = Android)
+
+1) Cele demo po 0,25 s na vysku 540x1170 a na sirku / TV 854x480 (shadery, chyby GL, jas):
+   g++ -std=c++17 -O2 -I$INC -o demo_snimky demo_snimky.cpp -l:libEGL.so.1 -l:libGLESv2.so.2 -lz
+   EGL_PLATFORM=surfaceless ./demo_snimky ADR 540 1170 --vse 0.25    (a 854 480)
+                                                                  -> VYSTUP_demo_snimky.txt (+ PNG v ADR)
+2) Zvuk dema (stejny C++ jako appka, vcetne zvuku hry):
+   g++ -std=c++17 -O2 -o demo_zvuk demo_zvuk.cpp && ./demo_zvuk demo.wav  -> VYSTUP_demo_zvuk.txt
+3) Tlacitko SKIP - nakreslene lezi presne tam, kde ho hleda dotyk (vyska, sirka, tablet; pred 1,2 s
+   a po 44,6 s neni; na TV nikdy):
+   g++ -std=c++17 -O2 -I$INC -o test_skip test_skip.cpp -l:libEGL.so.1 -l:libGLESv2.so.2 -lz
+   EGL_PLATFORM=surfaceless ./test_skip                           -> VYSTUP_test_skip.txt
+4) SKUTECNY nap_intro_gl.cpp na PC (tv_intro.cpp: plocha = pbuffer, assety ze souboru, OpenSL "karta"):
+   g++ -std=c++17 -O2 -pthread $INTRO -o test_intro_host test_intro_host.cpp -l:libEGL.so.1 -l:libGLESv2.so.2
+   EGL_PLATFORM=surfaceless ./test_intro_host ADR_BEZ_KLIPU       -> VYSTUP_test_intro_host.txt
+     (ADR_BEZ_KLIPU = adresar jen s design/nap_logo_original.png)
+     introStart pusti zvuk sam, zabery nacteny, dotyk (SKIP / jinam / hned po startu nic / view jine
+     velikosti), cas obrazu za GetPosition, do reproduktoru presne stopa, introStop, novy start, CELA
+     stopa bit po bitu vcetne zvuku hry (karta 8x rychleji), OpenSL nejde, chybi klip.
+   Totez s -O1 -g -fsanitize=thread, NAP_RYCHLOST=2, TSAN_OPTIONS="detect_deadlocks=0"
+                                                                  -> VYSTUP_tsan.txt
+     (detect_deadlocks=0: vlakna llvmpipe v Mese zamykaji v jednom vlakne a odemykaji v jinem -
+      vlastni hlidac zamku TSan pak sam spadne "CHECK failed"; zavody v pameti TSan hlida dal)
+5) JVM: skutecne tridy NativeIntroBridge a NapDemoView se skutecnym C++ (tv_intro.cpp -> libnapintro.so):
+   javac -d OUT -sourcepath ../b306/jvm/stub NativeIntroBridge.java jvm/TestPodpisu.java
+   NAP_JVM_INTRO=1 java -Djava.library.path=LIB -cp OUT TestPodpisu   -> jvm/VYSTUP_TestPodpisu.txt
+   javac -d OUT2 -sourcepath jvm/stub NativeIntroBridge.java NapDemoView.java jvm/eu/atarihelp/emu10/TestNapDemoView.java
+   NAP_JVM_INTRO=1 java -Djava.library.path=LIB -cp OUT2 eu.atarihelp.emu10.TestNapDemoView
+                                                                  -> jvm/VYSTUP_TestNapDemoView.txt
+6) Shadery prisne podle GLSL ES 1.00: GLSLANG=... python3 kontrola_shaderu.py -> VYSTUP_kontrola_shaderu.txt
+7) Prohlizec (Chromium) - demo na TV / PC proudem z C++ v realnem case az za defile, vcetne Pitt-Kitt:
+   g++ -std=c++17 -O2 -shared -fPIC -pthread $INTRO -o $PRAC/libintro_b307.so tv_intro.cpp -l:libEGL.so.1 -l:libGLESv2.so.2
+   PRAC=... python3 test_b307_prohlizec.py                       -> VYSTUP_test_b307_prohlizec.txt
+8) Ukazky samostatne (rychlost): ukazka16.cpp ADR [snimky], ukazka32.cpp ADR t1 t2 ... -> VYSTUP_ukazky.txt
+9) Klip znovu z Reneho hry (SKUTECNE jadro Atari 130XE z appky), nepovinne:
+   g++ -std=c++17 -O2 -I../../app/src/main/cpp/atari -o nahraj_hru nahraj_hru.cpp -lz
+   ./nahraj_hru PittKitt.xex zaznam klip.bin "110-129,232-251,440-519" "200-206:START,420-426:START"
+   (pruzkum: ./nahraj_hru PittKitt.xex pruzkum ADR SNIMKU KAZDY "SCENAR" - PPM na prohlizeni)
+                                                                  -> VYSTUP_klip.txt (bajt po bajtu = asset)

@@ -16,6 +16,15 @@
 //  - B306: na TV / PC jde demo proudem z C++ (/intro.stream, jako Sega a PS1
 //    v B305): obraz 16:9 jako JPEG (nap_tv_proud_jpeg.h) + zvuk, ktery
 //    reproduktor prave dohral, v jednom paketu - Java jen predava bajty
+//  - B307: zvuk startuje a konci C++ samo (introStart / introStop) - zalozni
+//    Java AudioTrack je pryc (kdyz OpenSL nejde, demo bezi podle hodin bez
+//    zvuku). Dotyk: Java jen posle souradnice (introDotyk) a C++ rozhodne,
+//    jestli to bylo tlacitko SKIP (kreslene v C++) nebo jinam. Zabery
+//    z Reneho hry Pitt-Kitt Platinum (asset intro/pittkitt.klip) nacita
+//    C++: obraz pro CRT v demu, zvuk hry primichany do stopy.
+//    Java v intru zbyla: plocha (SurfaceView), predani dotyku, start / stop
+//    a preposilani hotovych bajtu proudu na TV (+ stara cesta introGrabFrame
+//    jen pro prohlizece bez ReadableStream - snimek uz otoceny z C++).
 // ====================================================================
 #include <jni.h>
 #include <android/asset_manager.h>
@@ -78,6 +87,10 @@ std::atomic<bool> g_chyba{false};         // GL se nepodarilo - Java demo hned u
 std::atomic<bool> g_hotovo{false};
 std::atomic<long long> g_snimku{0};
 std::atomic<int> g_casMs{0};
+std::atomic<long long> g_startNs{0};        // B307: kdy zacal beh (dotyk hned po startu se nepocita)
+std::atomic<int> g_plochaW{0}, g_plochaH{0};   // B307: velikost plochy, do ktere C++ kresli (pro dotyk)
+std::atomic<bool> g_klipObraz{false};       // B307: zabery z Pitt-Kitt nacteny (obraz)
+std::atomic<bool> g_klipZvuk{false};        // B307: zvuk hry primichany do stopy
 
 // ---- zvuk ----
 std::unique_ptr<napdemo::zv::Stopa> g_stopa;
@@ -139,6 +152,20 @@ double cilovyCas() {
   }
   return 0.0;
 }
+
+// B307: cely asset do pameti (zabery z Reneho hry, ~120 kB)
+std::vector<unsigned char> nactiAsset(const char *cesta) {
+  std::vector<unsigned char> ven;
+  if (!g_assets) return ven;
+  AAsset *a = AAssetManager_open(g_assets, cesta, AASSET_MODE_BUFFER);
+  if (!a) return ven;
+  const void *d = AAsset_getBuffer(a);
+  const off_t n = AAsset_getLength(a);
+  if (d && n > 0) ven.assign((const unsigned char *)d, (const unsigned char *)d + n);
+  AAsset_close(a);
+  return ven;
+}
+constexpr const char *KLIP_ASSET = "intro/pittkitt.klip";
 
 std::vector<unsigned char> nactiLogo(int &w, int &h) {
   std::vector<unsigned char> ven;
@@ -232,6 +259,13 @@ void vlaknoDema(ANativeWindow *okno) {
     const long long t0 = tedNs();
     bool ok = demo->init(logo.empty() ? nullptr : logo.data(), lw, lh);
     logo.clear(); logo.shrink_to_fit();
+    if (ok) {
+      // B307: zabery z Reneho hry pro CRT (bez nich se na CRT ukaze jen titulek hry)
+      std::vector<unsigned char> klip = nactiAsset(KLIP_ASSET);
+      const bool kOk = !klip.empty() && demo->nastavKlip(klip.data(), klip.size());
+      g_klipObraz.store(kOk);
+      NAPDEMO_LOG("DEMO: zabery Pitt-Kitt %s (%zu B)", kOk ? "nacteny" : "NENACTENY", klip.size());
+    }
     napdemo::Cil cil, tv;
     tv.w = TV_W; tv.h = TV_H; tv.tv = true;
     napdemo::Fbo tvFbo;
@@ -244,15 +278,35 @@ void vlaknoDema(ANativeWindow *okno) {
       eglQuerySurface(dpy, surf, EGL_HEIGHT, &h);
       cil.w = w; cil.h = h;
       if (w > 0 && h > 0) demo->pripravTexty(cil, 100);
+      // B307: "nanecisto" - par snimku sceny 4 do plochy BEZ zobrazeni (zadny
+      // eglSwapBuffers, hned se prekryje cernou). Ovladac GPU si tak pripravi vsechny
+      // shadery, textury a framebuffery uz ted, kdy je obrazovka cerna - jinak by
+      // to mohl delat az pri prvnim pouziti (strih na 32 bit, konzole, CRT) a obraz
+      // by se tam na chvilku zadrhl.
+      const long long tn = tedNs();
+      int nanecisto = 0;
+      if (w > 0 && h > 0) {
+        static const float CASY[] = {28.4f, 31.0f, 33.6f, 34.8f, 36.0f};
+        for (float tt : CASY) {
+          if (!g_bezi.load()) break;
+          demo->snimek(tt, cil, 0);
+          nanecisto++;
+        }
+        glFinish();
+      }
+      const long long nanecistoMs = (tedNs() - tn) / 1000000LL;
       glBindFramebuffer(GL_FRAMEBUFFER, 0);
       glViewport(0, 0, w, h);
       glClearColor(0, 0, 0, 1);
       glClear(GL_COLOR_BUFFER_BIT);
       eglSwapBuffers(dpy, surf);
-      NAPDEMO_LOG("DEMO: pripraveno za %lld ms (%dx%d)", (tedNs() - t0) / 1000000LL, w, h);
+      NAPDEMO_LOG("DEMO: pripraveno za %lld ms (%dx%d), z toho nanecisto %d snimku %lld ms", (tedNs() - t0) / 1000000LL, w, h,
+                  nanecisto, nanecistoMs);
       {
-        char b[160];
-        std::snprintf(b, sizeof b, " | priprava %lld ms, plocha %dx%d", (tedNs() - t0) / 1000000LL, (int)w, (int)h);
+        char b[240];
+        std::snprintf(b, sizeof b, " | priprava %lld ms (nanecisto %d snimku %lld ms), plocha %dx%d, zabery Pitt-Kitt %s, zvuk hry %s",
+                      (tedNs() - t0) / 1000000LL, nanecisto, nanecistoMs, (int)w, (int)h,
+                      g_klipObraz.load() ? "ano" : "NE", g_klipZvuk.load() ? "ano" : "NE");
         std::lock_guard<std::mutex> z(g_infoZamek);
         g_infoGl += b;
       }
@@ -273,6 +327,7 @@ void vlaknoDema(ANativeWindow *okno) {
       eglQuerySurface(dpy, surf, EGL_HEIGHT, &h);
       if (w <= 0 || h <= 0) { std::this_thread::sleep_for(std::chrono::milliseconds(16)); continue; }
       cil.w = w; cil.h = h; cil.tv = false;
+      g_plochaW.store(w); g_plochaH.store(h);
 
       // cas: plynule za zvukem (mala odchylka se dorovna, velka skoci)
       const long long ted = tedNs();
@@ -437,7 +492,7 @@ void slZavri() {
 
 bool slOtevri() {
   if (sl::bezi.load()) return true;
-  auto chyba = [](const char *co) { NAPDEMO_LOG("DEMO: OpenSL %s nejde - zvuk prehraje Java (AudioTrack)", co); slZavri(); return false; };
+  auto chyba = [](const char *co) { NAPDEMO_LOG("DEMO: OpenSL %s nejde - demo pobezi bez zvuku (podle hodin)", co); slZavri(); return false; };
   if (slCreateEngine(&sl::engObj, 0, nullptr, 0, nullptr, nullptr) != SL_RESULT_SUCCESS) return chyba("engine");
   if ((*sl::engObj)->Realize(sl::engObj, SL_BOOLEAN_FALSE) != SL_RESULT_SUCCESS) return chyba("Realize");
   if ((*sl::engObj)->GetInterface(sl::engObj, SL_IID_ENGINE, &sl::eng) != SL_RESULT_SUCCESS) return chyba("ENGINE");
@@ -483,8 +538,12 @@ JNIEXPORT void JNICALL Java_eu_atarihelp_emu10_NativeIntroBridge_introNastavAsse
   g_assets = AAssetManager_fromJava(env, g_assetsRef);
 }
 
-/** Novy beh dema: vynulovat stav a zacit pocitat zvuk. */
-JNIEXPORT void JNICALL Java_eu_atarihelp_emu10_NativeIntroBridge_introStart(JNIEnv *, jclass) {
+/**
+ * Novy beh dema: vynulovat stav, zacit pocitat zvuk a (B307) rovnou ho pustit
+ * pres OpenSL ES - do pripravy obrazu hraje ticho. Vraci bity:
+ *   bit0 = zvuk hraje C++ (OpenSL ES), bit1 = zvuk Reneho hry je ve stope.
+ */
+JNIEXPORT jint JNICALL Java_eu_atarihelp_emu10_NativeIntroBridge_introStart(JNIEnv *, jclass) {
   zastavKresleni();
   slZavri();          // B306: prehravac z minuleho behu (jeho cas by nesedel s novym)
   zastavZvuk();
@@ -498,6 +557,11 @@ JNIEXPORT void JNICALL Java_eu_atarihelp_emu10_NativeIntroBridge_introStart(JNIE
   g_hlava.store(0);
   g_hlavaNs.store(0);
   g_pripravenoNs.store(0);
+  g_startNs.store(tedNs());
+  g_plochaW.store(0);
+  g_plochaH.store(0);
+  g_klipObraz.store(false);
+  g_klipZvuk.store(false);
   {
     std::lock_guard<std::mutex> z(g_tvZamek);
     g_tvNovy = false;
@@ -506,19 +570,34 @@ JNIEXPORT void JNICALL Java_eu_atarihelp_emu10_NativeIntroBridge_introStart(JNIE
     std::lock_guard<std::mutex> z(g_zvukZamek);
     g_stopa.reset(new napdemo::zv::Stopa());
     napdemo::zv::Stopa *s = g_stopa.get();
+    // B307: zvuk z Reneho hry (jizda Las Vegas) - do stopy pred vypoctem
+    {
+      std::vector<unsigned char> d = nactiAsset(KLIP_ASSET);
+      napdemo::KlipAtari k;
+      std::vector<int16_t> z;
+      if (!d.empty() && k.nacti(d.data(), d.size()) && k.vzorkovani == napdemo::zv::SR &&
+          k.zvukUseku(2, 6, napdemo::cas::STRIH_16 - napdemo::cas::ATARI_JIZDA, z)) {
+        s->nastavZaznam(z.data(), z.size(), napdemo::cas::ATARI_JIZDA, 1.8f);
+        g_klipZvuk.store(true);
+      } else {
+        NAPDEMO_LOG("DEMO: zvuk Pitt-Kitt nenacten (asset %s, %zu B)", KLIP_ASSET, d.size());
+      }
+    }
     g_zvukVlakno = std::thread([s] {
       const long long t0 = tedNs();
       s->vyrob();
       NAPDEMO_LOG("DEMO: zvuk spocitan za %lld ms", (tedNs() - t0) / 1000000LL);
     });
   }
-  NAPDEMO_LOG("DEMO START");
+  const bool zvuk = slOtevri();
+  NAPDEMO_LOG("DEMO START (zvuk %s, zvuk hry %s)", zvuk ? "C++ OpenSL ES" : "NEJDE - jen obraz", g_klipZvuk.load() ? "ano" : "ne");
+  return (zvuk ? 1 : 0) | (g_klipZvuk.load() ? 2 : 0);
 }
 
 /** Konec (dobehlo, preskoceno, pauza): zastavit kresleni i zvuk. */
 JNIEXPORT void JNICALL Java_eu_atarihelp_emu10_NativeIntroBridge_introStop(JNIEnv *, jclass) {
   zastavKresleni();
-  slZavri();          // B306 (Java uz ho zastavila v zvukStop - tady jen pro jistotu)
+  slZavri();          // B307: zvuk zastavuje C++ samo (zadna Java)
   zastavZvuk();
   g_pripraveno.store(false);
   {
@@ -566,32 +645,22 @@ JNIEXPORT jstring JNICALL Java_eu_atarihelp_emu10_NativeIntroBridge_introInfo(JN
 }
 
 /**
- * Java si sem chodi pro vzorky (stereo, 44,1 kHz). Dokud neni obraz
- * pripraveny, dostava ticho; pak stopu od zacatku. Vraci pocet ramcu,
- * -1 = konec (demo zastavene nebo cela stopa prehrana).
+ * B307: dotyk prstem (zvednuti) v bodech plochy NapDemoView. C++ rozhodne:
+ *   0 = nic (hned po startu - prst, ktery appku spustil), 1 = tlacitko SKIP,
+ *   2 = jinam (taky preskocit, jako drive).
+ * Souradnice se prepoctou na velikost plochy, do ktere C++ opravdu kresli.
  */
-JNIEXPORT jint JNICALL Java_eu_atarihelp_emu10_NativeIntroBridge_introNaplnZvuk(JNIEnv *env, jclass, jshortArray jbuf, jint ramcu) {
-  if (!jbuf || ramcu <= 0) return 0;
-  if (env->GetArrayLength(jbuf) < ramcu * 2) return 0;
-  jshort *p = env->GetShortArrayElements(jbuf, nullptr);
-  if (!p) return 0;
-  const int n = naplnZvuk((int16_t *)p, (int)ramcu);
-  env->ReleaseShortArrayElements(jbuf, p, 0);
-  return n;
-}
-
-/** Kolik ramcu uz reproduktor opravdu prehral (AudioTrack.getPlaybackHeadPosition). */
-JNIEXPORT void JNICALL Java_eu_atarihelp_emu10_NativeIntroBridge_introCasZvuku(JNIEnv *, jclass, jlong hlava) {
-  casZvuku((long long)hlava);
-}
-
-/** B306: zvuk dema prehrava C++ (OpenSL ES). false = nejde, Java pusti AudioTrack (zaloha). */
-JNIEXPORT jboolean JNICALL Java_eu_atarihelp_emu10_NativeIntroBridge_introZvukStartNative(JNIEnv *, jclass) {
-  return slOtevri() ? JNI_TRUE : JNI_FALSE;
-}
-
-JNIEXPORT void JNICALL Java_eu_atarihelp_emu10_NativeIntroBridge_introZvukStopNative(JNIEnv *, jclass) {
-  slZavri();
+JNIEXPORT jint JNICALL Java_eu_atarihelp_emu10_NativeIntroBridge_introDotyk(JNIEnv *, jclass, jfloat x, jfloat y, jint w, jint h) {
+  const long long st = g_startNs.load();
+  if (st > 0 && tedNs() - st < 700000000LL) return 0;
+  int pw = g_plochaW.load(), ph = g_plochaH.load();
+  float fx = x, fy = y;
+  if (pw > 0 && ph > 0 && w > 0 && h > 0) { fx = x * pw / (float)w; fy = y * ph / (float)h; }
+  else { pw = w; ph = h; }
+  if (pw <= 0 || ph <= 0) return 2;
+  const bool skip = napdemo::Demo::dotykNaSkip(pw, ph, fx, fy);
+  NAPDEMO_LOG("DEMO: dotyk %.0f,%.0f (plocha %dx%d) -> %s", fx, fy, pw, ph, skip ? "SKIP" : "jinam");
+  return skip ? 1 : 2;
 }
 
 // ===================================================================
@@ -635,6 +704,8 @@ JNIEXPORT jstring JNICALL Java_eu_atarihelp_emu10_NativeIntroBridge_proudLogNati
 /**
  * Posledni snimek pro TV (16:9) - stejny tvar jako Ps1GlTextureView.borrowFrame:
  *   (sirka<<16)|vyska kdyz predal, zaporne kdyz je pole male, 0 kdyz nic noveho.
+ * B307: jen pro stare prohlizece bez ReadableStream (ty /intro.stream neumi);
+ * vsechny ostatni berou demo proudem z C++.
  */
 JNIEXPORT jint JNICALL Java_eu_atarihelp_emu10_NativeIntroBridge_introGrabFrame(JNIEnv *env, jclass, jintArray jven) {
   g_tvChceNs.store(tedNs());

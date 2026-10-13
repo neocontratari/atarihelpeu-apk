@@ -1,0 +1,6 @@
+OK     start (bity 3): dotyk hned po startu demo nepreskoci []
+OK     polozeni a posun prstu nic (jen zvednuti) []
+OK     zvednuti prstu na SKIP -> demoKonec("tlacitko SKIP") [tlacitko SKIP]
+OK     zvednuti prstu jinde -> demoKonec("dotyk mimo SKIP") [tlacitko SKIP, dotyk mimo SKIP]
+OK     na sirku: SKIP vpravo nahore [tlacitko SKIP, dotyk mimo SKIP, tlacitko SKIP]
+VYSLEDEK: dotyk NapDemoView -> C++ -> demoKonec sedi (0 chyb)

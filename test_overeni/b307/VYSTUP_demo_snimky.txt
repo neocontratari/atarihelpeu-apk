@@ -1,0 +1,97 @@
+B307 - cele demo (45 s) po 0,25 s, stejny C++ jako v telefonu (Mesa, OpenGL ES 2.0 bez okna)
+=== telefon na vysku 540x1170 ===
+GL OpenGL ES 3.2 Mesa 25.2.8-0ubuntu0.24.04.4 | llvmpipe (LLVM 20.1.2, 256 bits)
+logo 516x520
+init OK za 469 ms
+klip ../../app/src/main/assets/intro/pittkitt.klip: OK (116891 B)
+snimku: 181, chyb GL: 0
+scena 4 (27-37 s: pruty, konzole, trojice, CRT, defile):
+t= 27.00  jas   47.3       89 ms  vse_v/f_27.00.png
+t= 27.25  jas   48.9       90 ms  vse_v/f_27.25.png
+t= 27.50  jas   45.2       92 ms  vse_v/f_27.50.png
+t= 27.75  jas   45.0       81 ms  vse_v/f_27.75.png
+t= 28.00  jas   44.4       89 ms  vse_v/f_28.00.png
+t= 28.25  jas   41.9       84 ms  vse_v/f_28.25.png
+t= 28.50  jas   32.3       92 ms  vse_v/f_28.50.png
+t= 28.75  jas   26.5       70 ms  vse_v/f_28.75.png
+t= 29.00  jas   22.8       83 ms  vse_v/f_29.00.png
+t= 29.25  jas   19.2       71 ms  vse_v/f_29.25.png
+t= 29.50  jas   18.3       82 ms  vse_v/f_29.50.png
+t= 29.75  jas   18.7       73 ms  vse_v/f_29.75.png
+t= 30.00  jas   20.1       80 ms  vse_v/f_30.00.png
+t= 30.25  jas   23.0       72 ms  vse_v/f_30.25.png
+t= 30.50  jas   27.5       97 ms  vse_v/f_30.50.png
+t= 30.75  jas   27.3       77 ms  vse_v/f_30.75.png
+t= 31.00  jas   34.1       78 ms  vse_v/f_31.00.png
+t= 31.25  jas   33.5       88 ms  vse_v/f_31.25.png
+t= 31.50  jas   26.1       85 ms  vse_v/f_31.50.png
+t= 31.75  jas   22.9       78 ms  vse_v/f_31.75.png
+t= 32.00  jas   23.5       80 ms  vse_v/f_32.00.png
+t= 32.25  jas   29.6       81 ms  vse_v/f_32.25.png
+t= 32.50  jas   33.1      140 ms  vse_v/f_32.50.png
+t= 32.75  jas   38.6       96 ms  vse_v/f_32.75.png
+t= 33.00  jas   39.6       86 ms  vse_v/f_33.00.png
+t= 33.25  jas   35.8      100 ms  vse_v/f_33.25.png
+t= 33.50  jas   36.0       94 ms  vse_v/f_33.50.png
+t= 33.75  jas   35.8       93 ms  vse_v/f_33.75.png
+t= 34.00  jas   35.5       88 ms  vse_v/f_34.00.png
+t= 34.25  jas   87.1      107 ms  vse_v/f_34.25.png
+t= 34.50  jas   32.7       90 ms  vse_v/f_34.50.png
+t= 34.75  jas   32.8       89 ms  vse_v/f_34.75.png
+t= 35.00  jas   32.9       87 ms  vse_v/f_35.00.png
+t= 35.25  jas   32.7      100 ms  vse_v/f_35.25.png
+t= 35.50  jas   68.1      165 ms  vse_v/f_35.50.png
+t= 35.75  jas   29.0      100 ms  vse_v/f_35.75.png
+t= 36.00  jas   28.5       96 ms  vse_v/f_36.00.png
+t= 36.25  jas   28.1       93 ms  vse_v/f_36.25.png
+t= 36.50  jas   27.2       93 ms  vse_v/f_36.50.png
+t= 36.75  jas   59.1       94 ms  vse_v/f_36.75.png
+t= 37.00  jas    0.6       25 ms  vse_v/f_37.00.png
+=== na sirku / TV 854x480 ===
+GL OpenGL ES 3.2 Mesa 25.2.8-0ubuntu0.24.04.4 | llvmpipe (LLVM 20.1.2, 256 bits)
+logo 516x520
+init OK za 169 ms
+klip ../../app/src/main/assets/intro/pittkitt.klip: OK (116891 B)
+snimku: 181, chyb GL: 0
+scena 4 (27-37 s: pruty, konzole, trojice, CRT, defile):
+t= 27.00  jas   43.1       55 ms  vse_s/f_27.00.png
+t= 27.25  jas   47.6       53 ms  vse_s/f_27.25.png
+t= 27.50  jas   50.6       54 ms  vse_s/f_27.50.png
+t= 27.75  jas   58.6       57 ms  vse_s/f_27.75.png
+t= 28.00  jas   61.8       59 ms  vse_s/f_28.00.png
+t= 28.25  jas   60.8       57 ms  vse_s/f_28.25.png
+t= 28.50  jas   50.8       59 ms  vse_s/f_28.50.png
+t= 28.75  jas   41.8       53 ms  vse_s/f_28.75.png
+t= 29.00  jas   32.3       54 ms  vse_s/f_29.00.png
+t= 29.25  jas   30.2       49 ms  vse_s/f_29.25.png
+t= 29.50  jas   30.0       50 ms  vse_s/f_29.50.png
+t= 29.75  jas   32.1       55 ms  vse_s/f_29.75.png
+t= 30.00  jas   39.5       54 ms  vse_s/f_30.00.png
+t= 30.25  jas   44.3       54 ms  vse_s/f_30.25.png
+t= 30.50  jas   47.5       70 ms  vse_s/f_30.50.png
+t= 30.75  jas   54.3       72 ms  vse_s/f_30.75.png
+t= 31.00  jas   70.3       70 ms  vse_s/f_31.00.png
+t= 31.25  jas   52.8       57 ms  vse_s/f_31.25.png
+t= 31.50  jas   35.3       59 ms  vse_s/f_31.50.png
+t= 31.75  jas   56.1       67 ms  vse_s/f_31.75.png
+t= 32.00  jas   43.8       59 ms  vse_s/f_32.00.png
+t= 32.25  jas   24.2       54 ms  vse_s/f_32.25.png
+t= 32.50  jas   24.0      113 ms  vse_s/f_32.50.png
+t= 32.75  jas   28.3       64 ms  vse_s/f_32.75.png
+t= 33.00  jas   29.9       67 ms  vse_s/f_33.00.png
+t= 33.25  jas   25.0       68 ms  vse_s/f_33.25.png
+t= 33.50  jas   25.4       64 ms  vse_s/f_33.50.png
+t= 33.75  jas   25.6       58 ms  vse_s/f_33.75.png
+t= 34.00  jas   25.5       58 ms  vse_s/f_34.00.png
+t= 34.25  jas   80.8       61 ms  vse_s/f_34.25.png
+t= 34.50  jas   22.6       68 ms  vse_s/f_34.50.png
+t= 34.75  jas   22.9       59 ms  vse_s/f_34.75.png
+t= 35.00  jas   23.1       69 ms  vse_s/f_35.00.png
+t= 35.25  jas   23.2       59 ms  vse_s/f_35.25.png
+t= 35.50  jas   60.9       79 ms  vse_s/f_35.50.png
+t= 35.75  jas   19.1       71 ms  vse_s/f_35.75.png
+t= 36.00  jas   18.6       67 ms  vse_s/f_36.00.png
+t= 36.25  jas   18.0       87 ms  vse_s/f_36.25.png
+t= 36.50  jas   16.0       71 ms  vse_s/f_36.50.png
+t= 36.75  jas   54.0       89 ms  vse_s/f_36.75.png
+t= 37.00  jas    0.3       18 ms  vse_s/f_37.00.png

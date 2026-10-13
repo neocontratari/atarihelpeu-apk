@@ -1,0 +1,22 @@
+OK     demo pripraveno, klip Pitt-Kitt nacteny
+OK     telefon na vysku 540x1170 t=7.3: nakresleno [395,36]-[519,77] (4091 bodu), dotyk hleda [394,35]-[521,79] - stred nakresleneho = SKIP, vedle = jinam
+OK     telefon na vysku 540x1170 t=17.9: nakresleno [395,36]-[519,77] (2922 bodu), dotyk hleda [394,35]-[521,79] - stred nakresleneho = SKIP, vedle = jinam
+OK     telefon na vysku 540x1170 t=36.8: nakresleno [395,36]-[519,77] (4833 bodu), dotyk hleda [394,35]-[521,79] - stred nakresleneho = SKIP, vedle = jinam
+OK     telefon na vysku 540x1170 t=42.0: nakresleno [395,36]-[519,77] (1431 bodu), dotyk hleda [394,35]-[521,79] - stred nakresleneho = SKIP, vedle = jinam
+OK     telefon na vysku t=0.6: tlacitko neni (rozdil telefon / TV 0 bodu)
+OK     telefon na vysku t=44.8: tlacitko neni (rozdil telefon / TV 0 bodu)
+OK     telefon na sirku 1170x540 t=7.3: nakresleno [1025,20]-[1149,61] (1314 bodu), dotyk hleda [1024,19]-[1151,63] - stred nakresleneho = SKIP, vedle = jinam
+OK     telefon na sirku 1170x540 t=17.9: nakresleno [1025,20]-[1149,61] (2940 bodu), dotyk hleda [1024,19]-[1151,63] - stred nakresleneho = SKIP, vedle = jinam
+OK     telefon na sirku 1170x540 t=36.8: nakresleno [1025,20]-[1149,61] (4836 bodu), dotyk hleda [1024,19]-[1151,63] - stred nakresleneho = SKIP, vedle = jinam
+OK     telefon na sirku 1170x540 t=42.0: nakresleno [1025,20]-[1149,61] (2973 bodu), dotyk hleda [1024,19]-[1151,63] - stred nakresleneho = SKIP, vedle = jinam
+OK     telefon na sirku t=0.6: tlacitko neni (rozdil telefon / TV 0 bodu)
+OK     telefon na sirku t=44.8: tlacitko neni (rozdil telefon / TV 0 bodu)
+OK     tablet 800x1280 t=7.3: nakresleno [585,53]-[770,116] (7008 bodu), dotyk hleda [584,52]-[772,118] - stred nakresleneho = SKIP, vedle = jinam
+OK     tablet 800x1280 t=17.9: nakresleno [585,53]-[770,116] (8303 bodu), dotyk hleda [584,52]-[772,118] - stred nakresleneho = SKIP, vedle = jinam
+OK     tablet 800x1280 t=36.8: nakresleno [585,53]-[770,116] (10810 bodu), dotyk hleda [584,52]-[772,118] - stred nakresleneho = SKIP, vedle = jinam
+OK     tablet 800x1280 t=42.0: nakresleno [585,53]-[770,116] (3319 bodu), dotyk hleda [584,52]-[772,118] - stred nakresleneho = SKIP, vedle = jinam
+OK     tablet t=0.6: tlacitko neni (rozdil telefon / TV 0 bodu)
+OK     tablet t=44.8: tlacitko neni (rozdil telefon / TV 0 bodu)
+OK     zadna chyba OpenGL
+
+VYSLEDEK: 20 OK, 0 CHYB

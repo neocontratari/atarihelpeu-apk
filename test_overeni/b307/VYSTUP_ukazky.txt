@@ -1,0 +1,12 @@
+B307 - ukazky na CRT samostatne (PC, jedno jadro)
+16bit (procesor, 320x224):
+  init 17.5 ms
+  snimek prumer 1.33 ms, max 2.38 ms
+32bit (GPU Mesa llvmpipe, 320x240):
+  DEMO 32bit mesto: 6326 trojuhelniku
+  init OK 42.4 ms
+  t=0.00 31.2 ms chyba GL 0x0
+  t=0.30 9.4 ms chyba GL 0x0
+  t=0.60 9.8 ms chyba GL 0x0
+  t=0.90 8.8 ms chyba GL 0x0
+  t=1.20 8.7 ms chyba GL 0x0

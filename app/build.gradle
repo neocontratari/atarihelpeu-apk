@@ -9,8 +9,20 @@ android {
         applicationId "eu.atarihelp.emu10.test"  // TEST vedle prave apky (neprepise ji)
         minSdk 24
         targetSdk 34
-        versionCode 349
-        versionName "EMU10-B306-TV-ZVUK-CPP"
+        versionCode 350
+        versionName "EMU10-B307-INTRO-NP-CPP"
+        // B307: Rene - "z klavesnice meho realneho Atari 130XE vystreli v C++
+        // shaderu ty svitici neonove pruty ... zformuji celou nasi trojici ...
+        // na monitoru bleskove prostrihas ta herni defile v 50 FPS ... Pridej tam
+        // prosim i tlacitko SKIP" (+ "Jen to atari 130xe prosim aspon to zachovej",
+        // "ty 16bit grafiky a 32 bit ukazky musi byt lepsi"). Scena 4 dema nove:
+        // pruty z klaves Atari, drat, zhmotneni vlastnich konzoli N&P 16 (cartridge)
+        // a N&P 32 (CD) se zlatym logem N&P vedle Atari 130XE, prulet ke CRT,
+        // defile: Reneho Pitt-Kitt Platinum (zabery i zvuk ze skutecneho jadra
+        // Atari, assets/intro/pittkitt.klip), 16bit (procesor, paralaxa, sprity)
+        // a 32bit (GPU low-poly noc). Zvuk startuje a konci C++ samo (Java
+        // AudioTrack pryc), tlacitko SKIP kresli C++ a o dotyku rozhoduje C++.
+        // Viz CO_JE_V_B307.md.
         // B306: Rene po B305 - "zvuk nabehl v sega az po urcite dobe a po refresh
         // stranky zase se zvuk odmlcel ... u prenosu segy a ps1 by to mohlo byt jeste
         // lepsi ... vse predelat postupne do cisteho c++". Prohlizec: vyzva + zvuk po

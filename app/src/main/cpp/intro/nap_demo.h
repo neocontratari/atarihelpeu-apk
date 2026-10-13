@@ -6,13 +6,17 @@
 //   0 -  7 s  tma, bzuceni CRT, sera garaz nabiha, vrata (opona) se zvedaji
 //   7 - 17 s  ven do cernych valicich se mraku, hromy, ptaci, pak dest
 //  17 - 27 s  obrovsky blesk - kamera s uctou najede na Atari 130XE na stole
-//  27 - 37 s  z Atari vystreli energie a ozivi displeje mobilu, strihy
-//             na ciste herni systemy (Atari, Sega, PS1, TV pres LAN)
+//  27 - 37 s  B307: z klaves Atari vystreli neonove pruty, z nich vzniknou
+//             konzole N&P 16 a N&P 32 (vlastni navrh s logem N&P), zaber na
+//             trojici, kamera proleti k CRT monitoru a na nem defile 50 / s:
+//             Reneho Pitt-Kitt Platinum (zabery ze skutecneho emulatoru Atari),
+//             16bitova a 32bitova ukazka (viz nap_demo_cas.h)
 //  37 - 45 s  tma, zlate logo N&P (C) 2026 VCS a bile filmove titulky
 //
 //  Vsechno se pocita v C++ a na GPU (OpenGL ES 2.0), v HD - zadne video
-//  ani obrazky krome oficialniho loga. Obraz je cista funkce casu, takze
-//  telefon i TV kresli presne totez.
+//  ani obrazky krome oficialniho loga a zaberu z Reneho hry (klip z C++
+//  emulatoru Atari). Obraz je cista funkce casu, takze telefon i TV
+//  kresli presne totez.
 // ====================================================================
 #pragma once
 #include "nap_demo_gl.h"
@@ -22,6 +26,11 @@
 #include "../atari/nap_atari_fonts.h"
 #include "../atari/nap_atari_fonts2.h"
 #include "../atari/nap_atari_roms.h"
+#include "nap_demo_cas.h"
+#include "nap_demo_konzole.h"
+#include "nap_demo_16bit.h"
+#include "nap_demo_32bit.h"
+#include "nap_demo_klip.h"
 
 namespace napdemo {
 
@@ -48,8 +57,7 @@ static const Titulek TITULKY[8] = {
 enum {
   T_TIT = 0,                          // 0..7 titulky
   T_K1 = 8, T_K2, T_K3, T_K4, T_K5, T_K6,
-  T_ATARI, T_SEGA, T_PS1, T_LAN, T_BEZ, T_PRESKOCIT,
-  T_M1, T_M2, T_M3,                    // napisy v menu na displeji mobilu
+  T_ATARI, T_PITT, T_16, T_32, T_SKIP,   // B307: popisky defile na CRT, tlacitko SKIP
   T_POCET
 };
 
@@ -60,7 +68,6 @@ struct Cil {
   Fbo nebe, garaz;
   Fbo scena;                          // cely snimek (s hloubkou) - pak jde pres "film"
   Fbo zare[4];                        // zare kolem svetel: 1/4 a 1/8 rozliseni
-  Fbo pixel;                          // strihy Sega/PS1 v puvodnim malem rozliseni
   TextTex texty[T_POCET];
   int textW = 0, textH = 0;
   float meritko = 0.5f;               // rozliseni mraku a garaze (meni se podle rychlosti GPU)
@@ -91,14 +98,12 @@ class Demo {
     pModel.sestav(VS_MODEL, sum(FS_MODEL).c_str(), "model");
     pMistnost.sestav(VS_PLNY, FS_MISTNOST, "mistnost");
     pPara.sestav(VS_PLNY, sum(FS_PARA).c_str(), "para");
-    pTelefon.sestav(VS_OBD, FS_TELEFON, "telefon");
     pCastice.sestav(VS_CASTICE, FS_CASTICE, "castice");
     pLogo.sestav(VS_OBD, FS_LOGO, "logo");
-    pAtari.sestav(VS_PLNY, FS_ATARI, "atari");
-    pSega.sestav(VS_PLNY, sum(FS_SEGA).c_str(), "sega");
-    pPs1.sestav(VS_PLNY, FS_PS1, "ps1");
-    pMenu.sestav(VS_PLNY, FS_MENU, "menu");
-    pTvLan.sestav(VS_PLNY, FS_TVLAN, "tvlan");
+    // B307: konzole N&P, CRT, tlacitko SKIP
+    pKonzole.sestav(VS_MODEL, sum(FS_KONZOLE).c_str(), "konzole");
+    pCrt.sestav(VS_CRT, FS_CRT, "crt");
+    pTlacitko.sestav(VS_OBD, FS_TLACITKO, "tlacitko");
     ctverec.priprav();
     glGenBuffers(1, &vboDyn);
     // sumova textura: R nahoda, G = R posunute o (37,17) (3D sum), B dalsi nahoda
@@ -111,7 +116,16 @@ class Demo {
       texSum = novaTextura(256, 256, GL_RGBA, n.data(), true, true);
     }
     atari.postav(pBold, pItal, pMed);
-    mobil.postav();
+    k16.postav16();
+    k32.postav32();
+    crt.postav();
+    postavPruty();
+    // ukazky na CRT: 16 bit (procesor), 32 bit (GPU), Atari (klip)
+    hra16.init();
+    pismoTucne(pismo8);
+    hra32ok = hra32.init(&pismo8[0][0]);
+    tex16 = novaTextura(Hra16::W, Hra16::H, GL_RGBA, nullptr, false);
+    tex8 = novaTextura(384, 240, GL_RGBA, nullptr, false);
     {   // stul a stena (velke plochy)
       Stavitel s;
       s.quad(V3(-160, 0, 130), V3(160, 0, 130), V3(160, 0, -95), V3(-160, 0, -95), 8);
@@ -147,11 +161,11 @@ class Demo {
       glGenerateMipmap(GL_TEXTURE_2D);
       logoPomer = (float)logoW / logoH;
     }
-    texAtari = novaTextura(320, 192, GL_RGBA, nullptr, false);
-    for (int i = 0; i < 5; i++) obrazovky[i].priprav(240, 480);
     postavBlesk();
-    pripraveno = pSemi.ok && pModel.ok && pGaraz.ok && pNebe.ok && pFinal.ok;
-    NAPDEMO_LOG("DEMO pripraveno: %s (pisma %d, model %d tri)", pripraveno ? "ANO" : "NE", (int)pSemi.ok, atari.sit.pocet / 3);
+    pripraveno = pSemi.ok && pModel.ok && pGaraz.ok && pNebe.ok && pFinal.ok && pKonzole.ok && pCrt.ok;
+    NAPDEMO_LOG("DEMO pripraveno: %s (pisma %d, model %d tri, konzole %d+%d tri, CRT %d tri, 32bit %s)", pripraveno ? "ANO" : "NE",
+                (int)pSemi.ok, atari.sit.pocet / 3, k16.sit.pocet / 3, k32.sit.pocet / 3, (crt.sit.pocet + crt.sklo.pocet) / 3,
+                hra32ok ? "ANO" : "NE");
     return pripraveno;
   }
 
@@ -202,34 +216,60 @@ class Demo {
       float a = okno(t, ti.od, ti.od + 0.4f, ti.po - 0.4f, ti.po);
       if (a > 0.001f) titulek(c, c.texty[T_TIT + i], a);
     }
-    if (!c.tv) {
-      float a = okno(t, 1.4f, 2.4f, 36.0f, 36.8f) * 0.42f;
-      const TextTex &k = c.texty[T_PRESKOCIT];
-      if (a > 0.001f && k.tex) textKresli(c, k, c.w - k.w * 0.5f - c.w * 0.025f, k.h * 0.5f + c.h * 0.02f, a);
-    }
     // zablesk po velkem blesku (prekryje vsechno)
     float bl = zablesk(t);
     if (bl > 0.001f) prekryv(1.0f, 1.0f, 1.0f, bl);
+    // B307: tlacitko SKIP (jen telefon - na TV / PC neni co mackat)
+    if (!c.tv) tlacitkoSkip(c, okno(t, 1.2f, 1.9f, 44.0f, 44.6f));
     glDisable(GL_BLEND);
   }
 
+  // B307: zabery z Reneho hry (klip z emulatoru Atari, asset intro/pittkitt.klip)
+  bool nastavKlip(const unsigned char *d, size_t n) { return klip.nacti(d, n); }
+  bool maKlip() const { return klip.je(); }
+
+  // B307: kde je tlacitko SKIP (body od leveho horniho rohu) - stejne pro kresleni
+  // i pro dotyk (Java posle dotyk do C++ a C++ rozhodne). Vpravo nahore.
+  static void skipObd(int w, int h, float &x0, float &y0, float &x1, float &y1) {
+    const float S = (float)std::min(w, h);
+    const float bw = S * 0.235f, bh = S * 0.082f, m = S * 0.035f;
+    x1 = (float)w - m; x0 = x1 - bw;
+    y0 = m + (w < h ? S * 0.03f : 0.f); y1 = y0 + bh;
+  }
+  // je dotyk na tlacitku? (s rezervou pro prst)
+  static bool dotykNaSkip(int w, int h, float x, float y) {
+    float x0, y0, x1, y1; skipObd(w, h, x0, y0, x1, y1);
+    const float r = (float)std::min(w, h) * 0.03f;
+    return x >= x0 - r && x <= x1 + r && y >= y0 - r && y <= y1 + r;
+  }
+
   bool pripraveno = false;
-  Fbo obrazovky[5];
 
  private:
   Pismo pSemi, pBold, pMed, pItal, pMono;
   Prog pPlny, pKopie, pBarva, pJas, pRozmaz, pFinal, pZare, pGaraz, pNebe, pDest, pPtak, pPas, pModel, pMistnost, pCastice, pLogo;
-  Prog pAtari, pSega, pPs1, pMenu, pTvLan, pPara, pTelefon;
+  Prog pPara, pKonzole, pCrt, pTlacitko;
   Ctverec ctverec;
   GLuint vboDyn = 0;
-  GLuint texSum = 0, texLogo = 0, texAtari = 0;
+  GLuint texSum = 0, texLogo = 0;
   float logoPomer = 1.f;
   ModelAtari atari;
-  ModelMobil mobil;
   Sit okoli;
-  int atariZnaku = -1;
-  float atariDuha = 0.f;
   std::vector<float> dyn;
+  // B307: trojice N&P, CRT a defile
+  ModelKonzole k16, k32;
+  ModelCrt crt;
+  Hra16 hra16;
+  Hra32 hra32;
+  bool hra32ok = false;
+  KlipAtari klip;
+  GLuint tex16 = 0, tex8 = 0;
+  int pos16 = -1, posAtari = -1;
+  float pos32 = -1.f;
+  std::vector<uint32_t> buf8;
+  uint8_t pismo8[96][8];
+  float klavZar = 0.f;              // klavesy Atari sviti (scena 4)
+  V3 energiePos{0, 0, 0}, energieBarva{-1, -1, -1};   // svetlo prutu (x < 0 = postaru)
 
   // ================= SCENA 1: garaz =================
   // na vysku stoji kamera kousek vlevo, at je videt stara televize na ponku
@@ -517,10 +557,12 @@ class Demo {
   float zablesk(float t) {
     if (t < 17.0f || t > 18.6f) {
       float s = 0.f;
-      // drobne zablesky pri strizich ve scene 4
-      for (int i = 0; i < 6; i++) {
-        float d = t - (30.5f + i * 1.0f);
-        if (d >= 0.f && d < 0.18f) s = std::max(s, 0.55f * (1.f - d / 0.18f));
+      // B307: drobne zablesky - pruty dorazi ke konzolim, strihy na CRT
+      static const float KDY[3] = {cas::PRILET + 0.08f, cas::STRIH_16, cas::STRIH_32};
+      static const float SILA[3] = {0.30f, 0.22f, 0.22f};
+      for (int i = 0; i < 3; i++) {
+        float d = t - KDY[i];
+        if (d >= 0.f && d < 0.16f) s = std::max(s, SILA[i] * (1.f - d / 0.16f));
       }
       return s;
     }
@@ -616,8 +658,14 @@ class Demo {
     pModel.f3("uOkno", V3(0.15f, 0.20f, 0.29f));
     pModel.f1("uBlesk", bl);
     pModel.f1("uAmb", 0.05f);
-    pModel.f3("uEnergiePos", atari.vyduch + V3(0, 6, 0));
-    pModel.f3("uEnergie", V3(0.35f, 0.75f, 1.0f) * energie);
+    if (energieBarva.x >= 0.f) {        // B307: neonove pruty (scena 4)
+      pModel.f3("uEnergiePos", energiePos);
+      pModel.f3("uEnergie", energieBarva);
+    } else {
+      pModel.f3("uEnergiePos", atari.vyduch + V3(0, 6, 0));
+      pModel.f3("uEnergie", V3(0.35f, 0.75f, 1.0f) * energie);
+    }
+    pModel.f1("uKlavZar", klavZar);
     pModel.f1("uLed", ledSvetlo(t));
     pModel.f1("uCas", t);
     pModel.f1("uExpo", 1.35f);
@@ -689,7 +737,10 @@ class Demo {
   void scena3(float t, Cil &c, GLuint cilFbo) {
     Kamera k = kameraAtari(t, (float)c.w / c.h);
     float bl = bleskOkno(t);
+    klavZar = 0.f;
     kresliModel(c, t, k, bl, 0.f);
+    kresliKonzole(c, t, k, bl);          // B307: vzadu stoji CRT (vypnuty), konzole jeste nejsou
+    kresliCrt(c, t, k);
     glDisable(GL_DEPTH_TEST);
     paraLampy(c, t, k, bl, 1.f, cilFbo);
     ledZare(c, t);
@@ -706,277 +757,359 @@ class Demo {
     glDisable(GL_BLEND);
   }
 
-  // ================= SCENA 4: energie, mobily, strihy =================
-  // na sirku do sirokeho oblouku, na vysku blize k sobe a vys
-  V3 mobilPos(int i, float t, float a) {
-    static const float X[5] = {-52, -27, 0, 27, 52};
-    static const float Y[5] = {30, 40, 46, 40, 30};
-    static const float Z[5] = {-22, -32, -38, -32, -22};
-    static const float Xv[5] = {-26, -13.5f, 0, 13.5f, 26};
-    static const float Yv[5] = {31, 45, 55, 45, 31};
-    static const float Zv[5] = {-10, -22, -28, -22, -10};
-    const float k = smooth(0.6f, 1.3f, a);
-    return V3(lerpf(Xv[i], X[i], k), lerpf(Yv[i], Y[i], k) + std::sin(t * 1.3f + i * 1.7f) * 1.2f, lerpf(Zv[i], Z[i], k));
+  // ================= SCENA 4 (B307): neonove pruty, trojice N&P, defile na CRT =================
+  // Na stole: Atari uprostred, N&P 16 vlevo, N&P 32 vpravo (natocene mirne
+  // ke stredu), za Atari stoji CRT monitor. Casy v nap_demo_cas.h.
+  static V3 P16() { return V3(-41.f, 0.f, 2.f); }
+  static V3 P32() { return V3(41.f, 0.f, 2.f); }
+  static V3 PCRT() { return V3(0.f, 0.f, -54.f); }
+  static M4 maticeKonzole(int i) {
+    return i == 0 ? M4::posun(-41.f, 0.f, 2.f) * M4::rotY(0.34f) : M4::posun(41.f, 0.f, 2.f) * M4::rotY(-0.34f);
   }
-  float mobilVelikost(float a) { return lerpf(1.22f, 1.6f, smooth(0.6f, 1.3f, a)); }
-  float startCary(int i) { return 28.25f + i * 0.30f; }
-  float zasah(int i) { return startCary(i) + 0.42f; }
+  static V3 transformuj(const M4 &m, const V3 &p) {
+    return V3(m.m[0] * p.x + m.m[4] * p.y + m.m[8] * p.z + m.m[12], m.m[1] * p.x + m.m[5] * p.y + m.m[9] * p.z + m.m[13],
+              m.m[2] * p.x + m.m[6] * p.y + m.m[10] * p.z + m.m[14]);
+  }
+  // zorny uhel jako v kresliModel (na vysku sirsi) a vzdalenost, aby se w x h veslo
+  static float fovPro(float a) { return a < 1.f ? 2.f * std::atan(std::tan(0.4f) / std::max(a, 0.45f) * 0.62f) : 0.8f; }
+  static float vzdalenostPro(float a, float w, float h) {
+    const float t2 = 2.f * std::tan(fovPro(a) * 0.5f);
+    return std::max(h / t2, w / (t2 * a));
+  }
+  V3 stredObrazovky() const { return PCRT() + crt.stred + V3(0.f, 0.f, 1.0f); }
 
-  void obsahObrazovky(int druh, int w, int h, float t, float jas) {
-    Prog *p = nullptr;
-    switch (druh) {
-      case 0: p = &pAtari; break;
-      case 1: p = &pSega; break;
-      case 2: p = &pPs1; break;
-      case 3: p = &pMenu; break;
-      default: p = &pTvLan; break;
+  // kamera sceny 4: hladka krivka (Hermite) pres klicove zabery
+  Kamera kamera4(float t, float a) {
+    struct K { float t; V3 oko, cil; bool stuj = false; };   // stuj = kamera tu zastavi (nulova tecna)
+    const float Dt = vzdalenostPro(a, 128.f, 50.f);     // cela trojice
+    const float Dc = vzdalenostPro(a, 36.f, 35.f);       // obrazovka CRT (nahore misto na popisek)
+    const V3 sc = stredObrazovky();
+    auto smer = [](float x, float y, float z) { return norm(V3(x, y, z)); };
+    const Kamera k0 = kameraAtari(cas::KLAVESY, a);
+    K ks[8];
+    ks[0] = {cas::KLAVESY, k0.oko, k0.cil};
+    { V3 c(0.f, 12.f, -2.f); ks[1] = {28.15f, c + smer(-0.08f, 0.45f, 1.f) * std::max(48.f, Dt * 0.45f), c}; }
+    { V3 c(0.f, 9.f, -6.f); ks[2] = {29.6f, c + smer(0.f, 0.42f, 1.f) * (Dt * 1.06f), c}; }
+    // prujezd podel trojice: zblizka N&P 16 (vlevo), pres Atari k N&P 32 (vpravo)
+    const float Dk = vzdalenostPro(a, 44.f, 22.f);
+    { V3 c = P16() + V3(1.f, 5.f, 0.f); ks[3] = {30.8f, c + smer(-0.42f, 0.36f, 1.f) * Dk, c}; }
+    { V3 c = P32() + V3(-1.f, 5.f, 0.f); ks[4] = {31.85f, c + smer(0.40f, 0.33f, 1.f) * Dk, c}; }
+    ks[5] = {cas::STRIH_ATARI, sc + smer(0.f, 0.03f, 1.f) * Dc, sc, true};
+    ks[6] = {cas::STRIHY_KONEC, sc + smer(0.f, 0.03f, 1.f) * (Dc * 0.94f), sc, true};
+    ks[7] = {cas::SCENA5, sc + smer(0.f, 0.02f, 1.f) * (Dc * 0.42f), sc};
+    const int n = 8;
+    Kamera k; k.fov = 0.8f;
+    if (t <= ks[0].t) { k.oko = ks[0].oko; k.cil = ks[0].cil; return k; }
+    if (t >= ks[n - 1].t) { k.oko = ks[n - 1].oko; k.cil = ks[n - 1].cil; return k; }
+    int i = 0;
+    while (i < n - 2 && t > ks[i + 1].t) i++;
+    const float h = ks[i + 1].t - ks[i].t, u = (t - ks[i].t) / h;
+    auto tecna = [&](int j, bool oko) {
+      if (j <= 0 || j >= n - 1 || ks[j].stuj) return V3(0, 0, 0);
+      const V3 &a0 = oko ? ks[j - 1].oko : ks[j - 1].cil, &a1 = oko ? ks[j + 1].oko : ks[j + 1].cil;
+      return (a1 - a0) * (1.f / (ks[j + 1].t - ks[j - 1].t));
+    };
+    const float u2 = u * u, u3 = u2 * u;
+    const float h00 = 2 * u3 - 3 * u2 + 1, h10 = u3 - 2 * u2 + u, h01 = -2 * u3 + 3 * u2, h11 = u3 - u2;
+    k.oko = ks[i].oko * h00 + tecna(i, true) * (h10 * h) + ks[i + 1].oko * h01 + tecna(i + 1, true) * (h11 * h);
+    k.cil = ks[i].cil * h00 + tecna(i, false) * (h10 * h) + ks[i + 1].cil * h01 + tecna(i + 1, false) * (h11 * h);
+    return k;
+  }
+
+  // ---- neonove pruty: z kláves Atari do vzduchu a k obema konzolim ----
+  struct Prut { V3 p0, p1, p2, p3; float start, delka; int strana; };
+  std::vector<Prut> pruty;
+  void postavPruty() {
+    pruty.clear();
+    Los los(3077);
+    for (int i = 0; i < 14; i++) {
+      const int strana = i < 7 ? 0 : 1, j = i % 7;
+      const float x = (strana == 0 ? -1.f : 1.f) * (1.2f + j * 1.95f) + los.r(-0.4f, 0.4f);
+      const float z = -1.05f + (float)(j % 4) * 1.9f;
+      const V3 p0(x, 4.6f, z);
+      const M4 m = maticeKonzole(strana);
+      const float vys = strana == 0 ? 7.f : 6.f;
+      const V3 cil = transformuj(m, V3(los.r(-7.f, 7.f), vys + los.r(0.f, 2.f), los.r(-6.f, 6.f)));
+      Prut p;
+      p.p0 = p0;
+      p.p1 = p0 + V3(x * 0.25f, 24.f + los.r(0.f, 14.f), los.r(-6.f, 2.f));
+      p.p2 = cil + V3(0.f, 26.f + los.r(0.f, 12.f), los.r(-4.f, 4.f));
+      p.p3 = cil;
+      p.start = cas::PRUTY + j * 0.055f + strana * 0.03f;
+      p.delka = 1.05f + los.r(0.f, 0.12f);
+      p.strana = strana;
+      pruty.push_back(p);
     }
-    p->pouzij();
-    p->f2("uRozmer", (float)w, (float)h);
-    p->f1("uCas", t);
-    p->f1("uJas", jas);
-    if (druh == 0 || druh == 4) { p->tex("uText", 0, texAtari); p->f1("uDuha", atariDuha); }
-    if (druh == 1) p->tex("uSum", 1, texSum);
-    ctverec.kresli();
+  }
+  static V3 bezier(const Prut &p, float s) {
+    const float u = 1.f - s;
+    return p.p0 * (u * u * u) + p.p1 * (3.f * u * u * s) + p.p2 * (3.f * u * s * s) + p.p3 * (s * s * s);
+  }
+  // kde je ted nejjasnejsi cast prutu (pro svetlo na modelech)
+  V3 stredPrutu(float t, float &sila) const {
+    V3 s(0, 0, 0); int n = 0; sila = 0.f;
+    for (const Prut &p : pruty) {
+      const float hl = (t - p.start) / p.delka;
+      if (hl <= 0.f || hl > 1.6f) continue;
+      s = s + bezier(p, std::min(1.f, hl)); n++;
+    }
+    if (n) { s = s * (1.f / n); sila = std::min(1.f, n / 6.f); }
+    return n ? s : V3(0, 20, 0);
+  }
+  void kresliPruty(Cil &c, float t) {
+    dyn.clear();
+    for (const Prut &p : pruty) {
+      const float hl = (t - p.start) / p.delka;
+      if (hl <= 0.f) continue;
+      const float sH = std::min(1.f, std::pow(hl, 1.15f));
+      float sT = std::max(0.f, sH - 0.55f);
+      if (hl > 1.f) sT = std::min(1.f, sT + (hl - 1.f) * 2.2f);      // po priletu se ocas stahne do konzole
+      if (sT >= 0.995f) continue;
+      const int N = 34;
+      std::vector<V2> pts; std::vector<float> wv, sv;
+      for (int j = 0; j <= N; j++) {
+        const float u = (float)j / N;
+        const V3 q = bezier(p, sT + (sH - sT) * u);
+        float x, y, z;
+        if (!vp.promitni(q, x, y, z) || z > 1.f) continue;
+        pts.push_back({x, y});
+        const float hlava = hl < 1.f ? std::exp(-(1.f - u) * 14.f) * 1.6f : 0.f;
+        wv.push_back(c.h * 0.0023f * (0.65f + 0.6f * u + hlava * 0.6f));
+        sv.push_back((0.22f + 0.78f * u) + hlava);
+      }
+      if (pts.size() < 2) continue;
+      pruh(c, pts, wv, sv, 5.0f, 1.0f, (float)p.strana, 5.f);
+      pruh(c, pts, wv, sv, 1.2f, 1.6f, (float)p.strana, 0.f);
+    }
+    pasyKresli(V3(1.0f, 1.0f, 1.0f), V3(0.22f, 0.85f, 1.0f), V3(1.0f, 0.28f, 0.85f), 1.f);
+  }
+  // ---- drateny obrys konzoli (roste z mista priletu, pak zhasne) ----
+  void kresliDrat(Cil &c, float t) {
+    dyn.clear();
+    for (int i = 0; i < 2; i++) {
+      const ModelKonzole &kk = i == 0 ? k16 : k32;
+      const M4 m = maticeKonzole(i);
+      const float t0 = cas::DRAT + i * 0.08f;
+      const float zhasne = 1.f - smooth(cas::ODHAL_KONEC - 0.2f + i * 0.15f, cas::ODHAL_KONEC + 0.35f + i * 0.15f, t);
+      if (t < t0 || zhasne <= 0.f) continue;
+      for (size_t e = 0; e < kk.hrany.size(); e++) {
+        const V3 a = transformuj(m, kk.hrany[e].first), b = transformuj(m, kk.hrany[e].second);
+        const float zp = t0 + 0.018f * (float)e;
+        const float g = smooth(zp, zp + 0.26f, t);
+        if (g <= 0.f) continue;
+        const V3 bb = a + (b - a) * g;
+        float xa, ya, za, xb, yb, zb;
+        if (!vp.promitni(a, xa, ya, za) || !vp.promitni(bb, xb, yb, zb)) continue;
+        std::vector<V2> pts = {{xa, ya}, {xb, yb}};
+        const float hlava = g < 1.f ? 1.4f : 0.f;
+        std::vector<float> wv = {c.h * 0.0015f, c.h * 0.0015f * (1.f + hlava)};
+        std::vector<float> sv = {0.85f * zhasne, (0.85f + hlava) * zhasne};
+        pruh(c, pts, wv, sv, 4.0f, 1.0f, (float)i, 4.f);
+        pruh(c, pts, wv, sv, 1.1f, 1.8f, (float)i, 0.f);
+      }
+    }
+    pasyKresli(V3(1.0f, 1.0f, 1.0f), V3(0.22f, 0.85f, 1.0f), V3(1.0f, 0.28f, 0.85f), 1.f);
   }
 
-  void atariText(float t) {
-    // co pise BASIC na obrazovce (mobil i strih ATARI)
-    static const char *PROG =
-        "READY\n10 REM N&P - JEDEN KOD\n20 FOR C=0 TO 255\n30 POKE 710,C:POKE 712,C\n40 NEXT C:GOTO 20\nRUN\n";
-    const int delka = (int)std::strlen(PROG);
-    int n = (int)std::max(0.f, (t - 28.4f) * 34.f) + 6;
-    if (n > delka) n = delka;
-    atariDuha = smooth(31.2f, 31.5f, t) * (n >= delka ? 1.f : 0.f);
-    if (n == atariZnaku) return;
-    atariZnaku = n;
-    std::vector<unsigned char> b(320 * 192 * 4, 0);
-    const unsigned char *font = NAP_OS_ROM + 0x2000;
-    int r = 1, s = 2;
-    for (int i = 0; i < n; i++) {
-      char ch = PROG[i];
-      if (ch == '\n') { r++; s = 2; continue; }
-      const unsigned char u = (unsigned char)ch;
-      int kod = (u >= 0x20 && u <= 0x5F) ? u - 0x20 : ((u >= 0x60 && u <= 0x7F) ? u : 0);
-      for (int y = 0; y < 8; y++) {
-        unsigned char bity = font[kod * 8 + y];
-        for (int x = 0; x < 8; x++) if (bity & (0x80 >> x)) {
-          size_t o = ((size_t)(r * 8 + y) * 320 + s * 8 + x) * 4;
-          b[o] = b[o + 1] = b[o + 2] = 255; b[o + 3] = 255;
+  // ---- konzole a CRT (stejna lampa a okno jako u Atari) ----
+  void kresliKonzole(Cil &c, float t, const Kamera &k, float bl) {
+    (void)c;
+    const V3 lampa(-42, 66, 48);
+    pKonzole.pouzij();
+    pKonzole.f3("uKamera", k.oko);
+    pKonzole.f3("uLampaPos", lampa);
+    pKonzole.f3("uLampaSmer", norm(V3(0, 3, 0) - lampa));
+    pKonzole.f3("uLampa", V3(1.45f, 1.18f, 0.88f));
+    pKonzole.f3("uOknoPos", V3(-22, 40, -88));
+    pKonzole.f3("uOkno", V3(0.15f, 0.20f, 0.29f));
+    pKonzole.f1("uBlesk", bl);
+    pKonzole.f1("uAmb", 0.14f);
+    pKonzole.f1("uExpo", 1.35f);
+    pKonzole.f1("uCas", t);
+    const float neon = smooth(cas::PRILET - 0.25f, cas::ODHAL, t) * (1.f - 0.30f * smooth(cas::ODHAL_KONEC, cas::TROJICE + 0.7f, t)) *
+                       (1.f - 0.7f * smooth(cas::PRULET, cas::CRT_ZAP, t));
+    pKonzole.f3("uNeon1Pos", transformuj(maticeKonzole(0), V3(0, 18, 10)));
+    pKonzole.f3("uNeon1", V3(0.22f, 0.85f, 1.0f) * (1.7f * neon));
+    pKonzole.f3("uNeon2Pos", transformuj(maticeKonzole(1), V3(0, 18, 10)));
+    pKonzole.f3("uNeon2", V3(1.0f, 0.28f, 0.85f) * (1.7f * neon));
+    // odlesk pres emblem N&P - kdyz kolem kamera projizdi
+    pKonzole.tex("uLogo", 0, texLogo ? texLogo : texSum);
+    pKonzole.tex("uSum", 1, texSum);
+    glActiveTexture(GL_TEXTURE0);
+    for (int i = 0; i < 2; i++) {
+      const ModelKonzole &kk = i == 0 ? k16 : k32;
+      const float od = cas::ODHAL + i * 0.15f;
+      const float h = (t - od) / (cas::ODHAL_KONEC - cas::ODHAL);
+      if (h <= 0.f) continue;                               // jeste neni (jen drat)
+      pKonzole.f1("uOdhal", h >= 1.25f ? 1000.f : -0.6f + (kk.vyska + 1.6f) * h);
+      pKonzole.f3("uOdhalBarva", i == 0 ? V3(0.25f, 0.9f, 1.0f) : V3(1.0f, 0.32f, 0.9f));
+      pKonzole.f1("uSvit", smooth(cas::ODHAL_KONEC - 0.1f + i * 0.15f, cas::ODHAL_KONEC + 0.3f + i * 0.15f, t));
+      pKonzole.f1("uLogoLesk", -0.5f + 2.4f * smooth(i == 0 ? 30.45f : 31.40f, i == 0 ? 31.05f : 32.0f, t));
+      const M4 m = maticeKonzole(i);
+      pKonzole.m4("uModel", m);
+      pKonzole.m4("uMVP", vp * m);
+      kk.sit.kresli();
+    }
+    const M4 mc = M4::posun(PCRT().x, PCRT().y, PCRT().z);
+    pKonzole.f1("uOdhal", 1000.f);
+    pKonzole.f1("uLogoLesk", -1.f);
+    pKonzole.f1("uSvit", smooth(cas::CRT_ZAP - 0.05f, cas::CRT_ZAP + 0.1f, t));
+    pKonzole.m4("uModel", mc);
+    pKonzole.m4("uMVP", vp * mc);
+    crt.sit.kresli();
+  }
+
+  // ---- obsah CRT: Pitt-Kitt (klip), 16 bit (procesor), 32 bit (GPU) ----
+  struct ObsahCrt { GLuint tex = 0; float mapa[4] = {0, 0, 1, 1}; float zdroj[2] = {320, 240}; float snih = 0, roll = 0; };
+  ObsahCrt obsah;
+  // Volat PRED kreslenim sceny (32bit kresli do vlastniho framebufferu).
+  void pripravObsahCrt(float t) {
+    ObsahCrt o;
+    auto prepnuti = [&](float kdy) {
+      const float d = t - kdy;
+      if (d >= 0.f && d < 0.10f) { o.snih = std::max(o.snih, 1.f - d / 0.10f); o.roll = 0.35f * (1.f - d / 0.10f); }
+    };
+    if (t < cas::STRIH_16) {
+      // Atari: titulek N&P, kapitola (Las Vegas 1982), jizda - 50 snimku / s
+      if (klip.je() && klip.useky.size() >= 3) {
+        int k;
+        if (t < cas::ATARI_KAP) { const auto &u = klip.useky[0]; k = u.prvni + std::max(0, std::min(u.pocet - 1, (int)((t - cas::CRT_ZAP) * klip.fps))); }
+        else if (t < cas::ATARI_JIZDA) { const auto &u = klip.useky[1]; k = u.prvni + std::min(u.pocet - 1, (int)((t - cas::ATARI_KAP) * klip.fps)); }
+        else { const auto &u = klip.useky[2]; k = u.prvni + std::min(u.pocet - 1, 6 + (int)((t - cas::ATARI_JIZDA) * klip.fps)); }
+        if (k != posAtari && klip.rgba(k, buf8)) {
+          glBindTexture(GL_TEXTURE_2D, tex8);
+          glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, klip.W, klip.H, GL_RGBA, GL_UNSIGNED_BYTE, buf8.data());
+          posAtari = k;
         }
+        o.tex = tex8;
+        // vyrez 352 x 240 z 384 x 240 (bez okraju), radky shora dolu
+        o.mapa[0] = 16.f / 384.f; o.mapa[1] = 1.f; o.mapa[2] = 352.f / 384.f; o.mapa[3] = -1.f;
+        o.zdroj[0] = 352.f; o.zdroj[1] = 240.f;
+      } else {
+        o.tex = 0; o.snih = 1.f;                          // bez klipu: sum
       }
-      s++;
-    }
-    // kurzor
-    if (n < delka || ((int)(t * 3.f) & 1)) {
-      for (int y = 0; y < 8; y++) for (int x = 0; x < 8; x++) {
-        size_t o = ((size_t)(r * 8 + y) * 320 + s * 8 + x) * 4;
-        b[o] = b[o + 1] = b[o + 2] = 255; b[o + 3] = 255;
+      if (t < cas::STRIH_ATARI) o.snih = std::max(o.snih, 0.45f * (1.f - smooth(cas::CRT_ZAP + 0.1f, cas::STRIH_ATARI, t)));
+    } else if (t < cas::STRIH_32) {
+      const int n = 36 + (int)((t - cas::STRIH_16) * 60.f);
+      if (n != pos16) {
+        hra16.snimek(n);
+        glBindTexture(GL_TEXTURE_2D, tex16);
+        glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, Hra16::W, Hra16::H, GL_RGBA, GL_UNSIGNED_BYTE, hra16.obr.data());
+        pos16 = n;
       }
+      o.tex = tex16;
+      o.mapa[0] = 0.f; o.mapa[1] = 1.f; o.mapa[2] = 1.f; o.mapa[3] = -1.f;
+      o.zdroj[0] = (float)Hra16::W; o.zdroj[1] = (float)Hra16::H;
+      prepnuti(cas::STRIH_16);
+    } else {
+      const float tt = 0.05f + (t - cas::STRIH_32);
+      if (hra32ok) {
+        if (tt != pos32) { hra32.snimek(tt); pos32 = tt; }
+        o.tex = hra32.fbo.tex;
+      } else {
+        o.snih = 1.f;
+      }
+      o.mapa[0] = 0.f; o.mapa[1] = 0.f; o.mapa[2] = 1.f; o.mapa[3] = 1.f;
+      o.zdroj[0] = (float)Hra32::W; o.zdroj[1] = (float)Hra32::H;
+      prepnuti(cas::STRIH_32);
     }
-    glBindTexture(GL_TEXTURE_2D, texAtari);
-    glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 320, 192, GL_RGBA, GL_UNSIGNED_BYTE, b.data());
+    obsah = o;
+  }
+  void kresliCrt(Cil &c, float t, const Kamera &k) {
+    (void)c;
+    const float zap = smooth(cas::CRT_ZAP, cas::CRT_ZAP + 0.42f, t);
+    const V3 pc = PCRT();
+    const M4 mc = M4::posun(pc.x, pc.y, pc.z);
+    pCrt.pouzij();
+    pCrt.m4("uMVP", vp * mc);
+    pCrt.tex("uObr", 0, (zap > 0.f && obsah.tex) ? obsah.tex : texSum);
+    pCrt.tex("uSum", 1, texSum);
+    pCrt.f4("uMapa", obsah.mapa[0], obsah.mapa[1], obsah.mapa[2], obsah.mapa[3]);
+    pCrt.f2("uZdroj", obsah.zdroj[0], obsah.zdroj[1]);
+    pCrt.f1("uZap", zap);
+    pCrt.f1("uSnih", zap > 0.f ? obsah.snih : 0.f);
+    pCrt.f1("uRoll", obsah.roll);
+    pCrt.f1("uJas", 0.95f);
+    pCrt.f3("uKamera", k.oko - pc);
+    pCrt.f3("uLampaPos", V3(-42, 66, 48) - pc);
+    pCrt.f3("uLampa", V3(1.45f, 1.18f, 0.88f));
+    pCrt.f1("uCas", t);
+    crt.sklo.kresli();
+    glActiveTexture(GL_TEXTURE0);
+  }
+
+  float klavesyZar(float t) {
+    return smooth(cas::KLAVESY, cas::KLAVESY + 0.45f, t) * (1.f - smooth(cas::PRILET - 0.1f, cas::ODHAL + 0.2f, t) * 0.85f);
   }
 
   void scena4(float t, Cil &c, GLuint cilFbo) {
-    atariText(t);
-    // displeje mobilu
-    static const int OBSAH[5] = {1, 0, 3, 2, 4};
-    bool nejaky = false;
-    for (int i = 0; i < 5; i++) {
-      float zap = smooth(zasah(i), zasah(i) + 0.05f, t);
-      if (zap <= 0.f) continue;
-      nejaky = true;
-      glBindFramebuffer(GL_FRAMEBUFFER, obrazovky[i].fbo);
-      glViewport(0, 0, obrazovky[i].w, obrazovky[i].h);
-      float zabl = std::max(0.f, 1.f - (t - zasah(i)) / 0.25f);
-      obsahObrazovky(OBSAH[i], obrazovky[i].w, obrazovky[i].h, t, 1.f);
-      if (zabl > 0.f) prekryv(1, 1, 1, zabl * 0.9f);
-      glDisable(GL_BLEND);
-      if (OBSAH[i] == 3) menuTexty(obrazovky[i], c);
-    }
-    (void)nejaky;
+    const float a = (float)c.w / c.h;
+    pripravObsahCrt(t);
     glBindFramebuffer(GL_FRAMEBUFFER, cilFbo);
     glViewport(0, 0, c.w, c.h);
-    // strihy 30.5 - 35.5
-    int strih = (t >= 30.5f && t < 35.5f) ? (int)((t - 30.5f) / 1.0f) : -1;
-    if (strih >= 0 && strih <= 3) {
-      static const int DR[4] = {0, 1, 2, 4};
-      const int druh = DR[strih];
-      if (druh == 1 || druh == 2) {
-        // 16/32bitova grafika: kreslit v puvodnim malem rozliseni a zvetsit bez rozmazani
-        const float a = (float)c.w / c.h;
-        const int pw = (druh == 1 && a <= 1.f) ? 224 : 320;
-        const int ph = std::max(8, (int)std::lround(pw / a));
-        c.pixel.priprav(pw, ph);
-        glBindFramebuffer(GL_FRAMEBUFFER, c.pixel.fbo);
-        glViewport(0, 0, pw, ph);
-        obsahObrazovky(druh, pw, ph, t, 1.f);
-        glBindFramebuffer(GL_FRAMEBUFFER, cilFbo);
-        glViewport(0, 0, c.w, c.h);
-        glBindTexture(GL_TEXTURE_2D, c.pixel.tex);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-        kopie(c.pixel.tex, 1.f);
-      } else {
-        obsahObrazovky(druh, c.w, c.h, t, 1.f);
-      }
-      static const int TX[4] = {T_ATARI, T_SEGA, T_PS1, T_LAN};
-      const TextTex &tx = c.texty[TX[strih]];
-      float ts = t - (30.5f + strih);
-      float a = smooth(0.05f, 0.2f, ts) * (1.f - smooth(0.85f, 1.0f, ts));
-      if (tx.tex) textKresli(c, tx, c.w * 0.5f, c.h * (c.w > c.h ? 0.07f : 0.10f) + tx.h * 0.5f, a);
-      return;
-    }
-    if (strih == 4) { radaDispleju(c, t); return; }
-    // 3D: Atari, stul, mobily, energie
-    Kamera k = kameraAtari(t, (float)c.w / c.h);
-    float energie = smooth(27.4f, 28.3f, t) * (0.6f + 0.4f * std::sin(t * 9.f)) + smooth(35.6f, 36.9f, t) * 2.5f;
-    kresliModel(c, t, k, 0.f, energie);
-    // mobily
-    pModel.pouzij();
-    const float asp = (float)c.w / c.h;
-    const float mv = mobilVelikost(asp);
-    for (int i = 0; i < 5; i++) {
-      V3 p = mobilPos(i, t, asp);
-      float yaw = std::atan2(k.oko.x - p.x, k.oko.z - p.z);
-      float tilt = -0.18f;
-      float prilet = smooth(27.6f + i * 0.12f, 28.4f + i * 0.12f, t);
-      M4 mm = M4::posun(p.x, p.y - (1.f - prilet) * 60.f, p.z) * M4::rotY(yaw) * M4::rotX(tilt) * M4::meritko(mv, mv, mv);
-      pModel.m4("uModel", mm);
-      pModel.m4("uMVP", vp * mm);
-      float zap = smooth(zasah(i), zasah(i) + 0.05f, t);
-      pModel.tex("uObr", 2, zap > 0.f ? obrazovky[i].tex : texSum);
-      pModel.f1("uObrJas", zap > 0.f ? 1.25f : 0.02f);
-      mobil.sit.kresli();
-    }
+    Kamera k = kamera4(t, a);
+    klavZar = klavesyZar(t);
+    float silaPrutu = 0.f;
+    const V3 sp = stredPrutu(t, silaPrutu);
+    // energie (neon) sviti na Atari a stul
+    energiePos = sp;
+    energieBarva = V3(0.40f, 0.55f, 1.0f) * (silaPrutu * 0.85f + klavZar * 0.22f);
+    kresliModel(c, t, k, 0.f, 1.f);
+    energiePos = V3(0, 0, 0); energieBarva = V3(-1, -1, -1);
+    kresliKonzole(c, t, k, 0.f);
+    kresliCrt(c, t, k);
     glDisable(GL_DEPTH_TEST);
-    paraLampy(c, t, k, 0.f, 0.6f, cilFbo);
+    paraLampy(c, t, k, 0.f, t < cas::PRULET ? 0.6f : 0.6f * (1.f - smooth(cas::PRULET, cas::STRIH_ATARI, t) * 0.6f), cilFbo);
     ledZare(c, t);
-    // vyduch zari
-    {
-      float x, y, z;
-      if (vp.promitni(atari.vyduch + V3(0, 1.5f, 0), x, y, z) && energie > 0.01f) {
+    if (t < cas::ODHAL_KONEC + 0.6f) {
+      kresliPruty(c, t);
+      kresliDrat(c, t);
+      // zablesk v miste priletu prutu
+      for (int i = 0; i < 2; i++) {
+        const float d = t - (cas::PRILET + i * 0.05f);
+        if (d < 0.f || d > 0.45f) continue;
+        float x, y, z;
+        if (!vp.promitni(transformuj(maticeKonzole(i), V3(0, 6, 0)), x, y, z)) continue;
         glEnable(GL_BLEND); glBlendFunc(GL_ONE, GL_ONE);
-        float r = 0.22f * std::min(1.f, (float)c.w / c.h * 1.2f);
-        zareNDC(c, x, y, r, V3(0.25f, 0.55f, 0.85f) * std::min(1.f, energie * 0.6f), 2.2f);
+        zareNDC(c, x, y, 0.06f + d * 0.5f, (i == 0 ? V3(0.4f, 0.9f, 1.0f) : V3(1.0f, 0.45f, 0.9f)) * (1.f - d / 0.45f), 2.2f);
         glDisable(GL_BLEND);
       }
     }
-    energetickeCary(c, t, k);
-    if (t > 36.5f) prekryv(1, 1, 1, smooth(36.5f, 36.97f, t) * 0.75f);
-  }
-
-  // 5. strih: vsech pet displeju vedle sebe, ciste, bez reklam
-  void radaDispleju(Cil &c, float t) {
-    const float ts = t - 34.5f;
-    const bool sir = c.w > c.h;
-    // pozadi: tma se zlatou zari
-    glEnable(GL_BLEND); glBlendFunc(GL_ONE, GL_ONE);
+    // popisky defile (nahore nad obrazovkou)
     {
-      float r = std::max(c.w, c.h) * 0.55f;
-      pZare.pouzij();
-      obdPx(c, c.w * 0.5f - r, c.h * 0.55f - r * 0.6f, c.w * 0.5f + r, c.h * 0.55f + r * 0.6f, 0, 0, 1, 1, pZare);
-      pZare.f3("uBarva", V3(0.20f, 0.14f, 0.05f));
-      pZare.f1("uTvrdost", 2.2f);
-      ctverec.kresli();
-    }
-    glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
-    static const int PORADI[5] = {1, 0, 2, 3, 4};     // Atari, Sega, menu, PS1, TV
-    const float celk = c.w * (sir ? 0.66f : 0.92f);
-    const float pw = celk / (5.f + 4.f * 0.22f);
-    const float ph = pw * 2.05f;
-    const float cy = c.h * (sir ? 0.50f : 0.47f);
-    pTelefon.pouzij();
-    for (int j = 0; j < 5; j++) {
-      const int i = PORADI[j];
-      float st = smooth(0.0f + j * 0.06f, 0.30f + j * 0.06f, ts);
-      float sk = 0.86f + 0.14f * easeOut(st);
-      float x = c.w * 0.5f + (j - 2) * pw * 1.22f;
-      float y = cy + (1.f - easeOut(st)) * ph * 0.25f;
-      float w = pw * sk, h = ph * sk;
-      obdPx(c, x - w * 0.5f, y - h * 0.5f, x + w * 0.5f, y + h * 0.5f, 0, 0, 1, 1, pTelefon);
-      pTelefon.tex("uTex", 0, obrazovky[i].tex);
-      pTelefon.f2("uVel", w, h);
-      pTelefon.f1("uAlfa", st * (1.f - smooth(0.88f, 1.0f, ts)));
-      ctverec.kresli();
-    }
-    const TextTex &tx = c.texty[T_BEZ];
-    float a = smooth(0.12f, 0.35f, ts) * (1.f - smooth(0.88f, 1.0f, ts));
-    if (tx.tex) textKresli(c, tx, c.w * 0.5f, cy - ph * 0.5f - c.h * 0.03f - tx.h * 0.5f, a);
-    glDisable(GL_BLEND);
-  }
-
-  void energetickeCary(Cil &c, float t, const Kamera &k) {
-    (void)k;
-    dyn.clear();
-    for (int i = 0; i < 5; i++) {
-      float st = startCary(i);
-      if (t < st) continue;
-      float hlava = smooth(st, st + 0.42f, t);
-      float sila = 1.f;
-      if (t > 30.4f && t < 35.5f) sila = 0.0f;           // pri strizich car neni videt
-      if (t > 35.5f) sila = 0.7f + 0.3f * std::sin(t * 14.f + i);
-      if (sila <= 0.f) continue;
-      V3 p0 = atari.vyduch + V3((i - 2) * 3.0f, 1.0f, 0);
-      V3 cilm = mobilPos(i, t, (float)c.w / c.h);
-      V3 p3 = cilm + V3(0, 0, 1.5f);
-      V3 p1 = p0 + V3((i - 2) * 4.f, 34, 6);
-      V3 p2 = p3 + V3(0, -12, 26);
-      std::vector<V2> pts; std::vector<float> wv, sv;
-      const int N = 46;
-      for (int j = 0; j <= N; j++) {
-        float s = hlava * j / N;
-        float u = 1 - s;
-        V3 q = p0 * (u * u * u) + p1 * (3 * u * u * s) + p2 * (3 * u * s * s) + p3 * (s * s * s);
-        float x, y, z;
-        if (!vp.promitni(q, x, y, z)) continue;
-        pts.push_back({x, y});
-        float puls = 0.82f + 0.18f * std::sin(s * 14.f - t * 22.f + i);
-        float hl = (hlava < 0.999f) ? std::exp(-(1.f - (float)j / N) * 18.f) * 1.6f : 0.f;   // jasna hlava letici energie
-        wv.push_back(c.h * 0.0026f * (0.85f + 0.3f * puls + hl * 0.8f));
-        sv.push_back(sila * puls * (0.45f + 0.55f * (float)j / N) + hl);
-      }
-      if (pts.size() < 2) continue;
-      pruh(c, pts, wv, sv, 6.0f, 1.0f, 1.f, 6.f);
-      pruh(c, pts, wv, sv, 1.3f, 1.4f, 1.f, 0.f);
-      // zasah - kruh svetla na displeji
-      float dz = t - zasah(i);
-      if (dz > 0.f && dz < 0.5f) {
-        float x, y, z;
-        if (vp.promitni(p3, x, y, z)) {
-          glEnable(GL_BLEND); glBlendFunc(GL_ONE, GL_ONE);
-          zareNDC(c, x, y, 0.05f + dz * 0.5f, V3(0.6f, 0.85f, 1.0f) * (1.f - dz / 0.5f), 2.5f);
+      const int TX[3] = {T_ATARI, T_16, T_32};
+      const float OD[3] = {cas::STRIH_ATARI, cas::STRIH_16, cas::STRIH_32};
+      const float DO[3] = {cas::STRIH_16, cas::STRIH_32, cas::STRIHY_KONEC};
+      for (int i = 0; i < 3; i++) {
+        const float al = smooth(OD[i] + 0.04f, OD[i] + 0.20f, t) * (1.f - smooth(DO[i] - 0.14f, DO[i] - 0.02f, t));
+        if (al <= 0.001f) continue;
+        const TextTex &tx = c.texty[TX[i]];
+        const float y = c.h * (c.w > c.h ? 0.035f : 0.10f) + tx.h * 0.5f;
+        if (tx.tex) textKresli(c, tx, c.w * 0.5f, y, al);
+        if (i == 0) {
+          const TextTex &t2 = c.texty[T_PITT];
+          if (t2.tex) textKresli(c, t2, c.w * 0.5f, y + tx.h * 0.5f + t2.h * 0.45f, al);
         }
       }
     }
-    pasyKresli(V3(1.0f, 1.0f, 1.0f), V3(0.30f, 0.65f, 1.0f), V3(1.0f, 0.72f, 0.28f), 1.f);
+    if (t > cas::STRIHY_KONEC) prekryv(1, 1, 1, smooth(cas::STRIHY_KONEC, cas::SCENA5 - 0.02f, t) * 0.85f);
   }
 
-  void menuTexty(Fbo &f, Cil &c) {
-    // tri napisy na tlacitkach menu (vysazene pro displej 240x480)
-    glBindFramebuffer(GL_FRAMEBUFFER, f.fbo);
-    glViewport(0, 0, f.w, f.h);
-    Cil m; m.w = f.w; m.h = f.h;
-    for (int i = 0; i < 3; i++) {
-      const TextTex &tx = c.texty[T_M1 + i];
-      if (!tx.tex) continue;
-      float cy = f.h - f.h * (0.10f + i * 0.17f + 0.065f);
-      textKresli(m, tx, f.w * 0.5f, cy, 1.f);
-    }
-    if (texLogo) {
-      glEnable(GL_BLEND); glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
-      pLogo.pouzij();
-      float L = f.w * 0.62f;
-      float x0 = (f.w - L) * 0.5f, y0 = f.h * 0.07f;
-      obdPx(m, x0, y0, x0 + L, y0 + L / logoPomer, 0, 1, 1, 0, pLogo);
-      pLogo.tex("uTex", 0, texLogo);
-      pLogo.f1("uOdhal", 1.f);
-      pLogo.f1("uPas", -1.f);
-      pLogo.f1("uCas", 0.f);
-      ctverec.kresli();
-      glDisable(GL_BLEND);
-    }
+  // ---- tlacitko SKIP (jen telefon) ----
+  void tlacitkoSkip(const Cil &c, float alfa) {
+    if (alfa <= 0.001f) return;
+    float x0, y0, x1, y1;
+    skipObd(c.w, c.h, x0, y0, x1, y1);
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
+    pTlacitko.pouzij();
+    obdPx(c, x0, y0, x1, y1, 0, 0, 1, 1, pTlacitko);
+    pTlacitko.f2("uVel", x1 - x0, y1 - y0);
+    pTlacitko.f1("uAlfa", alfa);
+    ctverec.kresli();
+    glDisable(GL_BLEND);
+    const TextTex &tx = c.texty[T_SKIP];
+    if (tx.tex) textKresli(c, tx, (x0 + x1) * 0.5f, (y0 + y1) * 0.5f, alfa);
   }
 
   // ================= SCENA 5: logo a titulky =================
@@ -1083,19 +1216,13 @@ class Demo {
                  od(u8"MELBOURNE HOUSE & my AI Wingman", pSemi, k * 0.95f, 1, 1, 1, 1, 0.06f, k * 0.1f); break;
       case T_K6: od(u8"(C) 2026 N&P Studio. Všechna práva vyhrazena.", pMed, k * 0.62f, 1, 1, 1, 0.70f, 0.05f); break;
       case T_ATARI: od("ATARI 130XE", pBold, S * 0.070f, 0.98f, 0.84f, 0.50f, 1, 0.12f); break;
-      case T_SEGA: od("SEGA MEGA DRIVE", pBold, S * 0.070f, 0.98f, 0.84f, 0.50f, 1, 0.12f); break;
-      case T_PS1: od("PLAYSTATION", pBold, S * 0.070f, 0.98f, 0.84f, 0.50f, 1, 0.12f); break;
-      case T_LAN: od(u8"1 KLIK · LAN · TV / PC", pBold, S * 0.062f, 0.98f, 0.84f, 0.50f, 1, 0.08f); break;
-      case T_BEZ: od(u8"BEZ REKLAM · BEZ BALASTU", pBold, S * (naSirku ? 0.060f : 0.050f), 1, 1, 1, 1, 0.06f);
-                  od("NO ADS · NO CLUTTER", pMed, S * (naSirku ? 0.040f : 0.036f), 0.98f, 0.84f, 0.50f, 1, 0.15f, S * 0.01f); break;
-      case T_PRESKOCIT: od(u8"PŘESKOČIT ›", pSemi, S * 0.030f, 1, 1, 1, 1, 0.1f); break;
-      case T_M1: od("ATARI 130XE", pBold, 22, 0.98f, 0.86f, 0.55f, 1, 0.05f); break;
-      case T_M2: od("SEGA MEGA DRIVE", pBold, 20, 0.98f, 0.86f, 0.55f, 1, 0.05f); break;
-      case T_M3: od("PLAYSTATION", pBold, 22, 0.98f, 0.86f, 0.55f, 1, 0.05f); break;
+      case T_PITT: od("PITT-KITT PLATINUM", pSemi, S * 0.034f, 1, 1, 1, 0.92f, 0.18f); break;
+      case T_16: od("16-BIT", pBold, S * 0.070f, 0.98f, 0.84f, 0.50f, 1, 0.12f); break;
+      case T_32: od("32-BIT", pBold, S * 0.070f, 0.98f, 0.84f, 0.50f, 1, 0.12f); break;
+      case T_SKIP: od(u8"SKIP ›", pBold, S * 0.036f, 1, 1, 1, 1, 0.08f); break;
       default: break;
     }
     if (id >= T_K1 && id <= T_K6) return Sazec::vysazej(o, credW, naSirku ? 0 : 0, k * 0.28f, 0.6f);
-    if (id >= T_M1) return Sazec::vysazej(o, 230.f, 0, 0.f);
     return Sazec::vysazej(o, maxW, 0, S * 0.012f, 0.8f);
   }
 

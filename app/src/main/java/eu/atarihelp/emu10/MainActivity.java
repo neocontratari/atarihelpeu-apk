@@ -1439,7 +1439,8 @@ public class MainActivity extends Activity {
             // Okno se behem nej NESNIMA - pod demem se uz nacita menu.
             if (demoPlocha != null) {
                 // B306: prohlizec bere demo primo z C++ (/intro.stream) - tady nic
-                // nezvetsovat ani nekomprimovat
+                // nezvetsovat ani nekomprimovat. Dal jen pro stare prohlizece bez
+                // ReadableStream (B307: snimek uz otoceny a v ARGB z C++).
                 if (napTvIntroProudKlientu.get() > 0) return true;
                 if (tvDemoArgb == null) tvDemoArgb = new int[854 * 480];
                 int wh = NativeIntroBridge.grabFrameSafe(tvDemoArgb);
@@ -7468,6 +7469,10 @@ public class MainActivity extends Activity {
     // 45 s podle jeho scenare (garaz, mraky, blesk, Atari 130XE, energie do
     // mobilu, logo a titulky). Kresli C++ (OpenGL ES) do NapDemoView, zvuk je
     // spocitany v C++. Dotek / zpet = preskocit. Viz CO_JE_V_B304.md.
+    // B307: scena 4 nove (neonove pruty z klaves Atari, konzole N&P 16 a N&P 32,
+    // CRT s defile: Reneho Pitt-Kitt Platinum, 16 bit, 32 bit); zvuk startuje
+    // a konci C++ samo, tlacitko SKIP kresli C++ a o dotyku rozhoduje C++
+    // (NapDemoView jen preda souradnice). Viz CO_JE_V_B307.md.
     private NapDemoView demoPlocha = null;
     private long demoStartMs = 0;
     private boolean demoHlaseno = false;
@@ -7486,24 +7491,25 @@ public class MainActivity extends Activity {
         }
         try {
             NativeIntroBridge.introNastavAssety(getAssets());
-            NativeIntroBridge.introStart();
-            NapDemoView v = new NapDemoView(this, () -> demoKonec("preskoceno dotykem"));
+            // B307: C++ rovnou pusti i zvuk (OpenSL ES) - zadny Java AudioTrack
+            final int st = NativeIntroBridge.introStart();
+            NapDemoView v = new NapDemoView(this, this::demoKonec);
             rootFrame.addView(v, new FrameLayout.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
             demoPlocha = v;
             v.requestFocus();
             demoStartMs = System.currentTimeMillis();
             demoHlaseno = false;
-            NativeIntroBridge.zvukStart((pcm, shortu, sr) -> napTvWebAudioPush(pcm, 0, shortu, sr, "INTRO"));
             ui.removeCallbacks(demoTik);
             ui.postDelayed(demoTik, 250);
             appendNativeLog("B304 DEMO_START (" + proc + ") - uvodni demo cele v C++ (obraz OpenGL ES, zvuk spocitany v C++)");
-            appendNativeLog("B306 DEMO_ZVUK prehrava " + NativeIntroBridge.zvukKdo() + ", na TV / PC proudem z C++ (/intro.stream)");
+            appendNativeLog("B307 DEMO_ZVUK " + ((st & 1) != 0 ? "prehrava C++ (OpenSL ES)" : "NEJDE (OpenSL) - demo bezi bez zvuku")
+                    + ", zvuk Pitt-Kitt " + ((st & 2) != 0 ? "ano" : "NE")
+                    + ", na TV / PC proudem z C++ (/intro.stream), SKIP a dotyk rozhoduje C++");
             return true;
         } catch (Throwable t) {
             appendNativeLog("B304 DEMO_CHYBA_STARTU " + safeMsg(t));
             if (demoPlocha == null) {
-                NativeIntroBridge.zvukStop();
                 NativeIntroBridge.stopSafe();
             } else {
                 demoKonec("chyba startu");
@@ -7534,10 +7540,9 @@ public class MainActivity extends Activity {
         final int casMs = NativeIntroBridge.casMsSafe();
         final String info = NativeIntroBridge.infoSafe();
         final long trvalo = Math.max(1, System.currentTimeMillis() - demoStartMs);
-        NativeIntroBridge.zvukStop();
-        // odebranim plochy C++ zastavi kreslici vlakno (surfaceDestroyed)
-        try { if (v.getParent() instanceof ViewGroup) ((ViewGroup) v.getParent()).removeView(v); } catch (Throwable ignored) {}
+        // B307: C++ zastavi kresleni i zvuk (OpenSL) najednou - pak teprve pryc s plochou
         NativeIntroBridge.stopSafe();
+        try { if (v.getParent() instanceof ViewGroup) ((ViewGroup) v.getParent()).removeView(v); } catch (Throwable ignored) {}
         napIntroUkazano = true;
         napTvWebAudioLastPushMs = 0;           // uvolnit zvukovou cestu na TV
         appendNativeLog("B304 DEMO_KONEC (" + proc + ") cas dema=" + casMs + " ms, snimku=" + snimku

@@ -663,6 +663,7 @@ uniform float uLed;
 uniform float uCas;
 uniform float uExpo;
 uniform float uObrJas;
+uniform float uKlavZar;     // B307: klavesy sviti zespodu (neon)
 uniform sampler2D uAtlas;
 uniform sampler2D uObr;
 )" "%SUM%" R"(
@@ -678,12 +679,15 @@ void main(){
   } else if (m == 1) {
     alb = vec3(0.26,0.26,0.255);          // deska mezi klavesami (ve stinu klaves)
     spec = 0.05;
+    emis = vec3(0.22,0.72,1.0)*uKlavZar*(0.8 + 0.35*sin(vP.x*0.8 - uCas*11.0))*step(vP.z, 7.6)*step(abs(vP.x), 15.0);
   } else if (m == 2) {
     alb = vec3(0.68,0.665,0.63)*(0.38 + 0.62*vUV.y);   // bok klavesy - dole zastineny
+    emis = vec3(0.22,0.72,1.0)*uKlavZar*(0.6 + 0.4*sin(vP.x*0.8 - uCas*11.0))*(1.0 - vUV.y);
   } else if (m == 3) {
     vec4 a = texture2D(uAtlas, vUV);
     alb = mix(vec3(0.83,0.81,0.76), a.rgb, a.a*0.92);
     spec = 0.28; shin = 34.0;
+    emis = vec3(0.25,0.75,1.0)*uKlavZar*0.18;
   } else if (m == 4) {
     // sikma zebra (vetrani) - vzor z polohy na desce (x, z puvodni plochy v cm)
     vec2 p = vUV;
@@ -884,296 +888,23 @@ void main(){
 }
 )";
 
-// ---------- OBRAZOVKY MOBILU A STRIHY ----------
-// ATARI: text BASICu (pismo z ROM, vysazene v C++) na modre obrazovce,
-// po RUN duha (meni se barva pozadi po radcich, jak to dela POKE 710)
-static const char *FS_ATARI = R"(
+// ---------- B307: TLACITKO SKIP ----------
+// zaobleny obdelnik: tmava vypln, zlaty okraj (premultiplied alfa)
+static const char *FS_TLACITKO = R"(
 varying vec2 vUV;
-uniform vec2 uRozmer;
-uniform sampler2D uText;
-uniform float uCas;
-uniform float uDuha;
-uniform float uJas;
-vec3 hsv(float h){ vec3 k = mod(h*6.0 + vec3(5.0,3.0,1.0), 6.0); return clamp(min(k, 4.0-k), 0.0, 1.0); }
-void main(){
-  float asp = uRozmer.x/uRozmer.y;
-  vec2 p = vUV - (asp > 1.3333 ? vec2(0.5, 0.45) : vec2(0.5));
-  vec2 roz = asp > 1.3333 ? vec2(0.66*(4.0/3.0)/asp, 0.66) : vec2(0.92, 0.92*asp*(3.0/4.0));
-  vec2 s = p/roz + 0.5;
-  float radek = floor(vUV.y*uRozmer.y/3.0);
-  vec3 okraj = mix(vec3(0.05,0.12,0.33), hsv(fract(radek*0.012 - uCas*0.35)), uDuha);
-  vec3 c = okraj;
-  if (s.x > 0.0 && s.x < 1.0 && s.y > 0.0 && s.y < 1.0) {
-    vec4 t = texture2D(uText, vec2(s.x, 1.0 - s.y));
-    vec3 poz = mix(vec3(0.10,0.27,0.65), hsv(fract(s.y*0.9 - uCas*0.25))*0.75, uDuha);
-    c = mix(poz, vec3(0.80,0.88,1.0), t.a);
-  }
-  c *= 0.86 + 0.14*sin(gl_FragCoord.y*3.14159*0.5);
-  gl_FragColor = vec4(c*uJas, 1.0);
-}
-)";
-
-// SEGA: 16bitova zavodni honicka - zapad slunce, hory, palmy, silnice, auto
-static const char *FS_SEGA = R"(
-varying vec2 vUV;
-uniform vec2 uRozmer;
-uniform float uCas;
-uniform float uJas;
-)" "%SUM%" R"(
-float obd(vec2 p, vec2 a, vec2 b){ return step(a.x, p.x)*step(p.x, b.x)*step(a.y, p.y)*step(p.y, b.y); }
-void main(){
-  float asp = uRozmer.x/uRozmer.y;
-  vec2 res = asp > 1.0 ? vec2(320.0, 320.0/asp) : vec2(224.0, 224.0/asp);
-  vec2 uv = (floor(vUV*res) + 0.5)/res;
-  float x = (uv.x - 0.5)*asp;
-  float obzor = asp > 1.0 ? 0.50 : 0.55;
-  float zat = sin(uCas*0.55)*0.55;                 // zataceni silnice
-  vec3 c;
-  if (uv.y > obzor) {
-    float h = uv.y - obzor;
-    c = mix(vec3(1.0,0.62,0.28), vec3(0.78,0.22,0.42), smoothstep(0.0, 0.16, h));
-    c = mix(c, vec3(0.16,0.07,0.36), smoothstep(0.12, 0.40, h));
-    // slunce s pruhy
-    vec2 sp = vec2(x + zat*0.10, h - 0.10);
-    float r = length(sp);
-    if (r < 0.13) {
-      vec3 sc = mix(vec3(1.0,0.92,0.40), vec3(1.0,0.38,0.42), smoothstep(0.10, -0.10, sp.y));
-      float mez = sp.y < 0.03 ? step(0.32 + (0.03 - sp.y)*2.6, fract(sp.y*44.0)) : 0.0;
-      c = mix(sc, c, mez);
-    }
-    // hvezdy
-    float hv = step(0.985, sum2(floor(uv*res)*0.91 + 3.0)) * smoothstep(0.25, 0.4, h);
-    c += vec3(0.8)*hv*0.6;
-    // hory - dve vrstvy
-    float xo = x + zat*0.25;
-    float m1 = 0.075*(1.0 - abs(fract(xo*1.6 + 0.3)*2.0 - 1.0)) + 0.03*sum2(vec2(xo*9.0, 1.0));
-    if (h < m1) c = vec3(0.30,0.16,0.42);
-    float m2 = 0.045*(1.0 - abs(fract(xo*2.7 + 0.7)*2.0 - 1.0)) + 0.02*sum2(vec2(xo*17.0, 5.0));
-    if (h < m2) c = vec3(0.14,0.08,0.26);
-  } else {
-    float h = obzor - uv.y;
-    float z = 0.28/max(h, 0.001);
-    float zz = z + uCas*14.0;
-    float stred = zat*(1.0 - h/obzor)*(1.0 - h/obzor)*0.9;
-    float sir = 2.1*h + 0.004;
-    float dx = abs(x - stred);
-    float pruh = mod(floor(zz*0.45), 2.0);
-    c = mix(vec3(0.20,0.62,0.30), vec3(0.15,0.52,0.24), pruh);              // trava
-    if (dx < sir*1.13) c = mix(vec3(0.90,0.12,0.12), vec3(0.95,0.95,0.95), pruh);   // obrubnik
-    if (dx < sir) {
-      c = mix(vec3(0.42,0.42,0.46), vec3(0.38,0.38,0.42), pruh);            // asfalt
-      if (dx < sir*0.025 + 0.002 && mod(floor(zz*0.45), 2.0) < 0.5) c = vec3(0.95);
-    }
-    c *= 0.55 + 0.45*smoothstep(0.0, 0.15, h);
-    // palmy u silnice (priblizuji se)
-    for (int i = 0; i < 6; i++) {
-      float zs = 4.0 + float(i)*5.0 - mod(uCas*14.0, 5.0);
-      float hs = 0.28/zs;
-      float yb = obzor - hs;
-      float sc = hs/obzor;
-      float strana = mod(float(i), 2.0) < 0.5 ? -1.0 : 1.0;
-      float xc = zat*(1.0 - hs/obzor)*(1.0 - hs/obzor)*0.9 + strana*(2.1*hs*1.55 + 0.01);
-      vec2 lp = vec2((x - xc)/max(sc, 0.001), (uv.y - yb)/max(sc, 0.001));
-      if (lp.y > 0.0 && lp.y < 1.25 && abs(lp.x) < 0.8) {
-        float kmen = step(abs(lp.x - lp.y*lp.y*0.12*strana), 0.035)*step(lp.y, 0.95);
-        vec2 kv = lp - vec2(0.11*strana, 0.97);
-        float a = atan(kv.y, kv.x);
-        float lis = step(length(kv), 0.42*(0.55 + 0.45*abs(sin(a*3.5))))*step(-0.30, kv.y + kv.x*kv.x*0.6);
-        if (kmen > 0.5) c = vec3(0.35,0.20,0.10);
-        if (lis > 0.5) c = mix(vec3(0.05,0.35,0.15), vec3(0.10,0.50,0.20), step(0.0, kv.y));
-      }
-    }
-  }
-  // auto (zezadu) dole uprostred
-  vec2 ap = vec2(x + sin(uCas*0.55)*0.05, uv.y);
-  float s = asp > 1.0 ? 1.0 : 0.85;
-  vec2 a = (ap - vec2(0.0, 0.07))/s;
-  if (obd(a, vec2(-0.16, 0.0), vec2(0.16, 0.075)) > 0.5) c = vec3(0.85,0.08,0.10);
-  if (obd(a, vec2(-0.11, 0.075), vec2(0.11, 0.125)) > 0.5) c = vec3(0.70,0.05,0.08);
-  if (obd(a, vec2(-0.085, 0.082), vec2(0.085, 0.118)) > 0.5) c = vec3(0.20,0.35,0.55);
-  if (obd(a, vec2(-0.15, 0.035), vec2(-0.09, 0.055)) > 0.5 || obd(a, vec2(0.09, 0.035), vec2(0.15, 0.055)) > 0.5)
-    c = vec3(1.0,0.85,0.2)*(0.8 + 0.2*step(0.5, fract(uCas*4.0)));
-  if (obd(a, vec2(-0.17, -0.025), vec2(-0.10, 0.012)) > 0.5 || obd(a, vec2(0.10, -0.025), vec2(0.17, 0.012)) > 0.5)
-    c = vec3(0.05);
-  c = floor(c*7.0 + 0.5)/7.0;              // 512 barev jako Mega Drive
-  gl_FragColor = vec4(c*uJas, 1.0);
-}
-)";
-
-// PS1: plosne stinovany krystal nad mrizkou, ditheriing a 15bit barvy
-static const char *FS_PS1 = R"(
-varying vec2 vUV;
-uniform vec2 uRozmer;
-uniform float uCas;
-uniform float uJas;
-float oktaedr(vec3 p){ p = abs(p); return (p.x+p.y+p.z-1.0)*0.57735; }
-mat2 rot(float a){ float c=cos(a), s=sin(a); return mat2(c,-s,s,c); }
-float mapa(vec3 p){
-  vec3 q = p - vec3(0.0, 0.62, 0.0);
-  q.xz = rot(uCas*1.1)*q.xz;
-  q.xy = rot(0.35)*q.xy;
-  return oktaedr(q*vec3(1.0,0.62,1.0)/0.55)*0.55*0.62;
-}
-void main(){
-  float asp = uRozmer.x/uRozmer.y;
-  vec2 res = vec2(320.0, 320.0/asp);
-  vec2 uv = (floor(vUV*res)+0.5)/res;
-  vec2 q = (uv-0.5)*vec2(asp,1.0);
-  float f = asp < 1.0 ? 0.78 : 1.12;
-  vec3 ro = vec3(0.0, 0.9, -3.4);
-  vec3 rd = normalize(vec3(q.x, q.y - 0.06, f));
-  float t = 0.0; float hit = 0.0;
-  for (int i = 0; i < 48; i++) {
-    float d = mapa(ro + rd*t);
-    if (d < 0.002) { hit = 1.0; break; }
-    t += d;
-    if (t > 9.0) break;
-  }
-  vec3 c;
-  if (hit > 0.5) {
-    vec3 p = ro + rd*t;
-    vec2 e = vec2(0.003, 0.0);
-    vec3 n = normalize(vec3(mapa(p+e.xyy)-mapa(p-e.xyy), mapa(p+e.yxy)-mapa(p-e.yxy), mapa(p+e.yyx)-mapa(p-e.yyx)));
-    float sv = 0.30 + 0.70*max(dot(n, normalize(vec3(0.5,0.8,-0.6))), 0.0);
-    c = mix(vec3(0.20,0.30,1.0), vec3(1.0,0.30,0.70), 0.5 + 0.5*n.y) * sv;
-    c += vec3(1.0)*pow(max(dot(reflect(rd, n), normalize(vec3(0.5,0.8,-0.6))), 0.0), 24.0)*0.6;
-  } else if (rd.y < -0.02) {
-    float k = -ro.y/rd.y;
-    vec2 g = (ro + rd*k).xz + vec2(0.0, uCas*1.4);
-    vec2 fg = abs(fract(g) - 0.5);
-    float m = smoothstep(0.44, 0.48, max(fg.x, fg.y));
-    c = mix(vec3(0.04,0.03,0.10), vec3(0.15,0.80,0.95), m) * exp(-k*0.10);
-    // odlesk krystalu v podlaze
-    vec3 pp = ro + rd*k;
-    c += vec3(0.6,0.3,0.9)*exp(-dot(pp.xz, pp.xz)*1.8)*0.35;
-  } else {
-    c = mix(vec3(0.10,0.04,0.20), vec3(0.01,0.01,0.05), smoothstep(0.0, 0.5, rd.y));
-    float hv = step(0.992, fract(sin(dot(floor(uv*res), vec2(12.9898,78.233)))*43758.5453));
-    c += vec3(0.7)*hv*smoothstep(0.05, 0.3, rd.y);
-  }
-  // ordered dither + 5 bitu na slozku
-  vec2 dp = mod(floor(vUV*res), 2.0);
-  float dth = (dp.x*2.0 + dp.y - 1.5)/4.0;
-  c = floor(c*31.0 + 0.5 + dth)/31.0;
-  gl_FragColor = vec4(c*uJas, 1.0);
-}
-)";
-
-// telefon v rade (5. strih): cerny ram s leskem, uvnitr zivy displej
-static const char *FS_TELEFON = R"(
-varying vec2 vUV;
-uniform sampler2D uTex;
-uniform vec2 uVel;      // velikost telefonu v bodech
+uniform vec2 uVel;
 uniform float uAlfa;
 float rrect(vec2 p, vec2 b, float r){ vec2 q = abs(p)-b+r; return length(max(q,0.0)) + min(max(q.x,q.y),0.0) - r; }
 void main(){
   vec2 p = (vUV - 0.5)*uVel;
-  float r = uVel.x*0.13;
-  float d = rrect(p, uVel*0.5, r);
+  float r = uVel.y*0.5 - 1.0;
+  float d = rrect(p, uVel*0.5 - 1.0, r);
   float a = 1.0 - smoothstep(-1.0, 0.5, d);
-  vec3 c = vec3(0.025,0.025,0.03);
-  c += vec3(0.75,0.62,0.40)*smoothstep(-2.2, -0.6, d)*(0.35 + 0.25*vUV.y);
-  vec2 m = vec2(uVel.x*0.05, uVel.y*0.045);
-  float ds = rrect(p, uVel*0.5 - m, r*0.55);
-  if (ds < 0.0) {
-    vec2 uv = (p + uVel*0.5 - m)/(uVel - 2.0*m);
-    c = texture2D(uTex, uv).rgb*1.1;
-    c += vec3(1.0)*0.07*smoothstep(0.18, 0.0, abs(uv.x*0.8 + uv.y - 1.15));
-  }
-  gl_FragColor = vec4(c, 1.0)*a*uAlfa;
-}
-)";
-
-// MENU N&P - zlaty ramecek; texty a logo se kresli navrch
-static const char *FS_MENU = R"(
-varying vec2 vUV;
-uniform vec2 uRozmer;
-uniform float uCas;
-uniform float uJas;
-void main(){
-  vec2 p = vUV*uRozmer;
-  vec3 c = mix(vec3(0.02,0.015,0.01), vec3(0.09,0.06,0.025), smoothstep(1.0, 0.0, vUV.y));
-  for (int i = 0; i < 3; i++) {
-    float y0 = uRozmer.y*(0.10 + float(i)*0.17), y1 = y0 + uRozmer.y*0.13;
-    float x0 = uRozmer.x*0.08, x1 = uRozmer.x*0.92;
-    if (p.x > x0 && p.x < x1 && p.y > y0 && p.y < y1) {
-      float okr = min(min(p.x-x0, x1-p.x), min(p.y-y0, y1-p.y));
-      c = mix(vec3(0.06,0.045,0.025), vec3(0.85,0.66,0.30), smoothstep(3.0, 1.0, okr));
-      c += vec3(0.25,0.18,0.06)*0.3*(1.0-(p.y-y0)/(y1-y0));
-    }
-  }
-  float zar = sin(vUV.y*30.0 - uCas*3.0)*0.5+0.5;
-  c += vec3(0.6,0.45,0.15)*0.04*zar;
-  gl_FragColor = vec4(c*uJas, 1.0);
-}
-)";
-
-// TV na LAN - mobil posila obraz Atari do televize (vlny jako Wi-Fi)
-static const char *FS_TVLAN = R"(
-varying vec2 vUV;
-uniform vec2 uRozmer;
-uniform sampler2D uText;
-uniform float uCas;
-vec3 hsv(float h){ vec3 k = mod(h*6.0 + vec3(5.0,3.0,1.0), 6.0); return clamp(min(k, 4.0-k), 0.0, 1.0); }
-float rrect(vec2 p, vec2 b, float r){ vec2 q = abs(p)-b+r; return length(max(q,0.0)) + min(max(q.x,q.y),0.0) - r; }
-void main(){
-  float asp = uRozmer.x/uRozmer.y;
-  vec2 p = (vUV-0.5)*vec2(asp,1.0);
-  float px = 1.0/uRozmer.y;
-  vec3 c = mix(vec3(0.012,0.012,0.018), vec3(0.05,0.04,0.035), smoothstep(-0.5, 0.5, p.y));
-  bool sir = asp > 1.0;
-  // televize 16:9
-  vec2 tvS = sir ? vec2(0.20, -0.01) : vec2(0.0, 0.17);
-  float tw = sir ? 0.37 : min(0.46, asp*0.47);
-  vec2 tvB = vec2(tw, tw*9.0/16.0);
-  float dt = rrect(p - tvS, tvB, 0.012);
-  float dsc = rrect(p - tvS, tvB - vec2(0.012), 0.004);
-  c += vec3(0.20,0.30,0.55)*0.10*exp(-max(dt, 0.0)*18.0);      // svit kolem TV
-  // noha
-  vec2 np = p - (tvS + vec2(0.0, -tvB.y - 0.03));
-  if (rrect(np, vec2(0.012, 0.03), 0.004) < 0.0 || rrect(np + vec2(0.0, 0.03), vec2(tw*0.32, 0.006), 0.004) < 0.0) c = vec3(0.10,0.10,0.11);
-  if (dt < 0.0) c = vec3(0.035,0.035,0.04);
-  if (dsc < 0.0) {
-    vec2 s = (p - tvS + tvB - vec2(0.012))/(2.0*(tvB - vec2(0.012)));
-    vec2 roz = vec2(0.80*(3.0/4.0)*(16.0/9.0), 0.80);
-    vec2 a = (s - 0.5)/roz + 0.5;
-    float radek = floor(s.y*120.0);
-    vec3 okr = hsv(fract(radek*0.02 - uCas*0.35));
-    c = okr;
-    if (a.x > 0.0 && a.x < 1.0 && a.y > 0.0 && a.y < 1.0) {
-      vec4 t = texture2D(uText, vec2(a.x, 1.0 - a.y));
-      vec3 poz = hsv(fract(a.y*0.9 - uCas*0.25))*0.72;
-      c = mix(poz, vec3(0.85,0.9,1.0), t.a);
-    }
-    c *= 0.92 + 0.08*sin(gl_FragCoord.y*1.5708);
-  }
-  // mobil
-  vec2 mS = sir ? vec2(-0.47, -0.10) : vec2(0.0, -0.27);
-  vec2 mB = vec2(0.055, 0.112);
-  float dm = rrect(p - mS, mB, 0.016);
-  if (dm < 0.0) {
-    c = vec3(0.02);
-    float ds = rrect(p - mS, mB - vec2(0.007), 0.010);
-    if (ds < 0.0) {
-      vec2 s = (p - mS)/mB;
-      c = mix(vec3(0.10,0.07,0.03), vec3(0.45,0.32,0.12), smoothstep(-1.0, 1.0, s.y));
-      float kr = abs(length(s - vec2(0.0, 0.25)) - 0.45);
-      c += vec3(1.0,0.8,0.4)*smoothstep(0.08, 0.0, kr)*0.6;
-    }
-  }
-  c += vec3(0.85,0.65,0.30)*0.5*smoothstep(2.0*px, 0.0, abs(dm))*0.6;
-  // vlny od mobilu k TV
-  vec2 cil = tvS - vec2(0.0, sir ? 0.0 : tvB.y);
-  vec2 sm = normalize(cil - mS);
-  vec2 d = p - mS;
-  float r = length(d);
-  float smer = dot(d/max(r, 1e-4), sm);
-  float del = length(cil - mS);
-  float vl = abs(fract(r*9.0 - uCas*2.4) - 0.5);
-  float vlna = 1.0 - smoothstep(1.2*px*9.0, 2.8*px*9.0, vl);
-  float maska = smoothstep(0.86, 0.96, smer) * smoothstep(del*0.80, del*0.55, r) * smoothstep(mB.y + 0.02, mB.y + 0.06, r);
-  c += vec3(1.0,0.80,0.40) * vlna * maska * 0.9;
-  gl_FragColor = vec4(c, 1.0);
+  float okr = smoothstep(-3.2, -1.6, d)*a;
+  vec3 c = vec3(0.02, 0.018, 0.03)*(1.0 - okr) + vec3(0.95, 0.74, 0.34)*okr;
+  c += vec3(0.10, 0.08, 0.05)*(1.0 - vUV.y)*(1.0 - okr);
+  float al = a*(0.62 + 0.38*okr)*uAlfa;
+  gl_FragColor = vec4(c*al, al);
 }
 )";
 

@@ -1,0 +1,3 @@
+B307 - klip intro/pittkitt.klip znovu nahrany z Reneho Pitt-Kitt Platinum (.xex):
+KLIP klip_znovu.bin: 120 snimku 384x240 (2.41 s pri 49.861/s), zvuk 106135 vzorku, obraz 11059200 B surove -> 116063 B celkem
+VYSLEDEK: klip v assets je bajt po bajtu stejny (sha256 26ce0377fcc09ad7...)

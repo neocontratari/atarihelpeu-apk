@@ -1,0 +1,43 @@
+zvuk hry z klipu: 37484 vzorku (0.85 s) od 33.40 s
+vyrobeno 2010959 ramcu (45.6 s zvuku) za 1.06 s = 43x rychleji nez prehravani; prvni vterina za 0.021 s
+ 26.0 s  RMS  -17.6 dBFS  spicka   -5.4 dBFS
+ 26.5 s  RMS  -19.5 dBFS  spicka   -8.3 dBFS
+ 27.0 s  RMS  -17.3 dBFS  spicka   -5.7 dBFS
+ 27.5 s  RMS  -11.3 dBFS  spicka   -1.1 dBFS
+ 28.0 s  RMS  -12.5 dBFS  spicka   -1.1 dBFS
+ 28.5 s  RMS  -12.1 dBFS  spicka   -2.0 dBFS
+ 29.0 s  RMS  -12.6 dBFS  spicka   -1.1 dBFS
+ 29.5 s  RMS  -13.5 dBFS  spicka   -2.9 dBFS
+ 30.0 s  RMS  -12.4 dBFS  spicka   -2.6 dBFS
+ 30.5 s  RMS  -12.8 dBFS  spicka   -2.1 dBFS
+ 31.0 s  RMS  -12.9 dBFS  spicka   -1.8 dBFS
+ 31.5 s  RMS  -12.7 dBFS  spicka   -2.3 dBFS
+ 32.0 s  RMS  -11.4 dBFS  spicka   -2.3 dBFS
+ 32.5 s  RMS  -13.9 dBFS  spicka   -4.7 dBFS
+ 33.0 s  RMS  -17.2 dBFS  spicka   -6.2 dBFS
+ 33.5 s  RMS  -24.4 dBFS  spicka  -12.3 dBFS
+ 34.0 s  RMS  -15.8 dBFS  spicka   -3.5 dBFS
+ 34.5 s  RMS  -14.5 dBFS  spicka   -3.6 dBFS
+ 35.0 s  RMS  -12.8 dBFS  spicka   -3.0 dBFS
+ 35.5 s  RMS  -15.1 dBFS  spicka   -4.5 dBFS
+ 36.0 s  RMS  -15.2 dBFS  spicka   -5.2 dBFS
+ 36.5 s  RMS  -15.2 dBFS  spicka   -4.7 dBFS
+ 37.0 s  RMS  -21.7 dBFS  spicka   -9.9 dBFS
+ 37.5 s  RMS  -13.9 dBFS  spicka   -1.8 dBFS
+ 38.0 s  RMS  -10.4 dBFS  spicka   -2.6 dBFS
+ 38.5 s  RMS  -13.2 dBFS  spicka   -4.2 dBFS
+ 39.0 s  RMS  -14.7 dBFS  spicka   -5.2 dBFS
+ 39.5 s  RMS  -15.2 dBFS  spicka   -5.1 dBFS
+ 40.0 s  RMS  -15.9 dBFS  spicka   -5.1 dBFS
+ 40.5 s  RMS  -16.2 dBFS  spicka   -6.6 dBFS
+ 41.0 s  RMS  -18.0 dBFS  spicka   -8.9 dBFS
+ 41.5 s  RMS  -18.8 dBFS  spicka   -8.6 dBFS
+ 42.0 s  RMS  -17.2 dBFS  spicka   -7.0 dBFS
+ 42.5 s  RMS  -18.1 dBFS  spicka   -7.3 dBFS
+ 43.0 s  RMS  -18.5 dBFS  spicka   -7.8 dBFS
+ 43.5 s  RMS  -17.4 dBFS  spicka   -6.9 dBFS
+ 44.0 s  RMS  -19.6 dBFS  spicka  -10.1 dBFS
+ 44.5 s  RMS  -30.5 dBFS  spicka  -15.6 dBFS
+ 45.0 s  RMS -180.0 dBFS  spicka -180.0 dBFS
+ 45.5 s  RMS -180.0 dBFS  spicka -180.0 dBFS
+vzorku na hranici (orez): 0

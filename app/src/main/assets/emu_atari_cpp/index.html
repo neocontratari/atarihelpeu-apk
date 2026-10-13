@@ -113,6 +113,13 @@ Tenhle test pousti jadro na desetitisicich nahodnych stavu a porovnava vysledek
 s cislem, ktere vyslo na pocitaci. Delam to proto, ze pocitac je x86 a telefon
 ARM - a na ARM se nektere veci chovaji jinak. Kdyz se to rozejde, ma se to
 poznat ted, a ne az podle spatneho obrazu.<br><br>
+B307: UVODNI DEMO - NOVA SCENA S TVYM ATARI 130XE. Z klaves tveho Atari
+vystreli neonove pruty, protnou se a z dratu se zhmotni nase trojice: Atari 130XE,
+N&amp;P 16 (cartridge) a N&amp;P 32 (CD) se zlatym logem N&amp;P. Kamera proleti ke CRT
+monitoru a ten ukaze defile 50 snimku/s: tvuj Pitt-Kitt Platinum (zabery i zvuk
+ze skutecneho jadra Atari v appce), 16 bit (paralaxa, sprity) a 32 bit (3D noc).
+Vpravo nahore tlacitko SKIP (klepnuti kamkoli demo taky preskoci). Zvuk dema
+startuje a konci C++ samo, o dotyku rozhoduje C++ - Java uz jen preda plochu.
 B306: ZVUK NA TV / PC HNED A BLIZ OBRAZU - prohlizec (Chrome, Edge) pusti zvuk
 stranky az po kliknuti nebo klavese do ni (a po obnoveni stranky F5 znovu); dokud
 zvuk nehraje, je nahore zluta vyzva ZVUK: KLIKNI KAMKOLI DO OBRAZU - staci jedno
@@ -179,37 +186,40 @@ try{ if(window.AHATARICPP && !AHATARICPP.jeNactene()){
 } }catch(e){}
 function set(id,t,cls){var e=$(id); if(!e)return; e.textContent=t; if(cls)e.className='v '+cls;}
 var KROKY=[
+ // B307: nova scena 4 uvodniho dema (pruty z klaves Atari, trojice N&P, CRT defile s Pitt-Kitt), SKIP v C++
+ {n:1,co:'UVODNI DEMO - pri startu appky (nebo OPTIONS - PUSTIT INTRO), na vysku i na sirku; divej se hlavne od 27. vteriny',
+  ok:'Ve 27. vterine se rozzari klavesy tveho Atari 130XE a vystreli z nich neonove pruty (vlevo azurove, vpravo ruzove), z dratu se zhmotni N&P 16 a N&P 32 se zlatym logem N&P vedle Atari. Kamera proleti ke CRT a ten ukaze 50 snimku/s: Pitt-Kitt Platinum (titulek, Kapitola 1 - Las Vegas 1982, jizda se zvukem hry), 16 BIT, 32 BIT, pak logo. Vpravo nahore tlacitko SKIP - klepnuti na nej (i kamkoli jinam) demo preskoci.',
+  ne:'Neco chybi, trha, zvuk nesedi (hlavne zvuk Pitt-Kitt s jizdou na CRT), SKIP nejde - napis co a v kolikate vterine a posli log (radky B304 DEMO, B307 DEMO_ZVUK).'},
+ {n:2,co:'UVODNI DEMO NA TV / PC - se zapnutym prenosem, v prohlizeci klikni do obrazu',
+  ok:'Demo na sirku i se zvukem (proudem z C++ jako v B306), na CRT je videt i Pitt-Kitt a jeho zvuk hraje i na TV. Tlacitko SKIP je jen v telefonu (na TV neni co mackat).',
+  ne:'Na TV se demo neukaze, je bez zvuku nebo bez Pitt-Kitt - posli log (radky B304 DEMO, B307 DEMO_ZVUK, B306 TV PROUD INTRO).'},
  // B306: zvuk na TV / PC hned (vyzva + kliknuti), zvuk z jadra (bliz obrazu), Sega 60/s i na S8
- {n:1,co:'TV / PC SEGA: zapni prenos, spust hru na Seze (napr. Sonic), v prohlizeci na PC / TV otevri stranku a JEDNOU KLIKNI do obrazu (nebo stiskni klavesu)',
+ {n:3,co:'TV / PC SEGA: zapni prenos, spust hru na Seze (napr. Sonic), v prohlizeci na PC / TV otevri stranku a JEDNOU KLIKNI do obrazu (nebo stiskni klavesu)',
   ok:'Dokud neklikes, je nahore zluta vyzva ZVUK: KLIKNI KAMKOLI DO OBRAZU; po kliknuti zvuk HNED hraje a vyzva zmizi. Po F5 se vyzva vrati a zase staci kliknout. Obraz 60 snimku/s (i na S8), presne jako v telefonu; zvuk sedi s obrazem lip nez v B305 (rana / skok Sonica slyset spolu s obrazem).',
   ne:'Zvuk nehraje ani po kliknuti, vyzva nezmizi, zvuk zaostava nebo lupe, trhani - napis co a posli log (radky B306 ZVUK, B306 TV PROUD SEGA a B306 PROHLIZEC SEGA).'},
- {n:2,co:'TV / PC PS1: totez s hrou na PS1 (i menu BIOSu a hra ve vysokem rozliseni)',
+ {n:4,co:'TV / PC PS1: totez s hrou na PS1 (i menu BIOSu a hra ve vysokem rozliseni)',
   ok:'Obraz PS1 plynuly, zvuk po kliknuti hned a bliz obrazu nez v B305. Kdyz obraz stoji (menu, text), po chvilce zaostri. Prepnes-li v telefonu ze Segy na PS1 (nebo na Atari), prohlizec se prepne sam a zvuk hraje dal.',
   ne:'Zvuk nehraje, zaostava nebo lupe, trhani, kostky - napis co a posli log (radky B306 ZVUK, B306 TV PROUD PS1 a B306 PROHLIZEC PS1).'},
- // B304: nove uvodni demo podle Reneho scenare, cele v C++
- {n:3,co:'UVODNI DEMO - pri startu appky (nebo OPTIONS - PUSTIT INTRO), na vysku, na sirku a se zapnutym prenosem i na TV / PC',
-  ok:'Jako v B304 (45 s podle scenare, zvuk sedi s obrazem), jen zvuk ted prehrava C++ (v logu B306 DEMO_ZVUK prehrava C++ OpenSL ES). Na TV / PC demo na sirku i se zvukem - proudem z C++ jako Sega a PS1 (po kliknuti do obrazu).',
-  ne:'Zvuk v telefonu chybi nebo nesedi, na TV se demo neukaze nebo je bez zvuku - napis co a v kolikate vterine a posli log (radky B304 DEMO, B306 DEMO_ZVUK, B306 TV PROUD INTRO).'},
  // B300: POKEY casovac (Ghostbusters), zvuk her, TBXL LIST s dlouhym WALLS, TXT
- {n:4,co:'TEST JADRA (tlacitko SPUSTIT TEST JADRA nize)',
+ {n:5,co:'TEST JADRA (tlacitko SPUSTIT TEST JADRA nize)',
   ok:'Procesor i Pamet = SEDI (29C55806 / D3949DC5), Rychlost aspon 2x realny cas.',
   ne:'NESEDI, nebo rychlost pod 1x (Atari by se zpomalovalo).'},
  // B303: TV / PC cele v C++ (proud z C++, mensi zpozdeni) a vlozeni kodu z PC (Ctrl+V)
- {n:5,co:'TV / PC ATARI: zapni prenos, otevri HELP (Atari 130XE C++), v prohlizeci na PC / TV obnov stranku (F5) a klikni do obrazu (zvuk)',
+ {n:6,co:'TV / PC ATARI: zapni prenos, otevri HELP (Atari 130XE C++), v prohlizeci na PC / TV obnov stranku (F5) a klikni do obrazu (zvuk)',
   ok:'Jako v B305: obraz 1 ku 1 s telefonem, pismeno z PC je na TV hned, obraz plynuly (50 snimku/s); zvuk hned po kliknuti (stejna vyzva jako u Segy).',
   ne:'Neco hur nez v B305 - napis co a posli log (radky B303 TV PROUD, B303 PROHLIZEC, B306 ZVUK, B303 WIFI).'},
  // B302: klavesnice pocitace v prohlizeci (TV / PC) -> Atari 130XE v C++
- {n:6,co:'TV / PC: KLAVESNICE POCITACE - v prohlizeci na PC pis do Atari (vpravo dole je napoveda)',
+ {n:7,co:'TV / PC: KLAVESNICE POCITACE - v prohlizeci na PC pis do Atari (vpravo dole je napoveda)',
   ok:'Jako v B302: 10 PRINT "Ahoj" + Enter, LIST, RUN; Backspace, sipky = kurzor, F2 = BREAK, F1/F3/F4 = START/SELECT/OPTION. F9 = HRANI: WASD/sipky joystick, L = FIRE, K/mezernik skok.',
   ne:'Neco nejde, pise jinak nebo se ztraci znaky - napis co a posli log (radky B302 a B299 KLAVESY (PC)).'},
- {n:7,co:'TV / PC: VLOZIT KOD - na PC zkopiruj program (napr. 10 PRINT "Ahoj" a 20 GOTO 10) a v okne prohlizece dej Ctrl+V; pak LIST a RUN',
+ {n:8,co:'TV / PC: VLOZIT KOD - na PC zkopiruj program (napr. 10 PRINT "Ahoj" a 20 GOTO 10) a v okne prohlizece dej Ctrl+V; pak LIST a RUN',
   ok:'Nahore se ukaze VLOZENO: 2 RADKU PROGRAMU (BEZ NEW) - PISU a appka radky napise; program, ktery uz v Atari byl, zustane. Totez pretazenim TXT souboru do okna. Text bez cisel radku (napr. RUN) se napise jako klavesy.',
   ne:'Nic se nestane, napise se spatne nebo se program smaze - posli log (radky B303 VLOZENI a B299 TXT PROGRAM).'},
- {n:8,co:'Hry jako minule: Ghostbusters, Popeye, Moon Patrol, Donkey Kong, W3D (i zvuk)',
-  ok:'Stejne jako v B305.',
-  ne:'Neco hur nez v B305 (napis ktera hra a kde).'},
- {n:9,co:'V TELEFONU: ATARI 130XE EMULATOR z hlavni nabidky, hry na Seze a PS1 (obraz, zvuk, ovladani, klavesnice z PC u Segy)',
-  ok:'Bezi UPLNE STEJNE jako dosud - menil se jen prenos na TV / PC.',
+ {n:9,co:'Hry jako minule: Ghostbusters, Popeye, Moon Patrol, Donkey Kong, W3D (i zvuk)',
+  ok:'Stejne jako v B306.',
+  ne:'Neco hur nez v B306 (napis ktera hra a kde).'},
+ {n:10,co:'V TELEFONU: ATARI 130XE EMULATOR z hlavni nabidky, hry na Seze a PS1 (obraz, zvuk, ovladani, klavesnice z PC u Segy)',
+  ok:'Bezi UPLNE STEJNE jako dosud - menilo se jen uvodni demo.',
   ne:'Jakakoli zmena proti minule verzi.'}
 ];
 var vysledky={};

@@ -1,9 +1,6 @@
 package eu.atarihelp.emu10;
 
 import android.content.res.AssetManager;
-import android.media.AudioAttributes;
-import android.media.AudioFormat;
-import android.media.AudioTrack;
 import android.view.Surface;
 
 /**
@@ -11,15 +8,18 @@ import android.view.Surface;
  *
  * Demo podle Reneho scenare (45 s, 5 scen) se kresli v C++ pres OpenGL ES
  * na vlastnim vlakne primo do plochy NapDemoView - zadne WebView, zadne
- * video. Pro TV / PC kresli C++ zvlast obraz 16:9 (introGrabFrame).
+ * video. Pro TV / PC kresli C++ zvlast obraz 16:9.
  *
- * Zvuk je cela stopa spocitana v C++ (bzuceni obrazovky, vrata, vitr,
- * ptaci, hromy, dest, hudba). B306: prehrava ji take C++ (OpenSL ES) a na
- * TV / PC jde demo proudem z C++ (/intro.stream - obraz JPEG + zvuk v jednom
- * paketu, jako Sega a PS1 v B305). AudioTrack tady zustal jen jako zaloha,
- * kdyby OpenSL na telefonu nesel. C++ vi, kolik uz reproduktor opravdu
- * prehral - podle toho bezi obraz, takze sedi se zvukem i na pomalejsim
- * telefonu (i na TV).
+ * Zvuk je cela stopa spocitana v C++ a prehrava ji C++ (OpenSL ES). Na TV / PC
+ * jde demo proudem z C++ (/intro.stream - obraz JPEG + zvuk v jednom paketu,
+ * jako Sega a PS1 v B305). C++ vi, kolik uz reproduktor opravdu prehral -
+ * podle toho bezi obraz, takze sedi se zvukem i na pomalejsim telefonu.
+ *
+ * B307: Java z intra ven, co nejvic to jde - zalozni AudioTrack je pryc
+ * (zvuk startuje a konci C++ samo v introStart / introStop), tlacitko SKIP
+ * kresli C++ a o dotyku rozhoduje C++ (introDotyk). Java uz jen preda
+ * plochu, dotyk a bajty proudu na TV (a pro stare prohlizece bez
+ * ReadableStream hotovy snimek z C++ - introGrabFrame).
  */
 public final class NativeIntroBridge {
 
@@ -42,9 +42,17 @@ public final class NativeIntroBridge {
     public static boolean jeNactena() { return nactena; }
     public static String chybaNacteni() { return chyba; }
 
+    /** Dotyk na tlacitku SKIP / jinam (vysledek introDotyk). */
+    public static final int DOTYK_NIC = 0, DOTYK_SKIP = 1, DOTYK_JINAM = 2;
+
     // ---- C++ ----
     public static native void introNastavAssety(AssetManager am);
-    public static native void introStart();
+    /**
+     * Novy beh dema; C++ rovnou pusti i zvuk (OpenSL ES).
+     * Bity: 1 = zvuk hraje C++, 2 = zvuk Reneho hry (Pitt-Kitt) je ve stope.
+     */
+    public static native int introStart();
+    /** Konec dema: C++ zastavi kresleni i zvuk. */
     public static native void introStop();
     public static native void introSetDisplaySurface(Surface s);
     public static native boolean introHotovo();
@@ -52,19 +60,18 @@ public final class NativeIntroBridge {
     public static native long introSnimku();
     public static native int introCasMs();
     /**
+     * B307: dotyk (zvednuti prstu) v bodech plochy o velikosti w x h.
+     * 0 = nic (hned po startu), 1 = tlacitko SKIP, 2 = jinam.
+     */
+    public static native int introDotyk(float x, float y, int w, int h);
+    /**
      * Posledni snimek pro TV (16:9) - stejny tvar jako Ps1GlTextureView.borrowFrame:
      * (sirka&lt;&lt;16)|vyska, zaporne kdyz je pole male, 0 kdyz nic noveho.
+     * Jen pro stare prohlizece bez ReadableStream (ostatni berou /intro.stream).
      */
     public static native int introGrabFrame(int[] ven);
-    /** Davka zvuku (stereo 44,1 kHz). Vraci pocet ramcu, -1 = konec. */
-    public static native int introNaplnZvuk(short[] buf, int ramcu);
-    /** Kolik ramcu uz reproduktor prehral (AudioTrack.getPlaybackHeadPosition). */
-    public static native void introCasZvuku(long hlava);
     /** Kratka zprava do logu: GPU, priprava, rychlost kresleni, zvuk. */
     public static native String introInfo();
-    /** B306: zvuk prehrava C++ (OpenSL ES). false = nejde (pak AudioTrack). */
-    private static native boolean introZvukStartNative();
-    private static native void introZvukStopNative();
     // B306: TV / PC proudem z C++ (stejne jako NativeSegaCoreBridge / NativePs1CoreBridge)
     private static native int proudOtevriNative();
     private static native int proudDalsiNative(int id, byte[] out, int cekejMs, int zapisMs);
@@ -104,6 +111,11 @@ public final class NativeIntroBridge {
         if (!nactena) return;
         try { introSetDisplaySurface(s); } catch (Throwable ignored) {}
     }
+    /** B307: o dotyku rozhoduje C++ (tlacitko SKIP kresli C++). */
+    public static int dotykSafe(float x, float y, int w, int h) {
+        if (!nactena) return DOTYK_JINAM;
+        try { return introDotyk(x, y, w, h); } catch (Throwable t) { return DOTYK_JINAM; }
+    }
     public static boolean hotovoSafe() {
         if (!nactena) return true;
         try { return introHotovo(); } catch (Throwable t) { return true; }
@@ -127,89 +139,5 @@ public final class NativeIntroBridge {
     public static void stopSafe() {
         if (!nactena) return;
         try { introStop(); } catch (Throwable ignored) {}
-    }
-
-    // ==================================================================
-    //  ZVUK - AudioTrack krmeny z C++ (a stejne vzorky na TV)
-    // ==================================================================
-    public interface NaTv { void vzorky(short[] pcm, int shortu, int vzorkovani); }
-
-    private static Thread zvukVlakno = null;
-    private static volatile boolean zvukBezi = false;
-    private static volatile AudioTrack zvukTrack = null;
-    private static boolean zvukNativni = false;     // B306: prehrava C++ (OpenSL ES)
-
-    /** Kdo prehrava zvuk dema (do logu). */
-    public static synchronized String zvukKdo() {
-        return zvukNativni ? "C++ OpenSL ES" : (zvukBezi ? "Java AudioTrack (zaloha)" : "nic");
-    }
-
-    public static synchronized void zvukStart(final NaTv naTv) {
-        if (!nactena || zvukBezi || zvukNativni) return;
-        // B306: nejdriv C++ (OpenSL ES) - zvuk na TV / PC pak jde proudem z C++
-        // (naTv je jen pro starou cestu, kdyz OpenSL nejde)
-        try {
-            if (introZvukStartNative()) { zvukNativni = true; return; }
-        } catch (Throwable ignored) {}
-        zvukBezi = true;
-        zvukVlakno = new Thread(() -> {
-            AudioTrack at = null;
-            try {
-                final int SR = 44100;
-                int min = AudioTrack.getMinBufferSize(SR, AudioFormat.CHANNEL_OUT_STEREO, AudioFormat.ENCODING_PCM_16BIT);
-                int buf = Math.max(min, SR / 10 * 4);            // asi 100 ms
-                at = new AudioTrack.Builder()
-                        .setAudioAttributes(new AudioAttributes.Builder()
-                                .setUsage(AudioAttributes.USAGE_GAME)
-                                .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
-                                .build())
-                        .setAudioFormat(new AudioFormat.Builder()
-                                .setEncoding(AudioFormat.ENCODING_PCM_16BIT)
-                                .setSampleRate(SR)
-                                .setChannelMask(AudioFormat.CHANNEL_OUT_STEREO)
-                                .build())
-                        .setBufferSizeInBytes(buf)
-                        .setTransferMode(AudioTrack.MODE_STREAM)
-                        .build();
-                zvukTrack = at;
-                at.play();
-                final int RAMCU = 1024;
-                short[] davka = new short[RAMCU * 2];
-                while (zvukBezi) {
-                    int n = introNaplnZvuk(davka, RAMCU);
-                    if (n < 0) break;                            // konec stopy / demo zastavene
-                    if (n == 0) { Thread.sleep(5); continue; }
-                    at.write(davka, 0, n * 2);
-                    introCasZvuku(at.getPlaybackHeadPosition() & 0xFFFFFFFFL);
-                    if (naTv != null) {
-                        try { naTv.vzorky(davka, n * 2, SR); } catch (Throwable ignored) {}
-                    }
-                }
-            } catch (Throwable ignored) {
-            } finally {
-                zvukTrack = null;
-                if (at != null) {
-                    try { at.pause(); at.flush(); } catch (Throwable ignored) {}
-                    try { at.release(); } catch (Throwable ignored) {}
-                }
-            }
-        }, "nap-demo-zvuk");
-        zvukVlakno.setPriority(Thread.MAX_PRIORITY);
-        zvukVlakno.start();
-    }
-
-    public static synchronized void zvukStop() {
-        if (zvukNativni) {
-            zvukNativni = false;
-            try { introZvukStopNative(); } catch (Throwable ignored) {}
-        }
-        zvukBezi = false;
-        AudioTrack at = zvukTrack;
-        // blokujici zapis do AudioTrack se pauzou hned uvolni
-        if (at != null) { try { at.pause(); } catch (Throwable ignored) {} }
-        if (zvukVlakno != null) {
-            try { zvukVlakno.join(400); } catch (Throwable ignored) {}
-            zvukVlakno = null;
-        }
     }
 }

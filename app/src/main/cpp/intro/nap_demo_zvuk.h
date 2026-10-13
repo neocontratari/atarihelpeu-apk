@@ -24,6 +24,7 @@
 #include <cstring>
 #include <initializer_list>
 #include <vector>
+#include "nap_demo_cas.h"
 
 namespace napdemo {
 namespace zv {
@@ -150,7 +151,8 @@ struct Dozvuk {
 
 // ---------------- noty (udalosti) ----------------
 enum Druh : uint8_t {
-  PAD, ZVON, PIANO, ARP, BASA, KOPAK, VIRBL, HAT, ZAP, NARAZ, FMPLECH, PING, KLAP, GONG, PODBAS, TEP, PIP, CVAK, RISER
+  PAD, ZVON, PIANO, ARP, BASA, KOPAK, VIRBL, HAT, ZAP, NARAZ, FMPLECH, PING, KLAP, GONG, PODBAS, TEP, PIP, CVAK, RISER,
+  SNIH, FMBASA
 };
 struct Nota {
   float od, delka, f, hl, pan, dozvuk;
@@ -177,6 +179,10 @@ class Stopa {
 
   Stopa() { celkemRamcu = (int)(DELKA * FS); }
   int celkem() const { return celkemRamcu; }
+  // B307: zvuk ze zaznamu hry (mono 44,1 kHz) - hraje od casu "od" s hlasitosti hl
+  void nastavZaznam(const int16_t *p, size_t n, float od, float hl) {
+    zaznam.assign(p, p + n); zaznamOd = od; zaznamHl = hl;
+  }
   int hotovo() const { return hotovoRamcu.load(std::memory_order_acquire); }
   const int16_t *data() const { return pcm.data(); }
   void zastav() { stop.store(true); }
@@ -195,6 +201,17 @@ class Stopa {
       vrstvy(z, n, L.data(), R.data(), SL.data(), SR.data());
       noty(z, n, L.data(), R.data(), SL.data(), SR.data());
       hromy(z, n, L.data(), R.data(), SL.data(), SR.data());
+      if (!zaznam.empty()) {
+        const long long od = (long long)(zaznamOd * FS);
+        for (int i = 0; i < n; i++) {
+          const long long k = (long long)(z + i) - od;
+          if (k < 0 || k >= (long long)zaznam.size()) continue;
+          // kratke nabehy a dobehy (bez cvaknuti)
+          const float env = std::min(1.f, std::min((float)k, (float)((long long)zaznam.size() - k)) / 300.f);
+          const float x = zaznam[(size_t)k] * (1.f / 32768.f) * zaznamHl * env;
+          L[i] += x; R[i] += x; SL[i] += x * 0.15f; SR[i] += x * 0.15f;
+        }
+      }
       for (int i = 0; i < n; i++) {
         float dl, dr;
         dozvuk(SL[i], SR[i], dl, dr);
@@ -218,6 +235,8 @@ class Stopa {
   std::atomic<int> hotovoRamcu{0};
   std::atomic<bool> stop{false};
   std::vector<int16_t> pcm;
+  std::vector<int16_t> zaznam;          // B307: zvuk Reneho hry (Pitt-Kitt) z emulatoru
+  float zaznamOd = 0.f, zaznamHl = 0.f;
   std::vector<Nota> part;
   size_t dalsiNota = 0;
   std::vector<Hlas> hlasy;
@@ -283,66 +302,102 @@ class Stopa {
       static const float tepy[4] = {25.6f, 26.4f, 27.15f, 27.62f};
       for (float tp : tepy) { pridej(tp, 0.3f, 52.f, 0.55f, 0.f, 0.15f, TEP); pridej(tp + 0.21f, 0.3f, 48.f, 0.36f, 0.f, 0.15f, TEP); }
     }
-    // ---- SCENA 4: 120 BPM od 28.0 ----
+    // ---- SCENA 4 (B307): neonove pruty, zhmotneni konzoli N&P, CRT a defile ----
     {
-      const float T0 = 28.0f, BEAT = 0.5f;
+      using namespace cas;
+      const float BEAT = 0.5f;
+      // klavesy se rozzari: narustajici trpyt a tichy akord
+      pridej(KLAVESY - 0.1f, PRUTY - KLAVESY + 0.1f, 0, 0.26f, 0.f, 0.45f, RISER);
+      akord(KLAVESY + 0.05f, 1.6f, {74, 77, 81, 86}, 0.045f, 0.75f, ZVON);
+      // groove 120 BPM od 27,5 do odletu kamery (kopak, virbl, hihat, basa v osminach, arpeggio jako POKEY)
       struct A { float od; int koren; int m[3]; };
-      static const A ak[5] = {{28.f, 38, {62, 65, 69}}, {30.f, 34, {62, 65, 70}}, {32.f, 41, {65, 69, 72}},
-                              {34.f, 36, {64, 67, 72}}, {36.f, 45, {64, 69, 73}}};
-      auto akordV = [&](float t) { int i = 0; for (int k = 0; k < 5; k++) if (t >= ak[k].od - 0.001f) i = k; return i; };
-      for (int b = 0; b < 18; b++) {
-        const float t = T0 + b * BEAT;
-        if (t < 36.95f) pridej(t, 0.35f, 0, 0.95f, 0.f, 0.06f, KOPAK);
-        if (b % 2 == 1 && t < 35.4f) pridej(t, 0.25f, 0, 0.50f, 0.05f, 0.18f, VIRBL);
-        if (t + 0.25f < 36.95f) pridej(t + 0.25f, 0.06f, 0, 0.16f, 0.35f, 0.05f, HAT);
-        if (b % 2 == 0 && t < 35.4f) pridej(t + 0.375f, 0.04f, 0, 0.08f, -0.35f, 0.05f, HAT);
-        // basa v osminach
+      static const A ak[4] = {{27.5f, 38, {62, 65, 69}}, {29.5f, 34, {62, 65, 70}}, {30.5f, 41, {65, 69, 72}}, {31.5f, 36, {64, 67, 72}}};
+      auto akordV = [&](float t) { int i = 0; for (int k = 0; k < 4; k++) if (t >= ak[k].od - 0.001f) i = k; return i; };
+      const float KONEC_GROOVE = PRULET + 0.35f;
+      for (int b = 0; ; b++) {
+        const float t = 27.5f + b * BEAT;
+        if (t >= KONEC_GROOVE) break;
+        pridej(t, 0.35f, 0, 0.95f, 0.f, 0.06f, KOPAK);
+        if (b % 2 == 1) pridej(t, 0.25f, 0, 0.50f, 0.05f, 0.18f, VIRBL);
+        pridej(t + 0.25f, 0.06f, 0, 0.16f, 0.35f, 0.05f, HAT);
         for (int o = 0; o < 2; o++) {
           const float to = t + o * 0.25f;
-          if (to >= 36.95f) break;
+          if (to >= KONEC_GROOVE) break;
           const A &a = ak[akordV(to)];
-          const int m = a.koren + ((b * 2 + o) % 4 == 2 ? 12 : 0);
-          pridej(to, 0.22f, midi((float)m), 0.30f, 0.f, 0.05f, BASA);
+          pridej(to, 0.22f, midi((float)(a.koren + ((b * 2 + o) % 4 == 2 ? 12 : 0))), 0.30f, 0.f, 0.05f, BASA);
         }
       }
-      // arpeggio v sestnactinach (jako POKEY)
       static const int vzor[8] = {0, 1, 2, 1, 2, 0, 1, 2};
-      for (int k = 0; t16(k) < 36.95f; k++) {
-        const float t = t16(k);
+      for (int k = 0; ; k++) {
+        const float t = 27.5f + k * 0.125f;
+        if (t >= KONEC_GROOVE) break;
         const A &a = ak[akordV(t)];
         const int okt = (k / 8) % 2 ? 12 : 0;
-        const float hl = (t >= 30.45f && t < 34.5f) ? 0.055f : 0.085f;
-        pridej(t, 0.11f, midi((float)a.m[vzor[k % 8]] + okt), hl, (k % 2 ? 0.4f : -0.4f), 0.25f, ARP);
+        // pri kresleni obrysu arpeggio hlasiteji a o oktavu vys (rychle "kresleni")
+        const bool drat = t >= DRAT && t < ODHAL;
+        pridej(t, 0.11f, midi((float)a.m[vzor[k % 8]] + okt + (drat ? 12 : 0)), drat ? 0.11f : 0.075f, (k % 2 ? 0.4f : -0.4f), 0.25f, ARP);
       }
-      // energie: vystrel a zasah
-      for (int i = 0; i < 5; i++) {
-        const float st = 28.25f + i * 0.30f;
-        pridej(st, 0.45f, 280.f + i * 40.f, 0.22f, -0.6f + i * 0.3f, 0.35f, ZAP);
-        pridej(st + 0.42f, 1.2f, midi((float)(84 + (i * 3) % 7)), 0.12f, -0.6f + i * 0.3f, 0.6f, PING);
+      // pruty vystreli z klaves: vlevo / vpravo stridave
+      for (int i = 0; i < 7; i++) {
+        const float st = PRUTY + i * 0.055f;
+        pridej(st, 0.55f, 260.f + i * 35.f, 0.17f, (i % 2 ? 0.55f : -0.55f), 0.35f, ZAP);
       }
-      // strihy: naraz + znelka
-      for (int i = 0; i < 5; i++) pridej(30.5f + i, 1.2f, 0, 0.55f, 0.f, 0.35f, NARAZ);
-      // ATARI: klapani klaves pri psani programu a pipnuti RETURN
-      for (float t = 30.52f; t < 31.02f; t += 1.f / 34.f) pridej(t, 0.03f, 0, 0.10f, -0.15f, 0.08f, KLAP);
-      pridej(31.03f, 0.12f, 1000.f, 0.07f, 0.f, 0.15f, PIP);
-      // SEGA: FM plechy Bb dur
-      akord(31.5f, 0.7f, {58, 62, 65, 70}, 0.12f, 0.35f, FMPLECH);
-      // PS1: trpytive zvony F dur
-      akord(32.5f, 1.6f, {77, 81, 84, 89}, 0.07f, 0.7f, ZVON);
-      akord(32.5f, 1.1f, {53, 57, 60, 65}, 0.06f, 0.6f, PAD);
-      // TV / LAN: pipnuti spojeni
-      pridej(33.55f, 0.07f, 1600.f, 0.10f, -0.3f, 0.3f, PIP);
-      pridej(33.65f, 0.07f, 1200.f, 0.10f, 0.0f, 0.3f, PIP);
-      pridej(33.75f, 0.14f, 2000.f, 0.10f, 0.3f, 0.3f, PIP);
-      // rada displeju: cisty zvonek C dur
-      akord(34.55f, 1.6f, {72, 76, 79, 84}, 0.07f, 0.7f, ZVON);
-      // zaverecna vlna: virbl se zrychluje
-      for (float t = 35.5f; t < 36.95f;) {
-        const float d = t < 36.0f ? 0.125f : (t < 36.5f ? 0.0625f : 0.03125f);
-        pridej(t, 0.12f, 0, 0.22f + 0.25f * hladce(35.5f, 36.95f, t), 0.f, 0.2f, VIRBL);
+      // prilet ke konzolim: rana a dve cinknuti (vlevo azurova, vpravo ruzova)
+      pridej(PRILET, 1.0f, 0, 0.42f, 0.f, 0.35f, NARAZ);
+      pridej(PRILET + 0.02f, 1.3f, midi(86.f), 0.12f, -0.7f, 0.6f, PING);
+      pridej(PRILET + 0.07f, 1.3f, midi(89.f), 0.12f, 0.7f, 0.6f, PING);
+      // zhmotneni: narustajici sum, pak zapnuti konzoli (dva zvonky)
+      pridej(ODHAL - 0.05f, ODHAL_KONEC - ODHAL + 0.05f, 0, 0.30f, 0.f, 0.45f, RISER);
+      akord(ODHAL_KONEC, 1.8f, {69, 74, 77, 81}, 0.07f, 0.7f, ZVON);
+      akord(ODHAL_KONEC + 0.15f, 1.8f, {74, 78, 81, 86}, 0.06f, 0.7f, ZVON);
+      akord(TROJICE, 2.0f, {50, 57, 62, 65}, 0.07f, 0.55f, PAD);
+      // odlesky na emblemech N&P
+      pridej(30.75f, 1.2f, midi(98.f), 0.04f, -0.5f, 0.8f, ZVON);
+      pridej(31.70f, 1.2f, midi(101.f), 0.04f, 0.5f, 0.8f, ZVON);
+      // prulet ke CRT: zrychleny virbl a svist
+      for (float t = PRULET; t < CRT_ZAP;) {
+        pridej(t, 0.1f, 0, 0.18f + 0.2f * hladce(PRULET, CRT_ZAP, t), 0.f, 0.2f, VIRBL);
+        t += t < PRULET + 0.2f ? 0.0625f : 0.03125f;
+      }
+      pridej(PRULET - 0.1f, CRT_ZAP - PRULET + 0.12f, 0, 0.30f, 0.f, 0.4f, RISER);
+      // CRT se zapne: cvak, hluboke "dum" a sum, ktery dozni do obrazu
+      pridej(CRT_ZAP, 0.05f, 0, 0.30f, -0.1f, 0.2f, CVAK);
+      pridej(CRT_ZAP, 1.2f, 70.f, 0.55f, 0.f, 0.1f, PODBAS);
+      pridej(CRT_ZAP, STRIH_ATARI - CRT_ZAP + 0.05f, 0, 0.22f, 0.f, 0.15f, SNIH);
+      // ---- defile ----
+      // ATARI: rana a znelka jako z POKEY (ctvercove tony nahoru), pak zvuk hry ze zaznamu
+      pridej(STRIH_ATARI, 1.0f, 0, 0.40f, 0.f, 0.3f, NARAZ);
+      {
+        static const int ZN[6] = {72, 76, 79, 84, 88, 91};
+        for (int i = 0; i < 6; i++) pridej(STRIH_ATARI + 0.02f + i * 0.05f, 0.16f, midi((float)ZN[i]), 0.10f, (i % 2 ? 0.2f : -0.2f), 0.2f, ARP);
+        pridej(ATARI_KAP, 0.10f, midi(84.f), 0.09f, 0.f, 0.2f, ARP);
+        pridej(ATARI_KAP + 0.08f, 0.16f, midi(79.f), 0.09f, 0.f, 0.2f, ARP);
+      }
+      // 16 BIT: sum prepnuti, FM plechy a FM basa (styl 16bit konzoli)
+      pridej(STRIH_16, 0.10f, 0, 0.30f, 0.f, 0.1f, SNIH);
+      pridej(STRIH_16, 0.9f, 0, 0.36f, 0.f, 0.3f, NARAZ);
+      akord(STRIH_16 + 0.02f, 0.35f, {58, 62, 65, 70}, 0.11f, 0.3f, FMPLECH);
+      akord(STRIH_16 + 0.40f, 0.30f, {60, 64, 67, 72}, 0.10f, 0.3f, FMPLECH);
+      akord(STRIH_16 + 0.75f, 0.42f, {62, 65, 70, 74}, 0.11f, 0.35f, FMPLECH);
+      {
+        static const int BA[8] = {34, 34, 46, 34, 36, 36, 48, 38};
+        for (int i = 0; i < 8; i++) pridej(STRIH_16 + i * 0.15f, 0.13f, midi((float)BA[i]), 0.26f, 0.f, 0.05f, FMBASA);
+        for (int i = 0; i < 4; i++) pridej(STRIH_16 + 0.15f + i * 0.30f, 0.3f, 0, 0.55f, 0.f, 0.06f, KOPAK);
+      }
+      // 32 BIT: sum prepnuti, velky akord (CD kvalita), trpyt, svist predjizdeni
+      pridej(STRIH_32, 0.10f, 0, 0.30f, 0.f, 0.1f, SNIH);
+      pridej(STRIH_32, 0.9f, 0, 0.36f, 0.f, 0.3f, NARAZ);
+      akord(STRIH_32 + 0.02f, 1.3f, {50, 57, 62, 66, 69}, 0.08f, 0.6f, PAD);
+      akord(STRIH_32 + 0.05f, 1.3f, {78, 81, 86, 90}, 0.05f, 0.7f, ZVON);
+      pridej(STRIH_32 + 0.25f, 0.45f, 0, 0.22f, 0.4f, 0.3f, RISER);
+      for (int i = 0; i < 5; i++) pridej(STRIH_32 + 0.1f + i * 0.25f, 0.3f, 0, 0.5f, 0.f, 0.06f, KOPAK);
+      // zaverecna vlna do loga: virbl se zrychluje
+      for (float t = STRIHY_KONEC - 0.55f; t < SCENA5 - 0.05f;) {
+        const float d = t < STRIHY_KONEC - 0.2f ? 0.125f : (t < STRIHY_KONEC + 0.1f ? 0.0625f : 0.03125f);
+        pridej(t, 0.12f, 0, 0.20f + 0.25f * hladce(STRIHY_KONEC - 0.55f, SCENA5, t), 0.f, 0.2f, VIRBL);
         t += d;
       }
-      pridej(35.0f, 1.97f, 0, 0.35f, 0.f, 0.4f, RISER);
+      pridej(STRIHY_KONEC - 0.4f, SCENA5 - STRIHY_KONEC + 0.35f, 0, 0.35f, 0.f, 0.4f, RISER);
     }
     // ---- SCENA 5: gong, D dur, zlate zvonky ----
     {
@@ -394,7 +449,6 @@ class Stopa {
     destTl.nastav(1300.f, 0.6f);
     kapkyLp.nastav(5000.f);
   }
-  static float t16(int k) { return 28.0f + k * 0.125f; }
 
   // ================= souvisle vrstvy =================
   void vrstvy(int z, int n, float *L, float *R, float *SL, float *SR) {
@@ -745,6 +799,23 @@ class Stopa {
         if (tt > n.delka) { h.zivy = false; return 0.f; }
         h.faze[0] += n.f / FS; if (h.faze[0] > 1.f) h.faze[0] -= 1.f;
         return sinus(h.faze[0]) * okno(tt, 0.f, 0.004f, n.delka - 0.01f, n.delka) * n.hl;
+      }
+      case SNIH: {        // B307: sum obrazovky (zapnuti, prepnuti kanalu) - pasmovy sum a bzuk 50 Hz
+        if (tt > n.delka) { h.zivy = false; return 0.f; }
+        if (ctl) h.flt.nastav(3000.f, 0.7f);
+        h.flt(h.sum());
+        h.faze[0] += 50.f / FS; if (h.faze[0] > 1.f) h.faze[0] -= 1.f;
+        const float env = hladce(0.f, 0.004f, tt) * (1.f - hladce(n.delka * 0.6f, n.delka, tt));
+        return (h.flt.bp * 1.3f + pila(h.faze[0], 50.f / FS) * 0.12f) * env * n.hl;
+      }
+      case FMBASA: {      // B307: FM basa (2 operatory, kratky utlum indexu) - 16bit styl
+        if (tt > n.delka + 0.05f) { h.zivy = false; return 0.f; }
+        const float idx = 4.0f * std::exp(-tt * 14.f) + 0.8f;
+        h.faze[1] += n.f / FS; if (h.faze[1] > 1.f) h.faze[1] -= 1.f;
+        h.faze[0] += n.f / FS; if (h.faze[0] > 1.f) h.faze[0] -= 1.f;
+        const float x = sinus(h.faze[0] + idx * sinus(h.faze[1]) * 0.159f);
+        const float env = hladce(0.f, 0.003f, tt) * (1.f - hladce(n.delka - 0.03f, n.delka + 0.05f, tt));
+        return x * env * n.hl;
       }
       case RISER: {       // narustajici sum (cinel pozpatku)
         if (tt > n.delka) { h.zivy = false; return 0.f; }

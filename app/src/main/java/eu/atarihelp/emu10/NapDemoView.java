@@ -10,18 +10,24 @@ import android.view.SurfaceView;
 
 /**
  * B304: plocha uvodniho dema. Kresli do ni C++ (OpenGL ES na vlastnim
- * vlakne) - tahle trida jen preda plochu a dotek prstem = preskocit.
+ * vlakne) - tahle trida jen preda plochu a dotek prstem.
+ *
+ * B307: tlacitko SKIP kresli C++ a C++ taky rozhodne, kam prst klepl
+ * (NativeIntroBridge.introDotyk) - tady se jen predaji souradnice.
+ * Klepnuti na SKIP i kamkoli jinam demo preskoci (jako drive).
  *
  * Lezi NAD strankou (setZOrderOnTop), takze pod ni se mezitim muze
  * nacist menu - po konci dema je hned videt, bez cekani.
  */
 final class NapDemoView extends SurfaceView implements SurfaceHolder.Callback {
 
-    private final Runnable preskocit;
-    private final long vznik = System.currentTimeMillis();
+    /** Preskocit demo - proc (do logu): "tlacitko SKIP" / "dotyk mimo SKIP". */
+    interface Preskocit { void preskoc(String proc); }
+
+    private final Preskocit preskocit;
     private Surface predana = null;
 
-    NapDemoView(Context c, Runnable preskocit) {
+    NapDemoView(Context c, Preskocit preskocit) {
         super(c);
         this.preskocit = preskocit;
         getHolder().setFormat(PixelFormat.RGBX_8888);     // nepruhledna - nic pod ni neprosvita
@@ -55,8 +61,12 @@ final class NapDemoView extends SurfaceView implements SurfaceHolder.Callback {
 
     @SuppressLint("ClickableViewAccessibility")
     @Override public boolean onTouchEvent(MotionEvent e) {
-        if (e.getActionMasked() == MotionEvent.ACTION_UP && System.currentTimeMillis() - vznik > 700) {
-            if (preskocit != null) preskocit.run();
+        if (e.getActionMasked() == MotionEvent.ACTION_UP && preskocit != null) {
+            // B307: kam prst klepl, rozhodne C++ (tlacitko SKIP kresli C++);
+            // hned po startu (prst, ktery appku spustil) C++ vrati "nic"
+            final int r = NativeIntroBridge.dotykSafe(e.getX(), e.getY(), getWidth(), getHeight());
+            if (r == NativeIntroBridge.DOTYK_SKIP) preskocit.preskoc("tlacitko SKIP");
+            else if (r == NativeIntroBridge.DOTYK_JINAM) preskocit.preskoc("dotyk mimo SKIP");
         }
         return true;
     }

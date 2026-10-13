@@ -1,0 +1,9 @@
+native metody NativeIntroBridge (16): [introCasMs, introDotyk, introGrabFrame, introHotovo, introInfo, introNastavAssety, introPripraveno, introSetDisplaySurface, introSnimku, introStart, introStop, proudDalsiNative, proudLogNative, proudOtevriNative, proudStavNative, proudZavriNative]
+OK     zalozni Java zvuk (AudioTrack: introNaplnZvuk, introCasZvuku, zvukStart...) je z tridy pryc []
+OK     introStart() -> 3 (1 = zvuk C++ OpenSL ES, 2 = zvuk Reneho hry ve stope)
+OK     introDotyk(float,float,int,int): hned po startu 0, na SKIP 1, jinam 2, dotykSafe 2x 1
+OK     bez plochy: pripraveno false, hotovo false, snimku 0, cas 0 ms, grabFrame 0, info ' || '
+OK     proud na TV: otevri 1, dalsi 0 (bez plochy zadny snimek), stav 2, log 'B306 TV PROUD INTRO: prohlizec 1 pripojen (celkem 1) - obraz a zvuk primo z C++ (JPEG po castech), kazdy snimek, zvuk 44100 Hz v tomtez paketu'
+OK     obaly: proudOtevriSafe 2, proudDalsiSafe 0, proudStavSafe 2, grabFrameSafe 0
+OK     zavolany VSECHNY native metody tridy (16 z 16)
+VYSLEDEK: native metody NativeIntroBridge B307 (16) - nazvy i typy sedi (0 chyb)
