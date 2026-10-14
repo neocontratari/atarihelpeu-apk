@@ -523,6 +523,7 @@ public class MainActivity extends Activity {
                     appendNativeLog("PS1_BIOS_PRESKOCENO minuly pokus skoncil padem - mazu znacku, priste to zkusim znovu");
                     pokus.delete();
                     ps1BiosStarting = false;
+                    ps1StartDokoncen("BIOS_CHYBA minuly start BIOSu skoncil padem - zkus RESET znovu");
                     return;
                 }
                 try { pokus.createNewFile(); } catch (Throwable ignored) {}
@@ -540,8 +541,10 @@ public class MainActivity extends Activity {
                 ps1BiosRunning = r != null && r.startsWith("PS1_BIOS_OK");
                 ps1LastBootResult = r;
                 pokus.delete();   // dobehlo bez padu - znacku uklidime
+                ps1StartDokoncen(ps1BiosRunning ? "BIOS_OK" : ("BIOS_CHYBA " + r));
             } catch (Throwable t) {
                 appendNativeLog("PS1_BIOS_START_ERR " + safeMsg(t));
+                ps1StartDokoncen("BIOS_CHYBA " + safeMsg(t));
             } finally {
                 ps1BiosStarting = false;
             }
@@ -549,6 +552,16 @@ public class MainActivity extends Activity {
     }
     private volatile boolean ps1RemoteDownloadActive = false;
     private volatile String ps1RemoteDownloadStatus = "idle";
+    // B308: kazdy DOKONCENY start PS1 (hra / BIOS, uspech / chyba) - stranka PS1
+    // podle toho schova nahravaci okno ve chvili, kdy jadro hru OPRAVDU spustilo
+    // (drive pevny odpocet 10 s, nezavisly na skutecnosti). Cislo startu jde
+    // i do stavu "PS1_REMOTE_BOOTING #cislo", at stranka vi, na ktery start ceka.
+    private final java.util.concurrent.atomic.AtomicInteger ps1StartuHotovo = new java.util.concurrent.atomic.AtomicInteger();
+    private volatile String ps1StartVysledek = "";
+    private void ps1StartDokoncen(String vysledek) {
+        ps1StartVysledek = vysledek == null ? "" : vysledek.replace('|', '/');
+        ps1StartuHotovo.incrementAndGet();
+    }
     private volatile long atariHelpLastRequestAtMs = 0L; // BUILD2SA5M
     private volatile long atariHelpBlockedUntilMs = 0L;
     private volatile AudioTrack ps1CurrentAudioTrack = null; // BUILD2SA3B: hard-stop pri prepnuti PS1 hry
@@ -3256,6 +3269,19 @@ public class MainActivity extends Activity {
             return v;
         }
 
+        // B308: PS1 - KLAVESNICE PC V PROHLIZECI (TV / PC). Rene: "nemame ovladani
+        // pres klavesnici na TV viewer". Klavesa jde rovnou do jadra PS1 (C++),
+        // co udela (smer, KRIZEK, START ...), rozhoduje C++ (nap_ps1_native.cpp).
+        if (isPs1OwnerUrl(napTvWebCurrentUrl)) {
+            String v = NativePs1CoreBridge.pcKlavesaSafe(code, dolu);
+            if (v == null) {
+                v = "CHYBA_JADRA";
+                long ted = System.currentTimeMillis();
+                if (ted - klavesLogMs > 3000) { klavesLogMs = ted; appendNativeLog("B308 KLAVESA " + code + " -> jadro PS1 neodpovida (knihovna napps1core?)"); }
+            }
+            return v;
+        }
+
         // BUILD2SA56: JEDEN VSTUPNI BOD A ZPETNA VAZBA.
         //
         // Drive se sem skladal kus JavaScriptu, ktery sahal na CODE a M.
@@ -3722,6 +3748,8 @@ public class MainActivity extends Activity {
                 boolean vAtari = ((curUrl3 != null) && curUrl3.contains("emu_vbxe")) || atariCpp;
                 // BUILD2SA76: klavesnice ted funguje i v Seze
                 boolean vSeze  = (curUrl3 != null) && curUrl3.contains("emu_sega");
+                // B308: PS1 - klavesnice z prohlizece jde do jadra PS1 (C++)
+                boolean vPs1 = isPs1OwnerUrl(curUrl3);
                 String klavRezim = null;
                 if (atariCpp) klavRezim = NativeAtariCoreBridge.devPcKlavesaSafe("STAV", "", 0, true);
                 // B305: ktery proud z C++ ma prohlizec brat (atari / sega / ps1 / 0)
@@ -3733,6 +3761,7 @@ public class MainActivity extends Activity {
                         + " proud=" + proudDruh
                         + (klavRezim != null ? " klavRezim=" + klavRezim : "")
                         + " sega=" + (vSeze ? 1 : 0)
+                        + " ps1=" + (vPs1 ? 1 : 0)
                         + " seq=" + napTvWebSeq
                         + " mirror=" + (napTvWebSystemMirrorActive ? "SCREEN" : "APP")
                         + " profile=" + napTvWebVideoProfile
@@ -3919,16 +3948,16 @@ public class MainActivity extends Activity {
                 + "setInterval(zvukStav,1000);"
                 + "function cutover(){if(!ac||!g)return;var t=ac.currentTime;try{g.gain.cancelScheduledValues(t);g.gain.setValueAtTime(g.gain.value,t);g.gain.linearRampToValueAtTime(0,t+0.01);}catch(e){}for(var i=0;i<active.length;i++){try{active[i].stop(t+0.012);}catch(e){}}active=[];next=t+AVD;try{g.gain.setValueAtTime(0,next-0.012);g.gain.linearRampToValueAtTime(1,next);}catch(e){}}" // BUILD2SB1: 10ms fade-out/in misto lepeni
                 + "async function pollAudio(){if(!aon||!ac)return;if(ap&&ap.chce){setTimeout(pollAudio,150);return;}try{var r=await fetch('/audio.raw?after='+aseq+'&t='+Date.now(),{cache:'no-store'});var sq=parseInt(r.headers.get('x-nap-audio-seq')||aseq,10);var st=parseInt(r.headers.get('x-nap-audio-start')||aseq,10);var rate=parseInt(r.headers.get('x-nap-audio-rate')||'44100',10);var dis=(r.headers.get('x-nap-audio-discontinuity')||'0')==='1';var ab=await r.arrayBuffer();var expected=aseq;if(!isNaN(sq))aseq=sq;if(ab.byteLength>=4){var now=ac.currentTime;if(dis||next<now+0.04||next>now+AVD+0.5)cutover();var dv=new DataView(ab),frames=Math.floor(ab.byteLength/4),buf=ac.createBuffer(2,frames,rate),L=buf.getChannelData(0),R=buf.getChannelData(1);for(var i=0,p=0;i<frames;i++,p+=4){L[i]=dv.getInt16(p,true)/32768;R[i]=dv.getInt16(p+2,true)/32768;}var src=ac.createBufferSource();src.buffer=buf;src.connect(g);if(next<ac.currentTime+0.02)next=ac.currentTime+AVD;src.start(next);next+=frames/rate;active.push(src);src.onended=function(){var k=active.indexOf(src);if(k>=0)active.splice(k,1);};if(active.length>60)active.splice(0,active.length-60);}}catch(e){}setTimeout(pollAudio,20);}" // BUILD2SB1: planovane buffery (jitter buffer), zadne tvrde resety next, cutover s fadem
-                + "a.onclick=startAudio;function toggleFs(){var el=document.documentElement;try{if(!(document.fullscreenElement||document.webkitFullscreenElement)){(el.requestFullscreen||el.webkitRequestFullscreen||el.msRequestFullscreen).call(el);}else{(document.exitFullscreen||document.webkitExitFullscreen||document.msExitFullscreen).call(document);}}catch(e){}}document.addEventListener('click',toggleFs,true);document.addEventListener('keydown',function(e){if(window.napVAtari||window.napVSeze)return;if(e.key==='ArrowUp'){setAvd(AVD+0.05);e.preventDefault();}else if(e.key==='ArrowDown'){setAvd(AVD-0.05);e.preventDefault();}else if(e.key==='0'){setAvd(0.30);e.preventDefault();}},true);setTimeout(function(){try{startAudio();}catch(e){}},80);var aTry=setInterval(function(){if(aon){clearInterval(aTry);return;}try{startAudio();if(ac&&ac.state==='suspended'&&ac.resume)ac.resume();}catch(e){}},1000);"
+                + "a.onclick=startAudio;function toggleFs(){var el=document.documentElement;try{if(!(document.fullscreenElement||document.webkitFullscreenElement)){(el.requestFullscreen||el.webkitRequestFullscreen||el.msRequestFullscreen).call(el);}else{(document.exitFullscreen||document.webkitExitFullscreen||document.msExitFullscreen).call(document);}}catch(e){}}document.addEventListener('click',toggleFs,true);document.addEventListener('keydown',function(e){if(window.napVAtari||window.napVSeze||window.napVPs1)return;if(e.key==='ArrowUp'){setAvd(AVD+0.05);e.preventDefault();}else if(e.key==='ArrowDown'){setAvd(AVD-0.05);e.preventDefault();}else if(e.key==='0'){setAvd(0.30);e.preventDefault();}},true);setTimeout(function(){try{startAudio();}catch(e){}},80);var aTry=setInterval(function(){if(aon){clearInterval(aTry);return;}try{startAudio();if(ac&&ac.state==='suspended'&&ac.resume)ac.resume();}catch(e){}},1000);"
                 + "(function(){var qs=document.querySelectorAll('#q button');function mark(t){for(var i=0;i<qs.length;i++)qs[i].classList.toggle('on',qs[i].getAttribute('data-t')===(''+t));}"
                 + "fetch('/quality').then(function(r){return r.text();}).then(function(t){var m=/tier=(\\d)/.exec(t);mark(m?m[1]:'0');}).catch(function(){});"
                 + "for(var i=0;i<qs.length;i++){qs[i].onclick=function(e){var t=e.target.getAttribute('data-t');fetch('/quality?tier='+t).then(function(){mark(t);}).catch(function(){});};}})();"
                 + "(function(){var fb=document.getElementById('fs');function isFs(){return !!(document.fullscreenElement||document.webkitFullscreenElement||document.msFullscreenElement);}"
-                + "function upd(){fb.textContent=isFs()?'⛶ EXIT':'⛶ FULL';try{var kb=navigator.keyboard;if(kb&&kb.lock){if(isFs()&&(window.napVAtari||window.napVSeze)){var pr=kb.lock();if(pr&&pr.catch)pr.catch(function(){});}else if(!isFs()&&kb.unlock)kb.unlock();}}catch(e){}}"
+                + "function upd(){fb.textContent=isFs()?'⛶ EXIT':'⛶ FULL';try{var kb=navigator.keyboard;if(kb&&kb.lock){if(isFs()&&(window.napVAtari||window.napVSeze||window.napVPs1)){var pr=kb.lock();if(pr&&pr.catch)pr.catch(function(){});}else if(!isFs()&&kb.unlock)kb.unlock();}}catch(e){}}"
                 + "fb.onclick=function(){var el=document.documentElement;try{if(!isFs()){(el.requestFullscreen||el.webkitRequestFullscreen||el.msRequestFullscreen).call(el);}else{(document.exitFullscreen||document.webkitExitFullscreen||document.msExitFullscreen).call(document);}}catch(e){}};"
                 + "document.addEventListener('fullscreenchange',upd);document.addEventListener('webkitfullscreenchange',upd);document.addEventListener('msfullscreenchange',upd);upd();})();"
                 + "v.onerror=function(){if(!fb)fallback();};v.src='/stream.mjpg?'+Date.now();label('MJPEG');"
-                + "function pollFps(){fetch('/status').then(function(r){return r.text();}).then(function(t){var mp=/ proud=(\\w+)/.exec(t),pd=(mp&&mp[1]!=='0')?mp[1]:'';if(!mp){var m0=/atariProud=(\\d)/.exec(t);if(m0&&m0[1]==='1')pd='atari';}window.napProud=pd;window.napAtariProud=(pd==='atari');if(pd&&apLze()){if(ap.chce&&ap.druh&&ap.druh!==pd)apZnovu();else if(!ap.on&&!ap.rd)apStart();}else if(ap.chce){apStop();}var m=/seq=(\\d+)/.exec(t);var m2=/h264Seq=(\\d+)/.exec(t);if(!h264Active&&!h264Loading&&!ap.chce&&!(window.napProud&&apLze())){clog('pollFps calling startH264 (universal)');startH264();}var useM=h264Active&&m2?m2:m;if(useM){var sq=parseInt(useM[1],10),now=Date.now();if(lastSeqT>0){var dt=(now-lastSeqT)/1000;if(dt>0)curFps=Math.round((sq-lastSeq)/dt*10)/10;}if(sq===lastSeq&&sq>0){staleTicks++;}else{staleTicks=0;}lastSeq=sq;lastSeqT=now;if(staleTicks>=4&&!fb&&!h264Active&&!ap.chce){staleTicks=0;v.src='/stream.mjpg?'+Date.now();}}var ma=/atari=(\\d)/.exec(t), ms=/sega=(\\d)/.exec(t);var vA=!!(ma&&ma[1]==='1'), vS=!!(ms&&ms[1]==='1');window.napVAtari=vA;window.napVSeze=vS;var mc=/atariCpp=(\\d)/.exec(t), mr=/klavRezim=(\\w+)/.exec(t);window.napVAtariCpp=!!(mc&&mc[1]==='1');if(window.napVAtariCpp&&mr)window.napRezim=mr[1];if(window.napKlavesnicePopis)window.napKlavesnicePopis(vA||vS);label(h264Active?'H264':(fb?'JPEG':'MJPEG'));}).catch(function(e){clog('pollFps fetch err '+e);label(h264Active?'H264':(fb?'JPEG':'MJPEG'));});}" // BUILD2SK45+SK57+SK59: stale-reconnect jen v MJPEG rezimu; "seq" v /status je porad ta sama zachytavaci sekvence i v H264 rezimu
+                + "function pollFps(){fetch('/status').then(function(r){return r.text();}).then(function(t){var mp=/ proud=(\\w+)/.exec(t),pd=(mp&&mp[1]!=='0')?mp[1]:'';if(!mp){var m0=/atariProud=(\\d)/.exec(t);if(m0&&m0[1]==='1')pd='atari';}window.napProud=pd;window.napAtariProud=(pd==='atari');if(pd&&apLze()){if(ap.chce&&ap.druh&&ap.druh!==pd)apZnovu();else if(!ap.on&&!ap.rd)apStart();}else if(ap.chce){apStop();}var m=/seq=(\\d+)/.exec(t);var m2=/h264Seq=(\\d+)/.exec(t);if(!h264Active&&!h264Loading&&!ap.chce&&!(window.napProud&&apLze())){clog('pollFps calling startH264 (universal)');startH264();}var useM=h264Active&&m2?m2:m;if(useM){var sq=parseInt(useM[1],10),now=Date.now();if(lastSeqT>0){var dt=(now-lastSeqT)/1000;if(dt>0)curFps=Math.round((sq-lastSeq)/dt*10)/10;}if(sq===lastSeq&&sq>0){staleTicks++;}else{staleTicks=0;}lastSeq=sq;lastSeqT=now;if(staleTicks>=4&&!fb&&!h264Active&&!ap.chce){staleTicks=0;v.src='/stream.mjpg?'+Date.now();}}var ma=/atari=(\\d)/.exec(t), ms=/sega=(\\d)/.exec(t);var vA=!!(ma&&ma[1]==='1'), vS=!!(ms&&ms[1]==='1');window.napVAtari=vA;window.napVSeze=vS;var mp1=/ ps1=(\\d)/.exec(t);var vP=!!(mp1&&mp1[1]==='1');window.napVPs1=vP;var mc=/atariCpp=(\\d)/.exec(t), mr=/klavRezim=(\\w+)/.exec(t);window.napVAtariCpp=!!(mc&&mc[1]==='1');if(window.napVAtariCpp&&mr)window.napRezim=mr[1];if(window.napKlavesnicePopis)window.napKlavesnicePopis(vA||vS||vP);label(h264Active?'H264':(fb?'JPEG':'MJPEG'));}).catch(function(e){clog('pollFps fetch err '+e);label(h264Active?'H264':(fb?'JPEG':'MJPEG'));});}" // BUILD2SK45+SK57+SK59: stale-reconnect jen v MJPEG rezimu; "seq" v /status je porad ta sama zachytavaci sekvence i v H264 rezimu
                 // ===== B303 + B305: ATARI 130XE, SEGA A PS1 - OBRAZ A ZVUK PRIMO Z C++ =====
                 // B303 (Atari): "ma to na TV zpozdeni - nejde to vylepsit?" Misto H.264 / JPEG
                 // z Javy (zvetsovani, komprese, buffer prohlizece) posila C++ kazdy snimek
@@ -4169,7 +4198,7 @@ public class MainActivity extends Activity {
                 + "var drzim={};"   // B302: co je na PC prave drzene (hlidani spojeni)
                 + "function pustVse(){ try{ drzim={};"
                 // B302: Atari v C++ si drzene klavesy pamatuje samo - staci jedna zprava
-                + "  if(window.napVAtariCpp){ posli('PustVse','',false,false,0); return; }"
+                + "  if(window.napVAtariCpp||window.napVPs1){ posli('PustVse','',false,false,0); return; }"
                 + "  ['KeyW','KeyA','KeyS','KeyD','ArrowUp','ArrowDown','ArrowLeft',"
                 + "   'ArrowRight','ControlLeft','AltLeft','Space'].forEach(function(c){"
                 + "    posli(c,'',false,false,0); }); }catch(e){} }"
@@ -4186,7 +4215,7 @@ public class MainActivity extends Activity {
                 // ho, takze vystrel sel jen z leveho. Uz neblokuje.
                 + "var PREHAZOVACE={Shift:1,Meta:1,"
                 + "CapsLock:1,NumLock:1,ScrollLock:1,Dead:1};"
-                + "window.napVAtari=false;"
+                + "window.napVAtari=false;window.napVPs1=false;"
                 // BUILD2SA72: KLAVESY MUSI CHODIT V PORADI.
                 //
                 // Drive se kazda posilala jako samostatny pozadavek a server
@@ -4220,7 +4249,8 @@ public class MainActivity extends Activity {
                 + "    (x.responseText||'').split('\\n').forEach(function(v){"
                 + "      if(v==='HRANI'||v==='PSANI') window.napRezim=v;"
                 + "      if(v==='SKOK'||v==='VYSTREL'||v.indexOf('SMER:')===0"
-                + "         ||v.indexOf('NEZNAMA')===0) window.napPosledni=v; });"
+                + "         ||v.indexOf('NEZNAMA')===0) window.napPosledni=v;"
+                + "      if(v.indexOf('PS1:')===0&&v!=='PS1:ZIJE'&&v!=='PS1:PUSTENO') window.napPosledni=v.slice(4); });"
                 + "  }catch(_){} klavLeti=false; klavDalsi(); };"
                 // chyba spojeni: co v pozadavku bylo, je pryc (i pusteni) -
                 // proto pak vse pustit a zkusit to znovu az za chvili
@@ -4233,7 +4263,7 @@ public class MainActivity extends Activity {
                 // B302: mod = 1 Shift, 2 Ctrl, 4 Alt, 8 AltGr, 16 opakovani (drzena
                 // klavesa) - co s tim, rozhoduje C++ (nap_atari_pc_klavesnice.h)
                 + "function posli(code,znak,dolu,ctrl,mod){"
-                + "  if(!window.napVAtari && !window.napVSeze) return;"
+                + "  if(!window.napVAtari && !window.napVSeze && !window.napVPs1) return;"
                 + "  try{"
                 // pojistka (server nebezi): fronta se zahodi, ale pak VSECHNO
                 // pustit - zahozene pusteni by jinak nechalo klavesu drzenou
@@ -4324,7 +4354,7 @@ public class MainActivity extends Activity {
                 // kdyz se prohlizec odmlci (zavreny panel, spadla Wi-Fi), C++ po 2,5 s
                 // vse pusti a drzena klavesa se neopakuje do nekonecna
                 + "setInterval(function(){ try{"
-                + "  if(!window.napVAtariCpp||klavLeti||klavFronta.length) return;"
+                + "  if(!(window.napVAtariCpp||window.napVPs1)||klavLeti||klavFronta.length) return;"
                 + "  for(var k in drzim){ posli('Zije','',true,false,0); break; }"
                 + "}catch(e){} },800);"
                 + "var kn=document.createElement('div');"
@@ -4337,6 +4367,9 @@ public class MainActivity extends Activity {
                 + "  kn.textContent=napPopisKlaves(); };"
                 // B302: Atari 130XE v HELP (C++) ma vlastni popis - umi vic klaves
                 + "function napPopisKlaves(){"
+                // B308: PS1 (C++) - mapovani je v nap_ps1_native.cpp (ps1_klavesa_id)
+                + "  if(window.napVPs1) return 'PS1 - sipky/WASD smer, K/mezernik KRIZEK, L KOLECKO, J CTVEREC, I TROJUHELNIK,"
+                + " Q/E L1/R1, Z/C L2/R2, Enter/P START, Backspace/O SELECT';"
                 + "  return window.napVSeze"
                 + "    ? 'SEGA - WASD pohyb, K = A, L = B, O = C, P = START'"
                 + "    : window.napVAtariCpp"
@@ -5314,7 +5347,16 @@ public class MainActivity extends Activity {
         @JavascriptInterface public String ulozAOdesli() {
             try {
                 final String t;
-                synchronized (nativeLog) { t = nativeLog.toString(); }
+                String tLog;
+                synchronized (nativeLog) { tLog = nativeLog.toString(); }
+                // B308: + denik PS1 z C++ (radky z C++ jdou jen do souboru logu,
+                // ne do pameti Javy - bez tohohle by v odeslanem LOGu chybely)
+                try {
+                    String ps1 = NativePs1CoreBridge.denikSafe();
+                    if (ps1 != null && !ps1.isEmpty())
+                        tLog += "\n===================== DENIK PS1 (C++) =====================\n" + ps1;
+                } catch (Throwable ignored) {}
+                t = tLog;
 
                 // 1) soubor - slozka appky na externim ulozisti jde VZDY
                 File cil = null; String chybaZapisu = null;
@@ -6150,6 +6192,14 @@ public class MainActivity extends Activity {
             appendNativeLog("PS1_JS " + (line == null ? "" : line));
             return "OK";
         }
+        // B308: DENIK PS1 z C++ (start, soubory hry, BIOS, disk, obraz, zdravi
+        // kazdych 5-10 s, tlacitka, hlasky jadra, chyby) - pro ULOZIT LOG a
+        // KOPIROVAT LOG na strance PS1. Rene: "nachystej log v ps1".
+        @JavascriptInterface
+        public String ps1Denik() { return NativePs1CoreBridge.denikSafe(); }
+        // B308: "pocet dokoncenych startu|vysledek" (OK jmeno / BIOS_OK / CHYBA proc / ZRUSENO)
+        @JavascriptInterface
+        public String ps1StartStav() { return ps1StartuHotovo.get() + "|" + ps1StartVysledek; }
         @JavascriptInterface
         public String ps1Vibrate(int ms) {
             try {
@@ -10887,11 +10937,11 @@ public class MainActivity extends Activity {
     }
     private void ps1LibraryLaunchByKey(final String key) {
         File dir = ps1LibraryDirByKey(key);
-        if (dir == null) { setPs1RemoteStatus("PS1_LIBRARY_LAUNCH_FAIL not_found key=" + key); return; }
+        if (dir == null) { setPs1RemoteStatus("PS1_LIBRARY_LAUNCH_FAIL not_found key=" + key); ps1StartDokoncen("CHYBA hra v knihovne neni"); return; }
         final File boot = ps1ReadCachedBootFile(dir);
-        if (boot == null) { setPs1RemoteStatus("PS1_LIBRARY_LAUNCH_FAIL no_boot_file key=" + key); return; }
+        if (boot == null) { setPs1RemoteStatus("PS1_LIBRARY_LAUNCH_FAIL no_boot_file key=" + key); ps1StartDokoncen("CHYBA ve slozce hry chybi .cue/.bin/.chd"); return; }
         synchronized (this) {
-            if (ps1RemoteDownloadActive) { setPs1RemoteStatus("PS1_REMOTE_BUSY"); return; }
+            if (ps1RemoteDownloadActive) { setPs1RemoteStatus("PS1_REMOTE_BUSY"); ps1StartDokoncen("CHYBA jina hra se prave stahuje nebo spousti"); return; }
             ps1RemoteDownloadActive = true;
             ps1RemoteDownloadStatus = "PS1_LIBRARY_LAUNCH " + boot.getName();
         }
@@ -11385,99 +11435,8 @@ public class MainActivity extends Activity {
     //  core_ps1 kouka - hru i .bin vedle .cue, a BIOS. Az pak spusti
     //  aktivitu. Zadna zmena core_ps1 - jen se mu podstrci to, co ceka.
     // ================================================================
-    private void stageOneFile(java.io.File src, java.io.File dstDir) throws java.io.IOException {
-        if (src == null || !src.exists() || !src.isFile()) return;
-        java.io.File dst = new java.io.File(dstDir, src.getName());
-        if (dst.exists() && dst.length() == src.length()) return; // uz tam je
-        try (java.io.InputStream in = new java.io.FileInputStream(src);
-             java.io.OutputStream out = new java.io.FileOutputStream(dst)) {
-            byte[] buf = new byte[65536];
-            int n;
-            while ((n = in.read(buf)) > 0) out.write(buf, 0, n);
-        }
-    }
-
-    private void launchEglPs1Activity(String gamePath) {
-        try {
-            java.io.File filesDir = getFilesDir();
-            java.io.File ps1Dir  = new java.io.File(filesDir, "ps1");
-            java.io.File biosDir = new java.io.File(ps1Dir, "bios");
-            ps1Dir.mkdirs();
-            biosDir.mkdirs();
-
-            // core_ps1 bere PRVNI .cue ve slozce - kdyby tu zustala minula
-            // hra, vzal by ji misto nove. Smazat stare herni soubory (BIOS
-            // podslozku necham, ta se prepisuje zvlast).
-            java.io.File[] old = ps1Dir.listFiles();
-            if (old != null) {
-                for (java.io.File f : old) {
-                    if (f.isFile()) { try { f.delete(); } catch (Throwable ignored) {} }
-                }
-            }
-
-            // 1) Hra: .cue + vsechny sourozence ze stejne slozky (.bin, .img...)
-            //    core_ps1 bere prvni .cue v ps1Dir; .cue odkazuje na .bin vedle.
-            java.io.File game = (gamePath != null) ? new java.io.File(gamePath) : null;
-            if (game != null && game.exists()) {
-                java.io.File srcDir = game.getParentFile();
-                if (srcDir != null) {
-                    java.io.File[] siblings = srcDir.listFiles();
-                    if (siblings != null) {
-                        for (java.io.File f : siblings) {
-                            if (f.isFile()) stageOneFile(f, ps1Dir);
-                        }
-                    }
-                }
-                appendNativeLog("KROKC EGL_STAGE_GAME dir=" + ps1Dir.getAbsolutePath()
-                        + " z=" + (srcDir != null ? srcDir.getAbsolutePath() : "?"));
-            }
-
-            // 2) BIOS: z ps1_system, kam ho appka instaluje, do ps1/bios
-            java.io.File biosSrc = new java.io.File(filesDir, "ps1_system");
-            java.io.File[] biosFiles = biosSrc.listFiles();
-            if (biosFiles != null) {
-                for (java.io.File f : biosFiles) {
-                    if (f.isFile()) stageOneFile(f, biosDir);
-                }
-                appendNativeLog("KROKC EGL_STAGE_BIOS do=" + biosDir.getAbsolutePath());
-            }
-
-            // ===== JEDNA CESTA PRO BIOS I HRU =====
-            // Drive se tady otviralo SAMOSTATNE OKNO (NativeActivity) na sirku.
-            // To bylo to druhe platno: hra se v nem kreslila mimo monitor,
-            // v portretu mezitim zustal viset BIOS a ovladac tam nebyl.
-            // Ted se hra spousti do TEHOZ monitoru jako BIOS - stejne jadro,
-            // stejny odber snimku, stejna obrazovka.
-            String cestaKeHre = "";
-            java.io.File[] nalezene = ps1Dir.listFiles();
-            if (nalezene != null) {
-                for (java.io.File f : nalezene) {
-                    if (!f.isFile()) continue;
-                    String n = f.getName().toLowerCase(java.util.Locale.US);
-                    if (n.endsWith(".cue")) { cestaKeHre = f.getAbsolutePath(); break; }
-                    if (cestaKeHre.isEmpty() && (n.endsWith(".chd") || n.endsWith(".pbp")
-                            || n.endsWith(".iso") || n.endsWith(".img") || n.endsWith(".bin"))) {
-                        cestaKeHre = f.getAbsolutePath();
-                    }
-                }
-            }
-            ps1GameWindowOwnsCore = false;  // jadro zustava tady, u monitoru
-            ps1BiosRunning = false;
-            java.io.File sysDirH  = new java.io.File(getFilesDir(), "ps1_system");
-            java.io.File saveDirH = getPublicMemoryCardDir();
-            if (!sysDirH.exists())  sysDirH.mkdirs();
-            ps1EnsureBios(sysDirH);
-            ps1LastBootResult = NativePs1CoreBridge.bootGameSafe(
-                    sysDirH.getAbsolutePath(), saveDirH.getAbsolutePath(), cestaKeHre);
-            ps1SessionActive = ps1LastBootResult != null
-                    && ps1LastBootResult.startsWith("PS1_HRA_OK");
-            appendNativeLog("PS1_HRA_DO_MONITORU cesta=" + cestaKeHre
-                    + " vysledek=" + ps1LastBootResult);
-        } catch (Throwable t) {
-            appendNativeLog("KROKC EGL_PS1_LAUNCH_FAIL " + safeMsg(t) + " - padam na puvodni cestu");
-            ps1ActivateNativeView();
-        }
-    }
+    // B308: launchEglPs1Activity() a stageOneFile() SMAZANY - pred kazdym startem
+    // kopirovaly celou hru do filesDir/ps1 na HLAVNIM vlakne (viz ps1HraDoMonitoru).
 
     private void startPs1RemoteDownloadAndBoot(final String rawUrl) {
         final String url = rawUrl == null ? "" : rawUrl.trim();
@@ -11804,15 +11763,39 @@ public class MainActivity extends Activity {
             // si jadro i hru nacte sam pres libretro). Java uz jadro
             // nebootuje ani netaha obraz. Zvuk zatim po staru (v core_ps1
             // je audio_cb prazdne - prijde jako dalsi krok).
-            ps1LastBootResult = "PS1_BOOT_OK EGL";
+            // B308: HRA SE SPOUSTI TADY (vlakno na pozadi), PRIMO Z PUVODNIHO SOUBORU.
+            // Drive: "PS1_REMOTE_BOOT_OK" se hlasilo HNED a teprve pak se na HLAVNIM
+            // vlakne cela hra (vsechny soubory vedle .cue - stovky MB) zkopirovala
+            // do filesDir/ps1 a spustila (launchEglPs1Activity). Stranka behem kopie
+            // zamrzla, nahravaci okno ukazovalo nesmysly a hra zabirala misto dvakrat.
             boolean stillWanted = bootGen == ps1LifecycleGen && ps1BootActive;
-            ps1BootActive = false;
             if (stillWanted) {
-                ps1SessionActive = true;
-                setPs1RemoteStatus("PS1_REMOTE_BOOT_OK " + ps1CurrentGameLabel);
-                final String gp = gameFile.getAbsolutePath();
-                ui.post(() -> launchEglPs1Activity(gp));
+                final int cisloStartu = ps1StartuHotovo.get() + 1;
+                setPs1RemoteStatus("PS1_REMOTE_BOOTING #" + cisloStartu + " " + ps1CurrentGameLabel);
+                String r = ps1HraDoMonitoru(gameFile.getAbsolutePath());
+                boolean ok = r != null && r.startsWith("PS1_HRA_OK");
+                ps1BootActive = false;
+                if (ok && bootGen == ps1LifecycleGen) {
+                    ps1SessionActive = true;
+                    ps1LastBootResult = "PS1_BOOT_OK " + ps1CurrentGameLabel;
+                    setPs1RemoteStatus("PS1_REMOTE_BOOT_OK " + ps1CurrentGameLabel);
+                    ps1StartDokoncen("OK " + ps1CurrentGameLabel);
+                } else if (ok) {
+                    // mezitim odchod ze stranky PS1 - nechat jadro stat
+                    ps1SessionActive = false;
+                    try { NativePs1CoreBridge.stopSafe(); } catch (Throwable ignored) {}
+                    ps1LastBootResult = "PS1_BOOT_CANCELLED_AFTER_LEAVE";
+                    setPs1RemoteStatus(ps1LastBootResult);
+                    ps1StartDokoncen("ZRUSENO");
+                } else {
+                    ps1SessionActive = false;
+                    ps1LastBootResult = "PS1_REMOTE_FAIL boot " + r;
+                    setPs1RemoteStatus(ps1LastBootResult);
+                    ps1StartDokoncen("CHYBA jadro hru nespustilo (" + r + ") - podrobnosti v LOGu (denik PS1)");
+                }
             } else {
+                ps1BootActive = false;
+                ps1StartDokoncen("ZRUSENO");
                 ps1SessionActive = false;
                 stopPs1Audio();
                 // CESTA A: sem se dostaneme, kdyz uz o boot neni zajem
@@ -11830,7 +11813,36 @@ public class MainActivity extends Activity {
             stopPs1Audio();
             ps1LastBootResult = "PS1_REMOTE_BOOT_EXCEPTION " + safeMsg(t);
             setPs1RemoteStatus(ps1LastBootResult);
+            ps1StartDokoncen("CHYBA " + safeMsg(t));
         }
+    }
+
+    // B308: HRA DO MONITORU - z PUVODNIHO souboru, na vlakne volajiciho (ne UI).
+    // Kopie do filesDir/ps1 uz neni potreba: jadro dostava presnou cestu k .cue
+    // a stopy (.bin) si najde vedle nej. Kopie z drivejsich verzi se smazou
+    // (uvolni misto - u velke hry stovky MB).
+    private String ps1HraDoMonitoru(String gamePath) {
+        try {
+            java.io.File[] old = new java.io.File(getFilesDir(), "ps1").listFiles();
+            long uvolneno = 0;
+            if (old != null) {
+                for (java.io.File f : old) {
+                    if (!f.isFile()) continue;
+                    long l = f.length();
+                    if (f.delete()) uvolneno += l;
+                }
+            }
+            if (uvolneno > 0) appendNativeLog("B308 PS1_STARE_KOPIE_HER smazany, uvolneno " + (uvolneno / (1024 * 1024)) + " MB");
+        } catch (Throwable ignored) {}
+        ps1GameWindowOwnsCore = false;  // jadro zustava tady, u monitoru
+        ps1BiosRunning = false;
+        java.io.File sysDirH  = new java.io.File(getFilesDir(), "ps1_system");
+        java.io.File saveDirH = getPublicMemoryCardDir();
+        if (!sysDirH.exists())  sysDirH.mkdirs();
+        ps1EnsureBios(sysDirH);
+        String r = NativePs1CoreBridge.bootGameSafe(sysDirH.getAbsolutePath(), saveDirH.getAbsolutePath(), gamePath);
+        appendNativeLog("PS1_HRA_DO_MONITORU cesta=" + gamePath + " vysledek=" + r);
+        return r;
     }
 
     // BUILD2SA3/SA5P: PS1 zvuk - dedikovane vlakno, Sega-style 384f chunks,
@@ -12516,6 +12528,8 @@ public class MainActivity extends Activity {
                     ps1CurrentGameLabel = pickedName;
                     stopPs1Audio(); // BUILD2SA3B: cisty audio restart pri prepnuti PS1 hry
                     ps1LastBootResult = "PS1_BOOTING...";
+                    // B308: stranka zapne nahravaci okno sama a schova ho po skutecnem startu
+                    setPs1RemoteStatus("PS1_REMOTE_BOOTING #" + (ps1StartuHotovo.get() + 1) + " " + pickedName);
                     appendNativeLog("BUILD2SA5P PS1_BIOS_AUDIT " + ps1BiosAudit(sysDir));
                     ps1EnsureBios(sysDir); // BUILD2SA7
                     // Drive se tu volalo bootSafe(), ktere hru sice nahralo, ale
@@ -12529,6 +12543,15 @@ public class MainActivity extends Activity {
                     boolean ok = ps1LastBootResult != null && ps1LastBootResult.startsWith("PS1_HRA_OK");
                     boolean stillWanted = ok && bootGen == ps1LifecycleGen && ps1BootActive;
                     ps1BootActive = false;
+                    if (stillWanted) {
+                        setPs1RemoteStatus("PS1_REMOTE_BOOT_OK " + pickedName);
+                        ps1StartDokoncen("OK " + pickedName);
+                    } else if (!ok) {
+                        setPs1RemoteStatus("PS1_REMOTE_FAIL boot " + ps1LastBootResult);
+                        ps1StartDokoncen("CHYBA jadro hru nespustilo (" + ps1LastBootResult + ") - podrobnosti v LOGu (denik PS1)");
+                    } else {
+                        ps1StartDokoncen("ZRUSENO");
+                    }
                     if (stillWanted) {
                         ps1SessionActive = true;
                         startPs1Audio(); // BUILD2SA3
@@ -12549,6 +12572,8 @@ public class MainActivity extends Activity {
                     stopPs1Audio();
                     closePs1GamePfdQuietly();
                     ps1LastBootResult = "PS1_BOOT_EXCEPTION " + safeMsg(t);
+                    setPs1RemoteStatus("PS1_REMOTE_FAIL " + ps1LastBootResult);
+                    ps1StartDokoncen("CHYBA " + safeMsg(t));
                 }
             }).start();
             return;

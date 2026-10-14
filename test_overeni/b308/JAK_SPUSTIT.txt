@@ -1,0 +1,83 @@
+B308 - PS1: Doom se stropy (oprava v jadre), denik PS1 v C++, klavesnice z TV, nahravani hry
+==========================================================================================
+
+Kod v appce:
+  vendor/pcsx_rearmed/plugins/gpu_neon/psx_gpu/psx_gpu_parse.c
+                            OPRAVA DOOMU: do_thin_triangle_enhanced() - texturovany trojuhelnik vysoky
+                            (radek podlahy / stropu) nebo siroky (sloupec zdi) 1 bod, ktery ma texturu
+                            napric stejnou (podpis PSX Doomu), se ve 2x (Enhanced Resolution) nakresli
+                            po obou radcich / sloupcich 2x obrazu cely. Drive se kazdy radek kreslil
+                            jen castecne (ve stropu / podlaze chybela ctvrtina bodu). Ostatni trojuhelniky
+                            (i tenke kusy 3D siti jinych her) jdou puvodni cestou - bit po bitu stejne.
+  vendor/pcsx_rearmed/plugins/gpu_neon/nap_most.c
+                            pro denik: pocet opravenych trojuhelniku, otisk a popis obrazu (rozliseni,
+                            15 / 24 bit, PAL / NTSC, prokladani, 2x ano / ne a proc)
+  vendor/pcsx_rearmed/frontend/libretro.c
+                            pro denik: BIOS (soubor / HLE), oblast, PAL / NTSC, dynarec, ID a nazev disku,
+                            nastaveni grafiky jadra
+  nap_ps1_native.cpp        DENIK PS1 (ps1_denik, 800 radku, cas na ms): start, HRA + CUE (stopy,
+                            chybejici soubory), BIOS, hlasky jadra (omezene), pametova karta, OBRAZ,
+                            ZDRAVI kazdych 5 s (po minute 10 s), TLACITKA (poradi jako ve skutecnosti),
+                            ulozeni / nahrani pozice, CHYBA STARTU, KONEC; JNI ps1Denik (byte[] UTF-8);
+                            KLAVESNICE Z TV: ps1PcKlavesa (kod klavesy z prohlizece -> tlacitko PS1,
+                            vlastni bity OR s dotykem, hlidac 2,5 s, "Zije", PustVse); zamek g_core_mutex
+                            kolem retro_run (ulozeni pozice uz ne uprostred kroku), g_life_mutex kolem
+                            startu; OpenSL: fronta naplnena PRED spustenim; pametova karta se ulozi i pri
+                            prepnuti rovnou na jinou hru; ps1Status running=YES/NO podle vlakna emulace
+  NativePs1CoreBridge.java  ps1PcKlavesa / pcKlavesaSafe, ps1Denik / denikSafe
+  MainActivity.java         /klavesa na TV: PS1 -> pcKlavesaSafe; /status " ps1=1"; stranka prohlizece:
+                            napoveda klaves PS1; AHPS1.ps1Denik, AHPS1.ps1StartStav; start hry z knihovny
+                            / vyberu / Drive bez kopie na hlavnim vlakne (ps1HraDoMonitoru na pracovnim
+                            vlakne, stav "PS1_REMOTE_BOOTING #n"), ULOZIT LOG A ODESLAT + DENIK PS1
+  assets/emu_ps1/index.html nahravaci okno v monitoru podle skutecneho stavu (vteriny nahoru, konec az
+                            jadro hru spusti, chyba = toast), banner Drive na vysku pod monitorem,
+                            LOG = log stranky + DENIK PS1 (C++, jadro)
+  assets/emu_atari_cpp/index.html   poznamka B308 a body testu pro Reneho
+
+Spoustet z adresare test_overeni/b308 (nebo odkudkoli: bash test_overeni/b308/vse.sh).
+Potreba: gcc / g++, aarch64-linux-gnu-gcc + qemu-aarch64 (NEON jako v telefonu), JAVA_HOME = JDK,
+hlavicky EGL / GLES2 / KHR v $INC (jako ../b304), knihovny Mesa (libEGL, libGLESv2),
+Python 3 + numpy + Pillow, Chromium + Playwright pro Python, git (stary psx_gpu_parse.c z B307).
+Vse najednou: PRAC=... INC=... bash vse.sh   (vystupy VYSTUP_* sem, cesty v nich zkracene na PRAC / REPO)
+
+Prepinac PS1 = -DANDROID -I../b305/stub -I../b291/stub -I$INC -I$JAVA_HOME/include -I$JAVA_HOME/include/linux
+(../b305/stub = nahrada OpenSL ES a Android, ../b291/stub = Android)
+
+1) DOOM - skutecny graficky cip appky (gpulib + gpu_neon z vendor/pcsx_rearmed), stejne prepinace
+   jako appka; s opravou (soucasny strom) a bez ni (psx_gpu_parse.c z commitu 64e47dd = B307),
+   x86 (SSE) i arm64 (NEON pres qemu-aarch64):
+   python3 kontrola_doom.py PRAC/doom                                -> VYSTUP_kontrola_doom.txt
+     gpu_doom.c = sceny poslane do GPU jako z PSX Doomu (podlaha a strop po radcich 1 bod -
+     POLY_FT3 (L,y) (R,y) (R,y+1), zdi po sloupcich 1 bod, postavy, stavovy radek, nebe jako SPRT),
+     "tenke" = nahodne tenke primitivy jako Doom, "nahodne" = primitivy ostatnich her.
+     Meri: diry a body navic proti puvodnimu PS1 (1x zvetsene 2x), jina barva, bit po bitu shoda
+     ostatnich her s opravou i bez ni, arm64 = x86, rychlost (600 snimku).
+2) DENIK PS1 + klavesnice z TV + zamek retro_run - SKUTECNY nap_ps1_native.cpp (ps1_harness.cpp:
+   misto PCSX "hra" 320x240 se zmenami obrazu, hlaskami jadra a pametovou kartou):
+   g++ -std=c++17 -O2 -shared -fPIC -pthread $PS1 -o PRAC/libps1_b308.so ps1_harness.cpp \
+       -Wl,--no-undefined -l:libEGL.so.1 -l:libGLESv2.so.2
+   python3 test_ps1_denik.py PRAC/libps1_b308.so PRAC/denik         -> VYSTUP_test_ps1_denik.txt
+                                                                       + UKAZKA_denik_ps1.txt (cely denik)
+3) ThreadSanitizer: vlakno emulace, zvukova karta, 2 vlakna prohlizece s klavesami, stranka cte denik,
+   SAVE / LOAD pozice, dotyk, zmeny obrazu, hlasky jadra - 7 s soubezne:
+   g++ -std=c++17 -O1 -g -fsanitize=thread -pthread $PS1 -o tsan_denik tsan_denik.cpp -l:libEGL.so.1 -l:libGLESv2.so.2
+   TSAN_OPTIONS="halt_on_error=0 report_signal_unsafe=0 detect_deadlocks=0" ./tsan_denik PRAC/tsan
+                                                                    -> VYSTUP_tsan_denik.txt
+4) JVM: skutecna trida NativePs1CoreBridge se skutecnym C++ (libps1_b308.so jako libnapps1core.so),
+   -Xcheck:jni; a kazda native metoda tridy ma v knihovne svou funkci (nm):
+   javac -d OUT -sourcepath ../b306/jvm/stub NativePs1CoreBridge.java jvm/TestPodpisu.java
+   java -Xcheck:jni -Djava.library.path=LIB -cp OUT TestPodpisu PRAC/jvm
+                                                                    -> jvm/VYSTUP_TestPodpisu.txt, jvm/VYSTUP_symboly.txt
+5) Klavesnice PC v TV prohlizeci -> PS1 (Chromium; stranka a /klavesa presne z MainActivity.java,
+   za Javu maly server v Pythonu, za C++ skutecny ps1PcKlavesa):
+   python3 test_b308_klavesnice.py PRAC/libps1_b308.so PRAC/klavesnice -> VYSTUP_test_b308_klavesnice.txt
+6) Stranka PS1 (Chromium, assets/emu_ps1/index.html, AHPS1 nahrazene v JS): nahravaci okno podle
+   skutecneho stavu (knihovna, Drive, RESET, chyba, cas), banner na vysku pod monitorem, LOG s denikem:
+   python3 test_b308_ps1_stranka.py                                -> VYSTUP_test_b308_ps1_stranka.txt
+7) Regrese Atari 130XE (C++) v prohlizeci se strankou B308 (test z ../b303):
+                                                                    -> VYSTUP_b303_atari_se_strankou_b308.txt
+
+Co se na PC overit neda: skutecny telefon (rychlost gpu_neon na S8 s opravou, OpenSL), skutecny disk
+Doomu (sceny jsou postavene podle kodu PSX Doomu, ne nahrane ze hry). Proto denik: radek ZDRAVI
+ukazuje rychlost emulace a "oprava Doomu: N tenkych trojuhelniku ve 2x" - kdyz bude u Doomu N = 0,
+kresli hra jinak, nez predpoklada oprava.

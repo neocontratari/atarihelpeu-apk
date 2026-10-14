@@ -9,8 +9,18 @@ android {
         applicationId "eu.atarihelp.emu10.test"  // TEST vedle prave apky (neprepise ji)
         minSdk 24
         targetSdk 34
-        versionCode 350
-        versionName "EMU10-B307-INTRO-NP-CPP"
+        versionCode 351
+        versionName "EMU10-B308-PS1-DOOM-LOG-TV"
+        // B308: Rene - "v ps1 emu se prekryva kanfas na nahravani her, nemame
+        // ovladani pres klavesnici na TV viewer, doom ma spatne grafiku ... nachystej
+        // log v ps1" + "problem je ciste v DOOMovi, kde se vubec neukazuje strop".
+        // DOOM: chyba v nasem jadre - gpu_neon ve 2x (Enhanced Resolution) kreslil
+        // radky podlah / stropu a sloupce zdi (trojuhelniky 1 bod) s dirami (ctvrtina
+        // stropu chybela). Oprava v psx_gpu_parse.c (do_thin_triangle_enhanced), ostatni
+        // hry bit po bitu stejne. Denik PS1 v C++ (start, soubory hry, BIOS, disk, obraz,
+        // zdravi, tlacitka, hlasky jadra), klavesnice PC z TV prohlizece do PS1 (C++),
+        // nahravani hry podle skutecneho stavu (bez kopie hry na hlavnim vlakne), zamek
+        // kolem retro_run (ulozeni pozice). Viz CO_JE_V_B308.md.
         // B307: Rene - "z klavesnice meho realneho Atari 130XE vystreli v C++
         // shaderu ty svitici neonove pruty ... zformuji celou nasi trojici ...
         // na monitoru bleskove prostrihas ta herni defile v 50 FPS ... Pridej tam

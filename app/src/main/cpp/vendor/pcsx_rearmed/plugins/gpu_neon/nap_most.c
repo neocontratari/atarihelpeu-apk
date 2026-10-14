@@ -87,3 +87,55 @@ unsigned nap_gles_grab_texture(int *out_x, int *out_y, int *out_w, int *out_h)
 void nap_gles_present_frame(void) { }
 void nap_gles_readback_and_push(void) { }
 void nap_gles_sync_display_settings(void) { }
+
+/* ---------------------------------------------------------------
+   B308: DENIK PS1 - stav grafiky (gpulib), at je z logu videt, co hra
+   prave zobrazuje: rozliseni, 15 / 24 bit (24 bit = video), prokladani,
+   PAL / NTSC, odkud z videopameti, a jestli bezi 2x (Enhanced
+   Resolution) - kdyz ne, tak proc. Jen cte, nic nemeni.
+   --------------------------------------------------------------- */
+extern unsigned int nap_b308_tenkych_2x;   /* psx_gpu_parse.c: tenke trojuhelniky (Doom) ve 2x */
+
+unsigned int nap_ps1_b308_tenkych(void)
+{
+    return __atomic_load_n(&nap_b308_tenkych_2x, __ATOMIC_RELAXED);
+}
+
+/* otisk stavu obrazu - kdyz se zmeni, denik zapise radek */
+unsigned int nap_ps1_gpu_otisk(void)
+{
+    unsigned int o = (unsigned int)(gpu.screen.hres & 0x7ff);
+    o = o * 31u + (unsigned int)(gpu.screen.vres & 0x3ff);
+    o = o * 31u + (gpu.status & (PSX_GPU_STATUS_RGB24 | PSX_GPU_STATUS_PAL |
+                                 PSX_GPU_STATUS_INTERLACE | PSX_GPU_STATUS_DHEIGHT));
+    o = o * 31u + (unsigned int)gpu.state.enhancement_active * 2u + (unsigned int)gpu.state.blanked;
+    return o;
+}
+
+int nap_ps1_gpu_popis(char *buf, int len)
+{
+    const uint32_t st = gpu.status;
+    const int rgb24 = (st & PSX_GPU_STATUS_RGB24) != 0;
+    const char *proc_ne = "";
+    if (!buf || len <= 0)
+        return 0;
+    if (!gpu.state.enhancement_enable)
+        proc_ne = " (vypnuto v nastaveni)";
+    else if (!gpu.state.enhancement_active) {
+        if (rgb24)
+            proc_ne = " (24 bit obraz = video, to se nezvetsuje)";
+        else if (gpu.screen.hres > 512 || gpu.screen.vres > 256)
+            proc_ne = " (hra uz sama kresli ve vysokem rozliseni)";
+        else
+            proc_ne = " (obraz je ve spodni casti videopameti)";
+    }
+    return snprintf(buf, len,
+        "obraz %dx%d (viditelne %dx%d), %s, %s, prokladani %s, z VRAM x=%d y=%d%s | 2x %s%s",
+        gpu.screen.hres, gpu.screen.vres, gpu.screen.w, gpu.screen.h,
+        rgb24 ? "24 bit (video)" : "15 bit",
+        (st & PSX_GPU_STATUS_PAL) ? "PAL" : "NTSC",
+        (st & PSX_GPU_STATUS_INTERLACE) ? "ANO" : "NE",
+        gpu.screen.src_x, gpu.screen.src_y,
+        gpu.state.blanked ? ", ZATEMNENO" : "",
+        gpu.state.enhancement_active ? "ANO" : "NE", proc_ne);
+}

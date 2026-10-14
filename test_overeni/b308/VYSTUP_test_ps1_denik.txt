@@ -1,0 +1,74 @@
+B308: denik PS1 + klavesnice z TV + zamek retro_run - SKUTECNY nap_ps1_native.cpp
+== 1. start hry
+OK     start pres JNI ps1BootDoMonitoru: PS1_HRA_OK
+OK     kazdy radek deniku ma datum a cas jako radky z Javy (15 radku)
+OK     zacatek startu
+OK     hra: jmeno, typ, velikost, cesta
+OK     CUE: stopy, soubory a velikosti
+OK     CUE: chybejici soubor nahlasen jako CHYBA
+OK     BIOS ve slozce appky
+OK     hlaska jadra PCSX (nazev disku) - drive jen v logcatu
+OK     hlaska jadra PCSX (ID disku)
+OK     varovani jadra oznacene
+OK     co jadro pouziva (BIOS, region, disk)
+OK     nastaveni grafiky
+OK     casovani
+OK     pametova karta pri startu
+OK     pametova karta zasunuta
+OK     bezi hra
+OK     doba startu
+OK     ladici hlasky jadra (uroven 0) do deniku nejdou
+OK     prvni stav obrazu zapsan hned po startu
+OK     denik je i v souboru logu appky (to, co ukazuje /log a LOG appky)
+== 2. zmeny obrazu
+OK     zmena rozliseni zapsana hned
+OK     24 bit video (bez 2x) zapsano
+== 3. klavesnice z TV (skutecne JNI ps1PcKlavesa) -> co jadro cte pres retro_input_state
+OK     K -> odpoved PS1:KRIZEK
+OK     jadro vidi KRIZEK
+OK     K pustena -> jadro uz KRIZEK nevidi
+OK     vsech 24 klaves na spravna tlacitka PS1 (smer, krizek, kolecko, ctverec, trojuhelnik, L1-R3, START, SELECT) []
+OK     dotyk (START) + klavesnice (NAHORU) najednou - jadro vidi oboje
+OK     pusteni klavesy nepusti tlacitko drzene dotykem
+OK     vse pusteno
+OK     neznama klavesa -> NEZNAMA:KeyM (pro PS1 nic)
+OK     do odpovedi prohlizeci jdou jen pismena a cisla
+OK     4 klavesy drzene najednou
+OK     PustVse (okno prohlizece ztratilo zamereni) -> vse pusteno
+OK     STAV a Zije
+OK     drzena klavesa vydrzi 4 s, dokud prohlizec posila "Zije"
+OK     prohlizec se odmlcel -> C++ klavesu pustilo samo za 2.5 s (hlidac 2,5 s)
+OK     hlidac zapsany v deniku
+OK     stisky z TV v deniku (prvnich 12)
+OK     po 12 stiscich jen souhrn (denik neroste)
+OK     neznama klavesa v deniku
+OK     radek TLACITKA hned pri stisku (co se zmacklo a co je drzeno)
+OK     TLACITKA ukazuji i dotyk
+OK     drzena sipka pustena a znovu zmacknuta -> v deniku "-NAHORU +NAHORU" (poradi jako ve skutecnosti)
+OK     kratke tuknuti behem drzeni jinych -> "+KRIZEK -KRIZEK", drzeno NAHORU KOLECKO
+== 4. zdravi (kazdych 5 s)
+OK     radek ZDRAVI je v deniku
+   ZDRAVI 15 s: emulace 60.0 kroku/s (cil 59.94, rezerva 99 % casu) | retro_run prumer 0.1 ms, nejdele 1.1 ms | snimky 60.0/s (stejnych 0.0/s) | zvuk fronta 86 ms, vypadky 0 | obraz 320x240, 15 bit, NTSC | 2x ANO | oprava Doomu: 25234 tenkych trojuhelniku ve 2x | tlacitka nic (zmen 7, z klavesnice TV 8) | TV divaku 0
+OK     kroky emulace za sekundu (60.0)
+OK     cas retro_run, snimky, zvuk
+OK     stav obrazu v ZDRAVI
+OK     kolik tenkych trojuhelniku (Doom) se ve 2x kreslilo
+OK     tlacitka a divaci
+== 5. ulozeni pozice behem hry (zamek kolem retro_run)
+OK     50x ulozeni z 2 vlaken: vse OK
+OK     ani jednou se pozice neukladala UPROSTRED kroku emulace (soubezne: 0)
+OK     kazde ulozeni v deniku
+OK     nahrani pozice + denik
+OK     chyba ulozeni v deniku
+== 6. omezeni deniku (hlasky jadra)
+OK     z 400 hlasek jadra jen prvnich 150 od startu (147)
+== 7. konec, chyba startu, BIOS
+OK     stop: PS1_STOPPED
+OK     konec v deniku (jak dlouho, kolik snimku)
+OK     jadro hru odmitlo: PS1_HRA_FAIL jadro
+OK     chybejici hra a chyba startu v deniku
+OK     start bez disku (BIOS): PS1_BIOS_OK
+OK     po novem startu zadna klavesa drzena
+OK     denik v pameti ma 279 radku (nejvys 800)
+
+VYSLEDEK: 63 kontrol, 0 CHYB

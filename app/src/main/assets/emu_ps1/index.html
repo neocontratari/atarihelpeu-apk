@@ -86,7 +86,11 @@ body{display:flex;justify-content:center;align-items:flex-start;}
 #btnL1,#btnL2,#btnR1,#btnR2{display:none;}
 .toast{position:absolute;left:5%;right:5%;bottom:3.8%;z-index:30;display:none;padding:10px 12px;border-radius:14px;background:rgba(0,0,0,.86);border:1px solid rgba(120,200,255,.56);box-shadow:0 0 22px rgba(70,170,255,.18);color:#dff6ff;font:900 clamp(11px,2.6vw,15px)/1.35 "Courier New",monospace;text-align:center;}
 .toast.show{display:block;}
-.remoteBanner{position:absolute;left:7%;right:7%;top:13.4%;z-index:42;display:none;pointer-events:none;padding:9px 11px;border-radius:12px;background:rgba(0,0,0,.88);border:1px solid rgba(113,207,255,.72);box-shadow:0 0 26px rgba(55,165,255,.24),0 0 18px rgba(255,210,96,.12) inset;color:#dff7ff;font:900 clamp(10px,2.5vw,14px)/1.25 "Courier New",monospace;text-shadow:0 1px 2px #000;}
+/* B308: na vysku byl banner stahovani nahore (13,4 %) - zakryval nadpis a lezl
+   do monitoru, kde je obraz z jadra NAD strankou: pul banneru bylo videt,
+   pul schovane pod obrazem ("prekryva se"). Ted je pod monitorem, pres
+   obrazek ovladace (na vysku se nehraje). Na sirku zustava nahore (viz nize). */
+.remoteBanner{position:absolute;left:7%;right:7%;top:58.5%;z-index:42;display:none;pointer-events:none;padding:9px 11px;border-radius:12px;background:rgba(0,0,0,.88);border:1px solid rgba(113,207,255,.72);box-shadow:0 0 26px rgba(55,165,255,.24),0 0 18px rgba(255,210,96,.12) inset;color:#dff7ff;font:900 clamp(10px,2.5vw,14px)/1.25 "Courier New",monospace;text-shadow:0 1px 2px #000;}
 .remoteBanner.show{display:block;}
 .remoteBanner .remoteTitle{display:flex;justify-content:space-between;gap:8px;color:#ffe39a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .remoteBanner .remoteDetail{margin-top:4px;color:#dff7ff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
@@ -495,7 +499,18 @@ function log(t){
   var line=stamp()+'  '+t;
   LOG.push(line); if(LOG.length>400)LOG.splice(0,LOG.length-400);
   try{console.log('[NAP PS1 '+BUILD+'] '+t);}catch(e){}
-  var v=$('ps1LogView'); if(v){v.value=LOG.join('\n');v.scrollTop=v.scrollHeight;}
+  var v=$('ps1LogView'); if(v&&v.offsetParent){v.value=plnyLog(false);v.scrollTop=v.scrollHeight;}
+}
+/* B308: Rene - "nachystej log v ps1, aby si nebyl slepej". K logu stranky
+   pribyl DENIK PS1 z C++ (jadro): start, soubory hry a stopy z .cue, BIOS,
+   region, ID disku, kazda zmena obrazu, zdravi kazdych 5-10 s (snimky,
+   zvuk, oprava Doomu), tlacitka, klavesnice z TV, hlasky jadra, chyby.
+   ULOZIT LOG i KOPIROVAT LOG ted berou oboji. */
+var denikCache='';
+function plnyLog(znovu){
+  if(znovu||!denikCache){try{if(window.AHPS1&&window.AHPS1.ps1Denik)denikCache=String(window.AHPS1.ps1Denik()||'');}catch(_){}}
+  return LOG.join('\n')+'\n\n===================== DENIK PS1 (C++, jadro) =====================\n'
+    +(denikCache||'(zatim prazdny - PS1 jeste nebezelo)');
 }
 function toast(t,ms){var el=$('toast');if(!el)return;el.textContent=t;el.classList.add('show');clearTimeout(window.__napPs1Toast);window.__napPs1Toast=setTimeout(function(){el.classList.remove('show');},ms||2400);log(t);}
 /* BUILD2SB27: Rene - "musi byt v tom okne cd/iso neco jako ze se hra
@@ -527,6 +542,82 @@ function showMonitorLoading(seconds,popis){
 function hideMonitorLoading(){
   clearInterval(window.__napPs1MonitorCountdown);
   var ov=$('psMonitorLoading');if(ov)ov.style.display='none';
+}
+/* ===== B308: NAHRAVANI HRY PODLE SKUTECNEHO STAVU =====
+   Rene: "prekryva se nam tam kanfas na nahravani her". Drive: pevny
+   odpocet 10 s v monitoru a v toastu, nezavisle na tom, co appka delala.
+   Na vysku lezi obraz z jadra (nativni plocha) NAD strankou - nahravaci
+   okno bylo pod nim schovane a v monitoru visel stary obraz (BIOS); na
+   sirku naopak okno 10 s zakryvalo uz bezici hru, nebo zmizelo driv, nez
+   hra nabehla. Appka navic hru pred startem kopirovala na hlavnim vlakne,
+   takze stranka behem toho zamrzla.
+   Ted: nahravaci okno je v monitoru, obraz z jadra se na tu dobu schova
+   (na vysku i na sirku), cas bezi nahoru (kolik uz to trva) a okno zmizi,
+   AZ appka hlasi, ze jadro hru (BIOS) opravdu nastartovalo - pak se obraz
+   ukaze. Chyba = okno zmizi a toast rekne proc. Stejne pro knihovnu (CD/ISO),
+   vyber souboru, stazeni z Google Drive i RESET. */
+var NAHR={on:false,od:0,popis:'',jmeno:'',bios:false,n0:0,maxMs:120000};
+function nahrStartStav(){   // "pocet dokoncenych startu|vysledek posledniho"
+  try{if(window.AHPS1&&window.AHPS1.ps1StartStav){var t=String(window.AHPS1.ps1StartStav()||'');var i=t.indexOf('|');
+    return {n:parseInt(t.slice(0,i),10)||0,v:t.slice(i+1)};}}catch(_){}
+  return null;
+}
+function nahravaniStart(popis,bios,jmeno,cekejNa){
+  var st=nahrStartStav();
+  NAHR.on=true;NAHR.od=Date.now();NAHR.popis=popis||'NAHRÁVÁM HRU…';NAHR.jmeno=jmeno||'';NAHR.bios=!!bios;
+  NAHR.maxMs=bios?20000:120000;
+  NAHR.n0=(typeof cekejNa==='number')?cekejNa-1:(st?st.n:0);   // konec = start s cislem > n0
+  NAHR.bezStavu=!st;
+  try{if(window.AHPS1&&window.AHPS1.ps1PlochaVisible)window.AHPS1.ps1PlochaVisible(false);}catch(_){}
+  clearInterval(window.__napPs1MonitorCountdown);clearInterval(window.__napPs1Countdown);
+  var t=$('toast');if(t)t.classList.remove('show');
+  nahravaniKresli();
+  clearInterval(window.__napNahrTik);window.__napNahrTik=setInterval(nahravaniKresli,250);
+  log('NAHRAVANI_START '+NAHR.popis+(NAHR.jmeno?' '+NAHR.jmeno:'')+' (ceka na start c. '+(NAHR.n0+1)+')');
+}
+function nahravaniKresli(){
+  if(!NAHR.on)return;
+  var mon=$('psMonitor');if(!mon)return;
+  var ov=$('psMonitorLoading');
+  if(!ov){
+    ov=document.createElement('div');ov.id='psMonitorLoading';
+    ov.style.cssText='position:absolute;inset:0;z-index:5;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:10px;background:rgba(0,1,20,.72);color:#dfeaff;font:900 clamp(13px,3.4vw,18px) "Courier New",monospace;text-align:center;pointer-events:none;';
+    try{var cs=getComputedStyle(mon);if(cs.position==='static')mon.style.position='relative';}catch(_){ }
+    mon.appendChild(ov);
+  }
+  ov.style.display='flex';
+  var s=Math.floor((Date.now()-NAHR.od)/1000);
+  ov.innerHTML='<div>'+NAHR.popis+'</div>'+(NAHR.jmeno?'<div style="font-size:.8em;color:#9cdfff;max-width:92%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+libEsc(NAHR.jmeno)+'</div>':'')
+    +'<div style="font-size:1.6em;">'+s+' s</div>'
+    +(s>=15?'<div style="font-size:.75em;color:#ffe39a;">velká hra nebo pomalé úložiště - čekám, až jádro hru spustí</div>':'');
+  var st=nahrStartStav();
+  if(st&&st.n>NAHR.n0){
+    var ok=/^(OK|BIOS_OK)/.test(st.v);
+    nahravaniKonec(ok,ok?'':(/^ZRUSENO/.test(st.v)?'':'HRA SE NESPUSTILA: '+st.v.replace(/^CHYBA\s*/,'')));
+  }else if(NAHR.bezStavu&&s>=10){
+    nahravaniKonec(true,'');          // stara appka bez hlaseni stavu - jako drive (10 s)
+  }else if(Date.now()-NAHR.od>NAHR.maxMs){
+    nahravaniKonec(false,'START TRVÁ PŘÍLIŠ DLOUHO - pošli LOG (nastavení → ULOŽIT LOG)');
+  }
+}
+function jePanelOtevreny(){try{return !!document.querySelector('.panel.open');}catch(_){return false;}}
+function nahravaniKonec(ok,zprava){
+  if(!NAHR.on)return;
+  NAHR.on=false;clearInterval(window.__napNahrTik);
+  hideMonitorLoading();
+  if(!jePanelOtevreny()){try{if(window.AHPS1&&window.AHPS1.ps1PlochaVisible)window.AHPS1.ps1PlochaVisible(true);}catch(_){}}
+  log('NAHRAVANI_KONEC '+(ok?'OK':'CHYBA')+' po '+Math.round((Date.now()-NAHR.od)/100)/10+' s'+(zprava?' - '+zprava:''));
+  if(zprava)toast(zprava,ok?2400:7000);
+}
+/* stav z appky (kazdych 450 ms): CD ISO a stazeni z Drive hlasi
+   "PS1_REMOTE_BOOTING #cislo jmeno" - nahravaci okno se zapne samo */
+function nahravaniStav(rs){
+  rs=String(rs||'');
+  var m=/^PS1_REMOTE_BOOTING #(\d+) ?(.*)$/.exec(rs);
+  if(m&&!NAHR.on&&rs!==NAHR.posledniAuto){
+    NAHR.posledniAuto=rs;
+    nahravaniStart('NAHRÁVÁM HRU…',false,m[2],parseInt(m[1],10));
+  }
 }
 /* BUILD2SB22: Rene - "zadny odpocet neni videt kdyz kliknu play v
    cd/iso." Misto jedne staticke hlasky ("muze to trvat...") skutecny
@@ -635,7 +726,7 @@ function napTvCastKontrola(){
 setInterval(napTvCastKontrola,1000);
 napTvCastKontrola();
 function napPlochaShow(){try{if(window.AHPS1&&window.AHPS1.ps1PlochaVisible)window.AHPS1.ps1PlochaVisible(true);}catch(_){}try{document.body.classList.remove('panelNebulaOn');}catch(_){}}
-function showHelp(){napPlochaHide();var p=$('helpPanel');if(p){p.classList.add('open');p.setAttribute('aria-hidden','false');}var v=$('ps1LogView');if(v)v.value=LOG.join('\n');}
+function showHelp(){napPlochaHide();var p=$('helpPanel');if(p){p.classList.add('open');p.setAttribute('aria-hidden','false');}var v=$('ps1LogView');if(v){v.value=plnyLog(true);v.scrollTop=v.scrollHeight;}}
 function closeHelp(){napPlochaShow();var p=$('helpPanel');if(p){p.classList.remove('open');p.setAttribute('aria-hidden','true');}}
 function showDpadMenu(){napPlochaHide();var p=$('dpadMenuPanel');if(p){p.classList.add('open');p.setAttribute('aria-hidden','false');}}
 function closeDpadMenu(){napPlochaShow();var p=$('dpadMenuPanel');if(p){p.classList.remove('open');p.setAttribute('aria-hidden','true');}}
@@ -715,9 +806,8 @@ function libraryRefresh(){
       row.querySelector('.libPlay').addEventListener('click',function(e){
         e.preventDefault();
         jsLog('LIBRARY_LAUNCH key='+key);
-        startBootCountdown(10);
-        showMonitorLoading(10);
         closeLibrary();
+        nahravaniStart('NAHRÁVÁM HRU…',false,row.querySelector('.libName').textContent);   // B308: podle skutecneho stavu
         try{if(window.AHPS1&&window.AHPS1.ps1LibraryLaunch)window.AHPS1.ps1LibraryLaunch(key);}catch(err){}
         ensurePs1ScreenAndPoll();
       },true);
@@ -1333,6 +1423,7 @@ function ensurePs1ScreenAndPoll(){
     try{
       var rs=window.AHPS1.ps1RemoteStatus();
       updateRemoteBanner(rs);
+      nahravaniStav(rs);
       if(rs&&rs!==window.__napPs1LastRemoteSt){window.__napPs1LastRemoteSt=rs;log('REMOTE_STATUS '+rs);}
     }catch(re){}
   },450);}
@@ -1471,8 +1562,7 @@ $('btnReset').addEventListener('click',function(e){e.preventDefault();
   if(window.__napPs1ResetBusy)return;
   window.__napPs1ResetBusy=true;
   jsLog('PS1_RESET_TLACITKO');
-  startBootCountdown(8,'Resetuji (BIOS bez CD)');
-  showMonitorLoading(8,'RESETUJI (BIOS BEZ CD)…');
+  nahravaniStart('RESETUJI (BIOS BEZ CD)…',true,'');   // B308: konec, az BIOS opravdu nabehne
   var r='';
   try{if(window.AHPS1&&window.AHPS1.ps1Reset)r=String(window.AHPS1.ps1Reset());}catch(err){}
   jsLog('PS1_RESET_VYSLEDEK '+r);
@@ -1548,7 +1638,7 @@ $('logSave').addEventListener('click',function(e){e.preventDefault();
   var fn='AtariHelp_PS1_LOG_'+(function(){var d=new Date();function p(n){return(n<10?'0':'')+n;}return d.getFullYear()+p(d.getMonth()+1)+p(d.getDate())+'_'+p(d.getHours())+p(d.getMinutes())+p(d.getSeconds());})()+'.txt';
   try{
     if(window.AHSAVE&&window.AHSAVE.save){
-      var res=window.AHSAVE.save(fn,LOG.join('\n'));
+      var res=window.AHSAVE.save(fn,plnyLog(true));
       log('LOG_SAVE '+res);
       toast(String(res).indexOf('DOWNLOADS_OK')===0?('LOG ulozen: Downloads/AtariHelp/'+fn):('LOG ulozen (fallback): '+res),5200);
     }else{
@@ -1557,7 +1647,7 @@ $('logSave').addEventListener('click',function(e){e.preventDefault();
     }
   }catch(err){toast('ULOZENI LOGU CHYBA: '+(err&&err.message),3600);log('LOG_SAVE_ERROR '+(err&&err.message));}
 },true);
-$('logCopy').addEventListener('click',function(e){e.preventDefault();var v=$('ps1LogView');if(!v)return;try{v.focus();v.select();document.execCommand('copy');toast('LOG zkopirovan do schranky',1800);}catch(err){toast('Kopirovani selhalo - oznac text rucne',2400);}},true);
+$('logCopy').addEventListener('click',function(e){e.preventDefault();var v=$('ps1LogView');if(!v)return;v.value=plnyLog(true);try{v.focus();v.select();document.execCommand('copy');toast('LOG zkopirovan do schranky',1800);}catch(err){toast('Kopirovani selhalo - oznac text rucne',2400);}},true);
 $('fileInput').addEventListener('change',function(e){var f=e.target&&e.target.files&&e.target.files[0];if(f){analyzeFile(f,(e.target.__napReason||'PICKER'));}},true);
 $('fileInput').setAttribute('accept','.bin,.cue,.iso,.img,.pbp,.chd,.zip,application/zip,application/octet-stream');
 log('POZN: cerny monitor pred bootem je spravne; obraz se rozsviti az po realnem PS1 bootu.');

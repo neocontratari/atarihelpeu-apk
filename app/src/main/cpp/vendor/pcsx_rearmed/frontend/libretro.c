@@ -3602,6 +3602,44 @@ int nap_zjisti_psx_region(char *biosNameOut, int bufSize) {
    return (Config.PsxRegion << 8) | (Config.PsxType & 0xFF);
 }
 
+/* atarihelp B308: DENIK PS1 - co jadro SKUTECNE pouziva (jen cte, nic nemeni).
+ * BIOS (soubor, nebo HLE = vestaveny nahradni, kdyz zadny soubor nebyl),
+ * region a PAL / NTSC, procesor (dynarec / interpret), ID a nazev disku. */
+int nap_ps1_jadro_popis(char *buf, int len) {
+   static const char *const regiony[] = { "USA", "JAPONSKO", "EVROPA" };
+   const char *bios = "?";
+   if ((size_t)Config.PsxRegion < ARRAY_SIZE(Config.Bios) && Config.Bios[Config.PsxRegion][0])
+      bios = Config.Bios[Config.PsxRegion];
+   if (!buf || len <= 0)
+      return 0;
+   return snprintf(buf, len,
+      "BIOS %s%s | region %s, %s | procesor %s | disk ID \"%s\" nazev \"%s\" | XA %s, CD audio %s, pomaly start %d",
+      Config.HLE ? "HLE (vestaveny nahradni - soubor BIOSu nenalezen!)" : bios,
+      Config.HLE ? "" : " (soubor)",
+      (size_t)Config.PsxRegion < ARRAY_SIZE(regiony) ? regiony[Config.PsxRegion] : "?",
+      Config.PsxType == PSX_TYPE_PAL ? "PAL 50 Hz" : "NTSC 60 Hz",
+      Config.Cpu == CPU_DYNAREC ? "dynarec (rychly)" : "interpret",
+      CdromId, CdromLabel,
+      Config.Xa ? "ANO" : "NE", Config.Cdda ? "ANO" : "NE", (int)Config.SlowBoot);
+}
+
+/* atarihelp B308: nastaveni grafiky, se kterym jadro bezi (pl_rearmed_cbs). */
+int nap_ps1_nastaveni_popis(char *buf, int len) {
+   if (!buf || len <= 0)
+      return 0;
+   return snprintf(buf, len,
+      "2x (Enhanced Resolution) %s, bez 1x obrazu %s, uprava textur %s | prokladani %s | dithering %s | "
+      "kresleni ve vlakne %s | preskakovani snimku %d",
+      pl_rearmed_cbs.gpu_neon.enhancement_enable ? "ZAPNUTO" : "VYPNUTO",
+      pl_rearmed_cbs.gpu_neon.enhancement_no_main ? "ANO" : "NE",
+      pl_rearmed_cbs.gpu_neon.enhancement_tex_adj ? "ANO" : "NE",
+      pl_rearmed_cbs.gpu_neon.allow_interlace == 0 ? "VYPNUTO" :
+         pl_rearmed_cbs.gpu_neon.allow_interlace == 1 ? "ZAPNUTO" : "AUTO",
+      pl_rearmed_cbs.dithering == 0 ? "VYPNUTO" : pl_rearmed_cbs.dithering == 2 ? "VYNUCENO" : "ZAPNUTO",
+      pl_rearmed_cbs.thread_rendering < 0 ? "AUTO" : pl_rearmed_cbs.thread_rendering ? "ANO" : "NE",
+      pl_rearmed_cbs.frameskip);
+}
+
 static bool get_bios_config_hle(void);
 static void prepare_bios(bool use_hle);
 

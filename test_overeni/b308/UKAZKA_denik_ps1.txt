@@ -1,0 +1,279 @@
+2026-10-14 18:02:00.240  PS1 ==================== PS1 START: HRA ====================
+2026-10-14 18:02:00.240  PS1 HRA: Doom.cue | typ .cue | 243 B | cesta PRAC/hry/Doom/Doom.cue
+2026-10-14 18:02:00.240  PS1 CUE: 3 stop (data 1, hudba 2), souboru 3, na disku 2 (4.0 MB): Doom (Track 1).bin 3.0 MB, Doom (Track 2).bin 1.0 MB, Doom (Track 3).bin CHYBI
+2026-10-14 18:02:00.240  PS1 CHYBA CUE: 1 soubor(u) chybi -> hra nepujde nebo bez hudby: Doom (Track 3).bin
+2026-10-14 18:02:00.240  PS1 BIOS ve slozce appky: scph5501.bin 512 kB
+2026-10-14 18:02:00.570  PS1 JADRO: CD-ROM Label: DOOM
+2026-10-14 18:02:00.570  PS1 JADRO: CD-ROM ID: SLUS00077
+2026-10-14 18:02:00.570  PS1 JADRO VAROVANI: warning: test varovani jadra
+2026-10-14 18:02:00.570  PS1 PAMETOVA KARTA nova (soubor zatim neni): PRAC/memory_card_1.srm, 131072 B prazdna
+2026-10-14 18:02:00.570  PS1 JADRO: BIOS scph5501.bin (soubor) | region USA, NTSC 60 Hz | procesor dynarec (rychly) | disk ID "SLUS00077" nazev "DOOM" | XA ANO, CD audio ANO, pomaly start 0
+2026-10-14 18:02:00.570  PS1 NASTAVENI GRAFIKY: 2x (Enhanced Resolution) ZAPNUTO, bez 1x obrazu NE, uprava textur ANO | prokladani AUTO
+2026-10-14 18:02:00.571  PS1 CASOVANI: 59.940 snimku/s, zvuk jadra 44100 Hz -> reproduktor 44100 Hz | obraz zakladni 320x240, nejvic 1024x512
+2026-10-14 18:02:00.571  PS1 PAMETOVA KARTA 1: zasunuta, soubor PRAC/memory_card_1.srm (CHYBI)
+2026-10-14 18:02:00.571  PS1 BEZI HRA
+2026-10-14 18:02:00.571  PS1 start trval 330 ms
+2026-10-14 18:02:00.571  PS1 OBRAZ: obraz 320x240, 15 bit, NTSC | 2x ANO
+2026-10-14 18:02:00.595  PS1 OBRAZ: obraz 640x480, 15 bit, NTSC | 2x ANO
+2026-10-14 18:02:00.641  PS1 OBRAZ: obraz 320x240, 24 bit (video), NTSC | 2x NE
+2026-10-14 18:02:00.674  PS1 TV KLAVESNICE: KeyK dolu -> KRIZEK
+2026-10-14 18:02:00.687  PS1 OBRAZ: obraz 320x240, 15 bit, NTSC | 2x ANO
+2026-10-14 18:02:00.687  PS1 TLACITKA: +KRIZEK -> drzeno: KRIZEK
+2026-10-14 18:02:00.794  PS1 TV KLAVESNICE: KeyK nahoru -> KRIZEK
+2026-10-14 18:02:00.914  PS1 TV KLAVESNICE: ArrowUp dolu -> NAHORU
+2026-10-14 18:02:00.975  PS1 TV KLAVESNICE: ArrowUp nahoru -> NAHORU
+2026-10-14 18:02:00.989  PS1 TLACITKA: -KRIZEK +NAHORU -NAHORU -> drzeno: nic
+2026-10-14 18:02:01.015  PS1 TV KLAVESNICE: KeyW dolu -> NAHORU
+2026-10-14 18:02:01.075  PS1 TV KLAVESNICE: KeyW nahoru -> NAHORU
+2026-10-14 18:02:01.116  PS1 TV KLAVESNICE: Numpad8 dolu -> NAHORU
+2026-10-14 18:02:01.176  PS1 TV KLAVESNICE: Numpad8 nahoru -> NAHORU
+2026-10-14 18:02:01.216  PS1 TV KLAVESNICE: ArrowDown dolu -> DOLU
+2026-10-14 18:02:01.277  PS1 TV KLAVESNICE: ArrowDown nahoru -> DOLU
+2026-10-14 18:02:01.291  PS1 TLACITKA: +NAHORU -NAHORU +DOLU -DOLU -> drzeno: nic
+2026-10-14 18:02:01.317  PS1 TV KLAVESNICE: KeyS dolu -> DOLU
+2026-10-14 18:02:01.381  PS1 TV KLAVESNICE: KeyS nahoru -> DOLU
+2026-10-14 18:02:01.421  PS1 TV KLAVESNICE: dalsi stisky jen v radcich TLACITKA a v souctu ZDRAVI
+2026-10-14 18:02:01.594  PS1 TLACITKA: +DOLU -DOLU +VLEVO -VLEVO -> drzeno: nic
+2026-10-14 18:02:01.895  PS1 TLACITKA: +KRIZEK -KRIZEK +VPRAVO -VPRAVO -> drzeno: nic
+2026-10-14 18:02:02.197  PS1 TLACITKA: +CTVEREC -CTVEREC +KOLECKO -KOLECKO +TROJUHELNIK -TROJUHELNIK -> drzeno: nic
+2026-10-14 18:02:02.499  PS1 TLACITKA: +L1 -L1 +R1 -R1 +L2 -L2 -> drzeno: nic
+2026-10-14 18:02:02.800  PS1 TLACITKA: +R2 -R2 +L3 -L3 +R3 -R3 -> drzeno: nic
+2026-10-14 18:02:03.103  PS1 TLACITKA: +START -START -> drzeno: nic
+2026-10-14 18:02:03.405  PS1 TLACITKA: +SELECT -SELECT +START +NAHORU -> drzeno: START NAHORU
+2026-10-14 18:02:03.692  PS1 TV KLAVESNICE: KeyM dolu -> pro PS1 nic (neznama klavesa)
+2026-10-14 18:02:03.693  PS1 TV KLAVESNICE: Keybx dolu -> pro PS1 nic (neznama klavesa)
+2026-10-14 18:02:03.706  PS1 TLACITKA: +KRIZEK -START -NAHORU +NAHORU +VPRAVO +KOLECKO -> drzeno: KRIZEK NAHORU VPRAVO KOLECKO
+2026-10-14 18:02:03.813  PS1 TV KLAVESNICE: prohlizec pustil vse (KRIZEK NAHORU VPRAVO KOLECKO)
+2026-10-14 18:02:04.008  PS1 TLACITKA: -KRIZEK -NAHORU -VPRAVO +VPRAVO -KOLECKO -> drzeno: VPRAVO
+2026-10-14 18:02:05.587  PS1 ZDRAVI 5 s: emulace 61.0 kroku/s (cil 59.94, rezerva 99 % casu) | retro_run prumer 0.1 ms, nejdele 1.1 ms | snimky 61.0/s (stejnych 0.0/s) | zvuk fronta 84 ms, vypadky 0 | obraz 320x240, 15 bit, NTSC | 2x ANO | tlacitka VPRAVO (zmen 56, z klavesnice TV 59) | TV divaku 0
+2026-10-14 18:02:10.439  PS1 TV KLAVESNICE: prohlizec se 2,5 s neozval - drzene klavesy pusteny (VPRAVO)
+2026-10-14 18:02:10.439  PS1 TLACITKA: -VPRAVO -> drzeno: nic
+2026-10-14 18:02:10.603  PS1 ZDRAVI 10 s: emulace 60.0 kroku/s (cil 59.94, rezerva 99 % casu) | retro_run prumer 0.1 ms, nejdele 4.2 ms | snimky 60.0/s (stejnych 0.0/s) | zvuk fronta 85 ms, vypadky 0 | obraz 320x240, 15 bit, NTSC | 2x ANO | tlacitka nic (zmen 1, z klavesnice TV 0) | TV divaku 0
+2026-10-14 18:02:11.020  PS1 TLACITKA: +NAHORU -> drzeno: NAHORU
+2026-10-14 18:02:11.322  PS1 TLACITKA: -NAHORU +NAHORU -> drzeno: NAHORU
+2026-10-14 18:02:11.740  PS1 TLACITKA: +KOLECKO -> drzeno: NAHORU KOLECKO
+2026-10-14 18:02:12.041  PS1 TLACITKA: +KRIZEK -KRIZEK -> drzeno: NAHORU KOLECKO
+2026-10-14 18:02:12.343  PS1 TLACITKA: -NAHORU -KOLECKO -> drzeno: nic
+2026-10-14 18:02:15.618  PS1 ZDRAVI 15 s: emulace 60.0 kroku/s (cil 59.94, rezerva 99 % casu) | retro_run prumer 0.1 ms, nejdele 1.1 ms | snimky 60.0/s (stejnych 0.0/s) | zvuk fronta 86 ms, vypadky 0 | obraz 320x240, 15 bit, NTSC | 2x ANO | oprava Doomu: 25234 tenkych trojuhelniku ve 2x | tlacitka nic (zmen 7, z klavesnice TV 8) | TV divaku 0
+2026-10-14 18:02:15.741  PS1 POZICE ULOZENA: 4096 B do PRAC/pozice.state
+2026-10-14 18:02:15.743  PS1 POZICE ULOZENA: 4096 B do PRAC/pozice.state
+2026-10-14 18:02:15.747  PS1 POZICE ULOZENA: 4096 B do PRAC/pozice.state
+2026-10-14 18:02:15.749  PS1 POZICE ULOZENA: 4096 B do PRAC/pozice.state
+2026-10-14 18:02:15.753  PS1 POZICE ULOZENA: 4096 B do PRAC/pozice.state
+2026-10-14 18:02:15.755  PS1 POZICE ULOZENA: 4096 B do PRAC/pozice.state
+2026-10-14 18:02:15.759  PS1 POZICE ULOZENA: 4096 B do PRAC/pozice.state
+2026-10-14 18:02:15.766  PS1 POZICE ULOZENA: 4096 B do PRAC/pozice.state
+2026-10-14 18:02:15.768  PS1 POZICE ULOZENA: 4096 B do PRAC/pozice.state
+2026-10-14 18:02:15.772  PS1 POZICE ULOZENA: 4096 B do PRAC/pozice.state
+2026-10-14 18:02:15.774  PS1 POZICE ULOZENA: 4096 B do PRAC/pozice.state
+2026-10-14 18:02:15.777  PS1 POZICE ULOZENA: 4096 B do PRAC/pozice.state
+2026-10-14 18:02:15.780  PS1 POZICE ULOZENA: 4096 B do PRAC/pozice.state
+2026-10-14 18:02:15.787  PS1 POZICE ULOZENA: 4096 B do PRAC/pozice.state
+2026-10-14 18:02:15.789  PS1 POZICE ULOZENA: 4096 B do PRAC/pozice.state
+2026-10-14 18:02:15.793  PS1 POZICE ULOZENA: 4096 B do PRAC/pozice.state
+2026-10-14 18:02:15.795  PS1 POZICE ULOZENA: 4096 B do PRAC/pozice.state
+2026-10-14 18:02:15.799  PS1 POZICE ULOZENA: 4096 B do PRAC/pozice.state
+2026-10-14 18:02:15.801  PS1 POZICE ULOZENA: 4096 B do PRAC/pozice.state
+2026-10-14 18:02:15.804  PS1 POZICE ULOZENA: 4096 B do PRAC/pozice.state
+2026-10-14 18:02:15.817  PS1 POZICE ULOZENA: 4096 B do PRAC/pozice.state
+2026-10-14 18:02:15.819  PS1 POZICE ULOZENA: 4096 B do PRAC/pozice.state
+2026-10-14 18:02:15.822  PS1 POZICE ULOZENA: 4096 B do PRAC/pozice.state
+2026-10-14 18:02:15.825  PS1 POZICE ULOZENA: 4096 B do PRAC/pozice.state
+2026-10-14 18:02:15.828  PS1 POZICE ULOZENA: 4096 B do PRAC/pozice.state
+2026-10-14 18:02:15.835  PS1 POZICE ULOZENA: 4096 B do PRAC/pozice.state
+2026-10-14 18:02:15.837  PS1 POZICE ULOZENA: 4096 B do PRAC/pozice.state
+2026-10-14 18:02:15.841  PS1 POZICE ULOZENA: 4096 B do PRAC/pozice.state
+2026-10-14 18:02:15.843  PS1 POZICE ULOZENA: 4096 B do PRAC/pozice.state
+2026-10-14 18:02:15.847  PS1 POZICE ULOZENA: 4096 B do PRAC/pozice.state
+2026-10-14 18:02:15.849  PS1 POZICE ULOZENA: 4096 B do PRAC/pozice.state
+2026-10-14 18:02:15.860  PS1 POZICE ULOZENA: 4096 B do PRAC/pozice.state
+2026-10-14 18:02:15.863  PS1 POZICE ULOZENA: 4096 B do PRAC/pozice.state
+2026-10-14 18:02:15.866  PS1 POZICE ULOZENA: 4096 B do PRAC/pozice.state
+2026-10-14 18:02:15.869  PS1 POZICE ULOZENA: 4096 B do PRAC/pozice.state
+2026-10-14 18:02:15.872  PS1 POZICE ULOZENA: 4096 B do PRAC/pozice.state
+2026-10-14 18:02:15.875  PS1 POZICE ULOZENA: 4096 B do PRAC/pozice.state
+2026-10-14 18:02:15.881  PS1 POZICE ULOZENA: 4096 B do PRAC/pozice.state
+2026-10-14 18:02:15.883  PS1 POZICE ULOZENA: 4096 B do PRAC/pozice.state
+2026-10-14 18:02:15.887  PS1 POZICE ULOZENA: 4096 B do PRAC/pozice.state
+2026-10-14 18:02:15.889  PS1 POZICE ULOZENA: 4096 B do PRAC/pozice.state
+2026-10-14 18:02:15.893  PS1 POZICE ULOZENA: 4096 B do PRAC/pozice.state
+2026-10-14 18:02:15.895  PS1 POZICE ULOZENA: 4096 B do PRAC/pozice.state
+2026-10-14 18:02:15.898  PS1 POZICE ULOZENA: 4096 B do PRAC/pozice.state
+2026-10-14 18:02:15.905  PS1 POZICE ULOZENA: 4096 B do PRAC/pozice.state
+2026-10-14 18:02:15.907  PS1 POZICE ULOZENA: 4096 B do PRAC/pozice.state
+2026-10-14 18:02:15.911  PS1 POZICE ULOZENA: 4096 B do PRAC/pozice.state
+2026-10-14 18:02:15.913  PS1 POZICE ULOZENA: 4096 B do PRAC/pozice.state
+2026-10-14 18:02:15.917  PS1 POZICE ULOZENA: 4096 B do PRAC/pozice.state
+2026-10-14 18:02:15.931  PS1 POZICE ULOZENA: 4096 B do PRAC/pozice.state
+2026-10-14 18:02:15.934  PS1 POZICE NAHRANA: 4096 B z PRAC/pozice.state
+2026-10-14 18:02:15.937  PS1 CHYBA ULOZENI POZICE: open_failed
+2026-10-14 18:02:15.937  PS1 JADRO: hlaska jadra behem hry 400
+2026-10-14 18:02:15.937  PS1 JADRO: hlaska jadra behem hry 399
+2026-10-14 18:02:15.937  PS1 JADRO: hlaska jadra behem hry 398
+2026-10-14 18:02:15.937  PS1 JADRO: hlaska jadra behem hry 397
+2026-10-14 18:02:15.937  PS1 JADRO: hlaska jadra behem hry 396
+2026-10-14 18:02:15.937  PS1 JADRO: hlaska jadra behem hry 395
+2026-10-14 18:02:15.937  PS1 JADRO: hlaska jadra behem hry 394
+2026-10-14 18:02:15.937  PS1 JADRO: hlaska jadra behem hry 393
+2026-10-14 18:02:15.937  PS1 JADRO: hlaska jadra behem hry 392
+2026-10-14 18:02:15.937  PS1 JADRO: hlaska jadra behem hry 391
+2026-10-14 18:02:15.937  PS1 JADRO: hlaska jadra behem hry 390
+2026-10-14 18:02:15.937  PS1 JADRO: hlaska jadra behem hry 389
+2026-10-14 18:02:15.937  PS1 JADRO: hlaska jadra behem hry 388
+2026-10-14 18:02:15.937  PS1 JADRO: hlaska jadra behem hry 387
+2026-10-14 18:02:15.937  PS1 JADRO: hlaska jadra behem hry 386
+2026-10-14 18:02:15.937  PS1 JADRO: hlaska jadra behem hry 385
+2026-10-14 18:02:15.937  PS1 JADRO: hlaska jadra behem hry 384
+2026-10-14 18:02:15.937  PS1 JADRO: hlaska jadra behem hry 383
+2026-10-14 18:02:15.937  PS1 JADRO: hlaska jadra behem hry 382
+2026-10-14 18:02:15.937  PS1 JADRO: hlaska jadra behem hry 381
+2026-10-14 18:02:15.937  PS1 JADRO: hlaska jadra behem hry 380
+2026-10-14 18:02:15.937  PS1 JADRO: hlaska jadra behem hry 379
+2026-10-14 18:02:15.937  PS1 JADRO: hlaska jadra behem hry 378
+2026-10-14 18:02:15.937  PS1 JADRO: hlaska jadra behem hry 377
+2026-10-14 18:02:15.937  PS1 JADRO: hlaska jadra behem hry 376
+2026-10-14 18:02:15.937  PS1 JADRO: hlaska jadra behem hry 375
+2026-10-14 18:02:15.937  PS1 JADRO: hlaska jadra behem hry 374
+2026-10-14 18:02:15.937  PS1 JADRO: hlaska jadra behem hry 373
+2026-10-14 18:02:15.937  PS1 JADRO: hlaska jadra behem hry 372
+2026-10-14 18:02:15.937  PS1 JADRO: hlaska jadra behem hry 371
+2026-10-14 18:02:15.937  PS1 JADRO: hlaska jadra behem hry 370
+2026-10-14 18:02:15.937  PS1 JADRO: hlaska jadra behem hry 369
+2026-10-14 18:02:15.937  PS1 JADRO: hlaska jadra behem hry 368
+2026-10-14 18:02:15.937  PS1 JADRO: hlaska jadra behem hry 367
+2026-10-14 18:02:15.937  PS1 JADRO: hlaska jadra behem hry 366
+2026-10-14 18:02:15.937  PS1 JADRO: hlaska jadra behem hry 365
+2026-10-14 18:02:15.937  PS1 JADRO: hlaska jadra behem hry 364
+2026-10-14 18:02:15.937  PS1 JADRO: hlaska jadra behem hry 363
+2026-10-14 18:02:15.937  PS1 JADRO: hlaska jadra behem hry 362
+2026-10-14 18:02:15.937  PS1 JADRO: hlaska jadra behem hry 361
+2026-10-14 18:02:15.937  PS1 JADRO: hlaska jadra behem hry 360
+2026-10-14 18:02:15.937  PS1 JADRO: hlaska jadra behem hry 359
+2026-10-14 18:02:15.937  PS1 JADRO: hlaska jadra behem hry 358
+2026-10-14 18:02:15.937  PS1 JADRO: hlaska jadra behem hry 357
+2026-10-14 18:02:15.937  PS1 JADRO: hlaska jadra behem hry 356
+2026-10-14 18:02:15.937  PS1 JADRO: hlaska jadra behem hry 355
+2026-10-14 18:02:15.937  PS1 JADRO: hlaska jadra behem hry 354
+2026-10-14 18:02:15.937  PS1 JADRO: hlaska jadra behem hry 353
+2026-10-14 18:02:15.937  PS1 JADRO: hlaska jadra behem hry 352
+2026-10-14 18:02:15.937  PS1 JADRO: hlaska jadra behem hry 351
+2026-10-14 18:02:15.937  PS1 JADRO: hlaska jadra behem hry 350
+2026-10-14 18:02:15.937  PS1 JADRO: hlaska jadra behem hry 349
+2026-10-14 18:02:15.937  PS1 JADRO: hlaska jadra behem hry 348
+2026-10-14 18:02:15.937  PS1 JADRO: hlaska jadra behem hry 347
+2026-10-14 18:02:15.937  PS1 JADRO: hlaska jadra behem hry 346
+2026-10-14 18:02:15.937  PS1 JADRO: hlaska jadra behem hry 345
+2026-10-14 18:02:15.937  PS1 JADRO: hlaska jadra behem hry 344
+2026-10-14 18:02:15.937  PS1 JADRO: hlaska jadra behem hry 343
+2026-10-14 18:02:15.937  PS1 JADRO: hlaska jadra behem hry 342
+2026-10-14 18:02:15.937  PS1 JADRO: hlaska jadra behem hry 341
+2026-10-14 18:02:15.937  PS1 JADRO: hlaska jadra behem hry 340
+2026-10-14 18:02:15.937  PS1 JADRO: hlaska jadra behem hry 339
+2026-10-14 18:02:15.937  PS1 JADRO: hlaska jadra behem hry 338
+2026-10-14 18:02:15.937  PS1 JADRO: hlaska jadra behem hry 337
+2026-10-14 18:02:15.937  PS1 JADRO: hlaska jadra behem hry 336
+2026-10-14 18:02:15.937  PS1 JADRO: hlaska jadra behem hry 335
+2026-10-14 18:02:15.937  PS1 JADRO: hlaska jadra behem hry 334
+2026-10-14 18:02:15.937  PS1 JADRO: hlaska jadra behem hry 333
+2026-10-14 18:02:15.937  PS1 JADRO: hlaska jadra behem hry 332
+2026-10-14 18:02:15.937  PS1 JADRO: hlaska jadra behem hry 331
+2026-10-14 18:02:15.937  PS1 JADRO: hlaska jadra behem hry 330
+2026-10-14 18:02:15.937  PS1 JADRO: hlaska jadra behem hry 329
+2026-10-14 18:02:15.937  PS1 JADRO: hlaska jadra behem hry 328
+2026-10-14 18:02:15.937  PS1 JADRO: hlaska jadra behem hry 327
+2026-10-14 18:02:15.937  PS1 JADRO: hlaska jadra behem hry 326
+2026-10-14 18:02:15.937  PS1 JADRO: hlaska jadra behem hry 325
+2026-10-14 18:02:15.937  PS1 JADRO: hlaska jadra behem hry 324
+2026-10-14 18:02:15.937  PS1 JADRO: hlaska jadra behem hry 323
+2026-10-14 18:02:15.937  PS1 JADRO: hlaska jadra behem hry 322
+2026-10-14 18:02:15.937  PS1 JADRO: hlaska jadra behem hry 321
+2026-10-14 18:02:15.937  PS1 JADRO: hlaska jadra behem hry 320
+2026-10-14 18:02:15.937  PS1 JADRO: hlaska jadra behem hry 319
+2026-10-14 18:02:15.937  PS1 JADRO: hlaska jadra behem hry 318
+2026-10-14 18:02:15.937  PS1 JADRO: hlaska jadra behem hry 317
+2026-10-14 18:02:15.937  PS1 JADRO: hlaska jadra behem hry 316
+2026-10-14 18:02:15.937  PS1 JADRO: hlaska jadra behem hry 315
+2026-10-14 18:02:15.937  PS1 JADRO: hlaska jadra behem hry 314
+2026-10-14 18:02:15.937  PS1 JADRO: hlaska jadra behem hry 313
+2026-10-14 18:02:15.937  PS1 JADRO: hlaska jadra behem hry 312
+2026-10-14 18:02:15.937  PS1 JADRO: hlaska jadra behem hry 311
+2026-10-14 18:02:15.937  PS1 JADRO: hlaska jadra behem hry 310
+2026-10-14 18:02:15.937  PS1 JADRO: hlaska jadra behem hry 309
+2026-10-14 18:02:15.937  PS1 JADRO: hlaska jadra behem hry 308
+2026-10-14 18:02:15.937  PS1 JADRO: hlaska jadra behem hry 307
+2026-10-14 18:02:15.937  PS1 JADRO: hlaska jadra behem hry 306
+2026-10-14 18:02:15.937  PS1 JADRO: hlaska jadra behem hry 305
+2026-10-14 18:02:15.937  PS1 JADRO: hlaska jadra behem hry 304
+2026-10-14 18:02:15.937  PS1 JADRO: hlaska jadra behem hry 303
+2026-10-14 18:02:15.937  PS1 JADRO: hlaska jadra behem hry 302
+2026-10-14 18:02:15.937  PS1 JADRO: hlaska jadra behem hry 301
+2026-10-14 18:02:15.937  PS1 JADRO: hlaska jadra behem hry 300
+2026-10-14 18:02:15.937  PS1 JADRO: hlaska jadra behem hry 299
+2026-10-14 18:02:15.937  PS1 JADRO: hlaska jadra behem hry 298
+2026-10-14 18:02:15.937  PS1 JADRO: hlaska jadra behem hry 297
+2026-10-14 18:02:15.937  PS1 JADRO: hlaska jadra behem hry 296
+2026-10-14 18:02:15.937  PS1 JADRO: hlaska jadra behem hry 295
+2026-10-14 18:02:15.937  PS1 JADRO: hlaska jadra behem hry 294
+2026-10-14 18:02:15.937  PS1 JADRO: hlaska jadra behem hry 293
+2026-10-14 18:02:15.937  PS1 JADRO: hlaska jadra behem hry 292
+2026-10-14 18:02:15.937  PS1 JADRO: hlaska jadra behem hry 291
+2026-10-14 18:02:15.937  PS1 JADRO: hlaska jadra behem hry 290
+2026-10-14 18:02:15.937  PS1 JADRO: hlaska jadra behem hry 289
+2026-10-14 18:02:15.937  PS1 JADRO: hlaska jadra behem hry 288
+2026-10-14 18:02:15.937  PS1 JADRO: hlaska jadra behem hry 287
+2026-10-14 18:02:15.937  PS1 JADRO: hlaska jadra behem hry 286
+2026-10-14 18:02:15.937  PS1 JADRO: hlaska jadra behem hry 285
+2026-10-14 18:02:15.937  PS1 JADRO: hlaska jadra behem hry 284
+2026-10-14 18:02:15.937  PS1 JADRO: hlaska jadra behem hry 283
+2026-10-14 18:02:15.937  PS1 JADRO: hlaska jadra behem hry 282
+2026-10-14 18:02:15.937  PS1 JADRO: hlaska jadra behem hry 281
+2026-10-14 18:02:15.937  PS1 JADRO: hlaska jadra behem hry 280
+2026-10-14 18:02:15.937  PS1 JADRO: hlaska jadra behem hry 279
+2026-10-14 18:02:15.937  PS1 JADRO: hlaska jadra behem hry 278
+2026-10-14 18:02:15.937  PS1 JADRO: hlaska jadra behem hry 277
+2026-10-14 18:02:15.937  PS1 JADRO: hlaska jadra behem hry 276
+2026-10-14 18:02:15.937  PS1 JADRO: hlaska jadra behem hry 275
+2026-10-14 18:02:15.937  PS1 JADRO: hlaska jadra behem hry 274
+2026-10-14 18:02:15.937  PS1 JADRO: hlaska jadra behem hry 273
+2026-10-14 18:02:15.937  PS1 JADRO: hlaska jadra behem hry 272
+2026-10-14 18:02:15.937  PS1 JADRO: hlaska jadra behem hry 271
+2026-10-14 18:02:15.937  PS1 JADRO: hlaska jadra behem hry 270
+2026-10-14 18:02:15.937  PS1 JADRO: hlaska jadra behem hry 269
+2026-10-14 18:02:15.938  PS1 JADRO: hlaska jadra behem hry 268
+2026-10-14 18:02:15.938  PS1 JADRO: hlaska jadra behem hry 267
+2026-10-14 18:02:15.938  PS1 JADRO: hlaska jadra behem hry 266
+2026-10-14 18:02:15.938  PS1 JADRO: hlaska jadra behem hry 265
+2026-10-14 18:02:15.938  PS1 JADRO: hlaska jadra behem hry 264
+2026-10-14 18:02:15.938  PS1 JADRO: hlaska jadra behem hry 263
+2026-10-14 18:02:15.938  PS1 JADRO: hlaska jadra behem hry 262
+2026-10-14 18:02:15.938  PS1 JADRO: hlaska jadra behem hry 261
+2026-10-14 18:02:15.938  PS1 JADRO: hlaska jadra behem hry 260
+2026-10-14 18:02:15.938  PS1 JADRO: hlaska jadra behem hry 259
+2026-10-14 18:02:15.938  PS1 JADRO: hlaska jadra behem hry 258
+2026-10-14 18:02:15.938  PS1 JADRO: hlaska jadra behem hry 257
+2026-10-14 18:02:15.938  PS1 JADRO: hlaska jadra behem hry 256
+2026-10-14 18:02:15.938  PS1 JADRO: hlaska jadra behem hry 255
+2026-10-14 18:02:15.938  PS1 JADRO: hlaska jadra behem hry 254
+2026-10-14 18:02:16.439  PS1 ==================== PS1 KONEC po 16 s, snimku 964 ====================
+2026-10-14 18:02:16.453  PS1 ==================== PS1 START: HRA ====================
+2026-10-14 18:02:16.453  PS1 HRA: ODMITNOUT.cue | typ .cue | CHYBI | cesta PRAC/hry/Doom/ODMITNOUT.cue
+2026-10-14 18:02:16.453  PS1 CUE: soubor nejde otevrit
+2026-10-14 18:02:16.453  PS1 BIOS ve slozce appky: scph5501.bin 512 kB
+2026-10-14 18:02:16.453  PS1 JADRO: CD-ROM Label: DOOM
+2026-10-14 18:02:16.453  PS1 JADRO: CD-ROM ID: SLUS00077
+2026-10-14 18:02:16.453  PS1 JADRO VAROVANI: warning: test varovani jadra
+2026-10-14 18:02:16.453  PS1 CHYBA STARTU: jadro odmitlo hru (retro_load_game) - viz radky JADRO vyse a CUE / HRA: chybejici soubor, nepodporovany format (.7z), poskozeny obraz disku
+2026-10-14 18:02:16.454  PS1 ==================== PS1 START: BEZ DISKU (menu BIOSu) ====================
+2026-10-14 18:02:16.454  PS1 BIOS ve slozce appky: scph5501.bin 512 kB
+2026-10-14 18:02:16.454  PS1 JADRO: CD-ROM Label: DOOM
+2026-10-14 18:02:16.454  PS1 JADRO: CD-ROM ID: SLUS00077
+2026-10-14 18:02:16.454  PS1 JADRO VAROVANI: warning: test varovani jadra
+2026-10-14 18:02:16.454  PS1 PAMETOVA KARTA nova (soubor zatim neni): PRAC/memory_card_1.srm, 131072 B prazdna
+2026-10-14 18:02:16.455  PS1 JADRO: BIOS scph5501.bin (soubor) | region USA, NTSC 60 Hz | procesor dynarec (rychly) | disk ID "SLUS00077" nazev "DOOM" | XA ANO, CD audio ANO, pomaly start 0
+2026-10-14 18:02:16.455  PS1 NASTAVENI GRAFIKY: 2x (Enhanced Resolution) ZAPNUTO, bez 1x obrazu NE, uprava textur ANO | prokladani AUTO
+2026-10-14 18:02:16.455  PS1 CASOVANI: 59.940 snimku/s, zvuk jadra 44100 Hz -> reproduktor 44100 Hz | obraz zakladni 320x240, nejvic 1024x512
+2026-10-14 18:02:16.455  PS1 PAMETOVA KARTA 1: zasunuta, soubor PRAC/memory_card_1.srm (CHYBI)
+2026-10-14 18:02:16.455  PS1 BEZI BIOS (menu bez disku)
+2026-10-14 18:02:16.455  PS1 start trval 0 ms
+2026-10-14 18:02:16.455  PS1 OBRAZ: obraz 320x240, 15 bit, NTSC | 2x ANO
+2026-10-14 18:02:16.456  PS1 ==================== PS1 KONEC po 0 s, snimku 969 ====================

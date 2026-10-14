@@ -1069,6 +1069,128 @@ static u32 uv_hack(psx_gpu_struct *psx_gpu, const vertex_struct *vertex_ptrs)
   return hacks;
 }
 
+/* atarihelp B308: trojuhelnik vysoky 1 bod (radek) nebo siroky 1 bod (sloupec).
+ *
+ * PSX Doom kresli podlahy a STROPY po radcich - kazdy radek je POLY_FT3
+ * (L,y) (R,y) (R,y+1) - a zdi po sloupcich - POLY_FT3 (x,yt-1) (x+1,yb+1) (x,yb+1).
+ * Puvodni PS1 z takoveho "prouzku" nakresli cely radek (sloupec). Ve 2x
+ * (Enhanced Resolution) se ale ukaze jeho skutecny tvar - trojuhelnik: druhy
+ * (lichy) radek ma jen pravou pulku, sloupec je nahore jen 1 bod siroky.
+ * V obraze pak chybi ctvrtina stropu a podlahy (cerne pruhy, "strop neni").
+ *
+ * Oprava: tenky trojuhelnik se ve 2x nakresli dvakrat - jednou orezany na
+ * prvni radek (sloupec) 2x obrazu a podruhe posunuty o 1 a orezany na druhy.
+ * Oba radky (sloupce) tak pokryji presne to, co puvodni PS1 (jako 2x vetsi
+ * bod), a textura se dal pocita v plnem 2x rozliseni. Posun o 1 nemeni, co
+ * se z textury cte, protoze se to dela jen pro trojuhelniky s texturou, ve
+ * kterych se textura (a u stinovanych i barva) napric tenkym smerem vubec
+ * nemeni - presne Doom: radek ma UV obou spodnich bodu stejne, sloupec
+ * stejne UV dolni hrany. Tenke trojuhelniky uvnitr bezne 3D site (vzdalene
+ * plochy jinych her) takove nebyvaji - ty jdou dal postaru, aby se site
+ * ve 2x spojovaly bez mezer.
+ * Upravy textury (uv_hack) se tu nepouzivaji - jsou pro trojuhelniky
+ * s hranou uvnitr obrazu a u 1 radku by sahaly mimo pole (span_uvrg_offset).
+ * Ostatni trojuhelniky (vsechny ostatni hry) jdou beze zmeny. */
+
+/* hodnota f se napric tenkym smerem nemeni: (f1-f0)*d2 == (f2-f0)*d1, kde d
+ * jsou rozdily souradnic podel trojuhelniku (radek: x, sloupec: y) */
+static int thin_attr_constant(s32 f0, s32 f1, s32 f2, s32 d1, s32 d2)
+{
+  return (f1 - f0) * d2 == (f2 - f0) * d1;
+}
+
+/* kolik tenkych trojuhelniku se takhle nakreslilo (denik PS1: "oprava Doomu
+ * pracuje" - cte nap_ps1_b308_tenkych() v nap_most.c) */
+unsigned int nap_b308_tenkych_2x;
+
+static int do_thin_triangle_enhanced(psx_gpu_struct *psx_gpu,
+ vertex_struct *vertex_ptrs[3], u32 current_command)
+{
+  vertex_struct *a = vertex_ptrs[0];
+  vertex_struct *b = vertex_ptrs[1];
+  vertex_struct *c = vertex_ptrs[2];
+  s32 y_min = a->y, y_max = a->y;
+  s32 lo, hi, line, i, rows, d1, d2;
+  s16 vp_start_x, vp_start_y, vp_end_x, vp_end_y;
+
+  if (!(current_command & RENDER_FLAGS_TEXTURE_MAP))
+    return 0;
+
+  if (b->y < y_min) y_min = b->y;
+  if (b->y > y_max) y_max = b->y;
+  if (c->y < y_min) y_min = c->y;
+  if (c->y > y_max) y_max = c->y;
+
+  // prepare_triangle() seradil vrcholy podle x: a->x <= b->x <= c->x
+  if (y_max - y_min == 1)
+    rows = 1;
+  else if (c->x - a->x == 1)
+    rows = 0;
+  else
+    return 0;
+
+  d1 = rows ? b->x - a->x : b->y - a->y;
+  d2 = rows ? c->x - a->x : c->y - a->y;
+  if (!thin_attr_constant(a->u, b->u, c->u, d1, d2) ||
+      !thin_attr_constant(a->v, b->v, c->v, d1, d2))
+    return 0;
+  if ((current_command & RENDER_FLAGS_SHADE) &&
+      (!thin_attr_constant(a->r, b->r, c->r, d1, d2) ||
+       !thin_attr_constant(a->g, b->g, c->g, d1, d2) ||
+       !thin_attr_constant(a->b, b->b, c->b, d1, d2)))
+    return 0;
+
+  vp_start_x = psx_gpu->viewport_start_x;
+  vp_start_y = psx_gpu->viewport_start_y;
+  vp_end_x = psx_gpu->viewport_end_x;
+  vp_end_y = psx_gpu->viewport_end_y;
+
+  if (rows) {
+    line = y_min * 2;
+    lo = vp_start_y;
+    hi = vp_end_y;
+  }
+  else {
+    line = a->x * 2;
+    lo = vp_start_x;
+    hi = vp_end_x;
+  }
+
+  psx_gpu->hacks_active = 0;
+  shift_vertices3(vertex_ptrs);
+  shift_triangle_area();
+
+  for (i = 0; i < 2; i++, line++)
+  {
+    if (line >= lo && line <= hi)
+    {
+      if (rows)
+        psx_gpu->viewport_start_y = psx_gpu->viewport_end_y = line;
+      else
+        psx_gpu->viewport_start_x = psx_gpu->viewport_end_x = line;
+      render_triangle_p(psx_gpu, vertex_ptrs, current_command);
+    }
+    if (i == 0)
+    {
+      // stejny trojuhelnik o 1 niz (vpravo) -> jeho prvni radek (sloupec)
+      // je na dalsim radku (sloupci) a ma stejne okraje i texturu
+      if (rows) {
+        a->y++; b->y++; c->y++;
+      }
+      else {
+        a->x++; b->x++; c->x++;
+      }
+    }
+  }
+
+  psx_gpu->viewport_start_x = vp_start_x;
+  psx_gpu->viewport_start_y = vp_start_y;
+  psx_gpu->viewport_end_x = vp_end_x;
+  psx_gpu->viewport_end_y = vp_end_y;
+  __atomic_fetch_add(&nap_b308_tenkych_2x, 1u, __ATOMIC_RELAXED);
+  return 1;
+}
+
 static void do_triangle_enhanced(psx_gpu_struct *psx_gpu,
  vertex_struct *vertexes, u32 current_command)
 {
@@ -1085,6 +1207,9 @@ static void do_triangle_enhanced(psx_gpu_struct *psx_gpu,
     return;
 
   if (!enhancement_enable(psx_gpu))
+    return;
+
+  if (do_thin_triangle_enhanced(psx_gpu, triangle.vertexes, current_command))
     return;
 
   if ((current_command & RENDER_FLAGS_TEXTURE_MAP) && psx_gpu->hack_texture_adj)

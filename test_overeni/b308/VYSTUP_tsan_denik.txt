@@ -1,0 +1,8 @@
+B308 ThreadSanitizer - SKUTECNY nap_ps1_native.cpp: vlakno emulace, zvukova karta (OpenSL), 2 vlakna
+prohlizece s klavesami, stranka cte denik, SAVE / LOAD pozice, dotyk + zmeny obrazu + hlasky jadra, 7 s
+start: PS1_HRA_OK
+stop: PS1_STOPPED, krokem emulace 828, soubeznych ulozeni 0, ulozeni 79
+bios: PS1_BIOS_OK
+stop: PS1_STOPPED
+denik: 75721 bajtu, ZDRAVI ano
+hlaseni ThreadSanitizer: 0

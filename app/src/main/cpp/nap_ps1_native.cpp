@@ -18,6 +18,10 @@
 #include <fstream>
 #include <malloc.h> // BUILD2SK150: mallinfo() - rozpad CPU heap pameti vedle VmRSS
 #include <iterator>
+#include <deque>      // B308: denik PS1
+#include <ctime>
+#include <strings.h>
+#include <sys/stat.h>
 #include <EGL/egl.h>   // BUILD2SK98: pro gpu-gles (skutecny GL vykreslovac s texturovym filtrovanim)
 #include <GLES/gl.h>   // GLES1 - presne to, co gpu-gles pouziva (fixed-function pipeline)
 #include <GLES2/gl2.h>  // pro prime kresleni obrazu na plochu v aplikaci (shadery)
@@ -110,7 +114,7 @@ extern "C" void nap_diag_log(const char *fmt, ...) {
   std::string path;
   { std::lock_guard<std::mutex> lock(g_diag_log_mutex); path = g_diag_log_path; }
   if (path.empty()) { return; } // cesta jeste nedorazila z Javy - nic bezpecneho k zapisu
-  char msg[512];
+  char msg[1200];   // B308: radky deniku PS1 jsou delsi (drive 512 - konec radku se ztracel)
   va_list ap; va_start(ap, fmt); vsnprintf(msg, sizeof(msg), fmt, ap); va_end(ap);
   FILE *f = fopen(path.c_str(), "a");
   if (!f) return;
@@ -137,6 +141,174 @@ Java_eu_atarihelp_emu10_NativePs1CoreBridge_ps1SetDiagLogPath(JNIEnv *env, jclas
 // BUILD2SK99: obojí najednou - logcat (kdyby nekdy byl adb pristup) i durable
 // soubor (co Rene skutecne vidi).
 #define NAPDIAG(...) do { NAPLOG(__VA_ARGS__); nap_diag_log(__VA_ARGS__); } while(0)
+
+// =====================================================================
+//  B308: DENIK PS1 - log, aby nikdo nebyl slepy
+//  Rene: "je potreba nachystat log do emu ps1 aby si nebyl slepej".
+//  Kazdy radek ma datum a cas (stejny tvar jako radky z Javy), jde do
+//  souboru logu appky (/log v prohlizeci, LOG appky) a do vlastni pameti
+//  poslednich 800 radku - tu si bere stranka PS1 (ULOZIT / KOPIROVAT LOG)
+//  a hlavni LOG appky. Co v nem je:
+//    - start: hra, soubory na disku a stopy z .cue (chybejici soubor =
+//      nejcastejsi duvod, proc hra nejede), BIOS ve slozce, co jadro
+//      SKUTECNE pouziva (BIOS / HLE, region, PAL / NTSC, ID a nazev disku),
+//      nastaveni grafiky, casovani,
+//    - hned kazda zmena obrazu (rozliseni, 24 bit video, prokladani, 2x),
+//    - "zdravi" kazdych 5 s (po minute 10 s): kroky emulace/s, cas
+//      retro_run, snimky, zvuk (fronta, vypadky), obraz, oprava Doomu
+//      (tenke trojuhelniky ve 2x), tlacitka, divaci na TV,
+//    - stisky tlacitek (dotyk, joystick, klavesnice z TV), hlasky jadra
+//      PCSX (drive jen v logcatu, kam Rene nevidi), ulozeni pozice
+//      a pametove karty, chyby, konec.
+//  Vsechno s omezenim poctu radku, aby log nerostl bez konce.
+// =====================================================================
+static std::mutex g_denik_mutex;
+static std::deque<std::string> g_denik;
+static const size_t DENIK_MAX_RADKU = 800;
+static std::atomic<int> g_jadro_hlasek{0};     // hlasek jadra PCSX od startu (omezeni deniku)
+static std::atomic<uint64_t> g_zvuk_vypadky{0}; // OpenSL chtel zvuk a fronta byla prazdna
+static long long ps1_ms_ted(void) {
+  return (long long)std::chrono::duration_cast<std::chrono::milliseconds>(
+      std::chrono::steady_clock::now().time_since_epoch()).count();
+}
+static std::atomic<long long> g_denik_start_ms{ps1_ms_ted()};   // start hry (ZDRAVI "x s" od startu)
+
+static void ps1_denik(const char *fmt, ...) __attribute__((format(printf, 1, 2)));
+static void ps1_denik(const char *fmt, ...) {
+  char msg[1000];
+  va_list ap; va_start(ap, fmt); vsnprintf(msg, sizeof(msg), fmt, ap); va_end(ap);
+  size_t n = strlen(msg);
+  while (n && (msg[n - 1] == '\n' || msg[n - 1] == '\r' || msg[n - 1] == ' ')) msg[--n] = '\0';
+  for (size_t i = 0; i < n; i++) if (msg[i] == '\n' || msg[i] == '\r') msg[i] = ' ';   // jeden radek
+  struct timespec ts; clock_gettime(CLOCK_REALTIME, &ts);
+  struct tm tmv; localtime_r(&ts.tv_sec, &tmv);
+  char radek[1100];
+  snprintf(radek, sizeof(radek), "%04d-%02d-%02d %02d:%02d:%02d.%03d  PS1 %s",
+           tmv.tm_year + 1900, tmv.tm_mon + 1, tmv.tm_mday, tmv.tm_hour, tmv.tm_min, tmv.tm_sec,
+           (int)(ts.tv_nsec / 1000000), msg);
+  NAPLOG("%s", radek);
+  nap_diag_log("%s", radek);
+  std::lock_guard<std::mutex> lk(g_denik_mutex);
+  g_denik.emplace_back(radek);
+  while (g_denik.size() > DENIK_MAX_RADKU) g_denik.pop_front();
+}
+
+// Popisy z jadra (C): frontend/libretro.c a plugins/gpu_neon/nap_most.c.
+// "weak" - starsi testy na PC, ktere jadro nemaji, se bez nich preloz i dal.
+extern "C" {
+  int nap_ps1_jadro_popis(char *buf, int len) __attribute__((weak));
+  int nap_ps1_nastaveni_popis(char *buf, int len) __attribute__((weak));
+  int nap_ps1_gpu_popis(char *buf, int len) __attribute__((weak));
+  unsigned int nap_ps1_gpu_otisk(void) __attribute__((weak));
+  unsigned int nap_ps1_b308_tenkych(void) __attribute__((weak));
+}
+
+static std::string ps1_velikost(long long b) {
+  char t[48];
+  if (b < 0) return "CHYBI";
+  if (b >= 1024LL * 1024) snprintf(t, sizeof(t), "%.1f MB", (double)b / (1024.0 * 1024.0));
+  else if (b >= 1024) snprintf(t, sizeof(t), "%lld kB", b / 1024);
+  else snprintf(t, sizeof(t), "%lld B", b);
+  return t;
+}
+static long long ps1_soubor_velikost(const std::string &p) {
+  struct stat st;
+  if (stat(p.c_str(), &st) != 0) return -1;
+  return (long long)st.st_size;
+}
+static std::string ps1_pripona(const std::string &p) {
+  const size_t t = p.find_last_of('.'), s = p.find_last_of('/');
+  if (t == std::string::npos || (s != std::string::npos && t < s)) return "";
+  std::string e = p.substr(t + 1);
+  for (char &c : e) c = (char)tolower((unsigned char)c);
+  return e;
+}
+
+// .cue: jake stopy ma a jestli jsou VSECHNY soubory, na ktere ukazuje, na disku
+static void ps1_denik_cue(const std::string &cue) {
+  FILE *f = fopen(cue.c_str(), "r");
+  if (!f) { ps1_denik("CUE: soubor nejde otevrit"); return; }
+  const size_t lom = cue.find_last_of('/');
+  const std::string adr = lom == std::string::npos ? std::string(".") : cue.substr(0, lom);
+  char r[1024];
+  int stop = 0, audio = 0, data = 0, souboru = 0, chybi = 0;
+  long long celkem = 0;
+  std::string seznam, chybejici;
+  while (fgets(r, sizeof(r), f)) {
+    char *s = r;
+    while (*s == ' ' || *s == '\t') s++;
+    if (strncasecmp(s, "FILE", 4) == 0 && (s[4] == ' ' || s[4] == '\t')) {
+      std::string jm;
+      char *q = strchr(s, '"');
+      if (q) { char *q2 = strchr(q + 1, '"'); if (q2) jm.assign(q + 1, q2); }
+      else {
+        char *z = s + 5; while (*z == ' ' || *z == '\t') z++;
+        char *k = z; while (*k && *k != ' ' && *k != '\t' && *k != '\r' && *k != '\n') k++;
+        jm.assign(z, k);
+      }
+      const size_t l2 = jm.find_last_of("/\\");
+      if (l2 != std::string::npos) jm = jm.substr(l2 + 1);
+      const long long v = ps1_soubor_velikost(adr + "/" + jm);
+      souboru++;
+      if (v < 0) { chybi++; if (chybejici.size() < 300) chybejici += (chybejici.empty() ? "" : ", ") + jm; }
+      else celkem += v;
+      if (souboru <= 4) seznam += (seznam.empty() ? "" : ", ") + jm + " " + ps1_velikost(v);
+    } else if (strncasecmp(s, "TRACK", 5) == 0) {
+      stop++;
+      if (strcasestr(s, "AUDIO")) audio++; else data++;
+    }
+  }
+  fclose(f);
+  ps1_denik("CUE: %d stop (data %d, hudba %d), souboru %d%s, na disku %d (%s): %s%s",
+            stop, data, audio, souboru, chybi ? "" : " - VSECHNY NALEZENY", souboru - chybi,
+            ps1_velikost(celkem).c_str(), seznam.c_str(), souboru > 4 ? ", ..." : "");
+  if (chybi) ps1_denik("CHYBA CUE: %d soubor(u) chybi -> hra nepujde nebo bez hudby: %s", chybi, chybejici.c_str());
+}
+
+// slozka BIOSu: ktere soubory tam jsou (spatny region BIOSu / zadny BIOS = HLE)
+static void ps1_denik_bios_slozka(const std::string &sys) {
+  std::string nalez;
+  int n = 0;
+  for (const std::string &d : { sys, sys + "/bios" }) {
+    DIR *dir = opendir(d.c_str());
+    if (!dir) continue;
+    while (struct dirent *e = readdir(dir)) {
+      const std::string jm = e->d_name;
+      if (ps1_pripona(jm) != "bin") continue;
+      const long long v = ps1_soubor_velikost(d + "/" + jm);
+      if (v < 256 * 1024 || v > 4 * 1024 * 1024) continue;   // BIOS PS1 ma 512 kB
+      n++;
+      if (nalez.size() < 400) nalez += (nalez.empty() ? "" : ", ") + jm + " " + ps1_velikost(v);
+    }
+    closedir(dir);
+  }
+  ps1_denik("BIOS ve slozce appky: %s", n ? nalez.c_str() : "ZADNY (jadro pojede s HLE - nahradnim BIOSem, nektere hry pak nejdou)");
+}
+
+static void ps1_denik_start(const std::string &hra, const std::string &sys) {
+  g_denik_start_ms.store(ps1_ms_ted());
+  g_jadro_hlasek.store(0);
+  ps1_denik("==================== PS1 START: %s ====================", hra.empty() ? "BEZ DISKU (menu BIOSu)" : "HRA");
+  if (!hra.empty()) {
+    const std::string pr = ps1_pripona(hra);
+    const size_t l = hra.find_last_of('/');
+    ps1_denik("HRA: %s | typ .%s | %s | cesta %s", (l == std::string::npos ? hra : hra.substr(l + 1)).c_str(),
+              pr.c_str(), ps1_velikost(ps1_soubor_velikost(hra)).c_str(), hra.c_str());
+    if (pr == "cue") ps1_denik_cue(hra);
+    else if (pr == "bin" || pr == "img") ps1_denik("HRA: .%s bez .cue - jen jedna datova stopa (hudba z CD chybet muze)", pr.c_str());
+  }
+  ps1_denik_bios_slozka(sys);
+}
+
+static const char *const PS1_TLACITKA[16] = {
+  "KRIZEK", "CTVEREC", "SELECT", "START", "NAHORU", "DOLU", "VLEVO", "VPRAVO",
+  "KOLECKO", "TROJUHELNIK", "L1", "R1", "L2", "R2", "L3", "R3" };
+static std::string ps1_tlacitka_text(unsigned bity) {
+  std::string s;
+  for (int i = 0; i < 16; i++) if (bity & (1u << i)) s += (s.empty() ? "" : " ") + std::string(PS1_TLACITKA[i]);
+  return s.empty() ? std::string("nic") : s;
+}
+
 
 extern "C" {
   // minimalni libretro API (shodne s libretro.h ABI)
@@ -261,7 +433,7 @@ static void nap_srm_set_path(const std::string &gamePath) {
 static void nap_srm_load() {
   void *mem = retro_get_memory_data(0);
   size_t sz = retro_get_memory_size(0);
-  if (!mem || !sz) { NAPLOG("BUILD2SA11 MEMCARD_NONE core nedava SAVE_RAM"); return; }
+  if (!mem || !sz) { ps1_denik("PAMETOVA KARTA: jadro ji nedava (MEMCARD_NONE)"); return; }
   // BUILD2SB17: NALEZENO VLASTNIM TESTEM (Rene: "2x mer, jednou rez") -
   // kdyz .srm soubor JESTE NEEXISTUJE (prvni hrani teto hry), tenhle kod
   // nechaval Mcd1Data tak, jak byl - tedy s OBSAHEM PREDCHOZI HRY, pokud
@@ -274,8 +446,8 @@ static void nap_srm_load() {
   memset(mem, 0, sz);
   FILE *f = fopen(g_srm_path.c_str(), "rb");
   if (f) { size_t rd = fread(mem, 1, sz, f); fclose(f);
-    NAPLOG("BUILD2SA11 MEMCARD_LOADED %s bytes=%zu/%zu", g_srm_path.c_str(), rd, sz);
-  } else NAPLOG("BUILD2SA11 MEMCARD_NEW %s size=%zu (prvni hrani teto hry, karta vynulovana)", g_srm_path.c_str(), sz);
+    ps1_denik("PAMETOVA KARTA nactena: %zu/%zu B z %s", rd, sz, g_srm_path.c_str());
+  } else ps1_denik("PAMETOVA KARTA nova (soubor zatim neni): %s, %zu B prazdna", g_srm_path.c_str(), sz);
   g_srm_last_fnv = nap_fnv32((const uint8_t*)mem, sz);
 }
 static void nap_srm_save_if_dirty(const char *why) {
@@ -285,17 +457,26 @@ static void nap_srm_save_if_dirty(const char *why) {
   uint32_t h = nap_fnv32((const uint8_t*)mem, sz);
   if (h == g_srm_last_fnv) return;
   FILE *f = fopen(g_srm_path.c_str(), "wb");
-  if (!f) { NAPLOG("BUILD2SA11 MEMCARD_SAVE_FAIL %s", g_srm_path.c_str()); g_srm_last_save_ok = 0; return; }
+  if (!f) { ps1_denik("CHYBA: pametovou kartu nejde ulozit do %s", g_srm_path.c_str()); g_srm_last_save_ok = 0; return; }
   fwrite(mem, 1, sz, f); fclose(f);
   g_srm_last_fnv = h;
   g_srm_last_save_ok = 1;
   g_srm_last_size = sz;
-  NAPLOG("BUILD2SA11 MEMCARD_SAVED %s bytes=%zu why=%s", g_srm_path.c_str(), sz, why);
+  ps1_denik("PAMETOVA KARTA ulozena (%s): %zu B do %s", why, sz, g_srm_path.c_str());
 }
 
 static void nap_retro_log(int level, const char *fmt, ...) {
   char buf[512]; va_list ap; va_start(ap, fmt); vsnprintf(buf, sizeof(buf), fmt, ap); va_end(ap);
   __android_log_print(ANDROID_LOG_INFO, "NAP_PS1_CORE", "[%d] %s", level, buf);
+  // B308: hlasky jadra PCSX i do deniku (drive jen logcat, kam Rene nevidi).
+  // Ladici (0) ne. Od startu prvnich 150 hlasek, pak uz jen varovani a chyby
+  // (do 600), at log neroste bez konce.
+  if (level <= 0) return;
+  const int n = g_jadro_hlasek.fetch_add(1);
+  if (n < 150 || (level >= 2 && n < 600))
+    ps1_denik("JADRO%s: %s", level >= 3 ? " CHYBA" : level == 2 ? " VAROVANI" : "", buf);
+  else if (n == 600)
+    ps1_denik("JADRO: dalsi hlasky jadra uz jen do logcatu (omezeni deniku)");
 }
 static const char *nap_core_option_value(const char *key) {
   if (!key) return nullptr;
@@ -633,6 +814,8 @@ static void nap_sl_callback(SLAndroidSimpleBufferQueueItf bq, void*) {
   s_sl_next = (s_sl_next + 1) % NAP_SL_BLOCKS;   // dalsi blok - nikdy neprepisujeme ten, co se prave hraje
   {
     size_t take = nap_aring_read(blk, (unsigned)need);   // bez zamku
+    if (take < need && g_loaded.load(std::memory_order_relaxed))
+      g_zvuk_vypadky.fetch_add(1, std::memory_order_relaxed);   // B308: denik - vypadek zvuku
     if (take < need) {
       // Misto tvrdeho ticha (lupanec) dozniva posledni vzorek - pri kratkem
       // vypadku je to slyset mnohem min.
@@ -671,12 +854,14 @@ static void nap_sl_open(void) {
   if ((*s_sl_player_obj)->GetInterface(s_sl_player_obj, SL_IID_PLAY, &s_sl_play) != SL_RESULT_SUCCESS) return;
   if ((*s_sl_player_obj)->GetInterface(s_sl_player_obj, SL_IID_ANDROIDSIMPLEBUFFERQUEUE, &s_sl_queue) != SL_RESULT_SUCCESS) return;
   (*s_sl_queue)->RegisterCallback(s_sl_queue, nap_sl_callback, nullptr);
-  (*s_sl_play)->SetPlayState(s_sl_play, SL_PLAYSTATE_PLAYING);
-  // nakopnout - naplnit CELOU frontu tichem, kazdy blok vlastni pameti
+  // nakopnout - naplnit CELOU frontu tichem, kazdy blok vlastni pameti.
+  // B308: AZ POTOM prehravat - drive se nejdriv pustilo prehravani a teprve pak
+  // nastavil s_sl_next a fronta (ThreadSanitizer: callback mohl bezet driv).
   memset(s_sl_blocks, 0, sizeof(s_sl_blocks));
+  s_sl_next = 0;
   for (int i = 0; i < NAP_SL_BLOCKS; i++)
     (*s_sl_queue)->Enqueue(s_sl_queue, s_sl_blocks[i], sizeof(s_sl_blocks[i]));
-  s_sl_next = 0;
+  (*s_sl_play)->SetPlayState(s_sl_play, SL_PLAYSTATE_PLAYING);
   s_sl_ready = true;
   NAPDIAG("CESTA_A ZVUK OpenSL ES otevren (44100/2/i16, z g_afifo, bez Javy, funguje od API 9)");
 }
@@ -729,10 +914,108 @@ Java_eu_atarihelp_emu10_NativePs1CoreBridge_ps1SetStick(JNIEnv*, jclass, jint x,
         if (x >  PRAH) nové |= (1u << 7);      /* RIGHT */
     } while (!g_input_bits.compare_exchange_weak(staré, nové, std::memory_order_relaxed));
 }
+// =====================================================================
+//  B308: KLAVESNICE PC V PROHLIZECI (TV / PC) -> TLACITKA PS1
+//  Rene: "nemame ovladani pres klavesnici na TV viewer". Prohlizec posle
+//  e.code (KeyW, ArrowUp, Space ...) pres /klavesa, Java ho jen preda sem
+//  (ps1PcKlavesa). Co klavesa udela, rozhoduje C++. Klavesnice ma vlastni
+//  bity, ktere se k dotyku a joysticku jen PRICITAJI - nic si neprepisuji.
+//  Kdyz se prohlizec s drzenou klavesou odmlci (spadla Wi-Fi, zavrene okno)
+//  dele nez 2,5 s, vlakno emulace vsechny klavesy pusti (prohlizec posila
+//  "Zije" kazdych 0,8 s, dokud neco drzi) - postava nepobezi do nekonecna.
+//    smer        sipky, WASD, numericka 8 4 6 2
+//    KRIZEK      K, mezernik        KOLECKO   L
+//    CTVEREC     J                  TROJUHELNIK I
+//    L1 / R1     Q / E              L2 / R2   Z / C      L3 / R3  F / G
+//    START       Enter, P           SELECT    Backspace, O
+// =====================================================================
+static std::atomic<uint32_t> g_klav_bits{0};
+static std::atomic<long long> g_klav_posledni_ms{0};
+static std::atomic<int> g_klav_udalosti{0}, g_klav_v_okne{0}, g_klav_neznamych{0};
+
+static int ps1_klavesa_id(const std::string &code) {
+  static const struct { const char *c; int id; } M[] = {
+    {"ArrowUp", 4}, {"KeyW", 4}, {"Numpad8", 4},
+    {"ArrowDown", 5}, {"KeyS", 5}, {"Numpad2", 5},
+    {"ArrowLeft", 6}, {"KeyA", 6}, {"Numpad4", 6},
+    {"ArrowRight", 7}, {"KeyD", 7}, {"Numpad6", 7},
+    {"KeyK", 0}, {"Space", 0},          // KRIZEK  (RetroPad B)
+    {"KeyL", 8},                        // KOLECKO (RetroPad A)
+    {"KeyJ", 1},                        // CTVEREC (RetroPad Y)
+    {"KeyI", 9},                        // TROJUHELNIK (RetroPad X)
+    {"KeyQ", 10}, {"KeyE", 11}, {"KeyZ", 12}, {"KeyC", 13}, {"KeyF", 14}, {"KeyG", 15},
+    {"Enter", 3}, {"NumpadEnter", 3}, {"KeyP", 3},
+    {"Backspace", 2}, {"KeyO", 2},
+  };
+  for (const auto &m : M) if (code == m.c) return m.id;
+  return -1;
+}
+
+static void ps1_klavesy_hlidac(void) {   // vlakno emulace, kazdy krok
+  if (g_klav_bits.load(std::memory_order_relaxed) &&
+      ps1_ms_ted() - g_klav_posledni_ms.load(std::memory_order_relaxed) > 2500) {
+    const uint32_t b = g_klav_bits.exchange(0);
+    if (b) ps1_denik("TV KLAVESNICE: prohlizec se 2,5 s neozval - drzene klavesy pusteny (%s)", ps1_tlacitka_text(b).c_str());
+  }
+}
+
 static int16_t nap_input_state(unsigned port, unsigned device, unsigned, unsigned id) {
   // BUILD2SA4: RetroPad -> PS1 core. device 1 = RETRO_DEVICE_JOYPAD.
   if (port != 0 || device != 1 || id >= 16) return 0;
-  return (g_input_bits.load(std::memory_order_relaxed) & (1u << id)) ? 1 : 0;
+  const uint32_t b = g_input_bits.load(std::memory_order_relaxed) | g_klav_bits.load(std::memory_order_relaxed);
+  return (b & (1u << id)) ? 1 : 0;
+}
+
+/** B308: klavesa z prohlizece (TV / PC). Vraci text pro prohlizec. */
+extern "C" JNIEXPORT jstring JNICALL
+Java_eu_atarihelp_emu10_NativePs1CoreBridge_ps1PcKlavesa(JNIEnv *env, jclass, jstring jcode, jboolean dolu) {
+  std::string code;
+  if (jcode) {
+    const char *c = env->GetStringUTFChars(jcode, nullptr);
+    if (c) {
+      for (const char *p = c; *p && code.size() < 32; p++)   // jen bezpecne znaky (vraci se do prohlizece)
+        if (isalnum((unsigned char)*p)) code += *p;
+      env->ReleaseStringUTFChars(jcode, c);
+    }
+  }
+  g_klav_posledni_ms.store(ps1_ms_ted(), std::memory_order_relaxed);
+  if (code == "PustVse") {
+    const uint32_t b = g_klav_bits.exchange(0);
+    if (b) ps1_denik("TV KLAVESNICE: prohlizec pustil vse (%s)", ps1_tlacitka_text(b).c_str());
+    return env->NewStringUTF("PS1:PUSTENO");
+  }
+  if (code == "Zije") return env->NewStringUTF("PS1:ZIJE");
+  if (code == "STAV") return env->NewStringUTF("PS1");
+  const int id = ps1_klavesa_id(code);
+  g_klav_v_okne.fetch_add(1, std::memory_order_relaxed);
+  const int n = g_klav_udalosti.fetch_add(1, std::memory_order_relaxed);
+  if (id < 0) {
+    if (g_klav_neznamych.fetch_add(1, std::memory_order_relaxed) < 10)
+      ps1_denik("TV KLAVESNICE: %s %s -> pro PS1 nic (neznama klavesa)", code.c_str(), dolu ? "dolu" : "nahoru");
+    return env->NewStringUTF(("NEZNAMA:" + code).c_str());
+  }
+  const uint32_t bit = 1u << (unsigned)id;
+  if (dolu) g_klav_bits.fetch_or(bit, std::memory_order_relaxed);
+  else g_klav_bits.fetch_and(~bit, std::memory_order_relaxed);
+  if (n < 12) ps1_denik("TV KLAVESNICE: %s %s -> %s", code.c_str(), dolu ? "dolu" : "nahoru", PS1_TLACITKA[id]);
+  else if (n == 12) ps1_denik("TV KLAVESNICE: dalsi stisky jen v radcich TLACITKA a v souctu ZDRAVI");
+  return env->NewStringUTF((std::string("PS1:") + PS1_TLACITKA[id]).c_str());
+}
+
+/** B308: denik PS1 (poslednich 800 radku) pro stranku PS1 a LOG appky. UTF-8 bajty. */
+extern "C" JNIEXPORT jbyteArray JNICALL
+Java_eu_atarihelp_emu10_NativePs1CoreBridge_ps1Denik(JNIEnv *env, jclass) {
+  std::string t;
+  {
+    std::lock_guard<std::mutex> lk(g_denik_mutex);
+    size_t celkem = 0;
+    for (const std::string &r : g_denik) celkem += r.size() + 1;
+    t.reserve(celkem);
+    for (const std::string &r : g_denik) { t += r; t += '\n'; }
+  }
+  jbyteArray a = env->NewByteArray((jsize)t.size());
+  if (a && !t.empty()) env->SetByteArrayRegion(a, 0, (jsize)t.size(), (const jbyte *)t.data());
+  return a;
 }
 
 // BUILD2SK98: gpu-gles potrebuje EXTERNE dodany EGL display/surface (jinak by
@@ -929,7 +1212,9 @@ extern "C" JNIEXPORT jstring JNICALL
 Java_eu_atarihelp_emu10_NativePs1CoreBridge_ps1Status(JNIEnv *env, jclass) {
   char out[768];
   snprintf(out,sizeof(out),"PS1_RUN running=%s frames=%llu dupes=%llu res=%dx%d pixfmt=%d audioFifoFrames=%zu audioDropped=%llu audioResyncs=%llu fps=%.2f err=%s",
-    g_running.load()?"YES":"NO",(unsigned long long)g_frames.load(),(unsigned long long)g_dupe_frames.load(),
+    // B308: g_running nikdo nenastavuje (zbytek stare cesty) -> v logu bylo vzdy
+    // "running=NO" i kdyz hra bezela. Ted skutecny stav vlakna emulace.
+    (g_running.load() || g_core_run.load())?"YES":"NO",(unsigned long long)g_frames.load(),(unsigned long long)g_dupe_frames.load(),
     g_fw.load(),g_fh.load(),g_pixfmt.load(),(size_t)(nap_aring_avail()/2),(unsigned long long)g_audio_samples_dropped.load(),(unsigned long long)g_audio_resyncs.load(),g_fps,
     g_boot_error.empty()?"none":g_boot_error.c_str());
   return env->NewStringUTF(out);
@@ -1019,52 +1304,59 @@ Java_eu_atarihelp_emu10_NativePs1CoreBridge_ps1SetInput(JNIEnv *, jclass, jint i
   if (down) g_input_bits.fetch_or(bit, std::memory_order_relaxed);
   else g_input_bits.fetch_and(~bit, std::memory_order_relaxed);
 }
+// B308: chyba ulozeni / nahrani pozice -> denik + navratovy text pro Javu
+static jstring ps1_pozice_chyba(JNIEnv *env, const char *navrat, const char *co, const char *duvod) {
+  ps1_denik("CHYBA %s: %s", co, duvod);
+  return env->NewStringUTF(navrat);
+}
 extern "C" JNIEXPORT jstring JNICALL
 Java_eu_atarihelp_emu10_NativePs1CoreBridge_ps1SaveState(JNIEnv *env, jclass, jstring jpath) {
-  if (!jpath) return env->NewStringUTF("PS1_STATE_SAVE_FAIL path=null");
-  if (!g_loaded.load()) return env->NewStringUTF("PS1_STATE_SAVE_FAIL core_not_loaded");
+  if (!jpath) return ps1_pozice_chyba(env, "PS1_STATE_SAVE_FAIL path=null", "ULOZENI POZICE", "path=null");
+  if (!g_loaded.load()) return ps1_pozice_chyba(env, "PS1_STATE_SAVE_FAIL core_not_loaded", "ULOZENI POZICE", "core_not_loaded");
   const char *pathChars = env->GetStringUTFChars(jpath, nullptr);
   std::string path = pathChars ? pathChars : "";
   env->ReleaseStringUTFChars(jpath, pathChars);
-  if (path.empty()) return env->NewStringUTF("PS1_STATE_SAVE_FAIL path_empty");
+  if (path.empty()) return ps1_pozice_chyba(env, "PS1_STATE_SAVE_FAIL path_empty", "ULOZENI POZICE", "path_empty");
   std::vector<uint8_t> data;
   {
     std::lock_guard<std::mutex> core(g_core_mutex);
     size_t size = retro_serialize_size();
-    if (size == 0) return env->NewStringUTF("PS1_STATE_SAVE_FAIL serialize_size_0");
+    if (size == 0) return ps1_pozice_chyba(env, "PS1_STATE_SAVE_FAIL serialize_size_0", "ULOZENI POZICE", "serialize_size_0");
     data.resize(size);
-    if (!retro_serialize(data.data(), data.size())) return env->NewStringUTF("PS1_STATE_SAVE_FAIL retro_serialize_false");
+    if (!retro_serialize(data.data(), data.size())) return ps1_pozice_chyba(env, "PS1_STATE_SAVE_FAIL retro_serialize_false", "ULOZENI POZICE", "retro_serialize_false");
   }
   std::ofstream out(path.c_str(), std::ios::binary | std::ios::trunc);
-  if (!out.good()) return env->NewStringUTF("PS1_STATE_SAVE_FAIL open_failed");
+  if (!out.good()) return ps1_pozice_chyba(env, "PS1_STATE_SAVE_FAIL open_failed", "ULOZENI POZICE", "open_failed");
   out.write((const char*)data.data(), (std::streamsize)data.size());
   out.close();
   char msg[512];
   snprintf(msg, sizeof(msg), "PS1_STATE_SAVE_OK bytes=%zu path=%s", data.size(), path.c_str());
+  ps1_denik("POZICE ULOZENA: %zu B do %s", data.size(), path.c_str());
   return env->NewStringUTF(msg);
 }
 extern "C" JNIEXPORT jstring JNICALL
 Java_eu_atarihelp_emu10_NativePs1CoreBridge_ps1LoadState(JNIEnv *env, jclass, jstring jpath) {
-  if (!jpath) return env->NewStringUTF("PS1_STATE_LOAD_FAIL path=null");
-  if (!g_loaded.load()) return env->NewStringUTF("PS1_STATE_LOAD_FAIL core_not_loaded");
+  if (!jpath) return ps1_pozice_chyba(env, "PS1_STATE_LOAD_FAIL path=null", "NAHRANI POZICE", "path=null");
+  if (!g_loaded.load()) return ps1_pozice_chyba(env, "PS1_STATE_LOAD_FAIL core_not_loaded", "NAHRANI POZICE", "core_not_loaded");
   const char *pathChars = env->GetStringUTFChars(jpath, nullptr);
   std::string path = pathChars ? pathChars : "";
   env->ReleaseStringUTFChars(jpath, pathChars);
-  if (path.empty()) return env->NewStringUTF("PS1_STATE_LOAD_FAIL path_empty");
+  if (path.empty()) return ps1_pozice_chyba(env, "PS1_STATE_LOAD_FAIL path_empty", "NAHRANI POZICE", "path_empty");
   std::ifstream in(path.c_str(), std::ios::binary);
-  if (!in.good()) return env->NewStringUTF("PS1_STATE_LOAD_FAIL missing_file");
+  if (!in.good()) return ps1_pozice_chyba(env, "PS1_STATE_LOAD_FAIL missing_file", "NAHRANI POZICE", "missing_file");
   std::vector<uint8_t> data((std::istreambuf_iterator<char>(in)), std::istreambuf_iterator<char>());
   in.close();
-  if (data.empty()) return env->NewStringUTF("PS1_STATE_LOAD_FAIL empty_file");
+  if (data.empty()) return ps1_pozice_chyba(env, "PS1_STATE_LOAD_FAIL empty_file", "NAHRANI POZICE", "empty_file");
   bool ok = false;
   {
     std::lock_guard<std::mutex> core(g_core_mutex);
     ok = retro_unserialize(data.data(), data.size());
   }
-  if (!ok) return env->NewStringUTF("PS1_STATE_LOAD_FAIL retro_unserialize_false");
+  if (!ok) return ps1_pozice_chyba(env, "PS1_STATE_LOAD_FAIL retro_unserialize_false", "NAHRANI POZICE", "retro_unserialize_false");
   nap_audio_clear();
   char msg[512];
   snprintf(msg, sizeof(msg), "PS1_STATE_LOAD_OK bytes=%zu path=%s", data.size(), path.c_str());
+  ps1_denik("POZICE NAHRANA: %zu B z %s", data.size(), path.c_str());
   return env->NewStringUTF(msg);
 }
 // ==================================================================
@@ -1084,7 +1376,7 @@ Java_eu_atarihelp_emu10_NativePs1CoreBridge_ps1EglBoot(JNIEnv* env, jclass,
     if (csys)  env->ReleaseStringUTFChars(jsys, csys);
     if (cgame) env->ReleaseStringUTFChars(jgame, cgame);
 
-    if (g_loaded.exchange(false)) { retro_unload_game(); retro_deinit(); }
+    if (g_loaded.exchange(false)) { nap_srm_save_if_dirty("dalsi start"); retro_unload_game(); retro_deinit(); }
     g_sysdir = sys;
     g_input_bits.store(0);
     g_boot_error.clear();
@@ -1592,6 +1884,20 @@ extern "C" void nap_ps1_egl_bind_render(void) {
 extern "C" int nap_ps1_egl_vram_w(void) { return nap_gles_vram_w(); }
 extern "C" int nap_ps1_egl_vram_h(void) { return nap_gles_vram_h(); }
 
+// B308: denik - co jadro po startu skutecne pouziva
+static void ps1_denik_po_startu(bool jeHra, const retro_system_av_info &av) {
+  char b[700];
+  if (nap_ps1_jadro_popis) { nap_ps1_jadro_popis(b, sizeof(b)); ps1_denik("JADRO: %s", b); }
+  if (nap_ps1_nastaveni_popis) { nap_ps1_nastaveni_popis(b, sizeof(b)); ps1_denik("NASTAVENI GRAFIKY: %s", b); }
+  ps1_denik("CASOVANI: %.3f snimku/s, zvuk jadra %.0f Hz -> reproduktor 44100 Hz | obraz zakladni %ux%u, nejvic %ux%u",
+            av.timing.fps, av.timing.sample_rate, av.geometry.base_width, av.geometry.base_height,
+            av.geometry.max_width, av.geometry.max_height);
+  void *mem = retro_get_memory_data(0);
+  ps1_denik("PAMETOVA KARTA 1: %s, soubor %s (%s)", (mem && retro_get_memory_size(0)) ? "zasunuta" : "NENI (jadro ji nedava)",
+            g_srm_path.c_str(), ps1_velikost(ps1_soubor_velikost(g_srm_path)).c_str());
+  ps1_denik("BEZI %s", jeHra ? "HRA" : "BIOS (menu bez disku)");
+}
+
 // Ne-JNI wrappery, aby je eglrender (C) mohl volat pres dlsym primo,
 // bez JNIEnv. Delaji totez co JNI verze vyse.
 extern "C" int nap_ps1_egl_boot_c(const char* sys, const char* game) {
@@ -1603,7 +1909,8 @@ extern "C" int nap_ps1_egl_boot_c(const char* sys, const char* game) {
         g_core_thread.join();
         nap_sl_close();
         nap_audio_clear();
-        if (g_loaded.exchange(false)) { retro_unload_game(); retro_deinit(); }
+        // B308: karta je spolecna pro BIOS i hry - zmeny z Memory Card Manageru neztratit
+        if (g_loaded.exchange(false)) { nap_srm_save_if_dirty("dalsi start"); retro_unload_game(); retro_deinit(); }
     }
     // ===== UKLIDIT GRAFIKU PO BIOSU =====
     // BIOS bezel s VLASTNIM (headless) grafickym kontextem. Kdyz se ted
@@ -1639,10 +1946,12 @@ extern "C" int nap_ps1_egl_boot_c(const char* sys, const char* game) {
             unlink(g_crash_last_path);
         }
     }
-    if (g_loaded.exchange(false)) { retro_unload_game(); retro_deinit(); }
+    if (g_loaded.exchange(false)) { nap_srm_save_if_dirty("dalsi start"); retro_unload_game(); retro_deinit(); }
     g_sysdir = sys ? sys : "";
     g_input_bits.store(0);
+    g_klav_bits.store(0); g_klav_udalosti.store(0); g_klav_v_okne.store(0); g_klav_neznamych.store(0);
     g_boot_error.clear();
+    ps1_denik_start(game ? game : "", g_sysdir);   // B308: denik
     g_gles_ready = nap_gles_egl_init();
     if (!g_gles_ready) NAPDIAG("CESTA_A GLES_INIT_FAIL v eglrender vlakne");
     retro_set_environment(nap_env);
@@ -1656,6 +1965,7 @@ extern "C" int nap_ps1_egl_boot_c(const char* sys, const char* game) {
     gi.path = game ? game : "";
     if (!retro_load_game(&gi)) {
         NAPDIAG("CESTA_A retro_load_game FAILED path=%s", game ? game : "?");
+        ps1_denik("CHYBA STARTU: jadro odmitlo hru (retro_load_game) - viz radky JADRO a CUE / HRA vyse");
         retro_deinit();
         return -1;
     }
@@ -1668,6 +1978,7 @@ extern "C" int nap_ps1_egl_boot_c(const char* sys, const char* game) {
     nap_sl_open(); // CESTA A: spustit OpenSL zvuk (bere z g_afifo, bez Javy)
     NAPDIAG("CESTA_A BOOT_OK gpuGles=%s fps=%.2f zvukJadra=%.0f Hz vystup=44100 Hz",
             g_gles_ready ? "ANO" : "NE", g_fps, av.timing.sample_rate);
+    ps1_denik_po_startu(game && game[0], av);   // B308: denik
     return g_gles_ready ? 1 : 0;
 }
 // Kolik zvuku ceka ve fronte (v milisekundach). Pouziva to renderer:
@@ -1690,15 +2001,112 @@ static void nap_core_thread_fn(void) {
     { int rc = n2_init(); if (rc != 0) nap_diag_log("NAPLES2: renderer se nepodarilo pripravit (kod %d)", rc); }
     nap_diag_log("CESTA_A EMULACE MA VLASTNI VLAKNO (kresleni ji uz nebrzdi)");
     int slot = 0;
+    // ---- B308: denik PS1 (zdravi, zmeny obrazu, tlacitka) ----
+    using hodiny = std::chrono::steady_clock;
+    hodiny::time_point oknoOd = hodiny::now(), tlacitkaPsano = oknoOd - std::chrono::seconds(1);
+    uint64_t kroku = 0, snimkyOd = g_frames.load(), duplOd = g_dupe_frames.load();
+    double cekaniMs = 0.0;                // cas, kdy emulace cekala, protoze zvuku je dost (rezerva vykonu)
+    uint64_t vypadkyOd = g_zvuk_vypadky.load();
+    unsigned tenkeOd = nap_ps1_b308_tenkych ? nap_ps1_b308_tenkych() : 0;
+    double runSoucet = 0.0, runMax = 0.0;
+    unsigned otisk = 0xFFFFFFFFu, tlacitkaMinule = g_input_bits.load() | g_klav_bits.load(), tlacStisk = 0, tlacPust = 0;
+    unsigned tlacZacatek = tlacitkaMinule;   // co bylo drzeno na zacatku okna (poradi + / - v radku TLACITKA)
+    int zmenObrazu = 0, zamlcenoObrazu = 0, radkuTlacitek = 0, zamlcenoTlacitek = 0, zmenTlacitek = 0;
+    char popis[600];
     while (g_core_run.load(std::memory_order_relaxed)) {
         if (!g_loaded.load()) { usleep(2000); continue; }
 
         if (nap_audio_skip_step()) {      // zvuku dost - chvilku pockat
+            const hodiny::time_point c0 = hodiny::now();
             usleep(1500);                 // tady uspani NEVADI, nejsme na vlakne kresleni
+            cekaniMs += std::chrono::duration<double, std::milli>(hodiny::now() - c0).count();
             continue;
         }
         g_crash_stage = "retro_run(vlakno emulace)";
-        retro_run();
+        const hodiny::time_point runOd = hodiny::now();
+        {
+            // B308: ulozeni / nahrani pozice (ps1SaveState / ps1LoadState) drzi tenhle
+            // zamek - drive ale retro_run zamek NEBRALO, takze se pozice mohla ukladat
+            // UPROSTRED kroku emulace z jineho vlakna (rozbita pozice, nebo pad).
+            std::lock_guard<std::mutex> core(g_core_mutex);
+            retro_run();
+        }
+        {
+            const double ms = std::chrono::duration<double, std::milli>(hodiny::now() - runOd).count();
+            runSoucet += ms;
+            if (ms > runMax) runMax = ms;
+            kroku++;
+        }
+        g_crash_stage = "denik(vlakno emulace)";
+        // zmena obrazu (rozliseni, 24 bit video, prokladani, PAL, 2x) - hned
+        if (nap_ps1_gpu_otisk && nap_ps1_gpu_popis) {
+            const unsigned o = nap_ps1_gpu_otisk();
+            if (o != otisk) {
+                otisk = o;
+                if (zmenObrazu++ < 8) { nap_ps1_gpu_popis(popis, sizeof(popis)); ps1_denik("OBRAZ: %s", popis); }
+                else zamlcenoObrazu++;
+            }
+        }
+        // tlacitka: co se zmacklo / pustilo (spojene po 0,3 s, max 20 radku za okno)
+        ps1_klavesy_hlidac();             // klavesnice z TV: prohlizec se odmlcel -> pustit
+        {
+            const unsigned b = g_input_bits.load(std::memory_order_relaxed) | g_klav_bits.load(std::memory_order_relaxed);
+            if (b != tlacitkaMinule) {
+                tlacStisk |= b & ~tlacitkaMinule;
+                tlacPust |= tlacitkaMinule & ~b;
+                tlacitkaMinule = b;
+                zmenTlacitek++;
+            }
+            if ((tlacStisk | tlacPust) && hodiny::now() - tlacitkaPsano > std::chrono::milliseconds(300)) {
+                tlacitkaPsano = hodiny::now();
+                // prvni 2 minuty po startu az 20 radku za okno, pak uz jen 4 (zbytek v souctu ZDRAVI)
+                const int strop = (ps1_ms_ted() - g_denik_start_ms.load()) < 120000 ? 20 : 4;
+                if (radkuTlacitek++ < strop) {
+                    // poradi jako ve skutecnosti: drzene tlacitko pustene a znovu zmacknute
+                    // = "-X +X", kratke tuknuti = "+X -X" (podle stavu na zacatku a na konci okna)
+                    std::string t;
+                    for (int i = 0; i < 16; i++) {
+                        const unsigned m = 1u << i;
+                        const bool st = tlacStisk & m, pu = tlacPust & m;
+                        if (!st && !pu) continue;
+                        const bool drzelo = tlacZacatek & m, drzi = b & m;
+                        int zmen = (st && pu) ? (drzelo == drzi ? 2 : 3) : 1;
+                        char znak = (st && pu) ? (drzelo ? '-' : '+') : (st ? '+' : '-');
+                        for (; zmen > 0; zmen--, znak = (znak == '+') ? '-' : '+')
+                            t += std::string(t.empty() ? "" : " ") + znak + PS1_TLACITKA[i];
+                    }
+                    ps1_denik("TLACITKA: %s -> drzeno: %s", t.c_str(), ps1_tlacitka_text(b).c_str());
+                } else zamlcenoTlacitek++;
+                tlacStisk = tlacPust = 0;
+                tlacZacatek = b;
+            }
+        }
+        // zdravi: kazdych 5 s, po prvni minute kazdych 10 s
+        {
+            const hodiny::time_point ted = hodiny::now();
+            const double okno = std::chrono::duration<double>(ted - oknoOd).count();
+            const double odStartu = (ps1_ms_ted() - g_denik_start_ms.load()) / 1000.0;
+            if (okno >= (odStartu < 65.0 ? 5.0 : 10.0)) {
+                const uint64_t sn = g_frames.load(), du = g_dupe_frames.load(), vy = g_zvuk_vypadky.load();
+                const unsigned te = nap_ps1_b308_tenkych ? nap_ps1_b308_tenkych() : 0;
+                popis[0] = '\0';
+                if (nap_ps1_gpu_popis) nap_ps1_gpu_popis(popis, sizeof(popis));
+                char doom[96] = "";
+                if (te != tenkeOd) snprintf(doom, sizeof(doom), " | oprava Doomu: %u tenkych trojuhelniku ve 2x", te - tenkeOd);
+                ps1_denik("ZDRAVI %.0f s: emulace %.1f kroku/s (cil %.2f, rezerva %.0f %% casu) | "
+                          "retro_run prumer %.1f ms, nejdele %.1f ms | snimky %.1f/s (stejnych %.1f/s) | zvuk fronta %d ms, "
+                          "vypadky %llu | %s%s | tlacitka %s (zmen %d%s, z klavesnice TV %d) | TV divaku %d%s",
+                          odStartu, kroku / okno, g_fps, cekaniMs / (okno * 10.0),
+                          kroku ? runSoucet / kroku : 0.0, runMax, (sn - snimkyOd) / okno, (du - duplOd) / okno,
+                          nap_audio_level_ms(), (unsigned long long)(vy - vypadkyOd), popis, doom,
+                          ps1_tlacitka_text(g_input_bits.load() | g_klav_bits.load()).c_str(), zmenTlacitek,
+                          zamlcenoTlacitek ? ", cast nezapsana" : "", g_klav_v_okne.exchange(0), g_ps1Proud.klientu(),
+                          zamlcenoObrazu ? " | dalsi zmeny obrazu nezapsany" : "");
+                oknoOd = ted; kroku = 0; runSoucet = runMax = cekaniMs = 0.0;
+                snimkyOd = sn; duplOd = du; vypadkyOd = vy; tenkeOd = te;
+                zmenObrazu = zamlcenoObrazu = radkuTlacitek = zamlcenoTlacitek = zmenTlacitek = 0;
+            }
+        }
         g_crash_stage = "present(vlakno emulace)";
         if (g_gles_ready) { nap_gles_sync_display_settings(); nap_gles_present_frame(); }
 
@@ -1787,19 +2195,31 @@ Java_eu_atarihelp_emu10_NativePs1CoreBridge_ps1BootDoMonitoru(JNIEnv *env, jclas
   if (game) env->ReleaseStringUTFChars(jGame, game);
 
   const bool jeHra = !gamePath.empty();
+  // B308: start hry uz nebezi na hlavnim vlakne appky, ale na vlakne na pozadi -
+  // a mezitim muze prijit ps1Stop (odchod ze stranky). Oboji pod jednim zamkem,
+  // at se start a zastaveni jadra nikdy neprekryji.
+  std::lock_guard<std::mutex> life(g_life_mutex);
   nap_diag_log("PS1 START DO MONITORU: %s (obraz pujde do monitoru)",
                jeHra ? gamePath.c_str() : "bez disku, nabehne BIOS");
 
   // uklidit pripadny predchozi beh
-  if (g_core_run.exchange(false) && g_core_thread.joinable()) g_core_thread.join();
-  if (g_loaded.exchange(false)) { retro_unload_game(); retro_deinit(); }
+  if (g_core_run.exchange(false) && g_core_thread.joinable()) {
+    g_core_thread.join();
+    ps1_denik("predchozi beh zastaven (%.0f s, %llu snimku)", (ps1_ms_ted() - g_denik_start_ms.load()) / 1000.0,
+              (unsigned long long)g_frames.load());
+  }
+  if (g_loaded.exchange(false)) { nap_srm_save_if_dirty("dalsi start"); retro_unload_game(); retro_deinit(); }
 
   g_sysdir  = sysDir;
   g_savedir = saveDir;   /* BIOS pracuje s memory kartami */
+  ps1_denik_start(gamePath, sysDir);   // B308: denik - hra, soubory, stopy z .cue, BIOS ve slozce
+  g_klav_bits.store(0); g_klav_udalosti.store(0); g_klav_v_okne.store(0); g_klav_neznamych.store(0);
+  const long long startMs = ps1_ms_ted();
 
   if (!g_gles_ready) g_gles_ready = nap_gles_egl_init();   // vlastni kontext, bez okna
   if (!g_gles_ready) {
     nap_diag_log("PS1 START DO MONITORU: grafiku se nepodarilo pripravit");
+    ps1_denik("CHYBA STARTU: grafiku se nepodarilo pripravit");
     return env->NewStringUTF("PS1_BIOS_FAIL grafika");
   }
 
@@ -1818,6 +2238,8 @@ Java_eu_atarihelp_emu10_NativePs1CoreBridge_ps1BootDoMonitoru(JNIEnv *env, jclas
       retro_deinit();
       nap_diag_log("PS1 START DO MONITORU: jadro odmitlo %s",
                    jeHra ? "hru" : "start bez disku");
+      ps1_denik("CHYBA STARTU: jadro odmitlo %s (retro_load_game) - viz radky JADRO vyse a CUE / HRA: "
+                "chybejici soubor, nepodporovany format (.7z), poskozeny obraz disku", jeHra ? "hru" : "start bez disku");
       return env->NewStringUTF(jeHra ? "PS1_HRA_FAIL jadro" : "PS1_BIOS_FAIL jadro");
     }
   }
@@ -1837,6 +2259,8 @@ Java_eu_atarihelp_emu10_NativePs1CoreBridge_ps1BootDoMonitoru(JNIEnv *env, jclas
   g_fps = av.timing.fps > 1 ? av.timing.fps : 60.0;
 
   nap_sl_open();                            // zvuk BIOSu
+  ps1_denik_po_startu(jeHra, av);           // B308: denik - BIOS / HLE, region, disk, nastaveni, karta
+  ps1_denik("start trval %lld ms", ps1_ms_ted() - startMs);
   g_core_run.store(true);
   g_core_thread = std::thread(nap_core_thread_fn);
 
@@ -1871,6 +2295,8 @@ extern "C" void nap_ps1_egl_shutdown_c(void) {
     g_gles_ready = false;
     g_frame_ready.store(-1);
     nap_diag_log("CESTA_A JADRO VYPNUTO (zvuk i emulace zastaveny)");
+    ps1_denik("==================== PS1 KONEC (okno hry zavreno) po %.0f s, snimku %llu ====================",
+              (ps1_ms_ted() - g_denik_start_ms.load()) / 1000.0, (unsigned long long)g_frames.load());
 }
 
 extern "C" void nap_ps1_egl_tick_c(void) {
@@ -1894,7 +2320,8 @@ Java_eu_atarihelp_emu10_NativePs1CoreBridge_ps1Stop(JNIEnv *env, jclass) {
   if (g_loaded.exchange(false)) { nap_srm_save_if_dirty("stop"); retro_unload_game(); retro_deinit(); }
   nap_audio_clear();
   g_input_bits.store(0);
-  NAPLOG("BUILD2SA2 PS1 stop frames=%llu", (unsigned long long)g_frames.load());
+  ps1_denik("==================== PS1 KONEC po %.0f s, snimku %llu ====================",
+            (ps1_ms_ted() - g_denik_start_ms.load()) / 1000.0, (unsigned long long)g_frames.load());
   return env->NewStringUTF("PS1_STOPPED");
 }
 

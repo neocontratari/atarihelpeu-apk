@@ -1,0 +1,131 @@
+OK     oprava je v soucasnem psx_gpu_parse.c, v B307 (64e47dd) neni
+prelozeno: x86 (SSE) a arm64 (NEON, qemu-aarch64), s opravou i bez ni
+
+== 1. PSX Doom v mistnosti: strop, podlaha, zdi, postavy, stavovy radek ==
+OK     puvodni PS1 (bez Enhanced): obraz 256x240
+OK     bez Enhanced: s opravou i bez ni bit po bitu stejne
+OK     Enhanced (tex_adj 1): obraz 512x480
+   tex_adj 1  STROP          BEZ opravy: diry  25.6 %, jina barva nez PS1  30.7 %   S opravou: diry 0.00 %, navic 0.00 %, jina barva  6.4 %
+OK     bez opravy (B307) STROP ve 2x rozbity: 30.7 % bodu jinak nez PS1 (to videl Rene)
+OK     s opravou STROP ve 2x jako PS1: jen 6.4 % bodu jinak (jemnejsi textura ve 2x)
+OK     bez opravy STROP v mistnosti: 25.6 % cerne diry
+OK     s opravou STROP bez der (0.00 %) a bez bodu navic (0.00 %)
+   tex_adj 1  PODLAHA        BEZ opravy: diry  26.0 %, jina barva nez PS1  29.2 %   S opravou: diry 0.00 %, navic 0.00 %, jina barva  4.6 %
+OK     bez opravy (B307) PODLAHA ve 2x rozbity: 29.2 % bodu jinak nez PS1 (to videl Rene)
+OK     s opravou PODLAHA ve 2x jako PS1: jen 4.6 % bodu jinak (jemnejsi textura ve 2x)
+OK     bez opravy PODLAHA v mistnosti: 26.0 % cerne diry
+OK     s opravou PODLAHA bez der (0.00 %) a bez bodu navic (0.00 %)
+   tex_adj 1  ZDI            BEZ opravy: diry   7.8 %, jina barva nez PS1  33.3 %   S opravou: diry 0.00 %, navic 0.00 %, jina barva  8.2 %
+OK     bez opravy (B307) ZDI ve 2x rozbity: 33.3 % bodu jinak nez PS1 (to videl Rene)
+OK     s opravou ZDI ve 2x jako PS1: jen 8.2 % bodu jinak (jemnejsi textura ve 2x)
+OK     s opravou ZDI bez der (0.00 %) a bez bodu navic (0.00 %)
+   tex_adj 1  POSTAVY        BEZ opravy: diry   0.0 %, jina barva nez PS1  21.4 %   S opravou: diry 0.00 %, navic 0.00 %, jina barva 13.3 %
+OK     s opravou POSTAVY bez der (0.00 %) a bez bodu navic (0.00 %)
+   tex_adj 1  STAVOVY RADEK  BEZ opravy: diry   0.0 %, jina barva nez PS1   0.0 %   S opravou: diry 0.00 %, navic 0.00 %, jina barva  0.0 %
+OK     s opravou STAVOVY RADEK bez der (0.00 %) a bez bodu navic (0.00 %)
+OK     STAVOVY RADEK (sprity) ve 2x stejne jako PS1 s opravou i bez ni
+OK     Enhanced (tex_adj 0): obraz 512x480
+   tex_adj 0  STROP          BEZ opravy: diry  25.6 %, jina barva nez PS1  30.9 %   S opravou: diry 0.00 %, navic 0.00 %, jina barva  6.4 %
+OK     bez opravy (B307) STROP ve 2x rozbity: 30.9 % bodu jinak nez PS1 (to videl Rene)
+OK     s opravou STROP ve 2x jako PS1: jen 6.4 % bodu jinak (jemnejsi textura ve 2x)
+OK     bez opravy STROP v mistnosti: 25.6 % cerne diry
+OK     s opravou STROP bez der (0.00 %) a bez bodu navic (0.00 %)
+   tex_adj 0  PODLAHA        BEZ opravy: diry  26.0 %, jina barva nez PS1  29.4 %   S opravou: diry 0.00 %, navic 0.00 %, jina barva  4.6 %
+OK     bez opravy (B307) PODLAHA ve 2x rozbity: 29.4 % bodu jinak nez PS1 (to videl Rene)
+OK     s opravou PODLAHA ve 2x jako PS1: jen 4.6 % bodu jinak (jemnejsi textura ve 2x)
+OK     bez opravy PODLAHA v mistnosti: 26.0 % cerne diry
+OK     s opravou PODLAHA bez der (0.00 %) a bez bodu navic (0.00 %)
+   tex_adj 0  ZDI            BEZ opravy: diry   7.8 %, jina barva nez PS1  33.3 %   S opravou: diry 0.00 %, navic 0.00 %, jina barva  8.2 %
+OK     bez opravy (B307) ZDI ve 2x rozbity: 33.3 % bodu jinak nez PS1 (to videl Rene)
+OK     s opravou ZDI ve 2x jako PS1: jen 8.2 % bodu jinak (jemnejsi textura ve 2x)
+OK     s opravou ZDI bez der (0.00 %) a bez bodu navic (0.00 %)
+   tex_adj 0  POSTAVY        BEZ opravy: diry   0.0 %, jina barva nez PS1  21.4 %   S opravou: diry 0.00 %, navic 0.00 %, jina barva 13.3 %
+OK     s opravou POSTAVY bez der (0.00 %) a bez bodu navic (0.00 %)
+   tex_adj 0  STAVOVY RADEK  BEZ opravy: diry   0.0 %, jina barva nez PS1   0.0 %   S opravou: diry 0.00 %, navic 0.00 %, jina barva  0.0 %
+OK     s opravou STAVOVY RADEK bez der (0.00 %) a bez bodu navic (0.00 %)
+OK     STAVOVY RADEK (sprity) ve 2x stejne jako PS1 s opravou i bez ni
+
+== 1. PSX Doom venku: nebe, strop jen cast, podlaha, zdi, postavy, stavovy radek ==
+OK     puvodni PS1 (bez Enhanced): obraz 256x240
+OK     bez Enhanced: s opravou i bez ni bit po bitu stejne
+OK     Enhanced (tex_adj 1): obraz 512x480
+   tex_adj 1  STROP          BEZ opravy: diry   0.0 %, jina barva nez PS1  27.2 %   S opravou: diry 0.00 %, navic 0.00 %, jina barva  5.4 %
+OK     bez opravy (B307) STROP ve 2x rozbity: 27.2 % bodu jinak nez PS1 (to videl Rene)
+OK     s opravou STROP ve 2x jako PS1: jen 5.4 % bodu jinak (jemnejsi textura ve 2x)
+OK     s opravou STROP bez der (0.00 %) a bez bodu navic (0.00 %)
+   tex_adj 1  PODLAHA        BEZ opravy: diry  22.5 %, jina barva nez PS1  29.2 %   S opravou: diry 0.00 %, navic 0.00 %, jina barva  4.6 %
+OK     bez opravy (B307) PODLAHA ve 2x rozbity: 29.2 % bodu jinak nez PS1 (to videl Rene)
+OK     s opravou PODLAHA ve 2x jako PS1: jen 4.6 % bodu jinak (jemnejsi textura ve 2x)
+OK     s opravou PODLAHA bez der (0.00 %) a bez bodu navic (0.00 %)
+   tex_adj 1  ZDI            BEZ opravy: diry   0.4 %, jina barva nez PS1  33.1 %   S opravou: diry 0.00 %, navic 0.00 %, jina barva  8.0 %
+OK     bez opravy (B307) ZDI ve 2x rozbity: 33.1 % bodu jinak nez PS1 (to videl Rene)
+OK     s opravou ZDI ve 2x jako PS1: jen 8.0 % bodu jinak (jemnejsi textura ve 2x)
+OK     s opravou ZDI bez der (0.00 %) a bez bodu navic (0.00 %)
+   tex_adj 1  POSTAVY        BEZ opravy: diry   0.0 %, jina barva nez PS1  21.3 %   S opravou: diry 0.00 %, navic 0.00 %, jina barva 13.3 %
+OK     s opravou POSTAVY bez der (0.00 %) a bez bodu navic (0.00 %)
+   tex_adj 1  STAVOVY RADEK  BEZ opravy: diry   0.0 %, jina barva nez PS1   0.0 %   S opravou: diry 0.00 %, navic 0.00 %, jina barva  0.0 %
+OK     s opravou STAVOVY RADEK bez der (0.00 %) a bez bodu navic (0.00 %)
+OK     STAVOVY RADEK (sprity) ve 2x stejne jako PS1 s opravou i bez ni
+   tex_adj 1  NEBE           BEZ opravy: diry   0.0 %, jina barva nez PS1   0.0 %   S opravou: diry 0.00 %, navic 0.00 %, jina barva  0.0 %
+OK     s opravou NEBE bez der (0.00 %) a bez bodu navic (0.00 %)
+OK     NEBE (sprity) ve 2x stejne jako PS1 s opravou i bez ni
+OK     Enhanced (tex_adj 0): obraz 512x480
+   tex_adj 0  STROP          BEZ opravy: diry   0.0 %, jina barva nez PS1  27.3 %   S opravou: diry 0.00 %, navic 0.00 %, jina barva  5.4 %
+OK     bez opravy (B307) STROP ve 2x rozbity: 27.3 % bodu jinak nez PS1 (to videl Rene)
+OK     s opravou STROP ve 2x jako PS1: jen 5.4 % bodu jinak (jemnejsi textura ve 2x)
+OK     s opravou STROP bez der (0.00 %) a bez bodu navic (0.00 %)
+   tex_adj 0  PODLAHA        BEZ opravy: diry  22.5 %, jina barva nez PS1  29.4 %   S opravou: diry 0.00 %, navic 0.00 %, jina barva  4.6 %
+OK     bez opravy (B307) PODLAHA ve 2x rozbity: 29.4 % bodu jinak nez PS1 (to videl Rene)
+OK     s opravou PODLAHA ve 2x jako PS1: jen 4.6 % bodu jinak (jemnejsi textura ve 2x)
+OK     s opravou PODLAHA bez der (0.00 %) a bez bodu navic (0.00 %)
+   tex_adj 0  ZDI            BEZ opravy: diry   0.4 %, jina barva nez PS1  33.1 %   S opravou: diry 0.00 %, navic 0.00 %, jina barva  8.0 %
+OK     bez opravy (B307) ZDI ve 2x rozbity: 33.1 % bodu jinak nez PS1 (to videl Rene)
+OK     s opravou ZDI ve 2x jako PS1: jen 8.0 % bodu jinak (jemnejsi textura ve 2x)
+OK     s opravou ZDI bez der (0.00 %) a bez bodu navic (0.00 %)
+   tex_adj 0  POSTAVY        BEZ opravy: diry   0.0 %, jina barva nez PS1  21.3 %   S opravou: diry 0.00 %, navic 0.00 %, jina barva 13.3 %
+OK     s opravou POSTAVY bez der (0.00 %) a bez bodu navic (0.00 %)
+   tex_adj 0  STAVOVY RADEK  BEZ opravy: diry   0.0 %, jina barva nez PS1   0.0 %   S opravou: diry 0.00 %, navic 0.00 %, jina barva  0.0 %
+OK     s opravou STAVOVY RADEK bez der (0.00 %) a bez bodu navic (0.00 %)
+OK     STAVOVY RADEK (sprity) ve 2x stejne jako PS1 s opravou i bez ni
+   tex_adj 0  NEBE           BEZ opravy: diry   0.0 %, jina barva nez PS1   0.0 %   S opravou: diry 0.00 %, navic 0.00 %, jina barva  0.0 %
+OK     s opravou NEBE bez der (0.00 %) a bez bodu navic (0.00 %)
+OK     NEBE (sprity) ve 2x stejne jako PS1 s opravou i bez ni
+
+== 2. Tenke primitivy jako v Doomu (radky, sloupce, spicky, ctyruhelniky vysoke 1 bod) ==
+OK     bez Enhanced: s opravou i bez ni bit po bitu stejne
+   tex_adj 1: BEZ opravy diry 17.5 %, navic 4.3 %;  S opravou diry 0.01 %, navic 0.19 %
+OK     tex_adj 1: bez opravy tenke primitivy derave (17.5 %)
+OK     tex_adj 1: s opravou pokryti jako puvodni PS1 (diry 0.01 %, navic 0.19 %)
+   tex_adj 0: BEZ opravy diry 17.5 %, navic 4.3 %;  S opravou diry 0.01 %, navic 0.19 %
+OK     tex_adj 0: bez opravy tenke primitivy derave (17.5 %)
+OK     tex_adj 0: s opravou pokryti jako puvodni PS1 (diry 0.01 %, navic 0.19 %)
+
+== 3. Primitivy ostatnich her (normalni i tenke kusy 3D siti) ==
+OK     ve scene je 1685 tenkych trojuhelniku jinych her (textura napric meni / bez textury)
+OK     enh 0 tex_adj 1: s opravou i bez ni BIT PO BITU STEJNE (256x240, 61365 bodu kresby)
+OK     enh 1 tex_adj 1: s opravou i bez ni BIT PO BITU STEJNE (512x480, 245461 bodu kresby)
+OK     enh 1 tex_adj 0: s opravou i bez ni BIT PO BITU STEJNE (512x480, 245476 bodu kresby)
+
+== 4. arm64 (NEON - jako v telefonu, pres qemu-aarch64) ==
+OK     doom, s opravou, enh 0: arm64 = x86 bit po bitu
+OK     doom, s opravou, enh 1: arm64 = x86 bit po bitu
+OK     doom, bez opravy, enh 0: arm64 = x86 bit po bitu
+OK     doom, bez opravy, enh 1: arm64 = x86 bit po bitu
+OK     doom_venku, s opravou, enh 0: arm64 = x86 bit po bitu
+OK     doom_venku, s opravou, enh 1: arm64 = x86 bit po bitu
+OK     doom_venku, bez opravy, enh 0: arm64 = x86 bit po bitu
+OK     doom_venku, bez opravy, enh 1: arm64 = x86 bit po bitu
+OK     tenke, s opravou, enh 0: arm64 = x86 bit po bitu
+OK     tenke, s opravou, enh 1: arm64 = x86 bit po bitu
+OK     tenke, bez opravy, enh 0: arm64 = x86 bit po bitu
+OK     tenke, bez opravy, enh 1: arm64 = x86 bit po bitu
+OK     nahodne, s opravou, enh 0: arm64 = x86 bit po bitu
+OK     nahodne, s opravou, enh 1: arm64 = x86 bit po bitu
+OK     nahodne, bez opravy, enh 0: arm64 = x86 bit po bitu
+OK     nahodne, bez opravy, enh 1: arm64 = x86 bit po bitu
+
+== 5. Rychlost (x86, Doom v mistnosti, 2x, 600 snimku) ==
+   bez opravy 1.25 ms/snimek, s opravou 1.50 ms/snimek (vcetne puvodniho 1x obrazu)
+OK     oprava stoji +21 % casu kresleni Doomu (snimek pod 1/60 s i tak)
+
+VYSLEDEK: 91 kontrol, 0 CHYB

@@ -147,4 +147,25 @@ public final class NativePs1CoreBridge {
         if (!loaded) return "PS1_CORE_LOAD_FAIL " + loadError;
         try { return ps1Stop(); } catch (Throwable t) { return "PS1_STOP_CALL_FAIL " + t.getMessage(); }
     }
+
+    // ===== B308: KLAVESNICE PC V PROHLIZECI (TV / PC) A DENIK PS1 =====
+    // Klavesa z prohlizece (e.code: KeyW, ArrowUp, Space ...) jde rovnou do C++,
+    // ktere rozhodne, co udela (mapovani v nap_ps1_native.cpp). "PustVse" pusti
+    // vse, "Zije" = prohlizec je tu (drzena klavesa), "STAV" = PS1 bezi.
+    private static native String ps1PcKlavesa(String code, boolean dolu);
+    // Denik PS1 z C++ (poslednich 800 radku: start, BIOS, disk, obraz, zdravi,
+    // tlacitka, hlasky jadra, chyby) - UTF-8 bajty.
+    private static native byte[] ps1Denik();
+
+    public static String pcKlavesaSafe(String code, boolean dolu) {
+        if (!loaded) return null;
+        try { return ps1PcKlavesa(code == null ? "" : code, dolu); } catch (Throwable t) { return null; }
+    }
+    public static String denikSafe() {
+        if (!loaded) return "";
+        try {
+            byte[] b = ps1Denik();
+            return b == null ? "" : new String(b, java.nio.charset.StandardCharsets.UTF_8);
+        } catch (Throwable t) { return "PS1_DENIK_CALL_FAIL " + t.getMessage(); }
+    }
 }
