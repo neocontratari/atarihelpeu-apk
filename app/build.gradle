@@ -9,8 +9,17 @@ android {
         applicationId "eu.atarihelp.emu10.test"  // TEST vedle prave apky (neprepise ji)
         minSdk 24
         targetSdk 34
-        versionCode 351
-        versionName "EMU10-B308-PS1-DOOM-LOG-TV"
+        versionCode 352
+        versionName "EMU10-B309-TV-BEZ-F5-INTRO59"
+        // B309: Rene po B308 - "doom slape na jednicku s hvezdickou" + "ten log udelej jako
+        // v atari emu help - s moznosti okamziteho odeslani" + "pokazdy pri prehozeni hry ci
+        // emulatoru musim refresovat stranku F5" + "na intro ti pridam 14 s - intro muze mit
+        // 59 vterin - ty ukazky her jsou hekticke a rychle". TV / PC: zrusene cteni H.264
+        // dobehlo az po startu proudu z C++ a vratilo cerny obrazek #v pres canvas (proto F5)
+        // - opraveno (generace H.264, hlidac, odklad 2,5 s pri prepnuti hry). PS1: ULOZIT LOG
+        // A ODESLAT (soubor + hned nabidka Poslat log). Intro 59 s: defile na CRT 17,85 s
+        // (Pitt-Kitt 5,6 s se zvukem hry, 16 bit a 32 bit po ~6 s, klidnejsi tempo a vlastni
+        // hudba), scena 5 posunuta. Viz CO_JE_V_B309.md.
         // B308: Rene - "v ps1 emu se prekryva kanfas na nahravani her, nemame
         // ovladani pres klavesnici na TV viewer, doom ma spatne grafiku ... nachystej
         // log v ps1" + "problem je ciste v DOOMovi, kde se vubec neukazuje strop".

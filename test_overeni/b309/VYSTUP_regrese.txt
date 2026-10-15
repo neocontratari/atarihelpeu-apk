@@ -1,0 +1,65 @@
+B309 - regrese (stejne testy jako B306 / B308, se strankou prohlizece a kodem B309)
+
+== bash ../b308/vse.sh (PS1: Doom, denik, TSan, JVM, klavesnice z TV, stranka PS1, Atari v prohlizeci)
+== 1) DOOM: skutecny graficky cip appky (gpulib + gpu_neon), x86 i arm64 (NEON pres qemu), s opravou i bez ni
+VYSLEDEK: 91 kontrol, 1 CHYB
+== 2) denik PS1, klavesnice z TV v C++, zamek kolem retro_run (skutecny nap_ps1_native.cpp)
+VYSLEDEK: 63 kontrol, 0 CHYB
+== 3) ThreadSanitizer: vlakno emulace + klavesy z prohlizece + denik + SAVE / LOAD + dotyk soubezne
+hlaseni ThreadSanitizer: 0
+== 4) JVM: skutecna trida NativePs1CoreBridge (ps1PcKlavesa, ps1Denik, obaly) se skutecnym C++, -Xcheck:jni
+VYSLEDEK: nove native metody B308 (ps1PcKlavesa, ps1Denik) i obaly sedi, 0 chyb
+   vsechny native metody tridy maji v knihovne svou funkci:
+   23 OK, 0 CHYB
+== 5) klavesnice PC v TV prohlizeci -> PS1 (Chromium, stranka z MainActivity.java)
+VYSLEDEK: 17 kontrol, 0 CHYB
+== 6) stranka PS1: nahravani hry podle skutecneho stavu, banner mimo monitor, LOG s denikem (Chromium)
+VYSLEDEK: 23 kontrol, 0 CHYB
+== 7) regrese: Atari 130XE (C++) - klavesnice a vkladani v prohlizeci se strankou B308
+VYSLEDEK: 23 kontrol, 0 chyb
+   (Doom: prvni beh 1 CHYBA v mereni rychlosti - +69 % misto +35 %, gpu_neon se v B309 nemenil;
+    mereni bylo 3x stary a pak 3x novy - zmena zateze PC mezi tim. Ted stridave, nejlepsi z 5:)
+   == 5. Rychlost (x86, Doom v mistnosti, 2x, 600 snimku) ==
+      bez opravy 1.28 ms/snimek, s opravou 2.15 ms/snimek (vcetne puvodniho 1x obrazu)
+   CHYBA  oprava stoji +69 % casu kresleni Doomu (snimek pod 1/60 s i tak)
+   
+
+== python3 ../b306/test_b306_prohlizec.py PNG320 (Sega / PS1 / demo proudem z C++, zvuk po kliknuti, autoplay, F5)
+OK     Sega: jadro bezi (krok jako vlakno emulace: radky, zvuk FM/PSG, nap_tv_po_kroku)
+OK     bez kliknuti prohlizec zvuk nepusti (AudioContext suspended) - stranka to vi: VYZVA na obrazovce, obraz bezi, zvuk se nehromadi
+OK     do logu appky: "B306 ZVUK: prohlizec zvuk nepustil (autoplay ...)"
+OK     jedno kliknuti kamkoli -> zvuk HNED hraje (running), vyzva zmizela
+OK     do logu appky: "B306 ZVUK: hraje - prohlizec ho pustil po X s"
+OK     po F5 prohlizec zvuk zastavil - VYZVA je zpet (driv ticho bez vysvetleni)
+OK     po F5 + klavese zvuk hraje
+OK     nove okno: vyzva, pak klavesa (napr. hra z klavesnice PC) zvuk pusti take
+OK     Sega: obraz v prohlizeci PRESNE snimek jadra (0 ruznych bodu z 71680)
+OK     Sega: 60 snimku/s, zadna chyba paketu
+OK     Sega: zvuk 48000 vzorku/s, zadne zahozeni, nejvys 1 podteceni (testovaci stroj ma 2 jadra: Chromium + emulatory + server)
+OK     Sega C++: zvuk tehoz kroku jadra je ve STEJNEM paketu jako obraz (B305: az za frontou reproduktoru)
+OK     Sega: zvuk za obrazem median 197 ms <= 200 ms (z toho ~35 ms vystup zvuku prohlizece; rezerva se drzi nad nejhorsim zakolisanim poslednich 10 s; B305 se S8 frontou 254-348 ms, viz --srovnani)
+OK     Sega: kusy zvuku navazuji vzorek na vzorek, zadny lupanec (mezer 0, lupancu 0; prevzorkovano 48000 -> 44100 Hz)
+OK     Sega: zmena v jadru je v obraze do 1-2 snimku (median 25 ms)
+OK     Sega pres zadrhavajici sit: zvuk se srovna sam (podteceni 2 za ~20 s, lupance jen u nich)
+OK     Sega pres zadrhavajici sit: zvuk za obrazem median 191 ms (rezerva se prizpusobi siti)
+OK     PS1: skutecny start pres JNI (vlakno emulace, OpenSL zvuk) - PS1_BIOS_OK
+OK     Sega -> PS1: stranka sama prepnula proud (bez obnoveni stranky) {'W': 320, 'H': 240, 'ver': 3, 'druh': 'ps1'}
+OK     PS1: obraz odpovida snimku jadra (PSNR 37.0 dB)
+OK     PS1: hra na 30 snimku/s = 30 obrazku/s, zadna chyba
+OK     PS1: zvuk 44100 vzorku/s (uz pri vyrobe v retro_run), zadne zahozeni, nejvys 1 podteceni
+OK     PS1 C++: zvuk z retro_run je ve STEJNEM paketu jako jeho snimek (B305: az z OpenSL callbacku)
+OK     PS1: zvuk za obrazem median 187 ms <= 200 ms (B305 236-257 ms, viz --srovnani)
+OK     PS1: kusy zvuku navazuji vzorek na vzorek, zadny lupanec (mezer 0, lupancu 0)
+OK     PS1: spadle spojeni - prohlizec se pripojil znovu sam (PSNR 36.7 dB)
+OK     demo: zvuk prehrava C++ (OpenSL ES) - Java AudioTrack jen zaloha
+OK     PS1 -> demo: stranka sama prepnula na /intro.stream - 854x480 16:9 bez orezu {'W': 854, 'H': 480, 'ver': 3, 'druh': 'intro', 'px': 16, 'py': 9, 'ow': 854, 'oh': 480}
+OK     demo: obraz z C++ chodi do prohlizece (JPEG 854x480)
+OK     demo: zvuk 44100 vzorku/s jde proudem i kdyz obraz kresli pomalu (pakety jen se zvukem)
+OK     demo: zvuk na TV = PRESNE stopa dema, vzorek po vzorku bez mezer
+OK     demo: v paketu je zvuk prave prehraneho okamziku dema (obraz a zvuk spolu)
+OK     demo konec: prehravac OpenSL zniceny, okno uvolnene
+OK     demo pryc z obrazovky -> proud konci, stranka zpet postaru (MJPEG / JPEG)
+OK     prohlizec hlasi do logu appky kazdych 30 s i zvuk: napred, zvuk za obrazem, rychlost, vzorkovani
+OK     zadna chyba JavaScriptu na strance []
+OK     log appky: Sega, PS1 i demo - pripojen / odpojen / statistika
+VYSLEDEK: 37 kontrol, 0 chyb

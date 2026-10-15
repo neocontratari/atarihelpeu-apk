@@ -122,6 +122,7 @@ class Hra32 {
     postavMesto();
     postavAuto(autoHrac, 0.86f, 0.10f, 0.12f, true);
     postavAuto(autoSoupr, 0.12f, 0.36f, 0.86f, false);
+    postavAuto(autoSoupr2, 0.92f, 0.62f, 0.08f, false);     // B309: druhy souper (zluty)
     hudPx.assign((size_t)W * H, 0);
     texHud = novaTextura(W, H, GL_RGBA, hudPx.data(), false);
     ok = p3d.ok && pNebe.ok && pHud.ok;
@@ -141,11 +142,15 @@ class Hra32 {
     glDisable(GL_BLEND);
     glDisable(GL_DEPTH_TEST);
     glDisable(GL_CULL_FACE);
-    // pohyb: hrac 61 m/s, souper 50 m/s, predjeti kolem 0,6 s
-    const float zH = -t * 61.f - 20.f;
-    const float zS = -t * 50.f - 28.f;
-    const float pruhH = lerpf(2.1f, -2.1f, smooth(0.10f, 0.55f, t));
-    const float xH = stredX(zH) + pruhH, xS = stredX(zS) + 2.1f;
+    // B309: ukazka trva 6,25 s (drive 1,2 s) a je klidnejsi: hrac 47 m/s (169 km/h),
+    // modry souper 41 m/s v pravem pruhu - predjeti kolem 2 s (drive 61 / 50 m/s,
+    // predjeti za 0,6 s); od 3 s zpet vpravo a zluty souper 30 m/s v levem pruhu -
+    // predjeti kolem 4,4 s. Hrac jede 3., 2., nakonec 1.
+    const float zH = -t * 47.f - 20.f;
+    const float zS = -t * 41.f - 32.f;
+    const float zS2 = -t * 30.f - 95.f;
+    const float pruhH = lerpf(2.1f, -2.1f, smooth(0.40f, 1.30f, t)) + 4.2f * smooth(3.00f, 3.80f, t);
+    const float xH = stredX(zH) + pruhH, xS = stredX(zS) + 2.1f, xS2 = stredX(zS2) - 2.1f;
     const float smer = std::atan(dStred(zH));
     pNebe.pouzij();
     pNebe.tex("uDith", 1, texDith);
@@ -180,7 +185,8 @@ class Hra32 {
       s.kresli();
     };
     kresliAuto(autoSoupr, xS, zS, 0.f);
-    const float zmenaPruhu = (smooth(0.10f, 0.32f, t) - smooth(0.32f, 0.55f, t));
+    kresliAuto(autoSoupr2, xS2, zS2, 0.f);
+    const float zmenaPruhu = (smooth(0.40f, 0.85f, t) - smooth(0.85f, 1.30f, t)) - (smooth(3.00f, 3.40f, t) - smooth(3.40f, 3.80f, t));
     kresliAuto(autoHrac, xH, zH, zmenaPruhu * 0.06f);
     // zare: kaluze svetla pod lampami (pricitaji se, nezapisuji hloubku)
     glEnable(GL_BLEND);
@@ -195,7 +201,7 @@ class Hra32 {
     glDisable(GL_BLEND);
     glDisable(GL_DEPTH_TEST);
     // HUD
-    kresliHud(t, zH, zS);
+    kresliHud(t, zH, zS, zS2);
     glEnable(GL_BLEND);
     glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
     pHud.pouzij();
@@ -212,7 +218,7 @@ class Hra32 {
   Prog p3d, pNebe, pHud;
   Ctverec ctverec;
   GLuint texAtlas = 0, texDith = 0, texHud = 0;
-  Sit mesto, zare, autoHrac, autoSoupr;
+  Sit mesto, zare, autoHrac, autoSoupr, autoSoupr2;
   std::vector<uint32_t> hudPx;
   uint8_t pismo[96][8];
   std::vector<float> lampyZ;      // z lamp (obe strany)
@@ -442,14 +448,14 @@ class Hra32 {
   void postavMesto() {
     Stav s, z;
     lampyZ.clear(); lampyPoz.clear();
-    for (float zz = -6.f; zz > -470.f; zz -= 18.f) {
+    for (float zz = -6.f; zz > -640.f; zz -= 18.f) {   // B309: delsi trat (6,25 s jizdy)
       lampyZ.push_back(zz);
       lampyPoz.push_back(V3(stredX(zz) - PUL + 1.2f, 7.2f, zz));
       lampyPoz.push_back(V3(stredX(zz - 9.f) + PUL - 1.2f, 7.2f, zz - 9.f));
     }
     // silnice: 4 pruhy, useky po 2 m (svetlo lamp se rozlije po vrcholech)
     const float L = 2.f;
-    for (float zz = 20.f; zz > -480.f; zz -= L) {
+    for (float zz = 20.f; zz > -650.f; zz -= L) {
       const float z1 = zz - L;
       const float x0 = stredX(zz), x1 = stredX(z1);
       for (int p = 0; p < 4; p++) {
@@ -488,7 +494,7 @@ class Hra32 {
     int ni = 0;
     for (int st = -1; st <= 1; st += 2) {
       float zz = 14.f;
-      while (zz > -470.f) {
+      while (zz > -640.f) {
         const float d = 9.f + r() * 14.f;
         const float zc = zz - d * 0.5f;
         const float x0 = stredX(zc) + st * (PUL + CHOD + 0.4f);
@@ -613,18 +619,19 @@ class Hra32 {
               }
     }
   }
-  void kresliHud(float t, float zH, float zS) {
+  void kresliHud(float t, float zH, float zS, float zS2) {
     std::fill(hudPx.begin(), hudPx.end(), 0u);
     const uint32_t bila = 0xFFFFFFFFu, zluta = 0xFF30E0FFu, ruda = 0xFF3040FFu, azur = 0xFFFFE060u;
-    const bool prvni = zH < zS;
-    hText(10, 10, prvni ? "1ST" : "2ND", 3, prvni ? zluta : bila);
+    const int poradi = 1 + (zH > zS ? 1 : 0) + (zH > zS2 ? 1 : 0);   // kolik soupru je jeste pred hracem
+    static const char *const PORADI[3] = {"1ST", "2ND", "3RD"};
+    hText(10, 10, PORADI[poradi - 1], 3, poradi == 1 ? zluta : bila);
     hText(84, 18, "/8", 1, bila);
     hText(232, 10, "LAP 2/3", 1, bila);
     char b[32];
     const int ms = (int)(t * 1000.f) + 41230;
     std::snprintf(b, sizeof b, "%d'%02d\"%02d", ms / 60000, (ms / 1000) % 60, (ms / 10) % 100);
     hText(232, 22, b, 1, azur);
-    const int kmh = 212 + (int)(t * 18.f) + (int)(3.f * std::sin(t * 13.f));
+    const int kmh = 166 + (int)(t * 4.f) + (int)(2.f * std::sin(t * 7.f));
     std::snprintf(b, sizeof b, "%3d", kmh);
     hText(228, 196, b, 3, bila);
     hText(282, 220, "KM/H", 1, azur);

@@ -286,7 +286,7 @@ void vlaknoDema(ANativeWindow *okno) {
       const long long tn = tedNs();
       int nanecisto = 0;
       if (w > 0 && h > 0) {
-        static const float CASY[] = {28.4f, 31.0f, 33.6f, 34.8f, 36.0f};
+        static const float CASY[] = {28.4f, 31.0f, 33.6f, 39.5f, 45.5f};   // B309: 16 bit od 38,4 s, 32 bit od 44,4 s
         for (float tt : CASY) {
           if (!g_bezi.load()) break;
           demo->snimek(tt, cil, 0);
@@ -577,7 +577,7 @@ JNIEXPORT jint JNICALL Java_eu_atarihelp_emu10_NativeIntroBridge_introStart(JNIE
       std::vector<int16_t> z;
       if (!d.empty() && k.nacti(d.data(), d.size()) && k.vzorkovani == napdemo::zv::SR &&
           k.zvukUseku(2, 6, napdemo::cas::STRIH_16 - napdemo::cas::ATARI_JIZDA, z)) {
-        s->nastavZaznam(z.data(), z.size(), napdemo::cas::ATARI_JIZDA, 1.8f);
+        s->nastavZaznam(z.data(), z.size(), napdemo::cas::ATARI_JIZDA, napdemo::cas::ZVUK_HRY);
         g_klipZvuk.store(true);
       } else {
         NAPDEMO_LOG("DEMO: zvuk Pitt-Kitt nenacten (asset %s, %zu B)", KLIP_ASSET, d.size());

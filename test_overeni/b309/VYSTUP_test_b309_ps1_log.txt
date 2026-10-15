@@ -1,0 +1,20 @@
+B309: stranka PS1 - ULOZIT LOG A ODESLAT (Chromium, most appky podle MainActivity B309)
+OK     na vysku: kolecko otevre panel s logem
+OK     tlacitko se jmenuje jako v HELP: "ULOŽIT LOG A ODESLAT"
+OK     jedno klepnuti = jedno odeslani (appka ulozi a hned otevre nabidku "Poslat log")
+   soubor AtariHelp_PS1_LOG_20261015_135738.txt, 845 znaku
+OK     nazev souboru s datem a casem
+OK     v logu je log stranky i denik PS1 z C++ (log appky pridava Java)
+OK     hlaska: "LOG ULOZEN (Downloads/AtariHelp) - vyber, cim ho poslat"
+OK     stara cesta (jen ulozit) se nepouzila
+OK     na vysku zadna chyba JavaScriptu []
+OK     na sirku: kolecko otevre D-PAD panel (jako dosud)
+OK     v D-PAD panelu je hned ULOZIT LOG A ODESLAT (ne az pres DALSI)
+OK     na sirku: log odeslan jednim klepnutim
+OK     panel se zavrel (hra je zase videt)
+OK     na sirku zadna chyba JavaScriptu []
+OK     kdyz se ulozit nepodari, hlaska rekne proc a poradi KOPIROVAT LOG (LOG SE NEULOZIL: CHYBA:plne uloziste - pouzij KOPIROVAT LOG)
+OK     appka bez nove metody: log se aspon ulozi postaru (AHSAVE)
+OK     zadna chyba JavaScriptu []
+
+VYSLEDEK: 16 kontrol, 0 CHYB

@@ -248,14 +248,14 @@ def main():
 
     # ---- 5. rychlost ----
     print("\n== 5. Rychlost (x86, Doom v mistnosti, 2x, 600 snimku) ==")
-    casy = {}
-    for jm in ("stary", "novy"):
-        nejlepsi = 1e9
-        for _ in range(3):
+    # B309: mereni stridave (stary, novy, stary, ...) a nejlepsi z 5 - drive 3x stary a pak
+    # 3x novy, takze zmena zateze PC mezi tim (jine testy, takt CPU) delala +35 % i +69 %
+    casy = {"stary": 1e9, "novy": 1e9}
+    for _ in range(5):
+        for jm in ("stary", "novy"):
             t0 = time.perf_counter()
             spust(binary[(jm, False)], False, os.path.join(prac, "rychlost_%s.raw" % jm), "doom", 1, 1, 600)
-            nejlepsi = min(nejlepsi, time.perf_counter() - t0)
-        casy[jm] = nejlepsi
+            casy[jm] = min(casy[jm], time.perf_counter() - t0)
     print("   bez opravy %.2f ms/snimek, s opravou %.2f ms/snimek (vcetne puvodniho 1x obrazu)"
           % (casy["stary"] / 600 * 1000, casy["novy"] / 600 * 1000))
     ok(casy["novy"] < casy["stary"] * 1.6, "oprava stoji %+.0f %% casu kresleni Doomu (snimek pod 1/60 s i tak)"

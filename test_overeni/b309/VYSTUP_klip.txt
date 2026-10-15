@@ -1,0 +1,4 @@
+B309 - klip intro/pittkitt.klip znovu nahrany z Reneho Pitt-Kitt Platinum (.xex):
+  useky: titulek N&P 110-189, kapitola Las Vegas 1982 232-289, jizda 438-615 (do 615 - pak hra restartuje kolo)
+KLIP klip_znovu.bin: 316 snimku 384x240 (6.34 s pri 49.861/s), zvuk 279489 vzorku, obraz 29122560 B surove -> 252487 B celkem
+VYSLEDEK: klip v assets je bajt po bajtu stejny (sha256 239f6a49e5362fe5...)

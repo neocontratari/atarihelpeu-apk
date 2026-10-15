@@ -36,6 +36,10 @@ inline void pismoTucne(uint8_t p[96][8]) {
 class Hra16 {
  public:
   static constexpr int W = 320, H = 224;
+  // B309: Rene - "ukazky her jsou hekticke a rychle". Ukazka ted trva 6 s (drive 1,2 s)
+  // a cela hra jede klidneji: posun pozadi, more, skaly i drony na 72 % (strely lodi
+  // zustaly rychle), vic vln dronu s mezerami - akce porad, ale ne zmet.
+  static constexpr float TEMPO = 0.72f;
   static constexpr int HORIZONT = 120;     // radek obzoru (more pod nim)
   std::vector<uint32_t> obr;               // RGBA (R v nejnizsim bajtu), W x H
 
@@ -307,26 +311,29 @@ class Hra16 {
     if (n == simN) return;
     drony.clear(); lasery.clear(); vybuchy.clear(); strely.clear(); stopaX.clear(); stopaY.clear();
     skore = 128400;
-    // vlna 1: had zprava, kmita pres drahu lodi; vlna 2: vys; vlna 3: nizko nad vodou
+    // vlna 1: had zprava, kmita pres drahu lodi; vlna 2: vys; vlna 3: nizko nad vodou;
+    // B309: vlna 4 stredem a vlna 5 dvojice nahore / dole (ukazka trva 6 s)
     for (int i = 0; i < 7; i++) drony.push_back({334.f + i * 24.f, 0.f, 146.f, 42.f, i * 0.55f, true});
     for (int i = 0; i < 6; i++) drony.push_back({480.f + i * 22.f, 0.f, 92.f, 24.f, 1.3f + i * 0.5f, true});
     for (int i = 0; i < 5; i++) drony.push_back({600.f + i * 26.f, 0.f, 184.f, 18.f, 2.6f + i * 0.6f, true});
+    for (int i = 0; i < 6; i++) drony.push_back({780.f + i * 24.f, 0.f, 128.f, 34.f, 0.4f + i * 0.5f, true});
+    for (int i = 0; i < 4; i++) drony.push_back({930.f + i * 30.f, 0.f, i % 2 ? 176.f : 100.f, 14.f, 1.1f + i * 0.7f, true});
     float lx = 26.f, ly = 150.f, vy = 0.f;
     for (int f = 0; f <= n; f++) {
       for (auto &d : drony) {
         if (!d.zivy) continue;
-        d.x -= 2.5f;
+        d.x -= 2.5f * TEMPO;
         d.y = d.by + d.amp * std::sin(d.x * 0.030f + d.faze);
         // obcas vystreli na lod
         if (d.x < W - 30 && d.x > 120 && ((f + (int)(d.faze * 10.f)) % 47) == 0) {
           const float dx = lx - d.x, dy = ly - d.y, l = std::sqrt(dx * dx + dy * dy) + 1e-3f;
-          strely.push_back({d.x - 8.f, d.y, dx / l * 3.2f, dy / l * 3.2f});
+          strely.push_back({d.x - 8.f, d.y, dx / l * 2.7f, dy / l * 2.7f});
         }
       }
       for (auto &st : strely) { st.x += st.vx; st.y += st.vy; }
       strely.erase(std::remove_if(strely.begin(), strely.end(), [](const Str &q) { return q.x < -10 || q.y < -10 || q.y > H + 10; }), strely.end());
       // lod: najede zleva a miri na nejblizsi dron pred sebou (pomalu, at akce projde pres obraz)
-      const float cilX = 70.f + 8.f * std::sin(f * 0.04f);
+      const float cilX = 70.f + 8.f * std::sin(f * 0.04f * TEMPO);
       lx += (cilX - lx) * 0.06f;
       float cilY = 150.f, nej = 1e9f;
       for (auto &d : drony)
@@ -387,7 +394,7 @@ class Hra16 {
   static constexpr int SX = 214, SY = HORIZONT - 26, SR = 44;   // slunce
 
   void pozadi(int n) {
-    const float t = (float)n;
+    const float t = (float)n * TEMPO;
     // ---- obloha: barva po radcich (rastrovy prechod - typicky pro 16bit) ----
     for (int y = 0; y < HORIZONT; y++) {
       const float k = (float)y / HORIZONT;          // 0 nahore .. 1 u obzoru
@@ -520,7 +527,7 @@ class Hra16 {
 
   // skaly v popredi u spodniho okraje - nejrychlejsi vrstva (pocit rychlosti)
   void popredi(int n) {
-    const float t = (float)n;
+    const float t = (float)n * TEMPO;
     const int P = 760;                                  // opakovani
     const int sx = (int)(t * 7.0f) % P;
     for (int x = 0; x < W; x++) {

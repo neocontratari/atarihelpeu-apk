@@ -175,7 +175,7 @@ struct Hrom {
 
 class Stopa {
  public:
-  static constexpr float DELKA = 45.6f;
+  static constexpr float DELKA = cas::KONEC + 0.6f;   // B309: 59,6 s (drive 45,6 s)
 
   Stopa() { celkemRamcu = (int)(DELKA * FS); }
   int celkem() const { return celkemRamcu; }
@@ -218,7 +218,7 @@ class Stopa {
         float l = L[i] + dl, r = R[i] + dr;
         // konec: dozneni do ticha
         const float t = (float)(z + i) / FS;
-        const float konec = 1.f - hladce(44.2f, 44.95f, t);   // s obrazem; po 45 s uz je ticho
+        const float konec = 1.f - hladce(44.2f + cas::POSUN5, 44.95f + cas::POSUN5, t);   // s obrazem; po 59 s uz je ticho
         l *= 0.80f * konec; r *= 0.80f * konec;
         // mekky limiter
         l = l / (1.f + std::fabs(l) * 0.35f); r = r / (1.f + std::fabs(r) * 0.35f);
@@ -365,32 +365,109 @@ class Stopa {
       pridej(CRT_ZAP, 1.2f, 70.f, 0.55f, 0.f, 0.1f, PODBAS);
       pridej(CRT_ZAP, STRIH_ATARI - CRT_ZAP + 0.05f, 0, 0.22f, 0.f, 0.15f, SNIH);
       // ---- defile ----
-      // ATARI: rana a znelka jako z POKEY (ctvercove tony nahoru), pak zvuk hry ze zaznamu
+      // B309: defile trva 17,85 s (drive 3,85 s) - kazda ukazka ma vlastni hudbu
+      // v tempu 120 BPM (takt = 2 s), at to neni zmet strihu, ale klidne prehlidka.
+      const float TAKT = 2.0f;
+      // ATARI: rana a znelka jako z POKEY (ctvercove tony nahoru)
       pridej(STRIH_ATARI, 1.0f, 0, 0.40f, 0.f, 0.3f, NARAZ);
       {
         static const int ZN[6] = {72, 76, 79, 84, 88, 91};
         for (int i = 0; i < 6; i++) pridej(STRIH_ATARI + 0.02f + i * 0.05f, 0.16f, midi((float)ZN[i]), 0.10f, (i % 2 ? 0.2f : -0.2f), 0.2f, ARP);
+        // titulek a kapitola hry: tichy "POKEY" doprovod (arpeggio Dm, basa, hihat)
+        static const int AR[8] = {62, 65, 69, 74, 69, 65, 62, 57};
+        for (int k = 0; ; k++) {
+          const float t = STRIH_ATARI + 0.5f + k * 0.125f;
+          if (t >= ATARI_JIZDA - 0.05f) break;
+          pridej(t, 0.11f, midi((float)AR[k % 8] + ((k / 8) % 2 ? 12.f : 0.f)), 0.085f, (k % 2 ? 0.35f : -0.35f), 0.25f, ARP);
+          if (k % 4 == 0) pridej(t, 0.22f, midi(k % 16 < 8 ? 38.f : 34.f), 0.28f, 0.f, 0.05f, BASA);
+          if (k % 4 == 2) pridej(t, 0.05f, 0, 0.13f, 0.3f, 0.05f, HAT);
+        }
         pridej(ATARI_KAP, 0.10f, midi(84.f), 0.09f, 0.f, 0.2f, ARP);
         pridej(ATARI_KAP + 0.08f, 0.16f, midi(79.f), 0.09f, 0.f, 0.2f, ARP);
+        // jizda: hraje zvuk hry (POKEY ze zaznamu, nastavZaznam) - hudba mlci,
+        // jen na konci narustajici sum do strihu
+        pridej(STRIH_16 - 0.55f, 0.55f, 0, 0.20f, 0.f, 0.35f, RISER);
       }
-      // 16 BIT: sum prepnuti, FM plechy a FM basa (styl 16bit konzoli)
+      // 16 BIT: sum prepnuti, FM fanfara, pak cela FM skladba (basa, bici, melodie)
       pridej(STRIH_16, 0.10f, 0, 0.30f, 0.f, 0.1f, SNIH);
       pridej(STRIH_16, 0.9f, 0, 0.36f, 0.f, 0.3f, NARAZ);
       akord(STRIH_16 + 0.02f, 0.35f, {58, 62, 65, 70}, 0.11f, 0.3f, FMPLECH);
       akord(STRIH_16 + 0.40f, 0.30f, {60, 64, 67, 72}, 0.10f, 0.3f, FMPLECH);
       akord(STRIH_16 + 0.75f, 0.42f, {62, 65, 70, 74}, 0.11f, 0.35f, FMPLECH);
       {
-        static const int BA[8] = {34, 34, 46, 34, 36, 36, 48, 38};
-        for (int i = 0; i < 8; i++) pridej(STRIH_16 + i * 0.15f, 0.13f, midi((float)BA[i]), 0.26f, 0.f, 0.05f, FMBASA);
-        for (int i = 0; i < 4; i++) pridej(STRIH_16 + 0.15f + i * 0.30f, 0.3f, 0, 0.55f, 0.f, 0.06f, KOPAK);
+        // akordy po pul taktu: Bb C | Dm Bb | C A  (koreny basy)
+        static const int KOR[6] = {34, 36, 38, 34, 36, 33};
+        static const int VZ[8] = {0, 0, 12, 0, 7, 0, 12, 7};      // FM basa v osminach
+        const float konec16 = STRIH_32 - 0.5f;
+        for (int b = 0; ; b++) {                                    // osminy
+          const float t = STRIH_16 + b * 0.25f;
+          if (t >= konec16) break;
+          const int pul = std::min(5, (int)((t - STRIH_16) / (TAKT * 0.5f)));
+          pridej(t, 0.22f, midi((float)(KOR[pul] + VZ[b % 8])), 0.24f, 0.f, 0.05f, FMBASA);
+          const int dob = b / 2;                                    // dob v taktu (0..3)
+          if (b % 2 == 0 && (dob % 4 == 0 || dob % 4 == 2)) pridej(t, 0.32f, 0, 0.70f, 0.f, 0.06f, KOPAK);
+          if (b % 2 == 0 && (dob % 4 == 1 || dob % 4 == 3)) pridej(t, 0.25f, 0, 0.36f, 0.05f, 0.18f, VIRBL);
+          if (b % 8 == 7) pridej(t, 0.30f, 0, 0.40f, 0.f, 0.06f, KOPAK);   // predraz pred dalsim taktem
+          pridej(t + 0.125f, 0.05f, 0, 0.11f, 0.35f, 0.05f, HAT);
+        }
+        // plechy na zacatku kazdeho pultaktu (krome fanfary)
+        for (int pul = 2; pul < 6; pul++) {
+          static const int CH[6][3] = {{58, 62, 65}, {60, 64, 67}, {62, 65, 69}, {58, 62, 65}, {60, 64, 67}, {57, 61, 64}};
+          const float t = STRIH_16 + pul * TAKT * 0.5f;
+          for (int k2 = 0; k2 < 3; k2++) pridej(t, 0.30f, midi((float)CH[pul][k2]), 0.06f, (k2 - 1) * 0.3f, 0.3f, FMPLECH);
+        }
+        // melodie (FM plech, o oktavu vys) - hrdinsky motiv 16bit strilecky
+        struct Mel { float od, d; int m; };
+        static const Mel MEL[] = {
+            {1.20f, 0.25f, 79}, {1.45f, 0.25f, 81}, {1.70f, 0.30f, 84},
+            {2.00f, 0.50f, 86}, {2.50f, 0.25f, 89}, {2.75f, 0.25f, 88}, {3.00f, 0.50f, 86}, {3.50f, 0.45f, 81},
+            {4.00f, 0.50f, 82}, {4.50f, 0.25f, 84}, {4.75f, 0.25f, 86}, {5.00f, 0.45f, 88}, {5.50f, 0.50f, 85}};
+        for (const Mel &m : MEL) pridej(STRIH_16 + m.od, m.d, midi((float)m.m), 0.085f, 0.f, 0.32f, FMPLECH);
+        // virbl do strihu
+        for (float t = STRIH_32 - 0.5f; t < STRIH_32 - 0.02f; t += 0.0625f)
+          pridej(t, 0.1f, 0, 0.16f + 0.18f * hladce(STRIH_32 - 0.5f, STRIH_32, t), 0.f, 0.2f, VIRBL);
+        pridej(STRIH_32 - 0.5f, 0.5f, 0, 0.24f, 0.f, 0.35f, RISER);
       }
-      // 32 BIT: sum prepnuti, velky akord (CD kvalita), trpyt, svist predjizdeni
+      // 32 BIT: sum prepnuti, velky akord (CD kvalita), pak nocni zavod: breakbeat,
+      // basa, plochy Dm9 - Bbmaj7 - C - Dm - A, zvonky a svist pri predjeti
       pridej(STRIH_32, 0.10f, 0, 0.30f, 0.f, 0.1f, SNIH);
       pridej(STRIH_32, 0.9f, 0, 0.36f, 0.f, 0.3f, NARAZ);
-      akord(STRIH_32 + 0.02f, 1.3f, {50, 57, 62, 66, 69}, 0.08f, 0.6f, PAD);
+      akord(STRIH_32 + 0.02f, 1.6f, {50, 57, 62, 65, 69}, 0.075f, 0.6f, PAD);
       akord(STRIH_32 + 0.05f, 1.3f, {78, 81, 86, 90}, 0.05f, 0.7f, ZVON);
-      pridej(STRIH_32 + 0.25f, 0.45f, 0, 0.22f, 0.4f, 0.3f, RISER);
-      for (int i = 0; i < 5; i++) pridej(STRIH_32 + 0.1f + i * 0.25f, 0.3f, 0, 0.5f, 0.f, 0.06f, KOPAK);
+      {
+        struct Pl { float od, d; int m[5]; int bas; };
+        static const Pl PL[5] = {{0.0f, 2.0f, {50, 57, 62, 65, 69}, 38}, {2.0f, 1.0f, {46, 53, 58, 62, 65}, 34},
+                                 {3.0f, 1.0f, {48, 55, 60, 64, 67}, 36}, {4.0f, 1.0f, {50, 57, 62, 65, 69}, 38},
+                                 {5.0f, 1.25f, {45, 52, 57, 61, 64}, 33}};
+        for (int i = 1; i < 5; i++)
+          for (int k2 = 0; k2 < 5; k2++)
+            pridej(STRIH_32 + PL[i].od, PL[i].d + 0.3f, midi((float)PL[i].m[k2]), 0.058f, (k2 % 2 ? 0.3f : -0.3f), 0.55f, PAD);
+        auto plochaV = [&](float t) { int i = 0; for (int k2 = 0; k2 < 5; k2++) if (t - STRIH_32 >= PL[k2].od - 0.001f) i = k2; return i; };
+        const float konec32 = STRIHY_KONEC - 0.55f;
+        // breakbeat (16 sestnactin na takt): kopak 1, 2a, 3 / virbl 2, 4 / hihat sestnactiny
+        static const int KOP[16] = {1, 0, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 1};
+        static const int VIR[16] = {0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0};
+        for (int k = 0; ; k++) {
+          const float t = STRIH_32 + k * 0.125f;
+          if (t >= konec32) break;
+          const int s16 = k % 16;
+          if (KOP[s16]) pridej(t, 0.32f, 0, 0.72f, 0.f, 0.06f, KOPAK);
+          if (VIR[s16]) pridej(t, 0.25f, 0, 0.40f, 0.05f, 0.22f, VIRBL);
+          pridej(t, 0.04f, 0, (s16 % 4 == 2) ? 0.12f : 0.06f, (k % 2 ? 0.4f : -0.2f), 0.05f, HAT);
+          if (k % 2 == 0) {                                          // basa v osminach
+            const Pl &pl = PL[plochaV(t)];
+            pridej(t, 0.20f, midi((float)(pl.bas + ((k / 2) % 4 == 3 ? 12 : 0))), 0.26f, 0.f, 0.05f, BASA);
+          }
+          if (k % 4 == 0) {                                          // zvonky: rozlozeny akord nahore
+            const Pl &pl = PL[plochaV(t)];
+            pridej(t + 0.02f, 0.9f, midi((float)pl.m[1 + (k / 4) % 4] + 24.f), 0.028f, ((k / 4) % 2 ? 0.5f : -0.5f), 0.7f, ZVON);
+          }
+        }
+        // predjeti (ukazka: modry souper ~2,0 s vpravo, zluty ~4,4 s vlevo): svist kolem
+        pridej(STRIH_32 + 2.0f - 0.45f, 0.5f, 0, 0.22f, 0.45f, 0.3f, RISER);
+        pridej(STRIH_32 + 4.41f - 0.45f, 0.5f, 0, 0.22f, -0.45f, 0.3f, RISER);
+        pridej(STRIH_32 + 4.41f, 0.9f, midi(93.f), 0.035f, 0.f, 0.7f, ZVON);    // 1. misto
+      }
       // zaverecna vlna do loga: virbl se zrychluje
       for (float t = STRIHY_KONEC - 0.55f; t < SCENA5 - 0.05f;) {
         const float d = t < STRIHY_KONEC - 0.2f ? 0.125f : (t < STRIHY_KONEC + 0.1f ? 0.0625f : 0.03125f);
@@ -400,24 +477,26 @@ class Stopa {
       pridej(STRIHY_KONEC - 0.4f, SCENA5 - STRIHY_KONEC + 0.35f, 0, 0.35f, 0.f, 0.4f, RISER);
     }
     // ---- SCENA 5: gong, D dur, zlate zvonky ----
+    // B309: stejne jako B304-B308, jen o cas::POSUN5 (14 s) pozdeji
     {
-      pridej(37.3f, 0.55f, 0, 0.30f, 0.f, 0.5f, RISER);
-      pridej(37.85f, 7.0f, midi(38.f), 0.55f, 0.f, 0.55f, GONG);
-      pridej(37.85f, 3.0f, 62.f, 0.85f, 0.f, 0.1f, PODBAS);
-      pridej(37.85f, 1.5f, 0, 0.45f, 0.f, 0.6f, NARAZ);
-      for (int m : {50, 54, 57, 62, 69}) pridej(38.0f, 7.0f, midi((float)m), 0.075f, (m % 2 ? 0.3f : -0.3f), 0.6f, PAD);
-      pridej(38.0f, 7.0f, midi(38.f), 0.06f, 0.f, 0.3f, PAD);
+      const float P = cas::POSUN5;
+      pridej(P + 37.3f, 0.55f, 0, 0.30f, 0.f, 0.5f, RISER);
+      pridej(P + 37.85f, 7.0f, midi(38.f), 0.55f, 0.f, 0.55f, GONG);
+      pridej(P + 37.85f, 3.0f, 62.f, 0.85f, 0.f, 0.1f, PODBAS);
+      pridej(P + 37.85f, 1.5f, 0, 0.45f, 0.f, 0.6f, NARAZ);
+      for (int m : {50, 54, 57, 62, 69}) pridej(P + 38.0f, 7.0f, midi((float)m), 0.075f, (m % 2 ? 0.3f : -0.3f), 0.6f, PAD);
+      pridej(P + 38.0f, 7.0f, midi(38.f), 0.06f, 0.f, 0.3f, PAD);
       // trpyt pri odlesku loga
       static const int tr[6] = {86, 90, 93, 98, 102, 105};
       for (int k = 0; k < 14; k++) {
-        pridej(38.5f + k * 0.1f, 1.4f, midi((float)tr[k % 6] - (k >= 6 ? 0.f : 12.f)), 0.035f, (k % 2 ? 0.5f : -0.5f), 0.8f, ZVON);
-        pridej(41.8f + k * 0.09f, 1.4f, midi((float)tr[k % 6] - (k >= 6 ? 0.f : 12.f)), 0.030f, (k % 2 ? -0.5f : 0.5f), 0.8f, ZVON);
+        pridej(P + 38.5f + k * 0.1f, 1.4f, midi((float)tr[k % 6] - (k >= 6 ? 0.f : 12.f)), 0.035f, (k % 2 ? 0.5f : -0.5f), 0.8f, ZVON);
+        pridej(P + 41.8f + k * 0.09f, 1.4f, midi((float)tr[k % 6] - (k >= 6 ? 0.f : 12.f)), 0.030f, (k % 2 ? -0.5f : 0.5f), 0.8f, ZVON);
       }
       // titulky: tiche klavirni tony
       static const float kdy[6] = {39.2f, 39.85f, 40.35f, 41.05f, 41.95f, 42.75f};
       static const int ton[6] = {69, 74, 78, 76, 74, 69};
-      for (int i = 0; i < 6; i++) pridej(kdy[i], 2.5f, midi((float)ton[i]), 0.11f, 0.f, 0.55f, PIANO);
-      akord(43.4f, 2.2f, {62, 66, 69, 74}, 0.05f, 0.7f, PIANO);
+      for (int i = 0; i < 6; i++) pridej(P + kdy[i], 2.5f, midi((float)ton[i]), 0.11f, 0.f, 0.55f, PIANO);
+      akord(P + 43.4f, 2.2f, {62, 66, 69, 74}, 0.05f, 0.7f, PIANO);
     }
     std::sort(part.begin(), part.end(), [](const Nota &a, const Nota &b) { return a.od < b.od; });
     dalsiNota = 0;

@@ -387,7 +387,7 @@ body.tvCastActive .rgbRam{animation-play-state:paused!important;}
     <button id="psCacheClear" type="button">SMAZAT PS1 CACHE</button>
     <button id="tvWebCast" type="button">TV WEB CAST</button>
     <button id="btnDpadMenuFromHelp" type="button">D-PAD A OVLÁDÁNÍ</button>
-    <button id="logSave" type="button">ULOZIT LOG (Downloads/AtariHelp)</button>
+    <button id="logSave" type="button">ULOŽIT LOG A ODESLAT</button>
     <button id="logCopy" type="button">KOPIROVAT LOG</button>
     <button id="helpClose" type="button" class="zavrit">ZAVRIT</button>
   </div>
@@ -410,6 +410,8 @@ body.tvCastActive .rgbRam{animation-play-state:paused!important;}
          Pridano sem (D-PAD panel), ne do hlavniho radku peti tlacitek
          dole - at se nic nemeni na tom, co uz funguje. -->
     <button id="btnQuickLoad" type="button" class="secondary">NAČÍST RYCHLOU POZICI</button>
+    <!-- B309: na sirku (kde se hraje) odeslani logu hned tady - ne az pres DALSI -->
+    <button id="btnLogOdeslat" type="button" class="secondary">ULOŽIT LOG A ODESLAT</button>
     <button id="dpadMenuMore" type="button" class="secondary">DALŠÍ (BIOS, CD, LOG...)</button>
     <button id="dpadMenuClose" type="button" class="zavrit">ZAVŘÍT</button>
   </div>
@@ -597,7 +599,7 @@ function nahravaniKresli(){
   }else if(NAHR.bezStavu&&s>=10){
     nahravaniKonec(true,'');          // stara appka bez hlaseni stavu - jako drive (10 s)
   }else if(Date.now()-NAHR.od>NAHR.maxMs){
-    nahravaniKonec(false,'START TRVÁ PŘÍLIŠ DLOUHO - pošli LOG (nastavení → ULOŽIT LOG)');
+    nahravaniKonec(false,'START TRVÁ PŘÍLIŠ DLOUHO - pošli LOG (kolečko → ULOŽIT LOG A ODESLAT)');
   }
 }
 function jePanelOtevreny(){try{return !!document.querySelector('.panel.open');}catch(_){return false;}}
@@ -1595,6 +1597,7 @@ bindHold($('btnStart'),'START');
 $('helpClose').addEventListener('click',function(e){e.preventDefault();closeHelp();},true);
 $('dpadMenuClose').addEventListener('click',function(e){e.preventDefault();closeDpadMenu();},true);
 $('dpadMenuMore').addEventListener('click',function(e){e.preventDefault();closeDpadMenu();showHelp();},true);
+$('btnLogOdeslat').addEventListener('click',function(e){e.preventDefault();closeDpadMenu();$('logSave').click();},true);
 $('btnQuickLoad').addEventListener('click',function(e){e.preventDefault();ps1QuickLoad();},true);
 $('btnDpadMenuFromHelp').addEventListener('click',function(e){e.preventDefault();closeHelp();showDpadMenu();},true);
 if($('psRemoteUrl'))$('psRemoteUrl').addEventListener('click',function(e){e.preventDefault();bootPs1RemoteUrl();},true);
@@ -1637,7 +1640,14 @@ ctrlLoad();
 $('logSave').addEventListener('click',function(e){e.preventDefault();
   var fn='AtariHelp_PS1_LOG_'+(function(){var d=new Date();function p(n){return(n<10?'0':'')+n;}return d.getFullYear()+p(d.getMonth()+1)+p(d.getDate())+'_'+p(d.getHours())+p(d.getMinutes())+p(d.getSeconds());})()+'.txt';
   try{
-    if(window.AHSAVE&&window.AHSAVE.save){
+    /* B309: Rene - "ten log udelej jako v atari emu help - proste s moznosti okamziteho
+       odeslani". Log (stranka + denik PS1 + log appky) se ulozi do Downloads/AtariHelp
+       a hned se otevre nabidka, cim ho poslat (Messenger, mail ...); je i ve schrance. */
+    if(window.AHPS1&&window.AHPS1.ps1UlozAOdesli){
+      var r9=String(window.AHPS1.ps1UlozAOdesli(fn,plnyLog(true)));
+      log('LOG_ODESLAT '+r9);
+      toast(r9.indexOf('CHYBA')===0?('LOG SE NEULOZIL: '+r9+' - pouzij KOPIROVAT LOG'):'LOG ULOZEN (Downloads/AtariHelp) - vyber, cim ho poslat',5200);
+    }else if(window.AHSAVE&&window.AHSAVE.save){
       var res=window.AHSAVE.save(fn,plnyLog(true));
       log('LOG_SAVE '+res);
       toast(String(res).indexOf('DOWNLOADS_OK')===0?('LOG ulozen: Downloads/AtariHelp/'+fn):('LOG ulozen (fallback): '+res),5200);

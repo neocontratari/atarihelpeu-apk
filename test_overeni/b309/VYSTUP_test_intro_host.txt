@@ -1,0 +1,13 @@
+OK     1) introStart: zvuk pusti C++ samo (OpenSL ES) a zvuk Reneho hry je ve stope  -- bity 3
+OK     1) GL vlakno nacetlo zabery Pitt-Kitt (do logu appky)  -- GPU llvmpipe (LLVM 20.1.2, 256 bits) | OpenGL ES 3.2 Mesa 25.2.8-0ubuntu0.24.04.4 | priprava 396 ms (nanecisto 5 snimku 253 ms), plocha 360x780, zabery Pitt-Kit
+OK     3) dotyk: o tlacitku SKIP rozhoduje C++ (1 = SKIP, 2 = jinam)  -- tlacitko [263,23]-[347,53]: stred 1, stred plochy 2, view 2x 1, rezerva 1, vedle 2, pod 2
+OK     2) cas obrazu jde za tim, co OpenSL prehral (GetPosition)  -- prumer 8 ms, nejvic 21 ms (39 mereni; blok OpenSL = 23 ms)
+OK     4) do reproduktoru jde PRESNE stopa dema (bit po bitu), pred pripravou ticho  -- do OpenSL zarazeno 412672 ramcu, stopa od ramce 23552, porovnano 389120 (8.8 s), rozdilnych 0, pred stopou ticho ano
+OK     4) introStop: prehravac OpenSL zniceny, zpetna volani skoncila, okno uvolnene, assety zavrene  -- prehravacu vytvoreno 1, zniceno 1, okno refs 1, vlakno kresleni konec, assety otevreno 3 / zavreno 3
+OK     5) druhy start: novy prehravac, cas dema zase od zacatku, prst ze spusteni nepreskoci  -- dotyk hned po startu 0, cas dema 1,5 s po pripraveni: 1417 ms, prehravacu 2 / zniceno 1
+OK     6) CELA stopa do reproduktoru bit po bitu = stopa dema + zvuk hry Pitt-Kitt; demo samo dobehne  -- bity 3, porovnano 2628360 ramcu (59.60 s z 59.60 s), rozdilnych 0, demo dobehlo ano
+OK     6) zvuk hry Pitt-Kitt je ve stope od jizdy Las Vegas (pak jen doznivajici dozvuk), nic neorezava  -- zvuk hry 35.00-38.40 s: RMS 3695 (-19.0 dBFS), cela stopa tam -18.9 dBFS; pred jizdou rozdilnych vzorku 0; dozvuk po jizde RMS 604 -> 2.1 za 2 s, posledni rozdil v 45.04 s; na hranici (orez) 0
+OK     7) OpenSL nejde: demo bezi podle hodin (bez zvuku), zadny prehravac, nic nespadne  -- bity 2, cas dema 216 -> 2217 ms za 2 s, prehravacu vytvoreno 3 (porad 3), okno refs 1
+OK     8) chybi klip: demo jede dal, stopa bez zvuku hry (bit po bitu), v logu appky NE  -- bity 1, zabery 0, porovnano 2628360 ramcu (59.60 s), rozdilnych 0; log: zabery Pitt-Kitt NE, zvuk hry NE || t=59
+
+VYSLEDEK: 11 OK, 0 CHYB

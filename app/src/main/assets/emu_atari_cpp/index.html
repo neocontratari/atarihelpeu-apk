@@ -113,6 +113,16 @@ Tenhle test pousti jadro na desetitisicich nahodnych stavu a porovnava vysledek
 s cislem, ktere vyslo na pocitaci. Delam to proto, ze pocitac je x86 a telefon
 ARM - a na ARM se nektere veci chovaji jinak. Kdyz se to rozejde, ma se to
 poznat ted, a ne az podle spatneho obrazu.<br><br>
+B309: TV / PC BEZ F5 - kdyz na TV bezel obraz telefonu (H.264: menu appky, nebo chvilka
+pri prepnuti hry) a pak nabehl proud z C++ (PS1, Sega, demo), zastavene H.264 se ozvalo
+az po nem a vratilo cerny obrazek pres novy obraz - proto F5. Ted se H.264 zastavi poradne,
+prohlizec hlida, ze proud z C++ je navrchu, a pri prepnuti hry (jadro se kratce restartuje)
+nechava 2,5 s posledni obraz misto preblikavani na telefon. PS1: ULOZIT LOG A ODESLAT
+(jako tady v HELP) - log se ulozi do Downloads/AtariHelp a hned se otevre nabidka, cim ho
+poslat; na sirku primo v panelu D-PAD. UVODNI DEMO 59 s: defile na CRT trva 18 s misto 4 s -
+Pitt-Kitt 5,6 s (titulek, kapitola, jizda se zvukem hry), 16 bit 6 s a 32 bit 6,25 s,
+klidnejsi tempo (16 bit pomaleji, 32 bit dve predjeti), kazda ukazka ma vlastni hudbu;
+logo od 51 s.
 B308: PS1 - DOOM SE STROPY. Chyba byla v nasem jadre PS1 (graficky cip gpu_neon
 ve 2x rozliseni): Doom kresli podlahu a strop po radcich vysokych 1 bod a zdi po
 sloupcich sirokych 1 bod - ve 2x se kazdy takovy radek nakreslil jen castecne, takze
@@ -200,37 +210,34 @@ try{ if(window.AHATARICPP && !AHATARICPP.jeNactene()){
 } }catch(e){}
 function set(id,t,cls){var e=$(id); if(!e)return; e.textContent=t; if(cls)e.className='v '+cls;}
 var KROKY=[
- // B308: PS1 - Doom (stropy ve 2x), nahravani hry podle skutecneho stavu, klavesnice z TV, denik PS1 v C++
- {n:1,co:'PS1: DOOM - spust Doom, v prvnim levelu se divej nahoru na stropy a dolu na podlahu, otoc se dokola, projdi par mistnosti; pak i venku (obloha)',
-  ok:'Strop je videt CELY (ne jen kousky), podlaha bez car a der, zdi bez svislych skvir, obloha venku jako dosud. Hra bezi plynule jako v B307 (cele stropy stoji graficky cip trochu vic prace, ale melo by se to vejit).',
-  ne:'Strop chybi nebo je jen po kouskach, cary, blikani, Doom je pomalejsi nebo trha - napis ktery level a kam se divas a posli LOG z PS1 (kolecko - ULOZIT LOG); jsou v nem radky ZDRAVI (rychlost emulace, oprava Doomu: ... tenkych trojuhelniku ve 2x) a OBRAZ.'},
- {n:2,co:'PS1: 2-3 dalsi hry, ktere ti uz chodily (hlavne 3D)',
-  ok:'Vypadaji a bezi UPLNE STEJNE jako v B307 - oprava se tyka jen takovych "nitek" (1 bod), jake kresli Doom.',
-  ne:'Neco je jinak nez v B307 - napis ktera hra a co, a posli LOG z PS1.'},
- {n:3,co:'PS1: NAHRAVANI HRY - v knihovne (CD / ISO) dej PLAY u hry, na vysku i na sirku; zkus i RESET',
-  ok:'V monitoru je NAHRAVAM HRU... s nazvem hry a vterinami, ktere bezi nahoru (kolik uz start trva). Nic se neprekryva, v monitoru nevisi stary obraz (BIOS). Okno zmizi, az jadro hru opravdu spusti, a hned je videt hra. Banner stahovani z Google Drive je na vysku pod monitorem. Kdyz se hra nespusti, okno zmizi a napise proc.',
-  ne:'Porad se neco prekryva - NAPIS PRESNE co pres co (napr. "napis X pres obraz hry") a jestli na vysku nebo na sirku, a posli LOG z PS1 (radky NAHRAVANI_START, NAHRAVANI_KONEC a PS1 START).'},
- {n:4,co:'TV / PC PS1: zapni prenos, spust hru na PS1, v prohlizeci na PC klikni do obrazu a hraj na klavesnici pocitace',
-  ok:'Sipky nebo WASD = smer, K nebo mezernik = KRIZEK, L = KOLECKO, J = CTVEREC, I = TROJUHELNIK, Q/E = L1/R1, Z/C = L2/R2, Enter nebo P = START, Backspace nebo O = SELECT (napoveda je vpravo dole). Pustis klavesu = pusti se tlacitko; kdyz prepnes jinam (okno prohlizece ztrati zamereni), nic nezustane zaseknute. Dotyk v telefonu funguje dal soucasne s klavesnici.',
-  ne:'Klavesa nereaguje, tlacitko zustane drzene nebo dela neco jineho - napis ktera klavesa a posli LOG z PS1 (radky TV KLAVESNICE a TLACITKA).'},
- {n:5,co:'PS1: LOG - po hrani v PS1 kolecko (na sirku: kolecko - DALSI) - ULOZIT LOG nebo KOPIROVAT LOG',
-  ok:'Za radky stranky je oddil DENIK PS1 (C++, jadro): PS1 START, HRA a CUE (soubory hry), BIOS, JADRO (oblast, ID disku), OBRAZ, ZDRAVI kazdych 5-10 s, TLACITKA, PS1 KONEC. Je i tady v ULOZIT LOG A ODESLAT. Posli mi ho, i kdyz je vse v poradku - uvidim, jak PS1 bezi u tebe.',
-  ne:'Oddil DENIK PS1 chybi nebo je prazdny - napis to.'},
- // B307 a starsi - jen kontrola, ze se nic nerozbilo
- {n:6,co:'UVODNI DEMO, TV / PC SEGA a PS1 (obraz, zvuk po kliknuti do obrazu)',
-  ok:'Stejne jako v B307.',
-  ne:'Neco hur nez v B307 - napis co a posli log.'},
- {n:7,co:'TEST JADRA (tlacitko SPUSTIT TEST JADRA nize)',
+ // B309: TV / PC bez F5, PS1 log s odeslanim, intro 59 s
+ {n:1,co:'TV / PC: PREPINANI BEZ F5 - zapni prenos a na PC / TV otevri stranku JEDNOU. Pak jen v telefonu: menu - PS1 (BIOS) - hra z knihovny - jina hra - zpet do menu - Sega - hra. V prohlizeci nic nemackej (zadne F5).',
+  ok:'Po kazdem prepnuti nabehne novy obraz sam do 2-3 s. Pri prepnuti hry chvilku zustane posledni obraz (zadne cerno, zadne preblikavani na telefon), v menu je videt obrazovka telefonu.',
+  ne:'Nekde zustane cerno nebo stary obraz a pomuze az F5 - napis, pri kterem prepnuti (z ceho na co), a posli LOG (radky B306 ... PROUD start / konec a B309 HLIDAC).'},
+ {n:2,co:'PS1: LOG - kolecko - ULOZIT LOG A ODESLAT (na sirku je tlacitko primo v panelu D-PAD)',
+  ok:'Hned se otevre nabidka Poslat log (Messenger, mail ...) jako tady v HELP; soubor je i v Downloads/AtariHelp a log je i ve schrance.',
+  ne:'Nabidka se neotevre nebo hlaska chybu - napis, co presne se ukazalo.'},
+ {n:3,co:'UVODNI DEMO 59 s - OPTIONS - PUSTIT INTRO (nebo start appky); divej se hlavne od 32. vteriny',
+  ok:'Na CRT postupne: Pitt-Kitt asi 5,5 s (titulek N&P, kapitola Las Vegas 1982, jizda se zvukem hry), 16 BIT asi 6 s (lod, drony, more se sluncem), 32 BIT asi 6 s (nocni zavod: predjeti modreho a zluteho auta, 3. - 2. - 1. misto). Tempo klidnejsi nez v B308, kazda ukazka ma vlastni hudbu. Logo od 51 s, konec v 59 s. SKIP funguje celou dobu.',
+  ne:'Porad hekticke, neco chybi, zadrhava nebo zvuk nesedi s obrazem - napis, v kolikate vterine a co.'},
+ {n:4,co:'UVODNI DEMO NA TV / PC - se zapnutym prenosem, v prohlizeci klikni do obrazu',
+  ok:'Cele demo vcetne delsiho defile a zvuku hry Pitt-Kitt na TV; po skonceni se TV sama vrati na obraz telefonu (bez F5).',
+  ne:'Na TV chybi cast defile, zvuk, nebo po demu zustane cerno - napis co.'},
+ // B308 a starsi - kontrola, ze se nic nerozbilo
+ {n:5,co:'PS1: DOOM, nahravani hry a klavesnice z PC jako v B308',
+  ok:'Stejne jako v B308 (stropy cele, nahravaci okno podle skutecneho stavu, klavesy na TV funguji).',
+  ne:'Neco hur nez v B308 - napis co a posli LOG z PS1 (ULOZIT LOG A ODESLAT).'},
+ {n:6,co:'TEST JADRA (tlacitko SPUSTIT TEST JADRA nize)',
   ok:'Procesor i Pamet = SEDI (29C55806 / D3949DC5), Rychlost aspon 2x realny cas.',
   ne:'NESEDI, nebo rychlost pod 1x (Atari by se zpomalovalo).'},
- {n:8,co:'TV / PC ATARI: HELP (Atari 130XE C++) - v prohlizeci na PC klavesnice pocitace a VLOZIT KOD (Ctrl+V)',
-  ok:'Jako v B307: pismeno z PC je na TV hned, 10 PRINT "Ahoj" + Enter, LIST, RUN; Ctrl+V napise radky programu (bez NEW).',
-  ne:'Neco hur nez v B307 - napis co a posli log (radky B302, B303 VLOZENI).'},
- {n:9,co:'Hry jako minule: Ghostbusters, Popeye, Moon Patrol, Donkey Kong, W3D (i zvuk)',
-  ok:'Stejne jako v B307.',
-  ne:'Neco hur nez v B307 (napis ktera hra a kde).'},
- {n:10,co:'V TELEFONU: ATARI 130XE EMULATOR z hlavni nabidky a hry na Seze (obraz, zvuk, ovladani)',
-  ok:'Bezi UPLNE STEJNE jako dosud - menilo se jen PS1.',
+ {n:7,co:'TV / PC ATARI: HELP (Atari 130XE C++) - v prohlizeci na PC klavesnice pocitace a VLOZIT KOD (Ctrl+V)',
+  ok:'Jako v B308: pismeno z PC je na TV hned, 10 PRINT "Ahoj" + Enter, LIST, RUN; Ctrl+V napise radky programu (bez NEW).',
+  ne:'Neco hur nez v B308 - napis co a posli log (radky B302, B303 VLOZENI).'},
+ {n:8,co:'Hry jako minule: Ghostbusters, Popeye, Moon Patrol, Donkey Kong, W3D (i zvuk)',
+  ok:'Stejne jako v B308.',
+  ne:'Neco hur nez v B308 (napis ktera hra a kde).'},
+ {n:9,co:'V TELEFONU: ATARI 130XE EMULATOR z hlavni nabidky a hry na Seze (obraz, zvuk, ovladani)',
+  ok:'Bezi UPLNE STEJNE jako dosud.',
   ne:'Jakakoli zmena proti minule verzi.'}
 ];
 var vysledky={};

@@ -1,0 +1,76 @@
+B309 - TV / PC bez F5 pri prepnuti hry ci emulatoru, PS1 ULOZIT LOG A ODESLAT, uvodni demo 59 s
+==============================================================================================
+
+Kod v appce:
+  MainActivity.java (stranka prohlizece napTvWebWriteHtml)
+                            PRICINA F5 (Reneho log B308): kdyz bezel H.264 (menu appky, mezera pri
+                            restartu jadra) a nabehl proud z C++, apStart H.264 zastavil a schoval
+                            obrazek #v, ale zrusene cteni H.264 dobehlo az potom ("stream ended,
+                            resetting") a #v (cerny, pres celou obrazovku, v DOM nad canvasem) zase
+                            ukazalo. Oprava: h264Gen (kazde spojeni H.264 ma generaci, stare cteni
+                            na obraz nesaha), #v jen kdyz nebezi proud z C++ (stopH264, pump,
+                            fetch FAILED, apStop), startH264 ne pri proudu z C++, canvas v DOM hned
+                            za #v a H.264 (nad nimi, pod prekryvy), apHlidej v pollFps (nic nesmi
+                            lezet pres canvas, jinak oprava + clog "B309 HLIDAC"), odklad 2,5 s kdyz
+                            proud zmizi (prepnuti hry: posledni obraz misto H.264), apKonec uz
+                            nevola apStop (driv dvakrat - v logu "B303 ATARI PROUD konec")
+  MainActivity.java         napNabidniOdeslaniLogu (schranka + nabidka "Poslat log", spolecne
+                            s HELP ulozAOdesli), AHPS1.ps1UlozAOdesli(jmeno, text): log stranky +
+                            denik PS1 + log appky -> Downloads/AtariHelp (jinak slozka appky) a hned
+                            nabidka; pojistka dema 80 s (demo 59 s)
+  assets/emu_ps1/index.html ULOZIT LOG A ODESLAT (panel s logem i D-PAD panel na sirku)
+  vendor/pcsx_rearmed/frontend/libretro.c
+                            "PS1: start bez disku" jako informace (v deniku bylo "JADRO CHYBA")
+  intro/nap_demo_cas.h      casy: defile 32,8 - 50,65 s (Pitt-Kitt 32,8 / kapitola 33,9 / jizda 35,0,
+                            16 bit 38,4, 32 bit 44,4), scena 5 od 51 s (POSUN5 = 14 s), KONEC 59 s,
+                            ZVUK_HRY 4,5 (hlasitost zvuku hry ve stope)
+  intro/nap_demo.h          DELKA = 59 s, scena 5 kreslena s casem t - POSUN5 (stejna jako B304-B308),
+                            SKIP do 58,6 s, kamera behem defile pomalu zleva doprava (2 klice navic)
+  intro/nap_demo_16bit.h    TEMPO 0,72 (pozadi, more, skaly, drony), vlny 4 a 5 (akce az do konce 6 s)
+  intro/nap_demo_32bit.h    hrac 47 m/s, modry souper 41 m/s (predjeti ~2 s), zluty souper 30 m/s
+                            (predjeti ~4,4 s), poradi 3RD / 2ND / 1ST, trat do -650 m
+  intro/nap_demo_zvuk.h     stopa 59,6 s; nova hudba defile (Atari POKEY doprovod, 16 bit FM skladba,
+                            32 bit breakbeat a plochy, svist pri predjeti), scena 5 posunuta o 14 s
+  intro/nap_intro_gl.cpp    nanecisto snimky 39,5 a 45,5 s (16 / 32 bit), zvuk hry s ZVUK_HRY
+  assets/intro/pittkitt.klip  novy klip z Reneho XEX: 316 snimku (titulek 80, kapitola 58, jizda 178)
+
+Spoustet z adresare test_overeni/b309 (nebo odkudkoli: bash test_overeni/b309/vse.sh).
+Potreba: g++, JAVA_HOME = JDK (hlavicky JNI), hlavicky EGL / GLES2 / KHR v $INC (jako ../b304),
+knihovny Mesa (libEGL, libGLESv2), zlib, Python 3 + numpy + Pillow, Chromium + Playwright pro Python,
+snimky 3D sceny 320x240 ($PNG320, ../b305/JAK_SPUSTIT.txt krok 0), objekty jadra clownmdemu ($CLOWN).
+Vse najednou: PRAC=... INC=... PNG320=... CLOWN=... [HRA=PittKitt.xex] bash vse.sh   (vystupy VYSTUP_* sem)
+
+1) TV / PC prepnuti bez F5 (Chromium; stranka PRESNE z MainActivity.java; JMuxer nahrazen falesnym se
+   stejnym rozhranim, aby H.264 cesta bezela jako u Reneho - v testech B305-B308 se JMuxer z internetu
+   nenacetl a H.264 nikdy nebezelo; proud z C++ = SKUTECNY nap_ps1_native.cpp / nap_sega_native_proof.cpp
+   pres ../b306/tv_ps1_6.cpp a tv_sega6.cpp):
+   python3 test_b309_prepnuti.py PNG320 ADR_KNIHOVEN PRAC            -> VYSTUP_test_b309_prepnuti.txt
+   python3 test_b309_prepnuti.py PNG320 ADR_KNIHOVEN PRAC --ref 978bee1 (stranka B308)
+                                                                     -> VYSTUP_test_b309_prepnuti_978bee1.txt
+     scenar podle Reneho logu: menu (H.264) - start PS1 - prepnuti hry (jadro 1,5 s stoji) - menu 5 s -
+     Sega - Sega -> PS1 - F5 - menu. Meri, co je navrchu (document.elementFromPoint), zda canvas dostava
+     snimky, kdy se zapne H.264. Se strankou B308 musi byt Reneho chyba videt (#v navrchu).
+2) PS1 ULOZIT LOG A ODESLAT (Chromium, assets/emu_ps1/index.html, most AHPS1 napodoben):
+   python3 test_b309_ps1_log.py                                      -> VYSTUP_test_b309_ps1_log.txt
+3) Cele demo po 0,25 s (../b307/demo_snimky.cpp, cte DELKA z nap_demo.h)  -> VYSTUP_demo_snimky.txt
+4) Zvuk dema 59,6 s: demo_zvuk.cpp (zvuk hry s cas::ZVUK_HRY)          -> VYSTUP_demo_zvuk.txt
+5) Tlacitko SKIP: test_skip.cpp (casy 7,3 / 17,9 / 36,8 / 48,0 s; neni pred 1,2 s a po 58,6 s)
+                                                                     -> VYSTUP_test_skip.txt
+6) SKUTECNY nap_intro_gl.cpp: test_intro_host.cpp + tv_intro.cpp (z B307, zvuk hry s ZVUK_HRY):
+   CELA stopa 59,6 s bit po bitu, zvuk hry od 35,0 do 38,4 s, OpenSL nejde, chybi klip
+                                                                     -> VYSTUP_test_intro_host.txt
+7) Demo na TV / PC v Chromiu (test_b309_intro_prohlizec.py z B307): proud az do 50,3 s, snimky z prohlizece
+   behem Pitt-Kitt, 16 bit a 32 bit, zvuk v paketech bit po bitu = stopa (PRAC/tv_*.png)
+                                                                     -> VYSTUP_test_b309_intro_prohlizec.txt
+8) 16bit ukazka snimky 0..420 (ukazka16.cpp)                         -> VYSTUP_ukazka16.txt
+9) Klip znovu z Reneho hry (../b307/nahraj_hru.cpp, SKUTECNE jadro Atari 130XE):
+   nahraj_hru PittKitt.xex zaznam klip.bin "110-189,232-289,438-615" "200-206:START,420-426:START"
+     (jizda konci na 615 - snimky 616-624 hra prepina pohled a nuluje body; pruzkum:
+      nahraj_hru PittKitt.xex pruzkum ADR 1100 20 "SCENAR")          -> VYSTUP_klip.txt (bajt po bajtu = asset)
+
+Regrese: bash ../b308/vse.sh (PS1: Doom, denik, klavesnice z TV, stranka PS1, Atari v prohlizeci) a
+python3 ../b306/test_b306_prohlizec.py PNG320 (Sega / PS1 / demo proudem, zvuk, autoplay) se strankou B309.
+
+Co se na PC overit neda: skutecny Chrome na TV / PC s dekodovanim H.264 a appka v telefonu (test pousti
+stejnou logiku stranky s falesnym JMuxerem), nabidka "Poslat log" (Android), jak hudba zni (je spocitana
+a zmerena - urovne, zadne orezani, na TV bit po bitu stejne).

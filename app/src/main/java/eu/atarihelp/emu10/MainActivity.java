@@ -3876,7 +3876,7 @@ public class MainActivity extends Activity {
                 + "<br><button id='sV' type='button' style='margin-top:4px;padding:3px 8px'>VYLADENI OBRAZU: zapnuto</button></div>"
                 + "<div id='q'><button type='button' data-t='0' style='display:none'>LOW</button><button type='button' data-t='1' style='display:none'>MED</button><button type='button' data-t='2' style='display:none'>HIGH</button><button type='button' id='fs' style='display:none'>\u26f6 FULL</button></div>"
                 + "<script>(function(){var AVD=(function(){try{var m=location.search.match(/[?&]av=([0-9.]+)/);if(m)return parseFloat(m[1]);var q=localStorage.getItem('napAvd');return q!==null?parseFloat(q):0.30;}catch(e){return 0.30;}})();function setAvd(x){AVD=Math.max(0,Math.min(2,Math.round(x*100)/100));try{localStorage.setItem('napAvd',AVD);}catch(e){}var o=document.getElementById('avdmsg');if(!o){o=document.createElement('div');o.id='avdmsg';o.style.cssText='position:fixed;left:50%;top:12%;transform:translateX(-50%);background:rgba(0,0,0,.75);color:#0f0;font:20px monospace;padding:8px 16px;border-radius:6px;z-index:99999;pointer-events:none';document.body.appendChild(o);}o.textContent='ZVUK '+Math.round(AVD*1000)+' ms';o.style.display='block';clearTimeout(window._avdT);window._avdT=setTimeout(function(){o.style.display='none';},1200);}var v=document.getElementById('v'),s=document.getElementById('s'),a=document.getElementById('a'),n=0,fb=false,ac=null,g=null,next=0,aseq=0,aon=false,active=[],lastSeq=0,lastSeqT=0,curFps=0,staleTicks=0;" // BUILD2SB1
-                + "var h264v=document.getElementById('h264v'),h264Active=false,h264Reader=null,jm=null,h264Loading=false,h264LastFeedMs=0;" // BUILD2SK57+SK73
+                + "var h264v=document.getElementById('h264v'),h264Active=false,h264Reader=null,jm=null,h264Loading=false,h264LastFeedMs=0,h264Gen=0;" // BUILD2SK57+SK73 (+B309 h264Gen)
                 + "var pan=document.getElementById('pan'),sB=document.getElementById('sB'),sC=document.getElementById('sC'),sS=document.getElementById('sS'),sR=document.getElementById('sR'),sF=document.getElementById('sF'),panT=0;"
                 + "function napF(){var f='brightness('+(sB.value/100)+') contrast('+(sC.value/100)+') saturate('+(sS.value/100)+')';h264v.style.filter=f;v.style.filter=f;if(ap&&ap.cv)ap.cv.style.filter=f;"
                 + "try{localStorage.setItem('napObraz',sB.value+','+sC.value+','+sS.value);}catch(e){}}"
@@ -3913,23 +3913,30 @@ public class MainActivity extends Activity {
                 + "function clog(m){try{fetch('/clientlog?m='+encodeURIComponent(m));}catch(e){}}" // BUILD2SK59: diagnostika z prohlizece zpet do /log - bez tohohle zadna viditelnost, kdyz H264 cesta selze drive, nez se server vubec dozvi
                 + "clog('PAGE LOADED build=SK60 ts='+Date.now());" // BUILD2SK60: OKAMZITY majak hned pri behu skriptu - pokud tohle v /log NENI, novy JS se vubec nespustil (stara zalozka/APK), a je zbytecne hledat chybu dal v H264 toku
                 + "var h264CdnTried=0,h264CdnUrls=['https://cdn.jsdelivr.net/npm/jmuxer@2/dist/jmuxer.min.js','https://unpkg.com/jmuxer@2/dist/jmuxer.min.js'];"
-                + "function stopH264(){if(h264Active)clog('stopH264');h264Active=false;if(h264Reader){try{h264Reader.cancel();}catch(e){}h264Reader=null;}h264v.style.display='none';v.style.display='';}"
-                + "function startH264(){if(h264Active||h264Loading)return;"
+                // B309: Rene - "pokazdy pri prehozeni hry ci emulatoru musim refresovat stranku F5". PRICINA
+                // (jeho log): kdyz behem H.264 (menu, mezera pri prepnuti hry) nabehl proud z C++, apStart
+                // zastavil H.264 a schoval obrazek #v - jenze zrusene cteni H.264 dobehlo AZ POTOM ("stream
+                // ended, resetting") a #v (cerny, pres celou obrazovku, v DOM nad canvasem) zase ukazalo.
+                // Canvas s novym obrazem byl pod nim - az F5 (stranka bez H.264) pomohlo. Ted: kazde H.264
+                // spojeni ma svou generaci (stare cteni uz na obraz nesaha), #v se ukaze jen kdyz nebezi
+                // proud z C++, canvas je v DOM nad #v / H.264 a pollFps hlida, ze je proud opravdu videt.
+                + "function stopH264(){if(h264Active)clog('stopH264');h264Active=false;h264Gen++;if(h264Reader){try{h264Reader.cancel();}catch(e){}h264Reader=null;}h264v.style.display='none';if(!(window.napAp&&napAp.chce))v.style.display='';}"
+                + "function startH264(){if(h264Active||h264Loading||(window.napAp&&napAp.chce))return;"
                 + "if(!window.JMuxer){if(h264CdnTried>=h264CdnUrls.length){clog('JMuxer CDN failed all '+h264CdnTried+' tries');return;}"
                 + "h264Loading=true;var url=h264CdnUrls[h264CdnTried];h264CdnTried++;clog('loading JMuxer from '+url);"
                 + "var sc=document.createElement('script');sc.src=url;"
                 + "sc.onload=function(){clog('JMuxer loaded ok');h264Loading=false;startH264();};"
                 + "sc.onerror=function(){clog('JMuxer load FAILED '+url);h264Loading=false;startH264();};"
                 + "document.head.appendChild(sc);return;}"
-                + "clog('JMuxer ready, starting');v.style.display='none';h264v.style.display='';h264Active=true;h264LastFeedMs=0;"
+                + "clog('JMuxer ready, starting');v.style.display='none';h264v.style.display='';h264Active=true;h264LastFeedMs=0;var mg=++h264Gen;"
                 + "try{jm=new JMuxer({node:'h264v',mode:'video',flushingTime:0,fps:60,debug:false,onError:function(e){clog('jmuxer onError '+e);}});}"
-                + "catch(e){clog('JMuxer ctor threw '+e);h264Active=false;v.style.display='';h264v.style.display='none';return;}"
+                + "catch(e){clog('JMuxer ctor threw '+e);h264Active=false;h264Gen++;v.style.display='';h264v.style.display='none';return;}"
                 + "clog('fetching stream.h264');"
-                + "fetch('/stream.h264?'+Date.now()).then(function(r){clog('fetch status '+r.status);h264Reader=r.body.getReader();var first=true;"
-                + "function pump(){if(!h264Active)return;h264Reader.read().then(function(res){if(res.done||!h264Active){clog('stream ended, resetting');h264Active=false;h264Reader=null;h264v.style.display='none';v.style.display='';return;}"
+                + "fetch('/stream.h264?'+Date.now()).then(function(r){if(mg!==h264Gen){try{r.body.cancel();}catch(e){}return;}clog('fetch status '+r.status);h264Reader=r.body.getReader();var first=true;"
+                + "function pump(){if(!h264Active||mg!==h264Gen||!h264Reader)return;h264Reader.read().then(function(res){if(mg!==h264Gen)return;if(res.done||!h264Active){clog('stream ended, resetting');h264Active=false;h264Gen++;h264Reader=null;h264v.style.display='none';if(!(window.napAp&&napAp.chce))v.style.display='';return;}"
                 + "var nowMs=Date.now(),dur=h264LastFeedMs?Math.max(4,Math.min(200,nowMs-h264LastFeedMs)):20;h264LastFeedMs=nowMs;if(first){first=false;clog('first chunk bytes='+res.value.length);}try{jm.feed({video:res.value,duration:dur});}catch(e){clog('feed err '+e);}pump();"
-                + "}).catch(function(e){clog('read err '+e);});}pump();"
-                + "}).catch(function(e){clog('fetch FAILED '+e);h264Active=false;v.style.display='';h264v.style.display='none';});}" // BUILD2SK57+SK59: syrovy H.264 (Annex-B) ze serveru -> JMuxer.js remuxuje na fMP4 primo v prohlizeci -> MSE -> <video>
+                + "}).catch(function(e){if(mg===h264Gen)clog('read err '+e);});}pump();"
+                + "}).catch(function(e){if(mg!==h264Gen)return;clog('fetch FAILED '+e);h264Active=false;h264Gen++;if(!(window.napAp&&napAp.chce))v.style.display='';h264v.style.display='none';});}" // BUILD2SK57+SK59: syrovy H.264 (Annex-B) ze serveru -> JMuxer.js remuxuje na fMP4 primo v prohlizeci -> MSE -> <video>
                 + "function fallback(){fb=true;function tick(){if(ap&&ap.chce){setTimeout(tick,300);return;}v.onload=v.onerror=function(){setTimeout(tick,45)};v.src='/frame.jpg?'+Date.now();if((++n%40)===0)label('JPEG');}tick();}"
                 + "function startAudio(){if(aon)return;try{var C=window.AudioContext||window.webkitAudioContext;if(!C){a.textContent='AUDIO NENI';return;}ac=new C({latencyHint:'interactive'});ac.onstatechange=zvukStav;if(ac.resume){var pr=ac.resume();if(pr&&pr.catch)pr.catch(function(){});}g=ac.createGain();g.gain.value=1;g.connect(ac.destination);next=ac.currentTime+AVD;aon=true;a.textContent='AUDIO ON';pollAudio();label(fb?'JPEG':'MJPEG');zvukStav();}catch(e){a.textContent='AUDIO ERR';}}" // BUILD2SB1: jitter polstar 350 ms + master gain pro fady
                 // ===== B306: ZVUK SE ODEMKNE JAKYMKOLI KLIKNUTIM NEBO KLAVESOU =====
@@ -3957,7 +3964,7 @@ public class MainActivity extends Activity {
                 + "fb.onclick=function(){var el=document.documentElement;try{if(!isFs()){(el.requestFullscreen||el.webkitRequestFullscreen||el.msRequestFullscreen).call(el);}else{(document.exitFullscreen||document.webkitExitFullscreen||document.msExitFullscreen).call(document);}}catch(e){}};"
                 + "document.addEventListener('fullscreenchange',upd);document.addEventListener('webkitfullscreenchange',upd);document.addEventListener('msfullscreenchange',upd);upd();})();"
                 + "v.onerror=function(){if(!fb)fallback();};v.src='/stream.mjpg?'+Date.now();label('MJPEG');"
-                + "function pollFps(){fetch('/status').then(function(r){return r.text();}).then(function(t){var mp=/ proud=(\\w+)/.exec(t),pd=(mp&&mp[1]!=='0')?mp[1]:'';if(!mp){var m0=/atariProud=(\\d)/.exec(t);if(m0&&m0[1]==='1')pd='atari';}window.napProud=pd;window.napAtariProud=(pd==='atari');if(pd&&apLze()){if(ap.chce&&ap.druh&&ap.druh!==pd)apZnovu();else if(!ap.on&&!ap.rd)apStart();}else if(ap.chce){apStop();}var m=/seq=(\\d+)/.exec(t);var m2=/h264Seq=(\\d+)/.exec(t);if(!h264Active&&!h264Loading&&!ap.chce&&!(window.napProud&&apLze())){clog('pollFps calling startH264 (universal)');startH264();}var useM=h264Active&&m2?m2:m;if(useM){var sq=parseInt(useM[1],10),now=Date.now();if(lastSeqT>0){var dt=(now-lastSeqT)/1000;if(dt>0)curFps=Math.round((sq-lastSeq)/dt*10)/10;}if(sq===lastSeq&&sq>0){staleTicks++;}else{staleTicks=0;}lastSeq=sq;lastSeqT=now;if(staleTicks>=4&&!fb&&!h264Active&&!ap.chce){staleTicks=0;v.src='/stream.mjpg?'+Date.now();}}var ma=/atari=(\\d)/.exec(t), ms=/sega=(\\d)/.exec(t);var vA=!!(ma&&ma[1]==='1'), vS=!!(ms&&ms[1]==='1');window.napVAtari=vA;window.napVSeze=vS;var mp1=/ ps1=(\\d)/.exec(t);var vP=!!(mp1&&mp1[1]==='1');window.napVPs1=vP;var mc=/atariCpp=(\\d)/.exec(t), mr=/klavRezim=(\\w+)/.exec(t);window.napVAtariCpp=!!(mc&&mc[1]==='1');if(window.napVAtariCpp&&mr)window.napRezim=mr[1];if(window.napKlavesnicePopis)window.napKlavesnicePopis(vA||vS||vP);label(h264Active?'H264':(fb?'JPEG':'MJPEG'));}).catch(function(e){clog('pollFps fetch err '+e);label(h264Active?'H264':(fb?'JPEG':'MJPEG'));});}" // BUILD2SK45+SK57+SK59: stale-reconnect jen v MJPEG rezimu; "seq" v /status je porad ta sama zachytavaci sekvence i v H264 rezimu
+                + "function pollFps(){fetch('/status').then(function(r){return r.text();}).then(function(t){var mp=/ proud=(\\w+)/.exec(t),pd=(mp&&mp[1]!=='0')?mp[1]:'';if(!mp){var m0=/atariProud=(\\d)/.exec(t);if(m0&&m0[1]==='1')pd='atari';}window.napProud=pd;window.napAtariProud=(pd==='atari');if(pd&&apLze()){ap.bez=0;if(ap.chce&&ap.druh&&ap.druh!==pd)apZnovu();else if(!ap.on&&!ap.rd)apStart();}else if(ap.chce){if(!ap.bez)ap.bez=Date.now();else if(Date.now()-ap.bez>2500){ap.bez=0;apStop();}}if(ap.chce)apHlidej();var m=/seq=(\\d+)/.exec(t);var m2=/h264Seq=(\\d+)/.exec(t);if(!h264Active&&!h264Loading&&!ap.chce&&!(window.napProud&&apLze())){clog('pollFps calling startH264 (universal)');startH264();}var useM=h264Active&&m2?m2:m;if(useM){var sq=parseInt(useM[1],10),now=Date.now();if(lastSeqT>0){var dt=(now-lastSeqT)/1000;if(dt>0)curFps=Math.round((sq-lastSeq)/dt*10)/10;}if(sq===lastSeq&&sq>0){staleTicks++;}else{staleTicks=0;}lastSeq=sq;lastSeqT=now;if(staleTicks>=4&&!fb&&!h264Active&&!ap.chce){staleTicks=0;v.src='/stream.mjpg?'+Date.now();}}var ma=/atari=(\\d)/.exec(t), ms=/sega=(\\d)/.exec(t);var vA=!!(ma&&ma[1]==='1'), vS=!!(ms&&ms[1]==='1');window.napVAtari=vA;window.napVSeze=vS;var mp1=/ ps1=(\\d)/.exec(t);var vP=!!(mp1&&mp1[1]==='1');window.napVPs1=vP;var mc=/atariCpp=(\\d)/.exec(t), mr=/klavRezim=(\\w+)/.exec(t);window.napVAtariCpp=!!(mc&&mc[1]==='1');if(window.napVAtariCpp&&mr)window.napRezim=mr[1];if(window.napKlavesnicePopis)window.napKlavesnicePopis(vA||vS||vP);label(h264Active?'H264':(fb?'JPEG':'MJPEG'));}).catch(function(e){clog('pollFps fetch err '+e);label(h264Active?'H264':(fb?'JPEG':'MJPEG'));});}" // BUILD2SK45+SK57+SK59: stale-reconnect jen v MJPEG rezimu; "seq" v /status je porad ta sama zachytavaci sekvence i v H264 rezimu
                 // ===== B303 + B305: ATARI 130XE, SEGA A PS1 - OBRAZ A ZVUK PRIMO Z C++ =====
                 // B303 (Atari): "ma to na TV zpozdeni - nejde to vylepsit?" Misto H.264 / JPEG
                 // z Javy (zvetsovani, komprese, buffer prohlizece) posila C++ kazdy snimek
@@ -4003,7 +4010,7 @@ public class MainActivity extends Activity {
                 + "ap.tl=Date.now();ap.pl=ap.pak;ap.podl=ap.pod;ap.zahl=ap.zah;ap.jl=ap.jpg;ap.jzl=ap.jzah;"
                 + "try{v.onerror=null;v.removeAttribute('src');}catch(e){}v.style.display='none';h264v.style.display='none';"
                 + "if(!ap.cv){ap.cv=document.createElement('canvas');ap.cv.id='ap';ap.cv.style.cssText='position:fixed;left:0;top:0;background:#000';"
-                + "document.body.insertBefore(ap.cv,document.body.firstChild);ap.cx=ap.cv.getContext('2d');}"
+                + "h264v.parentNode.insertBefore(ap.cv,h264v.nextSibling);ap.cx=ap.cv.getContext('2d');}"
                 + "ap.cv.style.imageRendering=napV?'auto':'pixelated';ap.tPak=0;"
                 + "ap.cv.style.display='';napF();apRozmer();"
                 // (spojeni z drivejsiho pokusu, ktere se otevre az po prepnuti Sega -> PS1, se hned zavre)
@@ -4011,11 +4018,13 @@ public class MainActivity extends Activity {
                 + ".catch(function(e){if(g0!==ap.gen)return;clog('B303 proud chyba '+e);apKonec();});}"
                 + "function apCti(){var rd=ap.rd;if(!ap.on||!rd)return;rd.read().then(function(res){if(rd!==ap.rd)return;if(res.done){apKonec();return;}"
                 + "try{apPrichod();apPridej(res.value);}catch(e){ap.chyb++;ap.buf=null;clog('B303 paket chyba '+e);}if(rd===ap.rd)apCti();}).catch(function(e){if(rd===ap.rd)apKonec();});}"
-                + "function apKonec(){ap.rd=null;ap.buf=null;if(!ap.on)return;ap.on=false;setTimeout(function(){if(window.napProud)apStart();else apStop();},400);}"
+                + "function apKonec(){ap.rd=null;ap.buf=null;if(!ap.on)return;ap.on=false;setTimeout(function(){if(window.napProud&&!ap.on&&ap.chce)apStart();},400);}"
                 // jiny proud (Sega -> PS1, chyba v datech): zavrit a hned otevrit znovu (server zacne klicovym snimkem)
+                + "function apHlidej(){var o=0;if(v.style.display!=='none'){v.style.display='none';o|=1;}if(h264Active){stopH264();o|=2;}if(h264v.style.display!=='none'){h264v.style.display='none';o|=4;}"
+                + "if(ap.cv&&ap.cv.style.display==='none'){ap.cv.style.display='';o|=8;}if(o)clog('B309 HLIDAC: proud '+ap.druh+' byl schovany ('+o+') - opraveno');}"
                 + "function apZnovu(){var rd=ap.rd;ap.rd=null;ap.on=false;ap.buf=null;if(rd){try{rd.cancel();}catch(e){}}apStart();}"
                 + "function apStop(){var d=ap.druh;ap.on=false;ap.chce=false;ap.druh='';ap.gen++;ap.jq=[];if(ap.rd){try{ap.rd.cancel();}catch(e){}ap.rd=null;}if(ap.cv)ap.cv.style.display='none';"
-                + "v.style.display='';v.onerror=function(){if(!fb)fallback();};v.src='/stream.mjpg?'+Date.now();clog(d&&d!=='atari'?'B306 '+d.toUpperCase()+' PROUD konec':'B303 ATARI PROUD konec');}"
+                + "if(!h264Active){v.style.display='';v.onerror=function(){if(!fb)fallback();};v.src='/stream.mjpg?'+Date.now();}clog(d&&d!=='atari'?'B306 '+d.toUpperCase()+' PROUD konec':'B303 ATARI PROUD konec');}"
                 // proud = 4 B delka + paket, porad dokola; kus z site muze koncit kdekoli
                 + "function apPridej(ch){var gen=ap.gen,b=ap.buf;if(b&&b.length){var nb=new Uint8Array(b.length+ch.length);nb.set(b,0);nb.set(ch,b.length);b=nb;}else b=ch;"
                 + "var o=0;while(b.length-o>=4){var len=(b[o]|(b[o+1]<<8)|(b[o+2]<<16)|(b[o+3]<<24))>>>0;if(len>8000000)throw new Error('delka '+len);"
@@ -5377,45 +5386,9 @@ public class MainActivity extends Activity {
                     cil = f;
                 } catch (Throwable e) { chybaZapisu = String.valueOf(e.getMessage()); }
 
-                // 2) schranka jako pojistka
-                final String txt = t;
-                runOnUiThread(new Runnable() { public void run() {
-                    try {
-                        android.content.ClipboardManager cm =
-                            (android.content.ClipboardManager) getSystemService(CLIPBOARD_SERVICE);
-                        cm.setPrimaryClip(android.content.ClipData.newPlainText("EMU10 log", txt));
-                    } catch (Throwable ignored) {}
-                }});
-
-                // 3) hned nabidnout odeslani
+                // 2) schranka jako pojistka, 3) hned nabidnout odeslani (B309: spolecne s PS1)
                 final File odeslat = cil;
-                if (odeslat != null) {
-                    runOnUiThread(new Runnable() { public void run() {
-                        try {
-                            // Projekt nema androidx, takze neni FileProvider.
-                            // Na Androidu 7+ by file:// hodilo FileUriExposedException,
-                            // proto se to hlidani vypne. Je to ustupek, ale funguje
-                            // a nepridava do buildu zavislost, ktera by ho mohla shodit.
-                            if (Build.VERSION.SDK_INT >= 24) {
-                                android.os.StrictMode.setVmPolicy(
-                                        new android.os.StrictMode.VmPolicy.Builder().build());
-                            }
-                            android.content.Intent i = new android.content.Intent(
-                                    android.content.Intent.ACTION_SEND);
-                            i.setType("text/plain");
-                            i.putExtra(android.content.Intent.EXTRA_SUBJECT,
-                                    "EMU10 log");
-                            i.putExtra(android.content.Intent.EXTRA_STREAM,
-                                    android.net.Uri.fromFile(odeslat));
-                            i.putExtra(android.content.Intent.EXTRA_TEXT,
-                                    "Log z EMU10, soubor: " + odeslat.getAbsolutePath());
-                            i.addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION);
-                            startActivity(android.content.Intent.createChooser(i, "Poslat log"));
-                        } catch (Throwable e) {
-                            appendNativeLog("BUILD2SA15 LOG_ODESLANI SELHALO duvod=" + e.getMessage());
-                        }
-                    }});
-                }
+                napNabidniOdeslaniLogu(odeslat, t, "EMU10 log", "Log z EMU10");
 
                 appendNativeLog("BUILD2SA15 ATARI_CPP_LOG_ULOZEN znaku=" + t.length()
                         + " soubor=" + (odeslat == null ? ("SELHAL:" + chybaZapisu) : odeslat.getAbsolutePath()));
@@ -5426,6 +5399,44 @@ public class MainActivity extends Activity {
                 return "{\"ok\":false,\"chyba\":\"" + String.valueOf(t.getMessage()).replace('"','\'') + "\"}";
             }
         }
+    }
+
+    // B309: SPOLECNE PRO HELP (Atari C++) I PS1 - log do schranky (pojistka) a hned nabidka
+    // "Poslat log" (Messenger, mail ...). Rene: "ten log udelej jako v atari emu help - proste
+    // s moznosti okamziteho odeslani".
+    private void napNabidniOdeslaniLogu(final File odeslat, final String txt, final String predmet, final String popis) {
+        runOnUiThread(new Runnable() { public void run() {
+            try {
+                android.content.ClipboardManager cm =
+                    (android.content.ClipboardManager) getSystemService(CLIPBOARD_SERVICE);
+                cm.setPrimaryClip(android.content.ClipData.newPlainText(predmet, txt));
+            } catch (Throwable ignored) {}
+        }});
+        if (odeslat == null) return;
+        runOnUiThread(new Runnable() { public void run() {
+            try {
+                // Projekt nema androidx, takze neni FileProvider.
+                // Na Androidu 7+ by file:// hodilo FileUriExposedException,
+                // proto se to hlidani vypne. Je to ustupek, ale funguje
+                // a nepridava do buildu zavislost, ktera by ho mohla shodit.
+                if (Build.VERSION.SDK_INT >= 24) {
+                    android.os.StrictMode.setVmPolicy(
+                            new android.os.StrictMode.VmPolicy.Builder().build());
+                }
+                android.content.Intent i = new android.content.Intent(
+                        android.content.Intent.ACTION_SEND);
+                i.setType("text/plain");
+                i.putExtra(android.content.Intent.EXTRA_SUBJECT, predmet);
+                i.putExtra(android.content.Intent.EXTRA_STREAM,
+                        android.net.Uri.fromFile(odeslat));
+                i.putExtra(android.content.Intent.EXTRA_TEXT,
+                        popis + ", soubor: " + odeslat.getAbsolutePath());
+                i.addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                startActivity(android.content.Intent.createChooser(i, "Poslat log"));
+            } catch (Throwable e) {
+                appendNativeLog("BUILD2SA15 LOG_ODESLANI SELHALO duvod=" + e.getMessage());
+            }
+        }});
     }
 
     public class AHTvWeb {
@@ -6200,6 +6211,29 @@ public class MainActivity extends Activity {
         // B308: "pocet dokoncenych startu|vysledek" (OK jmeno / BIOS_OK / CHYBA proc / ZRUSENO)
         @JavascriptInterface
         public String ps1StartStav() { return ps1StartuHotovo.get() + "|" + ps1StartVysledek; }
+        // B309: ULOZIT LOG A ODESLAT na strance PS1 (jako v HELP): log stranky + denik PS1
+        // (text od stranky) + log appky -> Downloads/AtariHelp (kdyz nejde, slozka appky),
+        // schranka a hned nabidka "Poslat log".
+        @JavascriptInterface
+        public String ps1UlozAOdesli(String jmeno, String text) {
+            String nazev = safeFileName(jmeno == null || jmeno.isEmpty() ? "AtariHelp_PS1_LOG.txt" : jmeno);
+            String vse = appendNativeDebugToSavedLog(nazev, text == null ? "" : text);
+            File f = null; String kam = "DOWNLOADS_OK:";
+            try {
+                f = new File(writeBytesToDownloads(nazev, vse.getBytes("UTF-8")));
+            } catch (Throwable e) {
+                try {
+                    File dir = getExternalFilesDir(null);
+                    if (dir == null) dir = getFilesDir();
+                    f = new File(dir, nazev);
+                    try (FileOutputStream fos = new FileOutputStream(f, false)) { fos.write(vse.getBytes("UTF-8")); }
+                    kam = "FALLBACK_APP_DIR:";
+                } catch (Throwable e2) { f = null; kam = "CHYBA:" + e2.getMessage(); }
+            }
+            napNabidniOdeslaniLogu(f, vse, "AtariHelp PS1 log", "Log PS1 z AtariHelp");
+            appendNativeLog("B309 PS1_LOG_ODESLAT znaku=" + vse.length() + " " + kam + (f != null ? f.getAbsolutePath() : ""));
+            return kam + (f != null ? f.getAbsolutePath() : "");
+        }
         @JavascriptInterface
         public String ps1Vibrate(int ms) {
             try {
@@ -7573,7 +7607,8 @@ public class MainActivity extends Activity {
         final long bezi = System.currentTimeMillis() - demoStartMs;
         if (NativeIntroBridge.hotovoSafe()) { demoKonec("dobehlo"); return; }
         if (!NativeIntroBridge.pripravenoSafe() && bezi > 7000) { demoKonec("nenabehlo do 7 s"); return; }
-        if (bezi > 70000) { demoKonec("pojistka 70 s"); return; }
+        // B309: demo ma 59 s (drive 45 s) + az 7 s priprava -> pojistka 80 s
+        if (bezi > 80000) { demoKonec("pojistka 80 s"); return; }
         if (!demoHlaseno && bezi > 3000) {
             demoHlaseno = true;
             appendNativeLog("B304 DEMO_BEZI " + NativeIntroBridge.infoSafe());

@@ -2104,7 +2104,8 @@ bool retro_load_game(const struct retro_game_info *info)
 
       set_retro_memmap();
       retro_set_audio_buff_status_cb();
-      LogErr("PS1: start bez disku - nabehne menu BIOSu\n");
+      /* B309: info, ne chyba (v deniku PS1 to stalo jako "JADRO CHYBA") */
+      SysPrintf("PS1: start bez disku - nabehne menu BIOSu\n");
       return true;
    }
 

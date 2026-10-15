@@ -1,0 +1,47 @@
+B309: prepnuti hry / emulatoru na TV / PC bez F5 - stranka z MainActivity.java (B309), Chromium, falesny JMuxer (H.264 cesta bezi jako u Reneho)
+stranka: 36628 bajtu
+
+--- 1) menu appky: na TV H.264 (obraz telefonu) ---
+   nahore=h264v canvas=- #v=none h264=block proud=- ver=0 snimku=0, H.264 dat 10
+OK     menu: prohlizec prehrava H.264 (JMuxer nacten, data tecou) a video je navrchu
+
+--- 2) start PS1 (BIOS bez disku) - na TV ma naskocit proud PS1 z C++ ---
+OK     PS1: skutecny ps1BootDoMonitoru -> PS1_BIOS_OK
+   obraz PS1 v prohlizeci za 0.2 s po startu jadra
+   nahore=ap canvas=block #v=none h264=none proud=ps1 ver=3 snimku=5
+   nahore=ap canvas=block #v=none h264=none proud=ps1 ver=3 snimku=193
+OK     PS1 nabehl: canvas s proudem z C++ je navrchu a ZUSTAVA navrchu (4 s), obraz bezi (Rene videl cerno / stary obraz az do F5)
+OK     H.264 zastaveno (prohlizec uz ho necte, spojeni zavrene)
+
+--- 3) prepnuti hry: jadro PS1 se ~1,5 s restartuje (proud chvili neni) ---
+   v mezere: nahore=ap canvas=block #v=none h264=none proud=ps1 ver=3 snimku=270
+OK     PS1: nova "hra" nastartovana
+   novy obraz za 0.5 s po startu jadra; nahore=ap canvas=block #v=none h264=none proud=ps1 ver=3 snimku=461
+OK     v mezere (1,5 s) zustava posledni obraz hry - zadne cerno, zadne problikavani telefonu
+OK     v kratke mezere se H.264 nezapina (telefon nemusi rozjizdet koder)
+OK     nova hra: prohlizec se sam pripojil znovu a novy obraz je videt (bez F5)
+
+--- 4) PS1 -> menu appky (5 s) -> Sega ---
+   menu: H.264 za 2.9 s; nahore=h264v canvas=none #v=none h264=block proud=- ver=3 snimku=486, H.264 dat 80
+OK     menu: po odkladu (2,5 s) zpet H.264 (obraz telefonu), canvas schovany
+OK     Sega: skutecne vlakno emulace bezi
+   Sega za 0.2 s; nahore=ap canvas=block #v=none h264=none proud=sega ver=2 snimku=706
+OK     Sega nabehla: canvas s proudem Segy z C++ je navrchu a zustava, obraz bezi (bez F5)
+
+--- 5) Sega -> PS1 rovnou (prepnuti emulatoru za 1 s) ---
+OK     PS1 znovu
+   PS1 za 0.2 s; nahore=ap canvas=block #v=none h264=none proud=ps1 ver=3 snimku=925
+OK     Sega -> PS1: prohlizec prepnul proud sam, obraz PS1 je videt a zustava (bez F5)
+
+--- 6) F5 behem hry (kdyby nekdo zmackl) ---
+   za 1.3 s; nahore=ap canvas=block #v=none h264=none proud=ps1 ver=3 snimku=85
+OK     po F5 je obraz PS1 hned zpet (bez H.264 mezikroku)
+
+--- 7) konec hry: zpet do menu appky ---
+   H.264 za 3.2 s; nahore=h264v canvas=none #v=none h264=block proud=- ver=3 snimku=115
+OK     menu: zpet H.264 (obraz telefonu)
+
+hlasky prohlizece do logu appky: 32 (z toho B309 HLIDAC 0)
+OK     zadna chyba JavaScriptu na strance 
+
+VYSLEDEK: 16 kontrol, 0 CHYB

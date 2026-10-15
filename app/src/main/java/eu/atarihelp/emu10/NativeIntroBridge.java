@@ -6,7 +6,7 @@ import android.view.Surface;
 /**
  * B304: MOST NA NOVE UVODNI DEMO N&P (cele v C++).
  *
- * Demo podle Reneho scenare (45 s, 5 scen) se kresli v C++ pres OpenGL ES
+ * Demo podle Reneho scenare (45 s, 5 scen; B309: 59 s - delsi ukazky her) se kresli v C++ pres OpenGL ES
  * na vlastnim vlakne primo do plochy NapDemoView - zadne WebView, zadne
  * video. Pro TV / PC kresli C++ zvlast obraz 16:9.
  *

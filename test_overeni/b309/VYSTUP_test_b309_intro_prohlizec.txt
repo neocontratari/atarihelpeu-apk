@@ -1,0 +1,22 @@
+B309: prohlizec (Chromium) <- server jako Java <- SKUTECNY nap_intro_gl.cpp (demo B309, 59 s)
+stranka z MainActivity.java: 36628 bajtu
+OK     demo: introStart - zvuk prehrava C++ (OpenSL ES), zvuk Reneho hry ve stope (bity 3)
+OK     stranka sama prepnula na /intro.stream - 854x480 16:9 {'W': 854, 'H': 480, 'ver': 3, 'druh': 'intro', 'px': 16, 'py': 9, 'ow': 854}
+OK     C++ nacetl zabery i zvuk Pitt-Kitt (zabery Pitt-Kitt ano, zvuk hry ano |)
+demo 49.6 s v prohlizeci: 13.8 obrazku/s (Mesa bez GPU kresli pomalu), zvuk 44111 vzorku/s, podteceni 0, cas dema 50380 ms
+OK     obraz dema z C++ chodi do prohlizece (JPEG 854x480)
+OK     zvuk 44100 vzorku/s jde proudem
+snimek z prohlizece v case dema 35813 ms (Pitt-Kitt): jas stredu 73.1, modra - cervena 39.3 -> PRAC/tv_pittkitt.png
+OK     na TV je behem Pitt-Kitt videt obrazovka hry (modra noc Las Vegas na CRT)
+snimek z prohlizece v case dema 40517 ms (16 bit): prumer RGB stredu 76 42 74 -> PRAC/tv_16bit.png
+snimek z prohlizece v case dema 46910 ms (32 bit): prumer RGB stredu 39 27 26 -> PRAC/tv_32bit.png
+OK     na TV je videt i 16 bit (more se sluncem) a 32 bit (nocni zavod) - kazda ukazka ~6 s
+zvuk dema v paketech proti stope (bit po bitu): porovnano 2287616 ramcu (stopa 0.37 - 52.24 s), rozdilnych 0
+OK     zvuk na TV = PRESNE stopa dema vcetne zvuku Pitt-Kitt (35,00 - 38,40 s), vzorek po vzorku bez mezer
+zvuk paketu konci proti casu dema (obraz): median -5 ms, min -160, max 134 (1105 paketu)
+OK     v paketu je zvuk prave prehraneho okamziku dema (obraz a zvuk spolu)
+OK     demo konec (introStop): prehravac OpenSL zniceny, okno uvolnene
+OK     demo pryc z obrazovky -> proud konci, stranka zpet postaru
+OK     zadna chyba JavaScriptu na strance []
+
+VYSLEDEK: 12 kontrol, 0 CHYB

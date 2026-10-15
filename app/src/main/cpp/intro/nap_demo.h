@@ -1,17 +1,19 @@
 // nap_demo.h
 // ====================================================================
 //  B304: UVODNI DEMO N&P STUDIO - podle Reneho scenare "MASTER SCI-FI
-//  PROMO MANIFEST" (45 s, 5 scen, titulky CZ + EN).
+//  PROMO MANIFEST" (45 s, 5 scen, titulky CZ + EN). B309: 59 s - Rene pridal
+//  14 s pro klidnejsi ukazky her na CRT (defile 17,85 s misto 3,85 s).
 //
 //   0 -  7 s  tma, bzuceni CRT, sera garaz nabiha, vrata (opona) se zvedaji
 //   7 - 17 s  ven do cernych valicich se mraku, hromy, ptaci, pak dest
 //  17 - 27 s  obrovsky blesk - kamera s uctou najede na Atari 130XE na stole
-//  27 - 37 s  B307: z klaves Atari vystreli neonove pruty, z nich vzniknou
+//  27 - 51 s  B307: z klaves Atari vystreli neonove pruty, z nich vzniknou
 //             konzole N&P 16 a N&P 32 (vlastni navrh s logem N&P), zaber na
 //             trojici, kamera proleti k CRT monitoru a na nem defile 50 / s:
 //             Reneho Pitt-Kitt Platinum (zabery ze skutecneho emulatoru Atari),
 //             16bitova a 32bitova ukazka (viz nap_demo_cas.h)
-//  37 - 45 s  tma, zlate logo N&P (C) 2026 VCS a bile filmove titulky
+//  51 - 59 s  tma, zlate logo N&P (C) 2026 VCS a bile filmove titulky
+//             (B304-B308 to bylo 37 - 45 s - kresli se se stejnymi casy, posunute)
 //
 //  Vsechno se pocita v C++ a na GPU (OpenGL ES 2.0), v HD - zadne video
 //  ani obrazky krome oficialniho loga a zaberu z Reneho hry (klip z C++
@@ -34,7 +36,7 @@
 
 namespace napdemo {
 
-constexpr float DELKA = 45.0f;
+constexpr float DELKA = cas::KONEC;     // B309: 59 s (drive 45 s)
 
 struct Titulek { float od, po; const char *cz, *en; };
 static const Titulek TITULKY[8] = {
@@ -204,11 +206,11 @@ class Demo {
     if (t < 8.7f) { scena1(t, c, sc); zareSila = 0.85f; }
     else if (t < 17.28f) { scena2(t, c, sc); zareSila = 1.1f; }
     else if (t < 27.0f) { scena3(t, c, sc); zareSila = 0.75f; }
-    else if (t < 37.0f) { scena4(t, c, sc); zareSila = 1.15f; }
-    else { scena5(t, c); zareSila = 0.9f; }
+    else if (t < cas::SCENA5) { scena4(t, c, sc); zareSila = 1.15f; }
+    else { scena5(t - cas::POSUN5, c); zareSila = 0.9f; }    // B309: scena 5 se stejnymi casy jako drive
 
     // film: zare kolem svetel, vinetace, zrno -> cilovy framebuffer
-    film(c, t, cilFbo, zareSila, t < 37.0f ? 1.0f : 0.5f, t < 37.0f ? 1.0f : 0.6f);
+    film(c, t, cilFbo, zareSila, t < cas::SCENA5 ? 1.0f : 0.5f, t < cas::SCENA5 ? 1.0f : 0.6f);
 
     // titulky
     for (int i = 0; i < 8; i++) {
@@ -220,7 +222,7 @@ class Demo {
     float bl = zablesk(t);
     if (bl > 0.001f) prekryv(1.0f, 1.0f, 1.0f, bl);
     // B307: tlacitko SKIP (jen telefon - na TV / PC neni co mackat)
-    if (!c.tv) tlacitkoSkip(c, okno(t, 1.2f, 1.9f, 44.0f, 44.6f));
+    if (!c.tv) tlacitkoSkip(c, okno(t, 1.2f, 1.9f, cas::KONEC - 1.0f, cas::KONEC - 0.4f));
     glDisable(GL_BLEND);
   }
 
@@ -786,7 +788,7 @@ class Demo {
     const V3 sc = stredObrazovky();
     auto smer = [](float x, float y, float z) { return norm(V3(x, y, z)); };
     const Kamera k0 = kameraAtari(cas::KLAVESY, a);
-    K ks[8];
+    K ks[10];
     ks[0] = {cas::KLAVESY, k0.oko, k0.cil};
     { V3 c(0.f, 12.f, -2.f); ks[1] = {28.15f, c + smer(-0.08f, 0.45f, 1.f) * std::max(48.f, Dt * 0.45f), c}; }
     { V3 c(0.f, 9.f, -6.f); ks[2] = {29.6f, c + smer(0.f, 0.42f, 1.f) * (Dt * 1.06f), c}; }
@@ -795,9 +797,13 @@ class Demo {
     { V3 c = P16() + V3(1.f, 5.f, 0.f); ks[3] = {30.8f, c + smer(-0.42f, 0.36f, 1.f) * Dk, c}; }
     { V3 c = P32() + V3(-1.f, 5.f, 0.f); ks[4] = {31.85f, c + smer(0.40f, 0.33f, 1.f) * Dk, c}; }
     ks[5] = {cas::STRIH_ATARI, sc + smer(0.f, 0.03f, 1.f) * Dc, sc, true};
-    ks[6] = {cas::STRIHY_KONEC, sc + smer(0.f, 0.03f, 1.f) * (Dc * 0.94f), sc, true};
-    ks[7] = {cas::SCENA5, sc + smer(0.f, 0.02f, 1.f) * (Dc * 0.42f), sc};
-    const int n = 8;
+    // B309: defile trva 18 s - kamera se behem nej pomalu prenese zleva doprava
+    // (o par stupnu) a priblizi, at zaber neni mrtvy; obrazovka zustava cela videt
+    ks[6] = {cas::STRIH_16, sc + smer(-0.045f, 0.03f, 1.f) * (Dc * 0.975f), sc};
+    ks[7] = {cas::STRIH_32, sc + smer(0.045f, 0.035f, 1.f) * (Dc * 0.955f), sc};
+    ks[8] = {cas::STRIHY_KONEC, sc + smer(0.f, 0.03f, 1.f) * (Dc * 0.94f), sc, true};
+    ks[9] = {cas::SCENA5, sc + smer(0.f, 0.02f, 1.f) * (Dc * 0.42f), sc};
+    const int n = 10;
     Kamera k; k.fov = 0.8f;
     if (t <= ks[0].t) { k.oko = ks[0].oko; k.cil = ks[0].cil; return k; }
     if (t >= ks[n - 1].t) { k.oko = ks[n - 1].oko; k.cil = ks[n - 1].cil; return k; }
