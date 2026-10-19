@@ -1,6 +1,9 @@
 // nap_atari_roms.h - VYGENEROVANO, needitovat rucne.
 // ROM z Reneho Atari 130XE, prevzate z assets/emu_vbxe/index.html,
 // kde jsou ulozene v base64. Zadna jina ROM se tu nepouziva.
+// B310: stranka emu_vbxe (stare Atari v JavaScriptu) je z appky smazana -
+// tyhle ROM jsou ted jedina kopie v appce (z Reneho skutecneho Atari 130XE);
+// puvodni base64 je v gitu: git show 7b40d21:app/src/main/assets/emu_vbxe/index.html
 #pragma once
 #include <cstdint>
 

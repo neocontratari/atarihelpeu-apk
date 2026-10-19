@@ -1,0 +1,2 @@
+relativnich odkazu v HTML: 63, cest k assetum v kodu: 11, odkazu na smazane soubory: 0
+VYSLEDEK: 0 chyb

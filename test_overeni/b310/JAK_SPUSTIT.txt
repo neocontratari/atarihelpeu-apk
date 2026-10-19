@@ -1,0 +1,61 @@
+B310 - stare Atari v JavaScriptu smazane, ATARI 130XE EMULATOR = Atari 130XE v C++, HELP = napoveda
+=====================================================================================================
+
+Kod v appce:
+  assets/index.html         ATARI 130XE EMULATOR -> emu_atari_cpp/index.html (pristroj Atari 130XE v C++,
+                            drive pod HELP), HELP (a MENU) -> panel NAPOVEDA (Rene vybral "Napoveda"),
+                            TV POKUS bez stavu KRESLENIM (byl jen pro stare Atari)
+  assets/ SMAZANO           emu_vbxe/ (stare Atari, 7245 radku JS), emu/ (presmerovani + 9 zaloh),
+                            emulator/, emu1/, emu_1/ (presmerovani), emu10_130xe.html (jeste starsi Atari),
+                            design/vbxe_130xe_joystick_exact.png a _keyboard_exact.png (jeho obrazky)
+  MainActivity.java         SMAZANO, co slouzilo jen staremu Atari: zvuk na TV (pushAtariPcm16, atariZvuk*),
+                            EMU_URL, pendingGame + vkladani her do stranky (AHRECV_*, 5 metod s cekanim),
+                            AHPICK.pickAudio / pickText + injectText, AHSAVE.saveBase64, TV_KRESLENIM,
+                            atariCppNetCil. queueAtariGameFor130xe: KAZDA hra Atari (NET HRY, odkaz na webu
+                            atarihelp.eu, vyber z telefonu) do C++. AHPICK.pickGame (chybove stranky webu)
+                            -> vyber pro Atari 130XE (kdyz pristroj neni na obrazovce, otevre se).
+                            atariCppPostupHrace: davky radku z C++ -> NapPostup (kazdych 400 ms + pri vypnuti)
+  NapPostup.java            pripocitejDavky("12,7") - davky z C++, stejne pravidlo (od 5 radku, Sega po 50)
+  nap_atari_native.cpp      POSTUP HRACE v C++ (drive jen stare Atari v JS: napPocitejZnak): radek s cislem
+                            = +1, davka pri RUN / LIST / L., devCtl "postup" ji vyda Jave; BACK S opravi,
+                            SHIFT+DELETE / CLEAR / BREAK zrusi radek; vlozeny text (Ctrl+V) se nepocita
+  nap_atari_pc_klavesnice.h PcAkce.vlozeno (text z Ctrl+V), ve 'stisky' bit $100
+  emu_atari_cpp/index.html  titulek, poznamka B310, 8 kroku testu B310
+
+Spoustet z adresare test_overeni/b310 (nebo odkudkoli: bash test_overeni/b310/vse.sh).
+Potreba: g++, JAVA_HOME = JDK (javac + hlavicky JNI), git (javac srovnani s B309), Python 3 + Chromium +
+Playwright pro Python. Android SDK NENI potreba (a na PC neni).
+Vse najednou: PRAC=... bash vse.sh   (vystupy VYSTUP_* sem; trva ~15 min, nejdel cely pristroj B292)
+
+1) POSTUP HRACE v C++ (SKUTECNY nap_atari_native.cpp - pristroj, vlakna emulace a kresleni, jako ../b292):
+   g++ -std=c++17 -O2 -pthread -I../b291/stub -I$JAVA_HOME/include -I$JAVA_HOME/include/linux \
+       -I../../app/src/main/cpp/atari -o test_b310_postup test_b310_postup.cpp
+   ./test_b310_postup                                                -> VYSTUP_test_b310_postup.txt
+     prstem po klavesnici pristroje 10 A=1 .. 50 A=5 + RUN -> davka 5; jen cislo / prikaz bez cisla nic;
+     preklep + BACK S + L. -> 5 (LIST ukazuje opraveny radek); BREAK zrusi radek; klavesnice PC (TV) -> 5;
+     Ctrl+V "RUN" davku neodesle, LIST prstem ano; program vlozeny z PC (pise ho appka) se nepocita;
+     hotova davka prezije odchod z Atari, rozepsane radky ne; log B310 / B299 KLAVESY; "postup" nespamuje log
+2) JVM: SKUTECNA trida NapPostup (stub/ = Context a SharedPreferences v pameti):
+   javac -d out -sourcepath jvm/stub ../../app/src/main/java/eu/atarihelp/emu10/NapPostup.java jvm/TestPostup.java
+   java -cp out TestPostup                                           -> jvm/VYSTUP_TestPostup.txt
+3) hlavni nabidka v Chromiu (PRESNE assets/index.html, most AHINTRO napodoben):
+   python3 test_b310_menu.py [PRAC]                                  -> VYSTUP_test_b310_menu.txt
+4) mosty JS -> Java: kazde AH*.metoda() ze stranek i z HTML skladaneho v Jave ma @JavascriptInterface metodu
+   python3 kontrola_mostu.py                                         -> VYSTUP_kontrola_mostu.txt
+5) odkazy: HTML odkazy, cesty k assetum v Jave / C++, zadny odkaz na smazane soubory
+   python3 kontrola_odkazu.py                                        -> VYSTUP_kontrola_odkazu.txt
+6) Java bez Androidu: javac zdrojaku B309 (git 7b40d21) i B310 bez knihoven Androidu; chyby "neznama trida
+   Androidu" jsou v obou, NOVA vlastni chyba (chybejici metoda / promenna, syntaxe) musi byt 0
+   (overeno pokusem: rozbity kod s pendingGame / EMU_URL / smazanou metodou javac chyti).
+   python3 javac_porovnej.py chyby_b309.txt chyby_b310.txt          -> VYSTUP_javac_rozdil.txt
+7) regrese Atari 130XE (C++) s kodem B310: ../b292/test_core pc-klavesnice / vlozeni / tv-proud
+                                                                     -> VYSTUP_b292_core_se_b310.txt
+   cely pristroj ../b292/test_b292_jni_host.cpp                      -> VYSTUP_b292_jni_host_se_b310.txt
+8) regrese TV / PC v Chromiu se strankou z MainActivity B310: ../b302 (klavesnice PC) a ../b303 (Atari na TV,
+   Ctrl+V)            -> VYSTUP_b302_klavesnice_pc_se_strankou_b310.txt, VYSTUP_b303_atari_tv_se_strankou_b310.txt
+
+Co se na PC overit neda: preklad Javy s Androidem (dela CI build) a telefon: tlacitko ATARI v menu otevre
+pristroj (stranka je stejna jako drive pod HELP, Java ji pozna podle adresy), hry z webu atarihelp.eu ve
+WebView, vyber souboru, hlaska SEGA ODEMCENA na pristroji.
+
+Stare Atari je jen v gitu: git show 7b40d21:app/src/main/assets/emu_vbxe/index.html

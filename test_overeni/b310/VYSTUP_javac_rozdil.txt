@@ -1,0 +1,5 @@
+B309: 1961 chyb javac (bez Androidu), B310: 1944
+  trida Androidu (v novem kodu) 2x MainActivity.java: cannot find symbol [symbol: class Intent | location: class MainActivity] radky [2599, 12222, 7650, 7650, 7910, 7910]
+  trida Androidu (v novem kodu) 1x NapPostup.java: cannot find symbol [symbol: class Context | location: class NapPostup] radky [43, 50, 53, 56, 61, 70]
+chyb, ktere zmizely se smazanym kodem: 20
+VYSLEDEK: skutecnych chyb (chybejici vlastni metoda / promenna, syntaxe): 0

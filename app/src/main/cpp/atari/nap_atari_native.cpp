@@ -720,6 +720,16 @@ static nap::PsaniProgramu g_psani;                 // B299: program z TXT soubor
 static std::string g_klavLog;                      // B299: co uzivatel napsal na klavesnici pristroje (do logu po RETURN) - pod g_mStroj
 static int g_klavPrazdnych = 0;                    // B299: prazdne RETURN po sobe (do logu jen prvni 3)
 static bool g_klavLogPc = false;                   // B302: v radku je klavesa z klavesnice pocitace
+// B310: POSTUP HRACE - Sega se odemyka po 50 napsanych radcich programu v Atari.
+// Pocitalo to jen stare Atari v JavaScriptu (emu_vbxe, smazane v B310) - ted C++.
+// Stejne pravidlo: radek zacinajici cislem (radek programu, ne prikaz), davka se
+// odesle pri RUN nebo LIST (i zkratka L.) a Java ji uzna od 5 radku (NapPostup).
+// Pocita se psani na pristroji i z klavesnice pocitace (TV/PC); text vlozeny z PC
+// (Ctrl+V) a program z TXT souboru (pise ho appka sama) se nepocita.
+static std::string g_postupRadek;                  // napsane znaky aktualniho radku - pod g_mStroj
+static bool g_postupRadekVlozeny = false;          // v radku je vlozeny text - pod g_mStroj
+static int g_postupDavka = 0;                      // radku programu od posledniho RUN / LIST - pod g_mStroj
+static std::vector<int> g_postupHotove;            // davky pro Javu (devCtl "postup") - pod g_mOut
 static std::mutex g_mFrame;
 static std::vector<uint32_t> g_sdilenySnimek;      // posledni snimek Atari pro kresleni
 static std::atomic<unsigned long long> g_snimekSeq{0};
@@ -851,13 +861,71 @@ static void studenyStartLocked(int consol) {
   g_kazBoot.zrus();
   g_psani.zrus();                // B299: novy stroj = psani programu z TXT konci
   g_klavLog.clear(); g_klavLogPc = false;
+  g_postupRadek.clear(); g_postupRadekVlozeny = false;   // B310: rozepsany radek zmizel se strojem
   g_pcHrac.zrus();               // B302: novy stroj nema zadnou klavesu stisknutou
+}
+
+// B310: postup hrace - je to radek programu ("10 PRINT A"), ne jen cislo (smazani radku)?
+static bool postupJeRadekProgramu(const std::string &r) {
+  size_t i = 0;
+  while (i < r.size() && r[i] >= '0' && r[i] <= '9') i++;
+  if (i == 0) return false;
+  while (i < r.size() && r[i] == ' ') i++;
+  return i < r.size();
+}
+// B310: RUN / LIST (i zkratka L.) - konec davky
+static bool postupJeRunList(const std::string &r) {
+  auto slovo = [&](const char *s) {
+    const size_t n = std::strlen(s);
+    if (r.compare(0, n, s) != 0) return false;
+    if (r.size() == n) return true;
+    const char c = r[n];
+    return !((c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '_');
+  };
+  return slovo("RUN") || slovo("LIST") || r.compare(0, 2, "L.") == 0;
+}
+// B310: jedna klavesa pro postup hrace (v = scankod, -1 = BREAK; vlozeno = z Ctrl+V).
+// POZOR: volat jen pod g_mStroj.
+static void postupKlavesaLocked(int v, bool vlozeno) {
+  if (v < 0) { g_postupRadek.clear(); g_postupRadekVlozeny = false; return; }   // BREAK = radek zrusen
+  const int sc = v & 0x3F;
+  if (sc == 12) {                                                  // RETURN
+    std::string r = g_postupRadek;
+    const bool vl = g_postupRadekVlozeny;
+    g_postupRadek.clear(); g_postupRadekVlozeny = false;
+    size_t a = 0, b = r.size();
+    while (a < b && r[a] == ' ') a++;
+    while (b > a && r[b - 1] == ' ') b--;
+    r = r.substr(a, b - a);
+    if (vl || r.empty()) return;
+    if (postupJeRadekProgramu(r)) { g_postupDavka++; return; }
+    if (postupJeRunList(r) && g_postupDavka > 0) {
+      const int n = g_postupDavka;
+      g_postupDavka = 0;
+      { std::lock_guard<std::mutex> o(g_mOut); if (g_postupHotove.size() < 64) g_postupHotove.push_back(n); }
+      devLog("B310 POSTUP HRACE: davka " + std::to_string(n) + " radku programu (" + r.substr(0, 6) + ") -> Java (Sega se otevre po 50)");
+    }
+    return;
+  }
+  if (vlozeno) g_postupRadekVlozeny = true;
+  if (sc == 52) {                                                  // BACK S / DELETE
+    if (v & 0x40) g_postupRadek.clear();                           // SHIFT+DELETE = smazat cely radek
+    else if (!(v & 0x80) && !g_postupRadek.empty()) g_postupRadek.pop_back();   // BACK S = smazat znak
+    return;
+  }
+  const std::string t = nap::napScanText(v);
+  if (t == "<CLEAR>") { g_postupRadek.clear(); return; }
+  if (t.size() == 1 && g_postupRadek.size() < 120) g_postupRadek += t;   // jen znaky (ne sipky, ESC, ^X ...)
 }
 
 // B299/B302: co uzivatel napsal - radek do logu po RETURN (kvuli chybam, ktere na PC
 // nejdou zopakovat). v = scankod, -1 = BREAK; zPc = z klavesnice pocitace (TV/PC).
+// B310: bit $100 = klavesa z vlozeneho textu (Ctrl+V); a navic postup hrace.
 // POZOR: volat jen pod g_mStroj.
 static void zalogujKlavesuLocked(int v, bool zPc) {
+  const bool vlozeno = v >= 0 && (v & 0x100);
+  if (v >= 0) v &= 0xFF;
+  postupKlavesaLocked(v, vlozeno);
   if (zPc) g_klavLogPc = true;
   const char *pred = g_klavLogPc ? "B299 KLAVESY (PC): " : "B299 KLAVESY: ";
   if (v < 0) {
@@ -1316,6 +1384,9 @@ Java_eu_atarihelp_emu10_NativeAtariCoreBridge_devStartNative(JNIEnv *, jclass, j
       // B298: START/OPTION drzene pri POWER plati (boot z kazety) - novy vstup do
       // HELP ale zacina s pustenou konzoli
       g_consolChtene = 7; g_consolDrzetDo[0] = g_consolDrzetDo[1] = g_consolDrzetDo[2] = 0;
+      // B310: postup hrace - novy vstup do Atari zacina novou davku (jako drive nova
+      // stranka stareho Atari); hotove davky, ktere Java jeste nevyzvedla, zustanou
+      g_postupDavka = 0;
     }
     if (studeny || !g_stroj) {
       g_xex.zrus();
@@ -1465,6 +1536,17 @@ extern "C" JNIEXPORT jstring JNICALL
 Java_eu_atarihelp_emu10_NativeAtariCoreBridge_devCtlNative(JNIEnv *env, jclass, jstring jcmd) {
   std::string cmd;
   if (jcmd) { const char *c = env->GetStringUTFChars(jcmd, nullptr); if (c) { cmd = c; env->ReleaseStringUTFChars(jcmd, c); } }
+  // B310: "postup" = hotove davky napsanych radku programu pro postup hrace ("12,7",
+  // "" = zadna) - vyzvedne je Java (NapPostup) a tim se smazou. Bez logu (vola se casto).
+  if (cmd == "postup") {
+    std::string out;
+    {
+      std::lock_guard<std::mutex> o(g_mOut);
+      for (size_t i = 0; i < g_postupHotove.size(); i++) { if (i) out += ','; out += std::to_string(g_postupHotove[i]); }
+      g_postupHotove.clear();
+    }
+    return env->NewStringUTF(out.c_str());
+  }
   // B298: disketova mechanika D1: - "d1" = co je v mechanice ("" = prazdna),
   // "disk_eject" = vysunout a zapnout znovu (BASIC), "atr_vymena" = dalsi ATR
   // jen vymenit bez restartu (druha strana hry), "atr_normal" = zrusit
@@ -1888,6 +1970,7 @@ Java_eu_atarihelp_emu10_NativeAtariCoreBridge_devVlozNative(JNIEnv *env, jclass,
   } else {
     std::vector<nap::PcAkce> a;
     const int nelze = nap::pcTextNaKlavesy(buf.data(), buf.size(), a, 4000);
+    for (auto &x : a) x.vlozeno = true;               // B310: vlozeny text se do postupu hrace nepocita
     {
       std::lock_guard<std::mutex> p(g_mPc);
       if (g_pcText.size() + a.size() > 20000) g_pcText.clear();

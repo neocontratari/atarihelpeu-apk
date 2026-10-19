@@ -1,7 +1,7 @@
 <!DOCTYPE html><html lang="cs"><head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>ATARI C++ — vyvoj</title>
+<title>ATARI 130XE — log a testy</title>
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 body{margin:0;background:#0b0b0d;color:#dfe3e8;font:15px/1.5 system-ui,sans-serif;padding:16px 14px 40px}
@@ -34,7 +34,7 @@ a{color:#6ea8ff}
 </style></head><body>
 
 <h1>ATARI 130XE v C++</h1>
-<p class="pod">Zadni strana pristroje: log a testy. Puvodni ATARI 130XE EMULATOR v nabidce bezi dal a tohle se ho nijak nedotyka.</p>
+<p class="pod">Zadni strana pristroje: log a testy. Od B310 je tohle jedine Atari v appce (tlacitko ATARI 130XE EMULATOR v nabidce); stare Atari v JavaScriptu je smazane.</p>
 
 <!-- B291: Rene - "proste v helpu atari emu bude to co jsi udelal a co jsem
      ti odsouhlasil". Cele Atari 130XE ze schvaleneho navrhu (obrazovka,
@@ -113,6 +113,13 @@ Tenhle test pousti jadro na desetitisicich nahodnych stavu a porovnava vysledek
 s cislem, ktere vyslo na pocitaci. Delam to proto, ze pocitac je x86 a telefon
 ARM - a na ARM se nektere veci chovaji jinak. Kdyz se to rozejde, ma se to
 poznat ted, a ne az podle spatneho obrazu.<br><br>
+B310: RADIKALNI REZ - stare Atari v JavaScriptu (emu_vbxe) je z appky smazane i s Javou,
+ktera slouzila jen jemu. ATARI 130XE EMULATOR v nabidce spousti tohle Atari v C++, HELP v nabidce
+je napoveda. Vsechny hry Atari (NET HRY, hra z webu atarihelp.eu, vyber z telefonu na chybove
+strance) jdou sem. ODEMCENI SEGY (50 napsanych radku programu - radek s cislem, zapocita se
+pri RUN nebo LIST, aspon 5 najednou) pocitalo jen stare Atari - ted ho pocita C++, i psani
+na dotykove klavesnici a z klavesnice PC (text vlozeny Ctrl+V ne); pri odemceni se na pristroji
+ukaze SEGA ODEMCENA.
 B309: TV / PC BEZ F5 - kdyz na TV bezel obraz telefonu (H.264: menu appky, nebo chvilka
 pri prepnuti hry) a pak nabehl proud z C++ (PS1, Sega, demo), zastavene H.264 se ozvalo
 az po nem a vratilo cerny obrazek pres novy obraz - proto F5. Ted se H.264 zastavi poradne,
@@ -210,35 +217,31 @@ try{ if(window.AHATARICPP && !AHATARICPP.jeNactene()){
 } }catch(e){}
 function set(id,t,cls){var e=$(id); if(!e)return; e.textContent=t; if(cls)e.className='v '+cls;}
 var KROKY=[
- // B309: TV / PC bez F5, PS1 log s odeslanim, intro 59 s
- {n:1,co:'TV / PC: PREPINANI BEZ F5 - zapni prenos a na PC / TV otevri stranku JEDNOU. Pak jen v telefonu: menu - PS1 (BIOS) - hra z knihovny - jina hra - zpet do menu - Sega - hra. V prohlizeci nic nemackej (zadne F5).',
-  ok:'Po kazdem prepnuti nabehne novy obraz sam do 2-3 s. Pri prepnuti hry chvilku zustane posledni obraz (zadne cerno, zadne preblikavani na telefon), v menu je videt obrazovka telefonu.',
-  ne:'Nekde zustane cerno nebo stary obraz a pomuze az F5 - napis, pri kterem prepnuti (z ceho na co), a posli LOG (radky B306 ... PROUD start / konec a B309 HLIDAC).'},
- {n:2,co:'PS1: LOG - kolecko - ULOZIT LOG A ODESLAT (na sirku je tlacitko primo v panelu D-PAD)',
-  ok:'Hned se otevre nabidka Poslat log (Messenger, mail ...) jako tady v HELP; soubor je i v Downloads/AtariHelp a log je i ve schrance.',
-  ne:'Nabidka se neotevre nebo hlaska chybu - napis, co presne se ukazalo.'},
- {n:3,co:'UVODNI DEMO 59 s - OPTIONS - PUSTIT INTRO (nebo start appky); divej se hlavne od 32. vteriny',
-  ok:'Na CRT postupne: Pitt-Kitt asi 5,5 s (titulek N&P, kapitola Las Vegas 1982, jizda se zvukem hry), 16 BIT asi 6 s (lod, drony, more se sluncem), 32 BIT asi 6 s (nocni zavod: predjeti modreho a zluteho auta, 3. - 2. - 1. misto). Tempo klidnejsi nez v B308, kazda ukazka ma vlastni hudbu. Logo od 51 s, konec v 59 s. SKIP funguje celou dobu.',
-  ne:'Porad hekticke, neco chybi, zadrhava nebo zvuk nesedi s obrazem - napis, v kolikate vterine a co.'},
- {n:4,co:'UVODNI DEMO NA TV / PC - se zapnutym prenosem, v prohlizeci klikni do obrazu',
-  ok:'Cele demo vcetne delsiho defile a zvuku hry Pitt-Kitt na TV; po skonceni se TV sama vrati na obraz telefonu (bez F5).',
-  ne:'Na TV chybi cast defile, zvuk, nebo po demu zustane cerno - napis co.'},
- // B308 a starsi - kontrola, ze se nic nerozbilo
- {n:5,co:'PS1: DOOM, nahravani hry a klavesnice z PC jako v B308',
-  ok:'Stejne jako v B308 (stropy cele, nahravaci okno podle skutecneho stavu, klavesy na TV funguji).',
-  ne:'Neco hur nez v B308 - napis co a posli LOG z PS1 (ULOZIT LOG A ODESLAT).'},
- {n:6,co:'TEST JADRA (tlacitko SPUSTIT TEST JADRA nize)',
-  ok:'Procesor i Pamet = SEDI (29C55806 / D3949DC5), Rychlost aspon 2x realny cas.',
-  ne:'NESEDI, nebo rychlost pod 1x (Atari by se zpomalovalo).'},
- {n:7,co:'TV / PC ATARI: HELP (Atari 130XE C++) - v prohlizeci na PC klavesnice pocitace a VLOZIT KOD (Ctrl+V)',
-  ok:'Jako v B308: pismeno z PC je na TV hned, 10 PRINT "Ahoj" + Enter, LIST, RUN; Ctrl+V napise radky programu (bez NEW).',
-  ne:'Neco hur nez v B308 - napis co a posli log (radky B302, B303 VLOZENI).'},
- {n:8,co:'Hry jako minule: Ghostbusters, Popeye, Moon Patrol, Donkey Kong, W3D (i zvuk)',
-  ok:'Stejne jako v B308.',
-  ne:'Neco hur nez v B308 (napis ktera hra a kde).'},
- {n:9,co:'V TELEFONU: ATARI 130XE EMULATOR z hlavni nabidky a hry na Seze (obraz, zvuk, ovladani)',
-  ok:'Bezi UPLNE STEJNE jako dosud.',
-  ne:'Jakakoli zmena proti minule verzi.'}
+ // B310: stare Atari v JavaScriptu smazane, ATARI 130XE EMULATOR = Atari v C++, HELP = napoveda
+ {n:1,co:'MENU: tlacitko ATARI 130XE EMULATOR',
+  ok:'Rovnou se zapne tohle Atari 130XE (C++) - pristroj s klavesnici, kazetakem a servisnimi tlacitky. Zadne stare Atari uz nikde neni.',
+  ne:'Otevre se neco jineho, cerna obrazovka nebo chyba - napis co presne.'},
+ {n:2,co:'MENU: tlacitko HELP (dole vpravo) a MENU (vlevo nahore)',
+  ok:'Otevre se okno NAPOVEDA (popis tlacitek a ovladani), ZAVRIT NAPOVEDU ho zavre.',
+  ne:'Nic se nestane nebo se otevre Atari - napis, ktere tlacitko.'},
+ {n:3,co:'ODEMCENI SEGY: OPTIONS - ZAMKNOUT VSE. Pak ATARI 130XE EMULATOR, napis 5 radku programu (napr. 10 A=1 ... 50 A=5) a RUN. Zpet do menu a klepni na SEGA.',
+  ok:'Sega pise: ZAMCENO - NAPIS JESTE 45 RADKU KODU V ATARI (bylo 50). Kdo napise 50 radku (aspon po 5 a RUN / LIST), tomu se Sega otevre a na Atari se ukaze SEGA ODEMCENA. Na konec si Segu i PS1 zase otevri: OPTIONS - ODEMKNOUT DALSI (2x).',
+  ne:'Porad 50 radku, nebo se Sega otevre hned - napis co a posli LOG (radky B310 POSTUP).'},
+ {n:4,co:'NET HRY na pristroji - vyber hru (napr. Moon Patrol)',
+  ok:'Hra se stahne a spusti v tomhle Atari jako v B309.',
+  ne:'Hra se nespusti nebo skonci jinde - napis ktera a posli LOG.'},
+ {n:5,co:'ATARIHELP.EU z menu - na webu klikni na hru pro Atari (ZIP / XEX)',
+  ok:'Hra se spusti v Atari 130XE (C++) - drive skoncila ve starem Atari.',
+  ne:'Nic se nestane nebo hlaska chyby - napis, na kterou hru jsi klikl, a posli LOG.'},
+ {n:6,co:'TV / PC: Atari na TV, klavesnice pocitace a VLOZIT KOD (Ctrl+V)',
+  ok:'Jako v B309: obraz a zvuk Atari na TV, pismeno z PC hned na TV, Ctrl+V napise radky programu (bez NEW).',
+  ne:'Neco hur nez v B309 - napis co a posli LOG.'},
+ {n:7,co:'TEST JADRA (tlacitko SPUSTIT TEST JADRA nize) a hry jako minule: Ghostbusters, Popeye, Donkey Kong, W3D',
+  ok:'Procesor i Pamet = SEDI (29C55806 / D3949DC5); hry stejne jako v B309.',
+  ne:'NESEDI, nebo hra hur nez v B309 - napis ktera.'},
+ {n:8,co:'Sega, PS1 (Doom), PLAYER a uvodni demo',
+  ok:'Bezi UPLNE STEJNE jako v B309 (tech se B310 netyka).',
+  ne:'Jakakoli zmena proti B309 - napis co.'}
 ];
 var vysledky={};
 function vykresliKroky(){

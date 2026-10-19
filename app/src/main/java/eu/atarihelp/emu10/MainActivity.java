@@ -99,17 +99,14 @@ public class MainActivity extends Activity {
     private static final int PICK_PS1_GAME = 7; // BUILD2SA2
     private static final int PICK_AUDIO_PERMISSION = 14; // BUILD2SA13C14: local MP3/WAV library permissions
     private static final int PICK_TV_WEB_SCREEN = 13; // BUILD2SA13C9: whole-phone MediaProjection mirror
-    private static final int PICK_ATARI_CPP_XEX = 21; // B291: XEX/MOBIL na pristroji Atari 130XE v HELP
+    private static final int PICK_ATARI_CPP_XEX = 21; // B291: XEX/MOBIL na pristroji Atari 130XE (B310: tlacitko ATARI 130XE EMULATOR)
     private static final int PICK_ATARI_CPP_WAV = 22; // B292: EJECT -> kazeta (WAV) z telefonu pro CLOAD
     private static final int PICK_ATARI_CPP_TXT = 23; // B299: BASIC/TBXL TXT -> TXT soubor s programem
     private static final String ATARIHELP_BROWSER_UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36"; // BUILD2SA5K
     private static final long ATARIHELP_MIN_REQUEST_GAP_MS = 30000L; // BUILD2SA5M: no accidental hammering.
     private static final long ATARIHELP_FAIL_COOLDOWN_MS = 15L * 60L * 1000L;
-    private static final long ATARI_NET_INJECT_RETRY_MS = 300L; // BUILD2SA5AJ: only polls; does not keep reloading 130XE.
-    private static final int ATARI_NET_INJECT_MAX_ATTEMPTS = 42;
-    private static final long ATARI_NET_OPEN_SETTLE_MS = 2600L; // BUILD2SA5AJ: like Sega delayed inject after opening emulator page.
-    private static final long ATARI_NET_INJECT_SETTLE_MS = 900L;
-    private static final long ATARI_NET_INJECT_FALLBACK_MS = 6200L;
+    // B310: ATARI_NET_INJECT_* (vkladani hry do stranky stareho Atari v JavaScriptu) smazano
+    // se starym emulatorem - hry Atari jdou vzdy do Atari 130XE v C++.
     private static final long PS1_REMOTE_MAX_BYTES = 1800L * 1024L * 1024L; // BUILD2SA5AK: PS1 image from Reneho PC, streamovane na disk.
 
     // ===================================================================
@@ -128,106 +125,26 @@ public class MainActivity extends Activity {
     private long introTvDiagMs = 0L;
 
     // ==================================================================
-    //  BUILD2SA48: FRONTA NA ZVUK Z ATARI
-    //
-    //  Atari posila zvuk z JavaScriptu jako base64 retezec. Drive se
-    //  rozkodovaval primo v mostu a JS vlakno - to same, na kterem bezi
-    //  emulator - na to cekalo. Ted se retezec jen odlozi a odpovi hned.
-    //
-    //  Fronta je zamerne KRATKA: kdyz se nestiha, zahodi se nejstarsi
-    //  davka. Lepsi kratky vypadek zvuku nez rostouci zpozdeni.
-    // ==================================================================
-    private final java.util.concurrent.ArrayBlockingQueue<Object[]> atariZvukFronta =
-            new java.util.concurrent.ArrayBlockingQueue<>(8);
-    private Thread atariZvukVlakno = null;
-    private volatile boolean atariZvukBezi = false;
-    private volatile long atariZvukZahozeno = 0L;
-    private long atariMostUs = 0, atariMostPocet = 0, atariMostLogMs = 0;
-
-    // ==================================================================
     //  BUILD2SA49: POKUS, KTERY TO ROZHODNE
     //
-    //  Zmerili jsme, ze most drzi JS vlakno jen 0,5 ms a fronta je
-    //  prazdna, a ze snimani stoji asi 19 % vlakna. Ani jedno by kousat
-    //  nemelo - a presto se to kouse, jakmile se TV zapne.
+    //  TV ma dve pulky: OBRAZ a ZVUK. Timhle prepinacem (OPTIONS -> TV POKUS)
+    //  se da jedna z nich vypnout a hned se pozna, ktera zpusobuje potize:
     //
-    //  Prestavam hadat. TV ma dve pulky: OBRAZ a ZVUK. Timhle prepinacem
-    //  se da jedna z nich vypnout a hned se pozna, ktera to dela:
-    //
-    //    "jen zvuk"  -> obraz se nesnima. Kdyz Atari prestane kousat,
-    //                   je to snimanim obrazu.
-    //    "jen obraz" -> zvuk se neposila. Kdyz prestane kousat, je to
-    //                   zvukovou cestou.
+    //    "jen zvuk"  -> obraz se nesnima,
+    //    "jen obraz" -> zvuk se neposila,
     //    "oboji"     -> normalni provoz.
+    //
+    //  B310: smazano se starym Atari v JavaScriptu (emu_vbxe): fronta na jeho
+    //  zvuk (BUILD2SA48, pushAtariPcm16 -> atariZvuk*) a ctvrta volba
+    //  "kreslenim" (BUILD2SA50 - snimani jeho stranky bez PixelCopy). Atari 130XE
+    //  v C++ posila obraz i zvuk na TV primo z jadra (/atari.stream).
     // ==================================================================
-    //  BUILD2SA50: A CTVRTA VOLBA - JINY ZPUSOB SNIMANI.
-    //
-    //  Rene na to prisel: "jinak posilas obraz a zvuk z atari nez ze segy
-    //  a ps1". Presne tak:
-    //     SEGA a PS1   snimek jde PRIMO Z JADRA, okno se nesnima vubec
-    //     ATARI        PixelCopy CELEHO OKNA
-    //
-    //  PixelCopy si vynuti CTENI ZPATKY Z GRAFICKE KARTY a tim zastavi
-    //  cely vykreslovaci retez - a v tom retezu kresli i platno, na
-    //  kterem bezi Atari. Odtud kousani hned po zapnuti TV, at tempo
-    //  osekam jakkoli.
-    //
-    //  V kodu uz je druha cesta: napTvWebCaptureByDraw() kresli
-    //  PROCESOREM a grafiku nezastavi. Atari ji ale nedostane, protoze
-    //  je v seznamu obrazovek, kde se jede pres PixelCopy.
-    //  TV_KRESLENIM ji zapne.
-    public static final int TV_OBOJI = 0, TV_JEN_ZVUK = 1, TV_JEN_OBRAZ = 2,
-                            TV_KRESLENIM = 3;
+    public static final int TV_OBOJI = 0, TV_JEN_ZVUK = 1, TV_JEN_OBRAZ = 2;
     private volatile int tvPokusRezim = TV_OBOJI;
 
     private boolean tvSmiObraz() { return tvPokusRezim != TV_JEN_ZVUK; }
     private boolean tvSmiZvuk()  { return tvPokusRezim != TV_JEN_OBRAZ; }
-    /** Ma se u Atari misto PixelCopy kreslit procesorem? */
-    private boolean tvKreslenim() { return tvPokusRezim == TV_KRESLENIM; }
 
-    private void atariZvukDoFronty(String b64, int sampleRate) {
-        if (!atariZvukBezi) atariZvukStart();
-        if (!atariZvukFronta.offer(new Object[]{ b64, sampleRate })) {
-            atariZvukFronta.poll();                      // zahodit nejstarsi
-            atariZvukFronta.offer(new Object[]{ b64, sampleRate });
-            atariZvukZahozeno++;
-        }
-    }
-
-    private synchronized void atariZvukStart() {
-        if (atariZvukBezi) return;
-        atariZvukBezi = true;
-        atariZvukVlakno = new Thread(() -> {
-            long posledniHlaseni = 0;
-            while (atariZvukBezi) {
-                try {
-                    Object[] p = atariZvukFronta.poll(200,
-                            java.util.concurrent.TimeUnit.MILLISECONDS);
-                    if (p == null) continue;
-                    byte[] data = Base64.decode((String) p[0], Base64.DEFAULT);
-                    napTvWebAudioPushMonoPcm16Bytes(data, (Integer) p[1], "ATARI");
-                    long ted = System.currentTimeMillis();
-                    if (atariZvukZahozeno > 0 && ted - posledniHlaseni > 5000) {
-                        posledniHlaseni = ted;
-                        appendNativeLog("BUILD2SA48 ATARI_ZVUK zahozeno davek="
-                                + atariZvukZahozeno + " (fronta nestiha)");
-                        atariZvukZahozeno = 0;
-                    }
-                } catch (InterruptedException ie) {
-                    return;
-                } catch (Throwable ignored) {}
-            }
-        }, "nap-atari-zvuk");
-        atariZvukVlakno.setPriority(Thread.MAX_PRIORITY);
-        atariZvukVlakno.start();
-        appendNativeLog("BUILD2SA48 ATARI_ZVUK vlakno spusteno");
-    }
-
-    private void atariZvukStop() {
-        atariZvukBezi = false;
-        atariZvukFronta.clear();
-        if (atariZvukVlakno != null) { atariZvukVlakno.interrupt(); atariZvukVlakno = null; }
-    }
     /** BUILD2SA41: zvuk intra - pocita se v Jave, at jde i na TV. */
     private final NapIntroZvuk introZvuk = new NapIntroZvuk();
 
@@ -369,16 +286,9 @@ public class MainActivity extends Activity {
         try {
             if (url == null) return;
             if (!url.contains("/intro/")) introZvukStop("odchod na " + compactUrl(url));
-
-            // BUILD2SA80: VLAKNO PRO ZVUK ATARI SE MUSI ZASTAVIT.
-            //
-            // Napsal jsem atariZvukStop(), ale NIKDE JSEM HO NEZAVOLAL.
-            // Takze od chvile, co uzivatel jednou byl v Atari, to vlakno
-            // bezelo porad - i v Seze, i v PS1. Bralo si nejvyssi prioritu
-            // a pletlo se do zvukove cesty.
-            //
-            // Tohle je to druhe "jadro", ktere se podle Reneho hadalo.
-            if (!url.contains("emu_vbxe")) atariZvukStop();
+            // B310: BUILD2SA80 (zastaveni zvukoveho vlakna stareho Atari v JavaScriptu)
+            // smazano se starym emulatorem - Atari 130XE v C++ ma zvuk v C++ (OpenSL)
+            // a zastavuje ho stopAtariNativeAudioIfLeaving.
         } catch (Throwable ignored) {}
     }
 
@@ -567,7 +477,8 @@ public class MainActivity extends Activity {
     private volatile AudioTrack ps1CurrentAudioTrack = null; // BUILD2SA3B: hard-stop pri prepnuti PS1 hry
     private Thread ps1AudioThread = null;
     private volatile String ps1CurrentGameLabel = "ps1_game";
-    private static final String EMU_URL = "file:///android_asset/emu/index.html";
+    // B310: EMU_URL (emu/index.html -> stare Atari v JavaScriptu emu_vbxe) smazano se
+    // starym emulatorem; Atari 130XE je ATARI_CPP_URL (emu_atari_cpp/index.html).
     private WebView web;
     private FrameLayout rootFrame;
     private static class NapPlayerAudioItem {
@@ -2787,10 +2698,9 @@ public class MainActivity extends Activity {
             Bitmap frame = (rowPixels == w) ? padded : Bitmap.createBitmap(padded, 0, 0, w, h);
             if (frame != padded) padded.recycle();
             boolean djScreenSys = false, hqLiteScreenSys = false;
-            try { String cu = web == null ? null : web.getUrl(); djScreenSys = cu != null && cu.contains("/dj/"); hqLiteScreenSys = cu != null && (cu.contains("/emu_ps1/") || cu.contains("/emu_sega/") || cu.contains("/emu/") || cu.contains("/emu_vbxe/") || cu.contains("/dj/") || cu.contains("/player/"));
-                 // BUILD2SA50: pri pokusu "kreslenim" vyradime Atari ze
-                 // seznamu, kde se snima pres PixelCopy - pujde kreslenim
-                 if (tvKreslenim() && cu != null && cu.contains("/emu_vbxe/")) hqLiteScreenSys = false; } catch (Throwable ignored) {}
+            // B310: stare Atari (emu/, emu_vbxe) smazane - ze seznamu pryc. Atari 130XE v C++
+            // (emu_atari_cpp) v seznamu nebylo a neni (jeho obraz jde na TV z jadra), beze zmeny.
+            try { String cu = web == null ? null : web.getUrl(); djScreenSys = cu != null && cu.contains("/dj/"); hqLiteScreenSys = cu != null && (cu.contains("/emu_ps1/") || cu.contains("/emu_sega/") || cu.contains("/dj/") || cu.contains("/player/")); } catch (Throwable ignored) {}
             int[] qvSys = napTvWebQualityFor(djScreenSys, hqLiteScreenSys, w > h);
             napTvWebJpegQuality = qvSys[1];
             napTvWebFrameDelayMs = w > h ? 60 : 55;
@@ -3243,7 +3153,7 @@ public class MainActivity extends Activity {
             int maji = Math.max(0, Math.min(delka, d.length - telo));
             byte[] data = java.util.Arrays.copyOfRange(d, telo, telo + maji);
             if (maji == 0) odp = "VLOZENI: PRAZDNE";
-            else if (!atariCppNaObrazovce) odp = "VLOZENI: ATARI 130XE (HELP) NENI NA OBRAZOVCE";
+            else if (!atariCppNaObrazovce) odp = "VLOZENI: ATARI 130XE NENI NA OBRAZOVCE";   // B310: bez "(HELP)" - Atari je pod ATARI 130XE EMULATOR
             else odp = NativeAtariCoreBridge.devVlozSafe(data);
         }
         byte[] b = odp.getBytes("UTF-8");
@@ -3251,7 +3161,8 @@ public class MainActivity extends Activity {
         out.write(b);
     }
 
-    /** Jedna klavesa z prohlizece -> Atari (C++ v HELP, nebo stranka stareho Atari / Segy).
+    /** Jedna klavesa z prohlizece -> Atari 130XE (C++), PS1 (C++), nebo stranka Segy.
+     *  (B310: stranka stareho Atari v JavaScriptu, ktera tu byla taky, je smazana.)
      *  Vraci odpoved pro prohlizec. modL < 0 = stary prohlizec bez "mod" (jen ctrl). */
     private String napTvWebJednaKlavesa(final String code, String znak, final boolean dolu, boolean ctrl, long modL) {
         // B302: ATARI 130XE V HELP (C++). Rene: "udelej klavesnici - a mysli na to, ze vse
@@ -3283,6 +3194,7 @@ public class MainActivity extends Activity {
         }
 
         // BUILD2SA56: JEDEN VSTUPNI BOD A ZPETNA VAZBA.
+        // (B310: dnes uz jen stranka Segy - stare Atari v JavaScriptu je smazane.)
         //
         // Drive se sem skladal kus JavaScriptu, ktery sahal na CODE a M.
         // Jenze ty ziji UVNITR funkce ve strance Atari - zvenku k nim
@@ -3744,8 +3656,9 @@ public class MainActivity extends Activity {
                 // Stranka se na /status pta kazdou vterinu uz ted, takze
                 // se na nic navic ptat nemusi a klavesnice se zapne SAMA.
                 // B302: i Atari 130XE v HELP (C++) - klavesnice se v prohlizeci zapne sama
+                // B310: jine Atari uz neni (stare emu_vbxe smazane)
                 final boolean atariCpp = atariCppNaObrazovce;
-                boolean vAtari = ((curUrl3 != null) && curUrl3.contains("emu_vbxe")) || atariCpp;
+                boolean vAtari = atariCpp;
                 // BUILD2SA76: klavesnice ted funguje i v Seze
                 boolean vSeze  = (curUrl3 != null) && curUrl3.contains("emu_sega");
                 // B308: PS1 - klavesnice z prohlizece jde do jadra PS1 (C++)
@@ -4330,7 +4243,7 @@ public class MainActivity extends Activity {
                 + "  var s=unescape(encodeURIComponent(t)), u=new Uint8Array(s.length);"
                 + "  for(var i=0;i<s.length;i++) u[i]=s.charCodeAt(i); return u; }"
                 + "function vloz(data){"
-                + "  if(!window.napVAtariCpp){ vlozZprava('VLOZIT JDE JEN DO ATARI 130XE (HELP)'); return; }"
+                + "  if(!window.napVAtariCpp){ vlozZprava('VLOZIT JDE JEN DO ATARI 130XE'); return; }"
                 + "  if(!data||!data.length){ vlozZprava('VLOZENI: PRAZDNE'); return; }"
                 + "  if(data.length>512*1024){ vlozZprava('VLOZENI: MOC VELKE (NEJVYS 512 kB)'); return; }"
                 + "  vlozZprava('POSILAM DO ATARI: '+data.length+' B');"
@@ -4540,8 +4453,8 @@ public class MainActivity extends Activity {
 
     /**
      * BUILD2SA14: rozhrani pro obrazovku HELP, kde se testuje jadro Atari v C++.
-     * Puvodni Atari (emu_vbxe) zustava netknute a bezi dal jako dosud - tohle
-     * je oddelena vetev, aby se dalo vyvijet bez rizika pro beta verzi.
+     * B310: Atari 130XE v C++ je teď jediné Atari (tlačítko ATARI 130XE EMULATOR);
+     * puvodni Atari v JavaScriptu (emu_vbxe) je smazane.
      */
     /** BUILD2SA21: rozhrani pro uvodni intro. */
     public class AHIntro {
@@ -4857,7 +4770,6 @@ public class MainActivity extends Activity {
             tvPokusRezim = (rezim < 0 || rezim > 2) ? TV_OBOJI : rezim;
             String jm = tvPokusRezim == TV_JEN_ZVUK ? "JEN ZVUK (obraz se nesnima)"
                       : tvPokusRezim == TV_JEN_OBRAZ ? "JEN OBRAZ (zvuk se neposila)"
-                      : tvPokusRezim == TV_KRESLENIM ? "KRESLENIM (Atari bez PixelCopy)"
                       : "OBOJI (normalni provoz)";
             appendNativeLog("BUILD2SA49 TV_POKUS -> " + jm);
             return jm;
@@ -5481,48 +5393,8 @@ public class MainActivity extends Activity {
         @JavascriptInterface public int getQualityTier() {
             return napTvWebQualityTier;
         }
-        /**
-         * BUILD2SA48: MOST UZ NECEKA.
-         *
-         * Tohle vola Atari z JavaScriptu pro KAZDOU davku zvuku. Drive se
-         * primo tady rozkodoval base64 a davka se protlacila do zvukove
-         * cesty - a JavaScriptove vlakno, NA KTEREM BEZI EMULATOR, na to
-         * cekalo. Odtud kousani obrazu i zvuku, a to i na mobilu, protoze
-         * se to deje jen pri zapnute TV.
-         *
-         * Ted se retezec jen odlozi do fronty a odpovi se hned. Rozkodovani
-         * i predani dela vlastni vlakno.
-         *
-         * (Prevod na text a btoa() na strane prohlizece zustava - to je
-         * uvnitr puvodniho Atari a na to bez Reneho svoleni nesaham.)
-         */
-        @JavascriptInterface public String pushAtariPcm16(String b64, int sampleRate, int frames) {
-            try {
-                if (!napTvWebRunning) return "TV_WEB_AUDIO_OFF";
-                if (!tvSmiZvuk()) return "TV_WEB_AUDIO_VYPNUT_POKUSEM";
-                if (b64 == null || b64.length() == 0) return "TV_WEB_AUDIO_EMPTY";
-                // BUILD2SA48: ZMERIT, JAK DLOUHO JS VLAKNO CEKA.
-                // Tohle je presne to misto, kde se emulator zastavi -
-                // priste uz to nebudu odhadovat.
-                long t0 = System.nanoTime();
-                atariZvukDoFronty(b64, sampleRate);
-                long us = (System.nanoTime() - t0) / 1000;
-                atariMostUs += us; atariMostPocet++;
-                long ted = System.currentTimeMillis();
-                if (ted - atariMostLogMs > 5000 && atariMostPocet > 0) {
-                    atariMostLogMs = ted;
-                    appendNativeLog("BUILD2SA48 ATARI_MOST prumer="
-                            + (atariMostUs / atariMostPocet) + "us davek=" + atariMostPocet
-                            + " fronta=" + atariZvukFronta.size());
-                    atariMostUs = 0; atariMostPocet = 0;
-                }
-                return "TV_WEB_AUDIO_ATARI_OK frames=" + frames + " hz=" + sampleRate;
-            } catch (Throwable t) {
-                String e = "TV_WEB_AUDIO_ATARI_FAIL " + safeMsg(t);
-                appendNativeLog("BUILD2SA13C " + e);
-                return e;
-            }
-        }
+        // B310: pushAtariPcm16 (zvuk stareho Atari v JavaScriptu na TV, BUILD2SA48) smazano
+        // se starym emulatorem - Atari 130XE v C++ posila zvuk na TV primo z jadra.
         @JavascriptInterface public String pushPlayerPcm16(String b64, int sampleRate, int frames, int channels) {
             try {
                 if (!napTvWebRunning) return "TV_WEB_AUDIO_OFF";
@@ -5597,9 +5469,8 @@ public class MainActivity extends Activity {
     private volatile AudioTrack nativeCurrentAudioTrack;
     private volatile int nativeActiveAudioTracks = 0; // BUILD2RV: proof that only one Sega AudioTrack path is alive.
     private ValueCallback<Uri[]> pendingChooser;
-    private byte[] pendingGame;
-    private String pendingName;
-    private int pendingGameInjectSeq = 0;
+    // B310: pendingGame / pendingName / pendingGameInjectSeq (hra cekajici na stranku
+    // stareho Atari v JavaScriptu) smazane - hra ceka v atariCppCekajiciHra (C++ Atari)
     private String lastAhGameBridgeUrl = "";
     private long lastAhGameBridgeAtMs = 0L;
     private String pendingBridgeKind;
@@ -5737,32 +5608,8 @@ public class MainActivity extends Activity {
                 }
             }
         }
-
-        @JavascriptInterface
-        public String saveBase64(String name, String b64) {
-            String clean = b64 == null ? "" : b64.replaceAll("\\s", "");
-            int mod = clean.length() % 4;
-            if (mod == 2) clean += "==";
-            else if (mod == 3) clean += "=";
-            try {
-                byte[] data = Base64.decode(clean, Base64.DEFAULT);
-                String path = writeBytesToDownloads(name, data);
-                return "DOWNLOADS_OK:" + path;
-            } catch (Exception e) {
-                try {
-                    File dir = getExternalFilesDir(null);
-                    if (dir == null) dir = getFilesDir();
-                    File f = new File(dir, safeFileName(name));
-                    byte[] data = Base64.decode(clean, Base64.DEFAULT);
-                    FileOutputStream out = new FileOutputStream(f);
-                    out.write(data);
-                    out.close();
-                    return "FALLBACK_APP_DIR:" + f.getAbsolutePath() + " | DOWNLOADS_CHYBA:" + e.getMessage();
-                } catch (Exception e2) {
-                    return "CHYBA: " + e.getMessage() + " / fallback: " + e2.getMessage();
-                }
-            }
-        }
+        // B310: saveBase64 (ukladani souboru ze stareho Atari v JavaScriptu) smazano
+        // se starym emulatorem - CSAVE WAV z Atari 130XE uklada ulozitAtariPcmWav.
     }
 
     private String ps1CleanBiosName(String name) {
@@ -6659,13 +6506,12 @@ public class MainActivity extends Activity {
     }
 
     public class AHPick {
+        /** B310: "Vybrat hru z telefonu" na chybovych strankach webu -> Atari 130XE v C++
+         *  (drive do stareho Atari v JavaScriptu). pickAudio a pickText (kazeta a TXT pro
+         *  stare Atari) smazany - Atari 130XE ma EJECT a BASIC/TBXL TXT na pristroji. */
         @JavascriptInterface
         public void pickGame() {
-            ui.post(() -> openBridgePicker("game"));
-        }
-        @JavascriptInterface
-        public void pickAudio() {
-            ui.post(() -> openBridgePicker("audio"));
+            ui.post(() -> atariCppVyberHruZTelefonu());
         }
         @JavascriptInterface
         public void pickMp3() {
@@ -6708,10 +6554,6 @@ public class MainActivity extends Activity {
         @JavascriptInterface
         public void openExternalUrl(String url) {
             ui.post(() -> openRawExternalBrowserUrl(url));
-        }
-        @JavascriptInterface
-        public void pickText() {
-            ui.post(() -> openBridgePicker("text"));
         }
     }
     private String nowStamp() {
@@ -7440,9 +7282,8 @@ public class MainActivity extends Activity {
             try {
                 String current = web == null ? null : web.getUrl();
                 appendNativeLog("BUILD2SA5AB WEB_DOWNLOAD_ERROR page=" + compactUrl(current) + " msg=" + msg);
-                if (web != null && current != null && current.startsWith(EMU_URL)) {
-                    web.postDelayed(() -> web.evaluateJavascript("AHJAVA_ERROR(" + jsQuote(msg) + ")", null), 300);
-                }
+                // B310: chyba se drive ukazovala jen ve strance stareho Atari v JavaScriptu
+                // (AHJAVA_ERROR) - ta je smazana
             } catch (Throwable ignored) {}
         };
         if (isUiThread()) r.run(); else ui.post(r);
@@ -7524,7 +7365,8 @@ public class MainActivity extends Activity {
     // B302: Atari 130XE (C++) je na obrazovce - klavesnice z prohlizece na TV/PC jde do
     // jadra (cte ho vlakno webserveru, proto volatile)
     private volatile boolean atariCppNaObrazovce = false;
-    private volatile boolean atariCppNetCil = false;      // NET HRY spustene z pristroje
+    // B310: atariCppNetCil (hra z NET HRY do C++, jinak do stareho Atari) smazano -
+    // kazda hra Atari jde do C++ (queueAtariGameFor130xe)
     // B298: poradi pozadavku na hry z netu - plati jen POSLEDNI vybrana hra.
     // V Reneho logu dobehlo stazeni Donkey Konga (z drivejsiho kliknuti) az
     // po navratu do HELP a hra se "sama" spustila; Moon Patrol a Galactic
@@ -7636,17 +7478,13 @@ public class MainActivity extends Activity {
         try { if (web != null) web.requestFocus(); } catch (Throwable ignored) {}
     }
 
-    /** onPageStarted: HELP -> pristroj zapnout, jinam -> vypnout. */
+    /** onPageStarted: Atari 130XE (emu_atari_cpp) -> pristroj zapnout, jinam -> vypnout. */
     private void atariZarizeniPodleUrl(String url) {
         try {
             if (isAtariCppOwnerUrl(url)) {
                 atariZarizeniZapni();
             } else {
                 atariZarizeniVypni("odchod na " + compactUrl(url));
-                // NET HRY: cil zustava jen behem prochazeni her (most / web)
-                if (url != null && url.startsWith("file:///android_asset/") && !url.contains("atari_xex_bridge")) {
-                    atariCppNetCil = false;
-                }
             }
         } catch (Throwable t) {
             appendNativeLog("B291 PRISTROJ_URL_CHYBA " + safeMsg(t));
@@ -7734,6 +7572,7 @@ public class MainActivity extends Activity {
             if (l != null) {
                 for (String r : l.split("\n")) if (r.length() > 0) appendNativeLog(r);
             }
+            atariCppPostupHrace();
             final byte[] pcm = NativeAtariCoreBridge.devTakeWavSafe();
             if (pcm != null && pcm.length > 0) {
                 // B292: kazdy CSAVE do vlastniho souboru (datum a cas) - EJECT je
@@ -7749,6 +7588,21 @@ public class MainActivity extends Activity {
         } catch (Throwable t) {
             appendNativeLog("B291 PRISTROJ_VYZVEDNUTI_CHYBA " + safeMsg(t));
         }
+    }
+
+    /**
+     * B310: POSTUP HRACE - Sega se otevre po 50 napsanych radcich programu v Atari.
+     * Pocitalo to jen stare Atari v JavaScriptu (smazane v B310), ted je pocita C++
+     * (radek s cislem, davka pri RUN / LIST); tady se jen davky predaji NapPostup,
+     * ktery jako drive uzna davku od 5 radku.
+     */
+    private void atariCppPostupHrace() {
+        String p = NativeAtariCoreBridge.devCtlSafe("postup");
+        if (p == null || p.isEmpty()) return;
+        StringBuilder log = new StringBuilder();
+        boolean otevreno = NapPostup.pripocitejDavky(this, p, log);
+        for (String r : log.toString().split("\n")) if (r.length() > 0) appendNativeLog(r);
+        if (otevreno) NativeAtariCoreBridge.devStatusSafe("SEGA ODEMČENA! JE V MENU", 8000);
     }
 
     /** Stejny zapis WAV jako BUILD2SB81 (16-bit PCM mono 44100 Hz) - vraci cestu nebo popis chyby. */
@@ -7788,8 +7642,7 @@ public class MainActivity extends Activity {
             switch (kod) {
                 case 1:   // NET / HRY
                     atariNetGen.incrementAndGet();   // B298: starsi rozjeta stazeni uz nic nespusti
-                    atariCppNetCil = true;
-                    appendNativeLog("B291 NET_HRY - vybrana hra (XEX/ZIP) se spusti v Atari C++ v HELP");
+                    appendNativeLog("B291 NET_HRY - vybrana hra (XEX/ZIP) se spusti v Atari 130XE (C++)");
                     showAtariNetGamesBridge();
                     break;
                 case 2: { // XEX / MOBIL
@@ -10052,7 +9905,9 @@ public class MainActivity extends Activity {
                 Intent i = new Intent(Intent.ACTION_GET_CONTENT);
                 i.addCategory(Intent.CATEGORY_OPENABLE);
                 i.setType("*/*");
-                startActivityForResult(Intent.createChooser(i, "Vyber XEX / ATR / ZIP"), PICK_FILE);
+                // B310: obecny vyber souboru pro stranky (PS1, Sega, DJ, Player) - napis "XEX / ATR / ZIP"
+                // byl ze stareho Atari v JavaScriptu (smazane)
+                startActivityForResult(Intent.createChooser(i, "Vyber soubor"), PICK_FILE);
                 return true;
             }
         });
@@ -10098,9 +9953,8 @@ public class MainActivity extends Activity {
                 stopPs1IfLeaving(url, "onPageFinished");
                 stopAtariNativeAudioIfLeaving(url, "onPageFinished");
                 if (isYoutubeUrl(url)) napTvWebScheduleYoutubeAudioBridge("onPageFinished");
-                if (pendingGame != null && url != null && url.startsWith(EMU_URL)) {
-                    schedulePendingAtariGameInjection("onPageFinished");
-                }
+                // B310: vkladani cekajici hry do stranky stareho Atari smazano (hra ceka
+                // v atariCppCekajiciHra a spusti ji pristroj Atari 130XE sam)
                 if (url != null && url.toLowerCase().contains("atarihelp.eu")) {
                     injectGameLinkBridge();
                 }
@@ -10352,15 +10206,29 @@ public class MainActivity extends Activity {
             i.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true);
             i.putExtra(Intent.EXTRA_LOCAL_ONLY, true);
             startActivityForResult(Intent.createChooser(i, "MP3 PRIDAT - vyber pisnicku nebo vice pisnicek"), PICK_BRIDGE);
-        } else if ("audio".equals(kind)) {
-            i.putExtra(Intent.EXTRA_MIME_TYPES, new String[]{"audio/*", "audio/wav", "audio/x-wav", "audio/mpeg", "application/octet-stream"});
-            startActivityForResult(Intent.createChooser(i, "VLOZIT KAZETU - vyber WAV / MP3 / CAS z mobilu"), PICK_BRIDGE);
-        } else if ("text".equals(kind)) {
-            i.putExtra(Intent.EXTRA_MIME_TYPES, new String[]{"text/*", "application/octet-stream", "*/*"});
-            startActivityForResult(Intent.createChooser(i, "Vyber BASIC / Turbo BASIC TXT z mobilu"), PICK_BRIDGE);
         } else {
-            i.putExtra(Intent.EXTRA_MIME_TYPES, new String[]{"application/zip", "application/octet-stream", "application/x-msdos-program", "*/*"});
-            startActivityForResult(Intent.createChooser(i, "Vyber XEX / ATR / ZIP z mobilu"), PICK_BRIDGE);
+            // B310: "audio" / "text" / "game" (kazeta, TXT a hra pro stare Atari v JavaScriptu)
+            // smazane se starym emulatorem - zbyl jen Player (mp3)
+            pendingBridgeKind = null;
+            appendNativeLog("B310 VYBER_SOUBORU " + kind + " - uz neexistuje (stare Atari smazane)");
+        }
+    }
+
+    /**
+     * B310: hra z telefonu pro Atari 130XE v C++ (drive AHPICK.pickGame -> stare Atari
+     * v JavaScriptu). Stejny vyber jako tlacitko XEX/MOBIL na pristroji; kdyz pristroj
+     * neni na obrazovce (chybova stranka webu), otevre se Atari a hra se spusti v nem.
+     */
+    private void atariCppVyberHruZTelefonu() {
+        atariCppAtrVymena = false;
+        try {
+            Intent i = new Intent(Intent.ACTION_GET_CONTENT);
+            i.addCategory(Intent.CATEGORY_OPENABLE);
+            i.setType("*/*");
+            startActivityForResult(Intent.createChooser(i, "XEX / ATR / ZIP pro Atari 130XE"), PICK_ATARI_CPP_XEX);
+            appendNativeLog("B310 VYBER_HRY_Z_TELEFONU -> Atari 130XE (C++)");
+        } catch (Throwable t) {
+            appendNativeLog("B310 VYBER_HRY_Z_TELEFONU_CHYBA " + safeMsg(t));
         }
     }
 
@@ -12201,21 +12069,16 @@ public class MainActivity extends Activity {
                     try {
                         appendNativeLog("BUILD2SA5AF WEB_GAME_DOWNLOAD_FAIL noEmuFallback " + safeMsg(ex));
                         // B299: srozumitelne i v HELP (Atari C++) - driv chyba nebyla nikde videt
-                        if (atariCppNetCil) {
-                            String mistni = AtarihelpTls.mistniServer(10 * 60 * 1000L);
-                            String zprava = mistni != null
-                                    ? "Hra se nestáhla: na této Wi-Fi vede atarihelp.eu na MÍSTNÍ server (" + mistni
-                                      + "), ne na skutečný web. Zkus mobilní data, nebo vypni OSPanel / oprav DNS v routeru."
-                                    : "Hra se nestáhla z atarihelp.eu: " + safeMsg(ex) + ". Zkus to znovu nebo přes mobilní data.";
-                            appendNativeLog("B299 NET_HRY " + (mistni != null ? "MISTNI SERVER misto atarihelp.eu (" + mistni + ")" : "stazeni selhalo"));
-                            android.widget.Toast.makeText(MainActivity.this, zprava, android.widget.Toast.LENGTH_LONG).show();
-                            NativeAtariCoreBridge.devStatusSafe(mistni != null ? "WI-FI: ATARIHELP.EU = MÍSTNÍ SERVER" : "HRA SE NESTÁHLA (SÍŤ)", 8000);
-                        }
-                        final String msg = ex.getMessage() == null ? "neznamá chyba" : ex.getMessage();
-                        String curErr = web == null ? null : web.getUrl();
-                        if (curErr != null && curErr.startsWith(EMU_URL)) {
-                            web.postDelayed(() -> web.evaluateJavascript("AHJAVA_ERROR(" + jsQuote("NET HRY: download selhal - " + msg) + ")", null), 500);
-                        }
+                        // B310: vzdy (kazda hra Atari jde do C++; stare Atari, kde se chyba
+                        // ukazovala pres AHJAVA_ERROR, je smazane)
+                        String mistni = AtarihelpTls.mistniServer(10 * 60 * 1000L);
+                        String zprava = mistni != null
+                                ? "Hra se nestáhla: na této Wi-Fi vede atarihelp.eu na MÍSTNÍ server (" + mistni
+                                  + "), ne na skutečný web. Zkus mobilní data, nebo vypni OSPanel / oprav DNS v routeru."
+                                : "Hra se nestáhla z atarihelp.eu: " + safeMsg(ex) + ". Zkus to znovu nebo přes mobilní data.";
+                        appendNativeLog("B299 NET_HRY " + (mistni != null ? "MISTNI SERVER misto atarihelp.eu (" + mistni + ")" : "stazeni selhalo"));
+                        android.widget.Toast.makeText(MainActivity.this, zprava, android.widget.Toast.LENGTH_LONG).show();
+                        NativeAtariCoreBridge.devStatusSafe(mistni != null ? "WI-FI: ATARIHELP.EU = MÍSTNÍ SERVER" : "HRA SE NESTÁHLA (SÍŤ)", 8000);
                     } catch (Exception ignored) {}
                 });
             }
@@ -12226,145 +12089,47 @@ public class MainActivity extends Activity {
         // B291: NET/HRY stisknute na pristroji v HELP -> hra jde do C++ Atari,
         // ne do stareho JS emulatoru (ten se tim nijak nemeni).
         // B292: Rene - "pri spusteni nejake hry to skocilo do java emu atari".
-        // Z logu: vyber hry prisel DVAKRAT (38 ms od sebe). B291 cil "C++" po
-        // prvni hre hned zrusil, takze druhe stazeni slo starou cestou do JS
-        // emulatoru. Ted cil plati po celou dobu prochazeni her (zrusi se az
-        // odchodem jinam, viz atariZarizeniPodleUrl) a stejny pozadavek do
+        // Z logu: vyber hry prisel DVAKRAT (38 ms od sebe) a stejny pozadavek do
         // 5 s se zahodi.
-        if (atariCppNetCil && data != null && data.length > 0 && web != null) {
-            final String nm = (name == null || name.length() == 0) ? "atarihelp_game.xex" : name;
-            final long ted = android.os.SystemClock.uptimeMillis();
-            if (nm.equals(atariCppPosledniJmeno) && data.length == atariCppPosledniDelka && ted - atariCppPosledniCas < 5000) {
-                appendNativeLog("B292 NET_HRY duplicitni pozadavek zahozen: " + nm + " bajtu=" + data.length + " (stejna hra pred " + (ted - atariCppPosledniCas) + " ms)");
-                return;
-            }
-            atariCppPosledniJmeno = nm;
-            atariCppPosledniDelka = data.length;
-            atariCppPosledniCas = ted;
-            appendNativeLog("B292 NET_HRY -> C++ HELP: " + nm + " bajtu=" + data.length + " reason=" + reason);
-            if (atariZarizeni != null && isAtariCppOwnerUrl(web.getUrl())) {
-                // pristroj uz bezi - rovnou spustit, zadne nove nacitani stranky
-                atariCppSpustProgram(data, nm, "NET_HRY");
-                return;
-            }
-            atariCppCekajiciHra = data;
-            atariCppCekajiciJmeno = nm;
-            web.loadUrl(ATARI_CPP_URL);
-            return;
-        }
+        // B310: stare Atari v JavaScriptu (emu_vbxe) je smazane - KAZDA hra Atari
+        // (NET HRY, hra z webu atarihelp.eu, vyber z telefonu na chybove strance)
+        // jde do Atari 130XE v C++. Drive sla do C++ jen z NET HRY na pristroji
+        // (atariCppNetCil), jinak do stareho Atari (pendingGame -> AHRECV_*).
         if (data == null || data.length == 0 || web == null) {
-            appendNativeLog("BUILD2SA5AG EMU130_QUEUE_SKIP_EMPTY reason=" + reason + " name=" + name);
+            appendNativeLog("B310 ATARI_HRA prazdna data (" + reason + ") name=" + name);
             return;
         }
-        pendingGame = data;
-        pendingName = (name == null || name.length() == 0) ? "atarihelp_game.xex" : name;
-        appendNativeLog("BUILD2SA5AG EMU130_QUEUE reason=" + reason + " name=" + pendingName + " bytes=" + pendingGame.length);
-        String cur = web.getUrl();
-        if (cur != null && cur.startsWith(EMU_URL)) {
-            schedulePendingAtariGameInjection(reason + ":alreadyOn130xe");
-        } else {
-            appendNativeLog("BUILD2SA5AJ EMU130_OPEN_ONCE reason=" + reason + " from=" + compactUrl(cur) + " settleMs=" + ATARI_NET_OPEN_SETTLE_MS);
-            web.loadUrl(EMU_URL);
-            final int seq = ++pendingGameInjectSeq;
-            appendNativeLog("BUILD2SA5AJ EMU130_INJECT_DELAYED_AFTER_OPEN reason=" + reason + " seq=" + seq + " name=" + pendingName + " bytes=" + pendingGame.length);
-            ui.postDelayed(() -> tryInjectPendingAtariGame(seq, reason + ":afterOpenDelay", 0), ATARI_NET_OPEN_SETTLE_MS);
-            ui.postDelayed(() -> commitPendingAtariGameInjection(seq, reason + ":lateDirectFallback"), ATARI_NET_INJECT_FALLBACK_MS);
-        }
-    }
-
-    private void schedulePendingAtariGameInjection(final String reason) {
-        if (pendingGame == null || web == null) return;
-        final int seq = ++pendingGameInjectSeq;
-        appendNativeLog("BUILD2SA5AG EMU130_INJECT_SCHEDULE reason=" + reason + " seq=" + seq + " name=" + pendingName + " bytes=" + pendingGame.length);
-        ui.postDelayed(() -> tryInjectPendingAtariGame(seq, reason, 0), ATARI_NET_INJECT_RETRY_MS);
-        ui.postDelayed(() -> fallbackInjectPendingAtariGame(seq, reason), ATARI_NET_INJECT_FALLBACK_MS);
-    }
-
-    private void tryInjectPendingAtariGame(final int seq, final String reason, final int attempt) {
-        if (seq != pendingGameInjectSeq || pendingGame == null || web == null) return;
-        String cur = web.getUrl();
-        if (cur == null || !cur.startsWith(EMU_URL)) {
-            if (attempt < ATARI_NET_INJECT_MAX_ATTEMPTS) {
-                if (attempt == 0 || attempt == 8 || attempt == 20 || attempt == 36) {
-                    appendNativeLog("BUILD2SA5AJ EMU130_WAIT_URL reason=" + reason + " attempt=" + attempt + " cur=" + compactUrl(cur));
-                }
-                ui.postDelayed(() -> tryInjectPendingAtariGame(seq, reason, attempt + 1), ATARI_NET_INJECT_RETRY_MS);
-            } else {
-                appendNativeLog("BUILD2SA5AJ EMU130_URL_TIMEOUT_TRY_DIRECT reason=" + reason + " cur=" + compactUrl(cur));
-                commitPendingAtariGameInjection(seq, reason + ":urlTimeoutDirect");
-            }
+        final String nm = (name == null || name.length() == 0) ? "atarihelp_game.xex" : name;
+        final long ted = android.os.SystemClock.uptimeMillis();
+        if (nm.equals(atariCppPosledniJmeno) && data.length == atariCppPosledniDelka && ted - atariCppPosledniCas < 5000) {
+            appendNativeLog("B292 NET_HRY duplicitni pozadavek zahozen: " + nm + " bajtu=" + data.length + " (stejna hra pred " + (ted - atariCppPosledniCas) + " ms)");
             return;
         }
-        try {
-            web.evaluateJavascript("(typeof window.AHRECV_BEGIN==='function'&&typeof window.AHRECV_PART==='function'&&typeof window.AHRECV_END==='function')", value -> {
-                if (seq != pendingGameInjectSeq || pendingGame == null || web == null) return;
-                boolean ready = "true".equals(String.valueOf(value)) || "\"true\"".equals(String.valueOf(value));
-                if (ready) {
-                    appendNativeLog("BUILD2SA5AH EMU130_INJECT_READY_SETTLE reason=" + reason + " attempt=" + attempt + " name=" + pendingName + " bytes=" + pendingGame.length + " settleMs=" + ATARI_NET_INJECT_SETTLE_MS);
-                    ui.postDelayed(() -> commitPendingAtariGameInjection(seq, reason + ":readySettled"), ATARI_NET_INJECT_SETTLE_MS);
-                    return;
-                }
-                if (attempt < ATARI_NET_INJECT_MAX_ATTEMPTS) {
-                    if (attempt == 0 || attempt == 8 || attempt == 20) {
-                        appendNativeLog("BUILD2SA5AG EMU130_INJECT_WAIT reason=" + reason + " attempt=" + attempt + " ready=" + value);
-                    }
-                    ui.postDelayed(() -> tryInjectPendingAtariGame(seq, reason, attempt + 1), ATARI_NET_INJECT_RETRY_MS);
-                } else {
-                    appendNativeLog("BUILD2SA5AG EMU130_INJECT_TIMEOUT reason=" + reason + " name=" + pendingName + " bytes=" + pendingGame.length);
-                }
-            });
-        } catch (Throwable t) {
-            if (attempt < ATARI_NET_INJECT_MAX_ATTEMPTS) {
-                ui.postDelayed(() -> tryInjectPendingAtariGame(seq, reason, attempt + 1), ATARI_NET_INJECT_RETRY_MS);
-            } else {
-                appendNativeLog("BUILD2SA5AG EMU130_INJECT_JS_ERROR reason=" + reason + " " + safeMsg(t));
-            }
+        atariCppPosledniJmeno = nm;
+        atariCppPosledniDelka = data.length;
+        atariCppPosledniCas = ted;
+        appendNativeLog("B310 ATARI_HRA -> Atari 130XE (C++): " + nm + " bajtu=" + data.length + " reason=" + reason);
+        if (atariZarizeni != null && isAtariCppOwnerUrl(web.getUrl())) {
+            // pristroj uz bezi - rovnou spustit, zadne nove nacitani stranky
+            atariCppSpustProgram(data, nm, "NET_HRY");
+            return;
         }
+        atariCppCekajiciHra = data;
+        atariCppCekajiciJmeno = nm;
+        web.loadUrl(ATARI_CPP_URL);
     }
 
-    private void commitPendingAtariGameInjection(final int seq, final String reason) {
-        if (seq != pendingGameInjectSeq || pendingGame == null || web == null) return;
-        String cur = web.getUrl();
-        boolean allowDirect = reason != null && reason.toLowerCase(Locale.US).contains("direct");
-        if (cur == null || !cur.startsWith(EMU_URL)) {
-            appendNativeLog("BUILD2SA5AJ EMU130_COMMIT_URL_MISMATCH reason=" + reason + " cur=" + compactUrl(cur) + " allowDirect=" + allowDirect);
-            if (!allowDirect) return;
-        }
-        try {
-            byte[] data = pendingGame;
-            String name = pendingName;
-            appendNativeLog("BUILD2SA5AH EMU130_INJECT_COMMIT reason=" + reason + " name=" + name + " bytes=" + data.length);
-            injectGame(name, data);
-            pendingGame = null;
-            pendingName = null;
-        } catch (Throwable t) {
-            appendNativeLog("BUILD2SA5AH EMU130_INJECT_COMMIT_ERROR reason=" + reason + " " + safeMsg(t));
-        }
-    }
-
-    private void fallbackInjectPendingAtariGame(final int seq, final String reason) {
-        appendNativeLog("BUILD2SA5AH EMU130_INJECT_FALLBACK_CHECK reason=" + reason + " seq=" + seq);
-        commitPendingAtariGameInjection(seq, reason + ":fallback");
-    }
+    // B310: schedulePendingAtariGameInjection / tryInjectPendingAtariGame /
+    // commitPendingAtariGameInjection / fallbackInjectPendingAtariGame (cekani na
+    // stranku stareho Atari v JavaScriptu a vkladani hry do ni) smazane.
 
     private String jsQuote(String text) {
         if (text == null) text = "";
         return "'" + text.replace("\\", "\\\\").replace("'", "\\'").replace("\n", " ").replace("\r", " ") + "'";
     }
 
-    private void injectGame(String name, byte[] data) {
-        appendNativeLog("BUILD2SA5AG EMU130_INJECT_SEND name=" + name + " bytes=" + (data == null ? 0 : data.length));
-        web.evaluateJavascript("AHRECV_BEGIN(" + jsQuote(name) + ")", null);
-        String b64 = Base64.encodeToString(data, Base64.NO_WRAP);
-        int parts = 0;
-        for (int i = 0; i < b64.length(); i += 262144) {
-            String part = b64.substring(i, Math.min(i + 262144, b64.length()));
-            web.evaluateJavascript("AHRECV_PART('" + part + "')", null);
-            parts++;
-        }
-        web.evaluateJavascript("AHRECV_END()", null);
-        appendNativeLog("BUILD2SA5AG EMU130_INJECT_SENT name=" + name + " parts=" + parts + " b64Chars=" + b64.length());
-    }
+    // B310: injectGame (hra do stranky stareho Atari v JavaScriptu pres AHRECV_*) smazano
+    // se starym emulatorem - hra jde do C++ (atariCppSpustProgram / queueAtariGameFor130xe).
 
     private void injectAudio(String name, byte[] data) {
         web.evaluateJavascript("AHLOCAL_AUDIO_BEGIN(" + jsQuote(name) + ")", null);
@@ -12392,15 +12157,8 @@ public class MainActivity extends Activity {
         }
     }
 
-    private void injectText(String name, byte[] data) {
-        web.evaluateJavascript("AHLOCAL_TEXT_BEGIN(" + jsQuote(name) + ")", null);
-        String b64 = Base64.encodeToString(data, Base64.NO_WRAP);
-        for (int i = 0; i < b64.length(); i += 262144) {
-            String part = b64.substring(i, Math.min(i + 262144, b64.length()));
-            web.evaluateJavascript("AHLOCAL_TEXT_PART('" + part + "')", null);
-        }
-        web.evaluateJavascript("AHLOCAL_TEXT_END()", null);
-    }
+    // B310: injectText (TXT do stranky stareho Atari, AHLOCAL_TEXT_*) smazano se starym
+    // emulatorem - TXT program pise do Atari 130XE C++ (tlacitko BASIC/TBXL TXT).
 
     private String ps1BiosAudit(File sysDir) {
         try {
@@ -12514,7 +12272,12 @@ public class MainActivity extends Activity {
                     int n;
                     while (in != null && (n = in.read(b)) > 0 && bo.size() < 16 * 1024 * 1024) bo.write(b, 0, n);
                     final byte[] d = bo.toByteArray();
-                    ui.post(() -> atariCppSpustProgram(d, nm, "XEX_MOBIL"));
+                    // B310: vyber i z chybove stranky webu (AHPICK.pickGame) - kdyz pristroj
+                    // neni na obrazovce, otevre se Atari 130XE a hra se spusti v nem
+                    ui.post(() -> {
+                        if (atariZarizeni != null) atariCppSpustProgram(d, nm, "XEX_MOBIL");
+                        else queueAtariGameFor130xe(nm, d, "vyberZTelefonu");
+                    });
                 } catch (Throwable t) {
                     appendNativeLog("B291 XEX_MOBIL_CHYBA " + safeMsg(t));
                     NativeAtariCoreBridge.devStatusSafe("SOUBOR NELZE PRECIST", 5000);
@@ -12623,7 +12386,7 @@ public class MainActivity extends Activity {
         if (req == PICK_BRIDGE) {
             if (res == RESULT_OK && data != null) {
                 try {
-                    int max = ("audio".equals(pendingBridgeKind) || "mp3".equals(pendingBridgeKind)) ? 64 * 1024 * 1024 : ("text".equals(pendingBridgeKind) ? 2 * 1024 * 1024 : 16 * 1024 * 1024);
+                    // B310: jen Player (mp3) - kazeta, TXT a hra pro stare Atari v JavaScriptu smazane
                     if ("mp3".equals(pendingBridgeKind)) {
                         web.evaluateJavascript("if(typeof AHLOCAL_MP3_PLAYLIST_BEGIN==='function')AHLOCAL_MP3_PLAYLIST_BEGIN()", null);
                         ClipData clip = data.getClipData();
@@ -12640,13 +12403,6 @@ public class MainActivity extends Activity {
                             injectMp3Uri(name, uri);
                         }
                         web.evaluateJavascript("if(typeof AHLOCAL_MP3_PLAYLIST_END==='function')AHLOCAL_MP3_PLAYLIST_END()", null);
-                    } else if (data.getData() != null) {
-                        Uri uri = data.getData();
-                        String name = getDisplayName(uri);
-                        byte[] bytes = readUriBytes(uri, max);
-                        if ("audio".equals(pendingBridgeKind)) injectAudio(name, bytes);
-                        else if ("text".equals(pendingBridgeKind)) injectText(name, bytes);
-                        else injectGame(name, bytes);
                     }
                 } catch (Exception e) {
                     web.evaluateJavascript("AHJAVA_ERROR(" + jsQuote(e.getMessage()) + ")", null);

@@ -96,6 +96,31 @@ public final class NapPostup {
         return false;
     }
 
+    /**
+     * B310: dávky napsaných řádků z C++ Atari ("12,7" - pořadí, jak je hráč
+     * odeslal přes RUN / LIST). Řádky počítalo jen staré Atari v JavaScriptu
+     * (smazané v B310), teď je počítá C++ (nap_atari_native.cpp) a tady se jen
+     * každá dávka přičte stejně jako dřív. Do 'log' přidá řádky pro log appky.
+     * Vrací true, když se právě otevřela Sega.
+     */
+    public static boolean pripocitejDavky(Context c, String davky, StringBuilder log) {
+        boolean otevreno = false;
+        if (davky == null || davky.isEmpty()) return false;
+        for (String kus : davky.split(",")) {
+            int kolik;
+            try { kolik = Integer.parseInt(kus.trim()); } catch (Throwable t) { continue; }
+            boolean ted = pripocitejRadky(c, kolik);
+            otevreno |= ted;
+            if (log != null) {
+                log.append("B310 POSTUP_HRACE ATARI_RADKY +").append(kolik).append(" -> ").append(stav(c))
+                   .append(ted ? "  *** SEGA PRAVE OTEVRENA ***"
+                           : kolik < NEJMENE_RADKU ? " (davka pod " + NEJMENE_RADKU + " radku se nepocita)" : "")
+                   .append('\n');
+            }
+        }
+        return otevreno;
+    }
+
     /** Hráč zvládl kód v Atari. */
     public static void otevriSegu(Context c) {
         try { p(c).edit().putBoolean(K_SEGA, true).apply(); } catch (Throwable ignored) {}

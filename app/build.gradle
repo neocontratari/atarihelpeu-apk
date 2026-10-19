@@ -9,8 +9,15 @@ android {
         applicationId "eu.atarihelp.emu10.test"  // TEST vedle prave apky (neprepise ji)
         minSdk 24
         targetSdk 34
-        versionCode 352
-        versionName "EMU10-B309-TV-BEZ-F5-INTRO59"
+        versionCode 353
+        versionName "EMU10-B310-ATARI-JEN-CPP"
+        // B310: Rene - "cely emu atari vbxe 130 xe vymazat v te JAVE - a na spravne tlacitko
+        // presunout emu atari 130xe vbxe c++ z HELPU ... emu atari v c++ funguje na 120
+        // procent". Stare Atari v JavaScriptu (assets/emu_vbxe + presmerovani emu/,
+        // emulator/, emu1/, emu_1/, emu10_130xe.html, 9 zaloh, 2 obrazky) a Java, ktera
+        // slouzila jen jemu, smazane. ATARI 130XE EMULATOR = Atari 130XE v C++, HELP v menu =
+        // napoveda (Rene vybral). Vsechny hry Atari jdou do C++. Odemceni Segy (50 radku
+        // programu) pocitalo jen stare Atari - ted C++ (postup hrace). Viz CO_JE_V_B310.md.
         // B309: Rene po B308 - "doom slape na jednicku s hvezdickou" + "ten log udelej jako
         // v atari emu help - s moznosti okamziteho odeslani" + "pokazdy pri prehozeni hry ci
         // emulatoru musim refresovat stranku F5" + "na intro ti pridam 14 s - intro muze mit

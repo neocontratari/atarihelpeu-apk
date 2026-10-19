@@ -30,7 +30,8 @@ public final class NativeAtariCoreBridge {
     // matice (NE konzolovy prepinac jako START/SELECT/OPTION). Hodnota
     // overena z Reneho JS reference (emu_vbxe/index.html): 'F1':17 /*HELP*/
     // a skutecne tlacitko HELP tam vola M.keyDown(17) - stejne cislo na
-    // obou mistech, takze je spolehlive.
+    // obou mistech, takze je spolehlive. (B310: stara JS reference emu_vbxe je
+    // smazana - hodnota zustava, je to skutecny kod klavesy HELP na 130XE.)
     public static final int KBCODE_HELP = 17;
 
     private static volatile boolean loaded = false;

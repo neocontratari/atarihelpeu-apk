@@ -85,26 +85,31 @@ body{display:flex;justify-content:center;align-items:flex-start;}
     </div>
   </div>
 
-  <a id="btnAtari" class="hit" href="emu_vbxe/index.html">ATARI 130XE EMULATOR</a>
+  <!-- B310: ATARI 130XE EMULATOR = Atari 130XE v C++ (driv pod HELP); stary emulator v JavaScriptu (emu_vbxe) je smazany -->
+  <a id="btnAtari" class="hit" href="emu_atari_cpp/index.html">ATARI 130XE EMULATOR</a>
   <a id="btnSega" class="hit" href="emu_sega/index.html">SEGA MEGA DRIVE</a>
   <a id="btnPlayer" class="hit" href="player/index.html">PLAYER MP3 WAV</a>
   <a id="btnPs1" class="hit" href="emu_ps1/index.html">PS1 PLAYSTATION</a>
   <a id="btnWeb" class="hit" href="https://atarihelp.eu/" data-external="1">ATARIHELP.EU</a>
-  <a id="btnHelp" class="hit" href="emu_atari_cpp/index.html">HELP</a>
+  <!-- B310: HELP = napoveda (Rene: "Napoveda"), Atari v C++ je pod ATARI 130XE EMULATOR -->
+  <a id="btnHelp" class="hit" href="#napoveda">HELP</a>
   <a id="btnRene" class="hit" href="dj/index.html">Rene Frank DJ Pult</a>
   <div id="toast" class="toast">N&amp;P VISION BUILD2NZ</div>
 </main>
 
 <div id="helpPanel" class="panel" aria-hidden="true">
   <div class="box">
-    <h2>N&amp;P VISION — HELP</h2>
-    <p><b>ATARI 130XE</b> otevre Atari emulator modul.</p>
-    <p><b>SEGA MEGA DRIVE</b> otevre funkcni Sega modul s ClownMDEmu wrapperem.</p>
-    <p><b>PLAYER</b> otevre MP3 / WAV prehravac.</p>
-    <p><b>PS1</b> otevre novou PlayStation obrazovku podle dodane grafiky.</p>
-    <p><b>ATARIHELP.EU</b> otevre oficialni web.</p>
-    <p><b>Podpis Rene Frank</b> vede na Facebook profil.</p>
-    <button id="helpClose" type="button">ZAVRIT HELP</button>
+    <h2>N&amp;P VISION — NÁPOVĚDA</h2>
+    <p><b>ATARI 130XE EMULATOR</b> – Atari 130XE s grafickou kartou VBXE, celé v C++: klávesnice, joystick, kazeťák a disketová mechanika jako na skutečném stroji.</p>
+    <p>Tlačítka na přístroji: <b>NET HRY</b> hry z atarihelp.eu, <b>XEX MOBIL</b> hra (XEX / ZIP) z telefonu, <b>ATR DISK</b> disketa do D1:, <b>TURBO BASIC</b> Turbo-BASIC XL, <b>BASIC/TBXL TXT</b> program z TXT souboru, <b>EJECT</b> na kazeťáku kazeta (WAV), <b>LOG/CHYBA</b> log a testy (ULOŽIT LOG A ODESLAT), <b>HELP</b> podrobné ovládání, <b>MENU</b> zpět sem.</p>
+    <p>Na šířku: obraz přes celý displej, D-pad a tlačítka, kolečko = nastavení ovládání.</p>
+    <p><b>SEGA MEGA DRIVE</b> – otevře se, až v Atari napíšeš 50 řádků programu (řádky s číslem; započítají se při RUN nebo LIST, aspoň 5 najednou).</p>
+    <p><b>PS1 PLAYSTATION</b> – otevře se po 30 minutách hraní na Seze.</p>
+    <p><b>PLAYER MP3 WAV</b> – přehrávač hudby z telefonu.</p>
+    <p><b>ATARIHELP.EU</b> – web atarihelp.eu. <b>Rene Frank DJ Pult</b> – DJ pult.</p>
+    <p><b>OPTIONS</b> (vpravo nahoře) – WEB TV: obraz a zvuk na televizi nebo počítači v prohlížeči (adresa se ukáže po zapnutí), intro, stažení her a BIOSu, aktualizace aplikace, kvalita obrazu a zvuku.</p>
+    <p>Tlačítko <b>ZPĚT</b> na telefonu: z emulátoru zpět do menu.</p>
+    <button id="helpClose" type="button">ZAVŘÍT NÁPOVĚDU</button>
   </div>
 </div>
 
@@ -121,9 +126,10 @@ function openExternal(url){
   try{if(window.Android&&typeof window.Android.openExternalUrl==='function'){window.Android.openExternalUrl(url);return;}}catch(e){}
   try{window.location.href=url;}catch(_){location.href=url;}
 }
-function showHelp(){var p=$('helpPanel');if(p){p.classList.add('open');p.setAttribute('aria-hidden','false');}toast('HELP otevren',1500);}
+function showHelp(){var p=$('helpPanel');if(p){p.classList.add('open');p.setAttribute('aria-hidden','false');p.scrollTop=0;}}
 function closeHelp(){var p=$('helpPanel');if(p){p.classList.remove('open');p.setAttribute('aria-hidden','true');}}
-['btnMenu'].forEach(function(id){var b=$(id);if(b)b.addEventListener('click',function(e){e.preventDefault();e.stopPropagation();showHelp();},true);});
+// B310: HELP (dole vpravo) i MENU (vlevo nahore) otevrou napovedu
+['btnMenu','btnHelp'].forEach(function(id){var b=$(id);if(b)b.addEventListener('click',function(e){e.preventDefault();e.stopPropagation();showHelp();},true);});
 var sp=$('settingsPanel');
 function napQualityRefresh(){
   try{
@@ -272,12 +278,13 @@ if(stAk)stAk.addEventListener('click',function(e){
 
 // BUILD2SA49: pokus, ktery ma rozhodnout, ktera pulka TV zpusobuje
 // kousani Atari. Prepina se dokola: oboji -> jen zvuk -> jen obraz.
+// B310: bez "KRESLENIM" - to bylo jen pro stare Atari v JavaScriptu (smazane)
 var tvPokusStav=0;
 var stTv=$('stTvPokus');
 if(stTv)stTv.addEventListener('click',function(e){
   e.preventDefault();e.stopPropagation();
-  tvPokusStav=(tvPokusStav+1)%4;
-  var jm=['OBOJI','JEN ZVUK','JEN OBRAZ','KRESLENIM'][tvPokusStav];
+  tvPokusStav=(tvPokusStav+1)%3;
+  var jm=['OBOJI','JEN ZVUK','JEN OBRAZ'][tvPokusStav];
   try{ if(window.AHINTRO&&AHINTRO.tvPokus) AHINTRO.tvPokus(tvPokusStav); }catch(err){}
   stTv.textContent='TV POKUS: '+jm;
   log('TV_POKUS '+jm);

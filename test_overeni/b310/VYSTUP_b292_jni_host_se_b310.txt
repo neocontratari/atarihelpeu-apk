@@ -1,0 +1,96 @@
+B310 - cely pristroj Atari 130XE (../b292/test_b292_jni_host.cpp: klavesnice, CSAVE/CLOAD, ATR, VBXE,
+PC klavesnice, Ctrl+V, proud na TV, ovladani na sirku) se SKUTECNYM nap_atari_native.cpp z B310
+
+OK     samokontrola probehla (51200 instrukci, 16252928 cteni)
+OK     Atari nastartovalo do READY
+OK     drzena klavesa se opakuje jako na skutecnem Atari
+OK     po pusteni klavesy opakovani prestalo
+OK     CSAVE: hotovy WAV prisel do Javy (devTakeWav)
+OK     EJECT vraci Jave akci VYBER KAZETY
+OK     EJECT otevrel dvirka
+OK     kazeta vlozena (WAV demodulovan)
+OK     po vlozeni kazety se dvirka zavrela
+OK     B295: po vlozeni kazety je PLAY zmacknute samo
+OK     CLOAD zapnul motor (pasek bezel)
+OK     CLOAD nahral program z kazety (LIST ho ukazuje)
+OK     ATR prijat do mechaniky D1:
+OK     Atari nabootovalo z diskety v D1: (Acid800)
+OK     po POWER vyp/zap disketa v mechanice zustala a bootuje znovu
+OK     B296: dotyk na leve pulce obrazovky + posun nahoru = joystick NAHORU (PORTA $E)
+OK     B296: posun prstu doprava = joystick NAHORU+VPRAVO (PORTA $6)
+OK     B296: dotyk na prave pulce obrazovky = FIRE (TRIG0 = 0)
+OK     B296: po zvednuti prstu je joystick v klidu (PORTA $F, TRIG0 1)
+OK     B296: herni ovladac = joystick VLEVO + FIRE + START
+OK     B296: ovladac pusteny -> joystick v klidu, START pusteny
+OK     B296: tlacitko X ovladace = klavesa MEZERA drzena (Wolfenstein: dvere)
+OK     B296: tlacitko X pusteno = klavesa pustena
+OK     B296: Popeye (VBXE) prijat jako XEX
+OK     B296: Popeye zapnul VBXE (XDL + overlay) a obraz kresli VBXE
+OK     B296: Popeye hraje (blitter VBXE kresli postavy - tisice blitu)
+OK     B296: Wolfenstein 3D nabootoval a titulku kresli VBXE (overlay SR 320 bodu)
+OK     B296: Wolfenstein 3D ve hre (3D pohled = overlay LR 160 bodu)
+OK     B296: joystick dotykem ve Wolfensteinu - hrac jde dopredu (obraz se zmenil)
+OK     B298: VYSUNOUT DISKETU -> D1: prazdna a Atari znovu v BASICu (READY)
+OK     B298: VYMENIT DISKETU bez restartu - v D1: je nova, program/pamet bezi dal (POKE zustal)
+OK     B298: CLOAD funguje i s disketou v D1: (kazeta jde pres OS, ne pres patch diskety)
+OK     B298: kazeta poznana jako bootovaci (hra) a ma zvukovou stopu (stereo)
+OK     B298: hra z kazety nabootovala sama (START+OPTION pri zapnuti, RETURN po pipnuti, nahrani)
+OK     B298: pri bootu z kazety je D1: prazdna (disketa vysunuta, aby nebootovala ona)
+OK     B298: POWER vyp/zap bez START = BASIC (kazeta v magnetofonu sama nebootuje)
+OK     B298: rucne jako na 130XE - drzet START+OPTION a zapnout POWER = boot z kazety (RETURN po pipnuti sam)
+B299 TXT PROGRAM HOTOVO za 0.6 s: napsano 3 radku, v pameti 3 radku, s chybou syntaxe 0; preskoceno: prazdnych 0, bez cisla radku 1 (napr. Muj program B299), delsich nez 120 znaku 0; znaku, ktere na Atari nejsou: 0
+B299 TXT PROGRAM HOTOVO za 0.6 s: napsano 3 radku, v pameti 3 radku, s chybou syntaxe 0; preskoceno: prazdnych 0, bez cisla radku 1 (napr. Muj program B299), delsich nez 120 znaku 0; znaku, ktere na Atari nejsou: 0
+OK     B299: TXT -> ATARI BASIC - program napsany (prikazy velkymi, retezec a REM jak v souboru)
+OK     B299: napsany program jde spustit (RUN)
+B299 TXT PROGRAM HOTOVO za 0.5 s: napsano 2 radku, v pameti 2 radku, s chybou syntaxe 0; preskoceno: prazdnych 0, bez cisla radku 0, delsich nez 120 znaku 0; znaku, ktere na Atari nejsou: 0
+B299 TXT PROGRAM HOTOVO za 0.5 s: napsano 2 radku, v pameti 2 radku, s chybou syntaxe 0; preskoceno: prazdnych 0, bez cisla radku 0, delsich nez 120 znaku 0; znaku, ktere na Atari nejsou: 0
+OK     B299: TXT -> TURBO-BASIC XL - program napsany v TBXL a jde spustit (DPOKE/DPEEK = 4660)
+OK     B299: klavesy z pristroje jsou v logu (B299 KLAVESY: LIST <RETURN>)
+OK     B299: LOG/CHYBA - diagnostika pameti (stav, ukazatele BASICu, kontrolni soucty) a vypis cele RAM
+OK     B301: TV/PC - obraz Atari primo z jadra (672x240 ARGB, modra obrazovka BASICu) a zvuk (stereo int16)
+OK     B302: PC klavesnice zacina v rezimu PSANI
+OK     B302: PC klavesnice - radek '? 6*7' napsany (6 klaves naraz) a spocitany (42)
+OK     B302: v logu prvni klavesa z PC a napsany radek (B299 KLAVESY (PC): ? 6*7 <RETURN>)
+OK     B302: F9 = rezim HRANI
+OK     B302: HRANI - W = joystick nahoru (+ klavesa W), L = FIRE
+OK     B302: HRANI - po pusteni joystick v klidu a klavesa pustena
+OK     B302: F9 = zpet PSANI
+OK     B302: F1 = START drzeny, po pusteni pusteny
+OK     B302: F2 = BREAK
+OK     B302: PustVse
+OK     B302: klavesa Z drzena, PustVse ji pustil
+OK     B302: BREAK z PC je v logu
+OK     B302: prohlizec se 2,5 s neozval - drzena klavesa Q pustena (a v logu)
+OK     B302: Shift+Backspace = smazat radek (SHIFT+BACK S)
+OK     B303: proud pro TV/PC z C++ - kazdy snimek (50/s), prvni klicovy, pak jen zmeny; po rozbaleni presne obraz z jadra
+OK     B303: v proudu je i zvuk Atari (44100 vzorku/s, bez mezer)
+OK     B303: klavesa z PC je v proudu do 2-3 snimku (median <= 70 ms)
+B299 TXT PROGRAM HOTOVO za 0.4 s: napsano 2 radku, v pameti 4 radku, s chybou syntaxe 0; preskoceno: prazdnych 0, bez cisla radku 0, delsich nez 120 znaku 0; znaku, ktere na Atari nejsou: 0
+B299 TXT PROGRAM HOTOVO za 0.4 s: napsano 2 radku, v pameti 4 radku, s chybou syntaxe 0; preskoceno: prazdnych 0, bez cisla radku 0, delsich nez 120 znaku 0; znaku, ktere na Atari nejsou: 0
+OK     B303: Ctrl+V program - radky 30 a 40 pridane k programu (bez NEW), cestina bez hacku
+OK     B303: Ctrl+V text - napsany jako klavesy a spocitany (56)
+OK     B303: XEX / UTF-16 vlozeny omylem - nic se nepise
+OK     B303: vlozeni je v logu
+OK     B303: POWER vypnuto - v proudu cerna obrazovka a priznak vypnuto
+OK     B303: vlozeni pri vypnutem Atari se odmitne (nenapise se po zapnuti)
+OK     B303: po zapnuti zase obraz; odpojeni prohlizece v logu (snimku, MB, klicovych)
+OK     B297: displej 2400x1080 = na sirku (obraz pres celou vysku, ovladani jako Sega)
+OK     B297: D-pad posun nahoru = joystick NAHORU (PORTA $E)
+OK     B297: D-pad sikmo vpravo dolu = diagonala (PORTA $5)
+OK     B297: FIRE soucasne s D-padem (TRIG0 = 0, smer drzi)
+OK     B297: stisk tlacitka vraci Jave vibraci
+OK     B297: po zvednuti prstu je joystick v klidu
+OK     B297: tlacitko MEZERA = klavesa mezera drzena
+OK     B297: MEZERA pustena
+OK     B297: tlacitko START drzi konzolovy START
+OK     B297: ozubene kolecko vraci Jave menu D-PAD A OVLADANI
+OK     B297: v uprave rozlozeni jde FIRE pretahnout prstem
+OK     B297: pri uprave rozlozeni se nehraje (tahani FIRE nestrili)
+OK     B297: HOTOVO vraci Jave ulozeni rozlozeni
+OK     B297: rozlozeni je v nastaveni pro Javu (pos=...)
+OK     B297: PROHODIT (levak) - D-pad je vpravo
+OK     B297: velikost a citlivost z Javy se pouziji
+OK     B297: VYCHOZI rozlozeni i nastaveni
+OK     B297: otoceni zpet na vysku = pristroj Atari jako driv
+OK     B297: na vysku zase funguje joystick na obrazovce
+VYSLEDEK: 86 kontrol, 0 chyb

@@ -2783,3 +2783,31 @@
      OpenSL/JNI volani) zustane cekat na realne zarizeni.
 
 ===============================================================================
+
+   B310: RADIKALNI REZ - STARE ATARI V JAVASCRIPTU SMAZANE.
+     Rene: "cely emu atari vbxe 130 xe vymazat v te JAVE - a na spravne
+     tlacitko presunout emu atari 130xe vbxe c++ z HELPU ... emu atari
+     v c++ funguje na 120 procent". Od B310:
+     - ATARI 130XE EMULATOR (hlavni menu, assets/index.html) =
+       emu_atari_cpp/index.html = pristroj Atari 130XE v C++ (B291+).
+       HELP v menu = napoveda (panel v index.html) - Rene vybral sam.
+     - SMAZANO z appky: assets/emu_vbxe (stare Atari, 7245 radku JS),
+       presmerovani emu/ (+9 zaloh), emulator/, emu1/, emu_1/, jeste
+       starsi emu10_130xe.html, design/vbxe_130xe_*_exact.png a Java,
+       ktera slouzila jen jemu (zvuk pushAtariPcm16/atariZvuk*, EMU_URL,
+       pendingGame + AHRECV_* vkladani her, AHPICK pickAudio/pickText,
+       AHSAVE.saveBase64, TV pokus KRESLENIM).
+     - VSECHNY hry Atari (NET HRY, odkazy na atarihelp.eu, vyber z
+       telefonu na chybovych strankach) jdou do C++ (queueAtariGameFor130xe).
+     - POSTUP HRACE: Segu odemykalo 50 radku programu, ktere pocitalo JEN
+       stare Atari (napPocitejZnak -> AHINTRO.napsanoRadku). Ted je pocita
+       C++ (nap_atari_native.cpp postupKlavesaLocked, devCtl "postup") a
+       Java je predava NapPostup.pripocitejDavky. Bez toho by se Sega
+       novemu hraci uz nikdy neotevrela.
+     KDE JE STARY KOD: jen v gitu - git show 7b40d21:app/src/main/assets/
+     emu_vbxe/index.html (posledni verze). Zaznamy vyse, ktere radi cist
+     jeho build komentare (B246 ...), plati dal - jen pres git.
+     ROM v nap_atari_roms.h jsou z Reneho skutecneho Atari 130XE (Rene to
+     potvrdil) - drive ulozene v base64 v emu_vbxe/index.html.
+
+===============================================================================

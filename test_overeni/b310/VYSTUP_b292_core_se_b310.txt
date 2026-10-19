@@ -1,0 +1,4 @@
+B310 - testy jadra Atari z B292 (../b292/test_core.cpp) s kodem B310
+pc-klavesnice: chyb 0
+vlozeni: chyb 0
+tv-proud: chyb 0

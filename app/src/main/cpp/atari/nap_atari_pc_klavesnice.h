@@ -49,6 +49,7 @@ struct PcAkce {
                            // JOY: 1 nahoru, 2 dolu, 4 vlevo, 8 vpravo, 16 FIRE
                            // KONZOLE: 1 START, 2 SELECT, 4 OPTION (1 = drzeno)
   bool cekatNaOs = false;  // KLAVESA: pockat, az OS prevezme predchozi znak (jen PSANI)
+  bool vlozeno = false;    // B310: text vlozeny z PC (Ctrl+V) - do postupu hrace (odemceni Segy) se nepocita
 };
 
 // ---------------------------------------------------------------------
@@ -352,6 +353,8 @@ struct PcPrehravac {
   // snimky). Do 'stisky' prida, co prave slo do stroje (scankod, -1 = BREAK)
   // - kvuli logu. smiStisk = false: nove klavesy pockaji (appka zrovna sama
   // pise program z TXT), pusteni probehne.
+  // B310: klavesa z vlozeneho textu (Ctrl+V) ma ve 'stisky' navic bit $100
+  // (postup hrace ji nepocita jako napsanou).
   void krok(Machine &m, std::vector<int> *stisky, bool smiStisk = true) {
     if (odStisku < 100000) odStisku++;
     if (drzene.empty()) { if (uvolneno < 100000) uvolneno++; } else uvolneno = 0;
@@ -370,7 +373,7 @@ struct PcPrehravac {
         m.klavesa(a.v & 0xFF, true);
         drzene.push_back({a.v, 0});
         posledniSc = a.v; odStisku = 0; uvolneno = 0; cekam = 0;
-        if (stisky) stisky->push_back(a.v & 0xFF);
+        if (stisky) stisky->push_back((a.v & 0xFF) | (a.vlozeno ? 0x100 : 0));
         q.pop_front();
         continue;
       }

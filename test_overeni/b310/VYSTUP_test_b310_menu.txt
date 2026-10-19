@@ -1,0 +1,18 @@
+B310 - hlavni nabidka appky (assets/index.html) v Chromiu, most AHINTRO napodoben
+
+OK     ATARI 130XE EMULATOR vede na Atari 130XE v C++ (emu_atari_cpp/index.html, soubor existuje)
+OK     stare Atari v JavaScriptu (emu_vbxe) v appce neni
+OK     HELP otevre napovedu a nikam se neodchazi (adresa stejna)
+OK     napoveda popisuje Atari 130XE a tlacitka na pristroji
+OK     napoveda rika, jak se otevre Sega (50 radku, RUN / LIST) a PS1 (30 min Segy)
+OK     ZAVRIT NAPOVEDU ji zavre
+OK     MENU (vlevo nahore) otevre napovedu
+OK     napoveda se otevre od zacatku
+OK     TV POKUS se toci OBOJI / JEN ZVUK / JEN OBRAZ (bez KRESLENIM ze stareho Atari)
+OK     zamcena Sega: ZAMCENO - NAPIS JESTE 45 RADKU KODU V ATARI (stav z Javy), nikam se nejde
+OK     hlavni nabidka bez chyby JavaScriptu
+OK     klik na ATARI 130XE EMULATOR otevre stranku Atari 130XE (v appce nad ni C++ kresli pristroj)
+OK     stranka ma 8 kroku testu B310 a poznamku B310
+OK     stranka Atari 130XE bez chyby JavaScriptu
+
+VYSLEDEK: 14 kontrol, 0 chyb

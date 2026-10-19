@@ -1,0 +1,92 @@
+B310 - postup hrace (odemceni Segy) v C++: skutecny nap_atari_native.cpp, pristroj Atari 130XE
+(radky B310 / B299 jsou z logu pristroje, ostatni vypisuje test)
+
+B310 - postup hrace (odemceni Segy) v C++: skutecny nap_atari_native.cpp, pristroj Atari 130XE
+OK     Atari nastartovalo do READY
+OK     na zacatku zadna davka
+B299 KLAVESY: 10 A=1 <RETURN>
+B299 KLAVESY: 20 A=2 <RETURN>
+B299 KLAVESY: 30 A=3 <RETURN>
+B299 KLAVESY: 40 A=4 <RETURN>
+B299 KLAVESY: 50 A=5 <RETURN>
+1) prstem: 10 A=1 .. 50 A=5, RUN
+OK     radky programu bez RUN / LIST: davka jeste neni hotova
+B310 POSTUP HRACE: davka 5 radku programu (RUN) -> Java (Sega se otevre po 50)
+B299 KLAVESY: RUN <RETURN>
+   postup = "5"
+OK     RUN -> davka 5 radku pro Javu
+OK     Java davku vyzvedla - podruhe uz nic
+OK     BASIC radky opravdu prijal (bez ERROR)
+B299 KLAVESY: 60 <RETURN>
+B299 KLAVESY: A=7 <RETURN>
+B299 KLAVESY: RUN <RETURN>
+2) prstem: 60 (jen cislo), A=7 (prikaz), RUN
+   postup = ""
+OK     jen cislo ani prikaz bez cisla nejsou radky programu - zadna davka
+B299 KLAVESY: 70 B=3<BKSP>2 <RETURN>
+B299 KLAVESY: 71 B=1 <RETURN>
+B299 KLAVESY: 72 B=4 <RETURN>
+B299 KLAVESY: 73 B=5 <RETURN>
+B299 KLAVESY: 74 B=6 <RETURN>
+B310 POSTUP HRACE: davka 5 radku programu (L.) -> Java (Sega se otevre po 50)
+B299 KLAVESY: L. <RETURN>
+3) prstem: 70 B=3 <BACK S> 2, 71..74, L.
+   postup = "5"
+OK     L. (zkratka LIST) -> davka 5 radku
+OK     LIST ukazuje opraveny radek 70 B=2 (BACK S doslo do BASICu)
+B299 KLAVESY: 80 C=1<BREAK>
+B299 KLAVESY: RUN <RETURN>
+4) prstem: 80 C=1 <BREAK>, RUN
+   postup = ""
+OK     radek zruseny BREAK se nepocita
+B299 KLAVESY (PC): 90 D=1 <RETURN>
+B299 KLAVESY (PC): 91 D=2 <RETURN>
+B299 KLAVESY (PC): 92 D=3 <RETURN>
+B299 KLAVESY (PC): 93 D=4 <RETURN>
+B299 KLAVESY (PC): 94 D=5 <RETURN>
+B310 POSTUP HRACE: davka 5 radku programu (RUN) -> Java (Sega se otevre po 50)
+B299 KLAVESY (PC): RUN <RETURN>
+5) z klavesnice pocitace: 90 D=1 .. 94 D=5, RUN
+   postup = "5"
+OK     klavesnice pocitace (TV/PC) se pocita stejne -> davka 5
+B299 KLAVESY: 100 E=1 <RETURN>
+B299 KLAVESY: 101 E=2 <RETURN>
+B299 KLAVESY: 102 E=3 <RETURN>
+B299 KLAVESY: 103 E=4 <RETURN>
+B299 KLAVESY: 104 E=5 <RETURN>
+B303 VLOZENI z PC: text 4 B -> NAPSANO: 4 ZNAKU
+B299 KLAVESY (PC): RUN <RETURN>
+6) prstem 100..104, Ctrl+V "RUN" z PC, prstem LIST
+   vloz -> NAPSANO: 4 ZNAKU
+   postup po vlozenem RUN = ""
+OK     vlozeny RUN (Ctrl+V) davku neodesle
+B310 POSTUP HRACE: davka 5 radku programu (LIST) -> Java (Sega se otevre po 50)
+B299 KLAVESY: LIST <RETURN>
+   postup po LIST prstem = "5"
+OK     napsane radky zustaly - LIST prstem -> davka 5
+B303 VLOZENI z PC: program 40 B -> VLOZENO: 5 RADKU PROGRAMU (BEZ NEW) - PISU AZ BUDE READY (NEJVYS 45 S)
+B299 KLAVESY: RUN <RETURN>
+   vloz program -> VLOZENO: 5 RADKU PROGRAMU (BEZ NEW) - PISU AZ BUDE READY (NEJVYS 45 S)
+   postup po vlozenem programu a RUN = ""
+OK     program vlozeny z PC (pise ho appka sama) se nepocita
+B299 KLAVESY: 300 G=1 <RETURN>
+B299 KLAVESY: 301 G=2 <RETURN>
+B299 KLAVESY: 302 G=3 <RETURN>
+B299 KLAVESY: 303 G=4 <RETURN>
+B299 KLAVESY: 304 G=5 <RETURN>
+B310 POSTUP HRACE: davka 5 radku programu (RUN) -> Java (Sega se otevre po 50)
+B299 KLAVESY: RUN <RETURN>
+B299 KLAVESY: 400 H=1 <RETURN>
+B299 KLAVESY: 401 H=2 <RETURN>
+7) davka hotova pred odchodem z Atari, rozepsane radky pri odchodu
+   postup po odchodu = "5"
+OK     hotova davka zustala pro Javu i po odchodu z Atari (Java ji vyzvedne pri vypnuti pristroje)
+OK     novy vstup do Atari - READY
+B299 KLAVESY: RUN <RETURN>
+   postup po novem vstupu a RUN = ""
+OK     rozepsane radky z minula se po novem vstupu nepocitaji (jako nova stranka stareho Atari)
+OK     log: B310 POSTUP HRACE ... (RUN)
+OK     log: B310 POSTUP HRACE ... (L.)
+OK     log B299 KLAVESY beze zmeny (co hrac napsal)
+OK     devCtl "postup" nezahlcuje log
+VYSLEDEK: 21 kontrol, 0 chyb

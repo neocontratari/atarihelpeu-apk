@@ -1,0 +1,22 @@
+B310 - NapPostup.pripocitejDavky (skutecna trida z appky), davky z C++ Atari
+OK     novy hrac: Sega zamcena, 0 radku
+OK     prazdna odpoved z C++ nic nepricte
+OK     davka 3 radky se nepocita (pod 5)
+OK     davky 5 a 12 -> 17 radku
+OK     nesmysl se preskoci, ' 20 ' se precte, 4 se nepocita -> 37
+OK     37 radku: Sega porad zamcena
+OK     davka 13 -> 50 radku: Sega PRAVE OTEVRENA (true)
+OK     dalsi davka uz Segu znovu neotevira (false), zustava otevrena
+OK     log: davka pod 5 radku s vysvetlenim
+OK     log: SEGA PRAVE OTEVRENA
+--- log appky ---
+B310 POSTUP_HRACE ATARI_RADKY +3 -> radku=0/50 sega=ZAMCENA ps1=ZAMCENA odehrano=0min (davka pod 5 radku se nepocita)
+B310 POSTUP_HRACE ATARI_RADKY +5 -> radku=5/50 sega=ZAMCENA ps1=ZAMCENA odehrano=0min
+B310 POSTUP_HRACE ATARI_RADKY +12 -> radku=17/50 sega=ZAMCENA ps1=ZAMCENA odehrano=0min
+B310 POSTUP_HRACE ATARI_RADKY +20 -> radku=37/50 sega=ZAMCENA ps1=ZAMCENA odehrano=0min
+B310 POSTUP_HRACE ATARI_RADKY +4 -> radku=37/50 sega=ZAMCENA ps1=ZAMCENA odehrano=0min (davka pod 5 radku se nepocita)
+B310 POSTUP_HRACE ATARI_RADKY +13 -> radku=50/50 sega=otevrena ps1=ZAMCENA odehrano=0min  *** SEGA PRAVE OTEVRENA ***
+B310 POSTUP_HRACE ATARI_RADKY +6 -> radku=56/50 sega=otevrena ps1=ZAMCENA odehrano=0min
+---
+
+VYSLEDEK: 10 kontrol, 0 chyb
