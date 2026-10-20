@@ -1,0 +1,15 @@
+B311: hlavni menu na TV / PC - stranka z MainActivity.java (36873 B), proud ze skutecneho nap_menu_gl.cpp (Mesa)
+klavesy menu z napTvMenuKlavesa: ArrowLeft=KL_VLEVO, ArrowRight=KL_VPRAVO, End=KL_KONEC, Enter=KL_POTVRD, Home=KL_ZACATEK, KeyA=KL_VLEVO, KeyD=KL_VPRAVO, NumpadEnter=KL_POTVRD, Space=KL_POTVRD
+OK     Java: klavesy prohlizece -> menu (sipky / A D, Enter / mezernik, Home / End)
+OK     C++ menu bezi (7 karet, pripraveno za 0.4 s na Mesa / CPU)
+   {'nahore': 'ap', 'cv': 'block', 'druh': 'menu', 'ver': 3, 'W': 854, 'H': 480, 'pak': 12, 'menu': True, 'popis': 'MENU - sipky / A D listuji, Enter otevre, Home / End', 'popisVidet': 'block', 'jas': 21.837952120739004}
+OK     prohlizec bere proud menu z C++ (/menu.stream, JPEG po castech v3, 854x480) a canvas je navrchu (za 1.6 s)
+OK     obraz menu bezi (57 snimku za 3 s; Mesa na CPU) a neni cerny (prumerny jas 21.8)
+OK     popis klaves vpravo dole: "MENU - sipky / A D listuji, Enter otevre, Home / End"
+   karta po sipce vpravo 1, D 2, A 1, End 6, Home 0
+OK     klavesnice PC listuje C++ menu: sipka vpravo, D, A, End (HELP), Home (ATARI)
+OK     Enter na zamcene SEGE: C++ vrati "zamceno" (3001), nic se nespusti [('Enter', 3001)]
+OK     Enter na ATARI 130XE: C++ vrati "spustit kartu 0" (1000) -> Java prepne stranku [('Enter', 1000)]
+OK     zadna chyba JavaScriptu
+log proudu: B306 TV PROUD MENU: prohlizec 1 pripojen (celkem 1) - obraz a zvuk primo z C++ (JPEG po castech), kazdy snimek, zvuk 44100 Hz v tomtez paketu | B306 TV PROUD MENU: prohlizec 1 odpojen po 16 s - 351 paketu (21.4/s), 13.2 MB celkem, JPEG kvalita 76 (max 76, snizeno 0x), kodovani prumer 8.9 ms max 115.8 
+VYSLEDEK: 9 kontrol, 0 CHYBA

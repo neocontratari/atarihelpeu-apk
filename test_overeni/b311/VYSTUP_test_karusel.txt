@@ -1,0 +1,72 @@
+B311 - karusel hlavniho menu: karty.txt, rozlozeni, fyzika, dotyk, klavesy
+
+1) karty.txt
+OK     assets/menu/karty.txt existuje  2994 B
+OK     7 karet  7
+OK     bez varovani
+OK     poradi ATARI, SEGA, PS1, MP3, DZUBOX, WEB, HELP (HELP na konci)
+OK     ATARI -> emu_atari_cpp/index.html (Atari 130XE v C++)  emu_atari_cpp/index.html
+OK     SEGA -> emu_sega, zamek sega
+OK     PS1 -> emu_ps1, zamek ps1
+OK     MP3 PREHRAVAC -> player/index.html (Retro Cassette Player)  MP3 PŘEHRÁVAČ
+OK     DZUBOX -> dj/index.html (PRO DJ MIXER)  DŽUBOX
+OK     ATARIHELP.EU -> https://atarihelp.eu/
+OK     HELP -> napoveda/index.html (navod)
+OK     kazda karta ma zivy efekt i obrazek (zaloha / HTML)
+OK     obrazky karet jsou v assets
+OK     zaloha v C++ (kdyby karty.txt chybel) ma stejne karty, cile, efekty a zamky
+OK     parser: BOM, komentar, prazdny radek, CRLF, radek bez id preskocen  karet 4
+OK     orezane mezery, barva, chybejici tlacitko = OTEVŘÍT
+OK     chybejici nazev = id velkymi, spatna barva = zlata  NOVA
+OK     stejne id podruhe prejmenovano, barva fb4 = #FFBB44  atari_6
+OK     nova masina jednim radkem (jen obrazek, bez efektu)
+OK     varovani do logu (bez id, stejne id, spatna barva)
+OK     velka pismena s hacky  DŽUBOX PŘEHRÁVAČ
+
+2) rozlozeni (telefon na vysku, na sirku, tablet, TV)
+OK     telefon 1080x2340  karta 821x1094, soused vykukuje 7.7 %, karet videt (stred 3) 3
+OK     telefon 1080x1920  karta 749x998, soused vykukuje 11.3 %, karet videt (stred 3) 3
+OK     telefon 720x1280  karta 499x666, soused vykukuje 11.3 %, karet videt (stred 3) 3
+OK     tablet na vysku  karta 998x1331, soused vykukuje 15.2 %, karet videt (stred 3) 3
+OK     telefon na sirku  karta 482x643, soused vykukuje 38.3 %, karet videt (stred 3) 7
+OK     tablet na sirku  karta 714x952, soused vykukuje 34.1 %, karet videt (stred 3) 5
+OK     TV / PC 854x480  karta 191x255, soused vykukuje 37.3 %, karet videt (stred 3) 7
+
+3) fyzika (telefon 1080x2340, 7 karet)
+OK     tah 1:1: prst o rozestup karet (+ prah) = presne o kartu  poz 1.00000, rozestup 775 bodu
+OK     karta pod prstem: prst -100 bodu = karta -100 bodu  posun karty -100.00
+OK     pusteni bez rychlosti: zustane na karte 1  klid za 17 ms
+OK     tah o 0,3 karty a pustit (stal) -> zpet na prvni kartu  pro oko hotovo za 350 ms, klid za 617 ms, nejmin 0.0000
+OK     tah o 0,6 karty a pustit -> dalsi karta  pro oko hotovo za 367 ms, klid za 650 ms, nejvys 1.0000
+OK     kratke svihnuti (0,15 karty za 70 ms) -> dalsi karta, bez couvani a prekmitu  pro oko hotovo za 367 ms, klid za 617 ms, max 4.84 karty/s
+OK     svihnuti doprava -> predchozi karta  poz 1
+OK     silny svih (~12 karet/s) dojede o nekolik karet a zastavi presne na karte  z 1.20 na 4, rychlost pusteni 11.9 karet/s
+OK     silny svih: jen zpomaluje (zadne zrychleni ani couvani)  max 11.78 karet/s
+OK     svih pres konec -> posledni karta (HELP)  poz 6, nejvys 6.208
+OK     guma za posledni kartou: tah o 1,5 karty = jen kousek  za koncem 0.452 karty
+OK     pusteni za koncem -> zpet na posledni kartu  za 583 ms
+OK     guma pred prvni kartou  poz -0.355
+OK     pusteni pred zacatkem -> prvni karta
+OK     30 i 120 snimku/s: stejna karta, stejny cas  karta 2 / 2, 633 / 608 ms
+
+4) klepnuti a klavesy
+OK     klepnuti na prostredni kartu = spustit ATARI  akce 1000
+OK     klepnuti na kartu vedle = nespusti
+OK     ... ale dojede na ni  poz 1 za 650 ms
+OK     klepnuti na kolecko = OPTIONS
+OK     tlacitko pod kartami = spustit prostredni (SEGA)  akce 1001
+OK     klepnuti na posledni tecku -> dojede na HELP  poz 6
+OK     drzeni prstu 0,9 s neni klepnuti
+OK     prst na jedoucim karuselu: zastavi, nic nespusti, dojede na kartu  jel 7.5 karet/s
+OK     svisly tah prstem karuselem nehne  poz 2.000
+OK     3x sipka doprava rychle za sebou = cil 3. karta dal  cil 3
+OK     Enter, kdyz karusel jeste jede daleko = nic
+OK     dojede na MP3 PREHRAVAC, Enter = spustit  za 733 ms, akce 1003
+OK     End = posledni karta (HELP)
+OK     sipka doprava na konci = zustane
+OK     Home = prvni karta
+OK     1 karta: svih nic nerozbije, klepnuti spusti
+OK     15 karet: svihy jedou dal (zadna pevna mez 7)  poz 7
+OK     15 karet: End = 15. karta
+
+VYSLEDEK: 61 OK, 0 CHYBA

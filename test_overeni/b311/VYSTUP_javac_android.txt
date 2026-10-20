@@ -1,0 +1,5 @@
+B311 - javac --release 17 -cp android.jar (API 34) vsechny zdrojaky appky (eu.atarihelp.emu10 + nap)
+Note: Some input files use or override a deprecated API.
+Note: Recompile with -Xlint:deprecation for details.
+trid prelozeno: 94
+VYSLEDEK: 0 chyb prekladu

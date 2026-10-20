@@ -1,0 +1,42 @@
+B311 - snimky hlavniho menu pres Mesa (skutecny C++ z app/src/main/cpp/menu); PNG v PRAC/snimky
+MENU kresba pripravena: ANO (pisma 1, logo ano, mipmapy karet ano)
+GL OpenGL ES 3.2 Mesa 25.2.8-0ubuntu0.24.04.4 | llvmpipe (LLVM 20.1.2, 256 bits) (kontext ES 3)
+MENU pripraveno za 63 ms, karet 7, mipmapy ano
+snimek poz=0.00 t=0.35: 372.3 ms, jas 35.4, prekresleno karet 3, chyb GL 0 -> PRAC/snimky/menu_1080x2340_p0.00_t0.35.png
+snimek poz=0.00 t=3.00: 252.6 ms, jas 36.7, prekresleno karet 3, chyb GL 0 -> PRAC/snimky/menu_1080x2340_p0.00_t3.00.png
+snimek poz=1.00 t=3.00: 157.9 ms, jas 35.3, prekresleno karet 2, chyb GL 0 -> PRAC/snimky/menu_1080x2340_p1.00_t3.00.png
+snimek poz=3.00 t=3.00: 231.6 ms, jas 37.3, prekresleno karet 2, chyb GL 0 -> PRAC/snimky/menu_1080x2340_p3.00_t3.00.png
+snimek poz=4.00 t=3.00: 51.2 ms, jas 38.6, prekresleno karet 0, chyb GL 0 -> PRAC/snimky/menu_1080x2340_p4.00_t3.00.png
+snimek poz=5.00 t=3.00: 69.9 ms, jas 34.8, prekresleno karet 0, chyb GL 0 -> PRAC/snimky/menu_1080x2340_p5.00_t3.00.png
+snimek poz=6.00 t=3.00: 61.5 ms, jas 45.6, prekresleno karet 0, chyb GL 0 -> PRAC/snimky/menu_1080x2340_p6.00_t3.00.png
+snimek poz=2.50 t=3.00: 67.8 ms, jas 32.3, prekresleno karet 0, chyb GL 0 -> PRAC/snimky/menu_1080x2340_p2.50_t3.00.png
+umeni: atari=3d:atari, sega=3d:nap16, ps1=3d:nap32, mp3=fx:kazeta, dzubox=fx:dzubox, web=fx:web, help=fx:help
+obrazky karet 800x1072 bodu (karta na obrazovce 821x1094)
+CHYB GL celkem: 0
+MENU kresba pripravena: ANO (pisma 1, logo ano, mipmapy karet ano)
+GL OpenGL ES 3.2 Mesa 25.2.8-0ubuntu0.24.04.4 | llvmpipe (LLVM 20.1.2, 256 bits) (kontext ES 3)
+MENU pripraveno za 70 ms, karet 7, mipmapy ano
+snimek poz=1.00 t=3.00: 584.0 ms, jas 28.6, prekresleno karet 5, chyb GL 0 -> PRAC/snimky/menu_1080x2340_p1.00_t3.00.png
+snimek poz=2.00 t=3.00: 122.0 ms, jas 27.7, prekresleno karet 1, chyb GL 0 -> PRAC/snimky/menu_1080x2340_p2.00_t3.00.png
+umeni: atari=3d:atari, sega=3d:nap16, ps1=3d:nap32, mp3=fx:kazeta, dzubox=fx:dzubox, web=fx:web, help=-
+obrazky karet 800x1072 bodu (karta na obrazovce 821x1094)
+CHYB GL celkem: 0
+MENU kresba pripravena: ANO (pisma 1, logo ano, mipmapy karet ano)
+GL OpenGL ES 3.2 Mesa 25.2.8-0ubuntu0.24.04.4 | llvmpipe (LLVM 20.1.2, 256 bits) (kontext ES 3)
+MENU pripraveno za 64 ms, karet 7, mipmapy ano
+snimek poz=2.00 t=3.00: 564.3 ms, jas 22.7, prekresleno karet 7, chyb GL 0 -> PRAC/snimky/menu_2340x1080_p2.00_t3.00.png
+snimek poz=5.00 t=3.00: 65.5 ms, jas 23.3, prekresleno karet 0, chyb GL 0 -> PRAC/snimky/menu_2340x1080_p5.00_t3.00.png
+umeni: atari=3d:atari, sega=3d:nap16, ps1=3d:nap32, mp3=fx:kazeta, dzubox=fx:dzubox, web=fx:web, help=fx:help
+obrazky karet 488x648 bodu (karta na obrazovce 482x643)
+CHYB GL celkem: 0
+MENU kresba pripravena: ANO (pisma 1, logo ano, mipmapy karet ano)
+GL OpenGL ES 3.2 Mesa 25.2.8-0ubuntu0.24.04.4 | llvmpipe (LLVM 20.1.2, 256 bits) (kontext ES 3)
+MENU pripraveno za 65 ms, karet 7, mipmapy ano
+snimek poz=0.00 t=3.00: 270.9 ms, jas 22.7, prekresleno karet 5, chyb GL 0 -> PRAC/snimky/menu_854x480_tv_p0.00_t3.00.png
+umeni: atari=3d:atari, sega=3d:nap16, ps1=3d:nap32, mp3=fx:kazeta, dzubox=fx:dzubox, web=-, help=-
+obrazky karet 192x256 bodu (karta na obrazovce 191x255)
+CHYB GL celkem: 0
+MENU kresba pripravena: ANO (pisma 1, logo ano, mipmapy karet ano)
+GL OpenGL ES 3.2 Mesa 25.2.8-0ubuntu0.24.04.4 | llvmpipe (LLVM 20.1.2, 256 bits) (kontext ES 3)
+MENU pripraveno za 61 ms, karet 7, mipmapy ano
+VYKON 1080x2340: 46 snimku, prumer 130.52 ms, nejhorsi 497.73 ms (Mesa llvmpipe na CPU - telefon ma GPU)

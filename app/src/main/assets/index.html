@@ -4,132 +4,286 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no, viewport-fit=cover">
 <title>N&amp;P VISION — Retro Universe</title>
+<script>
+// B311: hlavni menu kresli C++ (karusel karet, knihovna napmenu) NAD touto strankou.
+// Kdyz ho appka ukaze, tady zustane jen OPTIONS - karusel v HTML se schova hned,
+// at pod C++ menu nic neproblikne. Kdyz C++ menu nejde (nebo na PC), je videt HTML.
+(function(){try{if(window.AHINTRO&&AHINTRO.menuBude&&AHINTRO.menuBude())document.documentElement.className+=' nativni';}catch(e){}})();
+</script>
 <style>
+/* B311: pismo Chakra Petch primo v appce (stejne jako C++ menu; licence OFL v pisma/OFL.txt) */
+@font-face{font-family:"Chakra Petch";src:url(pisma/chakra_semibold.woff2) format("woff2");font-weight:400 600;font-style:normal;font-display:swap;}
+@font-face{font-family:"Chakra Petch";src:url(pisma/chakra_bold.woff2) format("woff2");font-weight:700 900;font-style:normal;font-display:swap;}
+@font-face{font-family:"Chakra Petch";src:url(pisma/chakra_bolditalic.woff2) format("woff2");font-weight:400 900;font-style:italic;font-display:swap;}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
-html,body{min-height:100%;background:#050302;color:#f7d477;font-family:"Courier New",monospace;overflow-x:hidden;}
-body{display:flex;justify-content:center;align-items:flex-start;}
-.stage{position:relative;width:min(100vw,941px);aspect-ratio:941/1672;background:#050302;overflow:hidden;box-shadow:0 0 56px rgba(0,0,0,.95);}
-.skin{position:absolute;inset:0;width:100%;height:100%;display:block;pointer-events:none;user-select:none;-webkit-user-drag:none;z-index:1;}
-.hit{position:absolute;z-index:8;border:0;background:transparent;color:transparent;font-size:0;line-height:0;text-decoration:none;cursor:pointer;touch-action:manipulation;}
-.hit:active{background:rgba(255,186,55,.12);box-shadow:0 0 34px rgba(255,186,55,.28) inset;border-radius:18px;}
-#btnMenu{left:4.1%;top:3.1%;width:10.5%;height:6.2%;}
-#btnSettings{left:85.1%;top:3.1%;width:10.5%;height:6.2%;}
-#btnAtari{left:3.0%;top:67.6%;width:45.9%;height:9.7%;}
-#btnSega{left:51.1%;top:67.6%;width:45.9%;height:9.7%;}
-#btnPlayer{left:3.0%;top:78.9%;width:45.9%;height:9.7%;}
-#btnPs1{left:51.1%;top:78.9%;width:45.9%;height:9.7%;}
-#btnWeb{left:3.0%;top:90.0%;width:45.9%;height:7.5%;}
-#btnHelp{left:51.1%;top:90.0%;width:45.9%;height:7.5%;}
-#btnRene{left:22.0%;top:96.1%;width:56.0%;height:3.5%;}
-.toast{position:absolute;left:5%;right:5%;bottom:4.6%;z-index:30;display:none;padding:10px 12px;border-radius:14px;background:rgba(0,0,0,.86);border:1px solid rgba(255,200,80,.56);box-shadow:0 0 22px rgba(255,170,35,.18);color:#ffe6a0;font:900 clamp(11px,2.6vw,15px)/1.35 "Courier New",monospace;text-align:center;}
-.toast.show{display:block;}
-.panel{display:none;position:fixed;inset:0;z-index:80;background:rgba(0,0,0,.94);padding:18px;overflow:auto;color:#f7d477;}
-.panel.open{display:block;}
-.panel .box{max-width:760px;margin:0 auto;background:linear-gradient(180deg,#100904,#060403);border:1px solid rgba(255,195,64,.50);border-radius:18px;padding:18px;box-shadow:0 0 38px rgba(0,0,0,.8),0 0 24px rgba(255,163,20,.18) inset;}
-.panel h2{font:900 23px "Courier New",monospace;margin-bottom:12px;color:#ffe49a;text-align:center;}
-.panel p{font:800 14px/1.45 "Courier New",monospace;margin:9px 0;color:#e9eef7;}
-.panel b{color:#8ee7ff;}
-.panel button{width:100%;margin-top:14px;padding:14px;border:0;border-radius:12px;background:#d8a947;color:#070402;font:900 15px "Courier New",monospace;}
-#settingsPanel{display:none;position:absolute;right:2%;top:10.5%;z-index:50;min-width:58%;background:radial-gradient(120% 100% at 50% 0%,#241503 0%,#120a03 45%,#080503 100%);border:1px solid rgba(255,195,64,.55);border-radius:18px;padding:16px 14px 18px;box-shadow:0 0 40px rgba(0,0,0,.9),inset 0 1px 0 rgba(255,214,130,.18),0 0 22px rgba(255,170,40,.12);}#settingsPanel:before{content:"";display:block;height:2px;margin:-6px -4px 12px;border-radius:2px;background:linear-gradient(90deg,transparent,rgba(255,196,80,.85),transparent);}
-#settingsPanel.open{display:block;}
-#settingsPanel .stlabel{color:#ffd479;font:900 14px "Courier New",monospace;margin:0 0 12px;letter-spacing:.22em;text-align:center;text-shadow:0 0 12px rgba(255,170,40,.55);}
-#settingsPanel button{display:block;width:100%;padding:13px;border:0;border-radius:12px;background:linear-gradient(180deg,#f0c463,#c8952f);color:#160c02;font:900 13px "Courier New",monospace;letter-spacing:.08em;cursor:pointer;box-shadow:0 2px 0 rgba(0,0,0,.5),inset 0 1px 0 rgba(255,255,255,.45);transition:.15s;}#settingsPanel button:active{transform:translateY(1px);box-shadow:0 1px 0 rgba(0,0,0,.5);}
-#settingsPanel .stlabel2{color:#d9b878;font:900 10px "Courier New",monospace;margin:16px 0 7px;letter-spacing:.16em;display:flex;align-items:center;gap:8px;}#settingsPanel .stlabel2:after{content:"";flex:1;height:1px;background:linear-gradient(90deg,rgba(255,195,64,.35),transparent);}
-    .sthint{color:#ffe49a;font:900 12px "Courier New",monospace;margin:12px 0 8px;letter-spacing:.05em;;font-size:11px;opacity:.75;margin-top:6px}
-#settingsPanel .qrow{display:flex;gap:7px;}
-#settingsPanel .qrow button{flex:1;padding:11px 4px;font-size:11px;letter-spacing:.06em;background:linear-gradient(180deg,#3b2a10,#241806);color:#e8c98d;border:1px solid rgba(255,195,64,.28);box-shadow:inset 0 1px 0 rgba(255,214,130,.10);}
-#settingsPanel .qrow button.active{background:linear-gradient(180deg,#ffd479,#d8a947);color:#1a0f02;border-color:rgba(255,225,150,.9);box-shadow:0 0 18px rgba(255,180,40,.65),inset 0 1px 0 rgba(255,255,255,.5);}
-@media (orientation:landscape) and (max-height:760px){
- .stage{height:100vh;width:auto;max-width:none;}
- .toast{bottom:2%;font-size:11px;padding:6px 8px;}
+:root{--zl1:#ffe39a;--zl2:#d79a2e;--zl3:#7a4a10;--text:#efe6cf;--azur:#8fdcff;--bg:#050302;}
+html,body{height:100%;background:var(--bg);color:var(--text);font-family:"Chakra Petch","Segoe UI",Roboto,Arial,sans-serif;overflow:hidden;}
+body{background:radial-gradient(120% 70% at 50% 40%,#1c1006 0%,#0a0603 45%,#030201 100%);}
+.nativni body{background:#030201;}
+.nativni #menu{display:none;}
+
+/* ---------- karusel v HTML (zaloha, kdyz C++ menu nejde) ---------- */
+#menu{position:fixed;top:0;right:0;bottom:0;left:0;display:flex;flex-direction:column;align-items:center;}
+#hlava{position:relative;width:100%;display:flex;flex-direction:column;align-items:center;padding:10px 0 2px;}
+#minca{width:min(15vw,72px);height:min(15vw,72px);border-radius:50%;background:url(design/nap_logo_original.png) 48.2% 45.8%/120% 120% no-repeat;
+  box-shadow:0 0 26px rgba(255,170,50,.45),0 0 0 2px rgba(60,35,8,.9);}
+#titul{margin-top:6px;font-weight:800;font-size:min(10.5vw,52px);letter-spacing:.03em;line-height:1;
+  background:linear-gradient(180deg,#fff0b8 0%,#f2c25a 48%,#b9741b 100%);-webkit-background-clip:text;background-clip:text;color:transparent;
+  filter:drop-shadow(0 2px 3px rgba(0,0,0,.8));}
+#slogan{margin-top:6px;font-weight:600;font-size:min(3.2vw,15px);letter-spacing:.55em;color:#e2bd78;padding-left:.55em;}
+#ozub{position:absolute;right:12px;top:12px;width:min(12vw,54px);height:min(12vw,54px);border:0;cursor:pointer;
+  clip-path:polygon(29% 0,71% 0,100% 29%,100% 71%,71% 100%,29% 100%,0 71%,0 29%);
+  background:linear-gradient(180deg,#ffe39a,#a8661a);display:flex;align-items:center;justify-content:center;}
+#ozub span{width:86%;height:86%;clip-path:polygon(29% 0,71% 0,100% 29%,100% 71%,71% 100%,29% 100%,0 71%,0 29%);background:#140b04;
+  display:flex;align-items:center;justify-content:center;color:#f2c25a;font-size:min(7vw,30px);line-height:1;}
+#karusel{flex:1;width:100%;display:flex;align-items:center;overflow-x:auto;overflow-y:hidden;scroll-snap-type:x mandatory;
+  -webkit-overflow-scrolling:touch;scrollbar-width:none;padding:0 12vw;gap:0;}
+#karusel::-webkit-scrollbar{display:none;}
+.karta{flex:0 0 auto;width:min(76vw,46vh);height:calc(min(76vw,46vh) * 4 / 3);aspect-ratio:3/4;scroll-snap-align:center;position:relative;cursor:pointer;
+  clip-path:polygon(7.5% 0,92.5% 0,100% 5.6%,100% 94.4%,92.5% 100%,7.5% 100%,0 94.4%,0 5.6%);
+  background:linear-gradient(160deg,#ffe8a8,#c98a2a 40%,#6e420e 70%,#f2c25a);padding:2.2%;transition:filter .2s;will-change:transform;}
+.karta .vnitrek{position:absolute;top:2.2%;right:2.2%;bottom:2.2%;left:2.2%;clip-path:polygon(7% 0,93% 0,100% 5.3%,100% 94.7%,93% 100%,7% 100%,0 94.7%,0 5.3%);background:#080503;overflow:hidden;}
+.karta img{position:absolute;top:0;left:0;width:100%;height:100%;object-fit:cover;}
+.karta .stitek{position:absolute;left:0;right:0;bottom:0;height:30%;background:linear-gradient(180deg,transparent 0%,rgba(3,2,1,.86) 28%,rgba(3,2,1,.96) 100%);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;padding-top:5%;}
+.karta .stitek b{font-weight:800;font-size:min(8.4vw,40px);letter-spacing:.015em;line-height:1.05;text-align:center;
+  background:linear-gradient(180deg,#fff0b8,#d8962c);-webkit-background-clip:text;background-clip:text;color:transparent;}
+.karta .stitek i{font-style:normal;font-weight:600;font-size:min(3vw,14px);letter-spacing:.18em;color:var(--azur);margin-top:4px;text-align:center;}
+.karta.zamcena img{filter:grayscale(.85) brightness(.42);}
+.karta .zamek{position:absolute;left:0;right:0;top:30%;display:none;flex-direction:column;align-items:center;}
+.karta.zamcena .zamek{display:flex;}
+.karta .zamek span{font-size:min(16vw,76px);line-height:1;filter:drop-shadow(0 3px 6px #000);}
+.karta .zamek b{font-weight:800;letter-spacing:.12em;color:var(--zl1);font-size:min(6vw,28px);margin-top:4px;}
+.mezera{flex:0 0 auto;width:1px;height:1px;}
+#popis{min-height:2.8em;max-width:88vw;text-align:center;font-weight:500;font-size:min(4vw,19px);line-height:1.35;color:var(--text);padding:0 4vw;transition:opacity .2s;}
+#popis.zamceno{color:#ffcc6a;}
+#spustit{margin:12px 0 10px;border:0;cursor:pointer;min-width:min(52vw,280px);padding:.8em 2.2em;font:800 min(4.6vw,21px) "Chakra Petch",Arial,sans-serif;letter-spacing:.12em;color:#221004;
+  background:linear-gradient(180deg,#ffe6a0,#d39a3a);clip-path:polygon(9% 0,91% 0,100% 50%,91% 100%,9% 100%,0 50%);}
+#spustit.zamceno{background:linear-gradient(180deg,#8a8278,#5d564e);color:#1b1612;}
+#tecky{display:flex;gap:10px;margin-bottom:8px;}
+#tecky i{width:9px;height:9px;transform:rotate(45deg);background:#8b6a35;transition:.2s;}
+#tecky i.on{width:24px;transform:none;border-radius:5px;background:var(--zl2);box-shadow:0 0 10px var(--zl2);}
+#podpis{font-weight:700;font-style:italic;color:#e3b862;font-size:min(4vw,18px);margin-bottom:max(10px,env(safe-area-inset-bottom));}
+@media (orientation:landscape){
+  #hlava{flex-direction:row;justify-content:center;gap:14px;padding-top:6px;}
+  #minca{width:min(9vh,60px);height:min(9vh,60px);}
+  #titul{font-size:min(7vh,46px);margin-top:0;}
+  #slogan{display:none;}
+  .karta{width:min(30vw,48vh);height:calc(min(30vw,48vh) * 4 / 3);}
+  #karusel{padding:0 35vw;}
+  #podpis{display:none;}
+  #popis{min-height:1.4em;}
 }
+
+/* ---------- OPTIONS (otevre ho kolecko v C++ menu i v HTML) ---------- */
+.toast{position:fixed;left:5%;right:5%;bottom:6%;z-index:90;display:none;padding:12px 14px;border-radius:14px;background:rgba(0,0,0,.9);border:1px solid rgba(255,200,80,.6);
+  box-shadow:0 0 22px rgba(255,170,35,.2);color:#ffe6a0;font:700 min(4vw,16px)/1.35 "Chakra Petch",Arial,sans-serif;text-align:center;white-space:pre-line;}
+.toast.show{display:block;}
+#settingsPanel{display:none;position:fixed;top:0;right:0;bottom:0;left:0;z-index:60;background:rgba(2,1,0,.82);overflow:auto;padding:max(14px,env(safe-area-inset-top)) 12px 18px;}
+#settingsPanel.open{display:block;}
+#settingsPanel .list{max-width:520px;margin:0 auto;background:radial-gradient(120% 100% at 50% 0%,#241503 0%,#120a03 45%,#080503 100%);
+  border:1px solid rgba(255,195,64,.55);border-radius:18px;padding:16px 14px 18px;box-shadow:0 0 40px rgba(0,0,0,.9),inset 0 1px 0 rgba(255,214,130,.18),0 0 22px rgba(255,170,40,.12);}
+#settingsPanel .stlabel{color:#ffd479;font:800 18px "Chakra Petch",Arial,sans-serif;margin:0 0 14px;letter-spacing:.3em;text-align:center;text-shadow:0 0 12px rgba(255,170,40,.55);}
+#settingsPanel button{display:block;width:100%;margin-top:8px;padding:13px;border:0;border-radius:12px;background:linear-gradient(180deg,#f0c463,#c8952f);color:#160c02;
+  font:800 14px "Chakra Petch",Arial,sans-serif;letter-spacing:.08em;cursor:pointer;box-shadow:0 2px 0 rgba(0,0,0,.5),inset 0 1px 0 rgba(255,255,255,.45);}
+#settingsPanel button:active{transform:translateY(1px);}
+#settingsPanel .stlabel2{color:#d9b878;font:800 11px "Chakra Petch",Arial,sans-serif;margin:18px 0 7px;letter-spacing:.16em;display:flex;align-items:center;gap:8px;}
+#settingsPanel .stlabel2:after{content:"";flex:1;height:1px;background:linear-gradient(90deg,rgba(255,195,64,.35),transparent);}
+#settingsPanel .sthint{color:#ffe49a;font:600 12px "Chakra Petch",Arial,sans-serif;margin:8px 0 4px;opacity:.75;}
+#settingsPanel .qrow{display:flex;gap:7px;}
+#settingsPanel .qrow button{flex:1;margin-top:0;padding:11px 4px;font-size:12px;background:linear-gradient(180deg,#3b2a10,#241806);color:#e8c98d;border:1px solid rgba(255,195,64,.28);box-shadow:none;}
+#settingsPanel .qrow button.active{background:linear-gradient(180deg,#ffd479,#d8a947);color:#1a0f02;border-color:rgba(255,225,150,.9);box-shadow:0 0 18px rgba(255,180,40,.65);}
+#settingsPanel #stZavrit{margin-top:18px;background:linear-gradient(180deg,#3b2a10,#241806);color:#ffd479;border:1px solid rgba(255,195,64,.45);}
+/* B311: adresa WEB TV zustane v OPTIONS (C++ menu by zpravu dole hned zakrylo) */
+#stTvAdresa{display:none;margin:8px 0 2px;padding:11px 10px 10px;border-radius:12px;text-align:center;background:rgba(10,30,40,.55);border:1px solid rgba(100,223,255,.55);box-shadow:0 0 18px rgba(80,200,255,.15);}
+#stTvAdresa small{display:block;color:#9fdcff;font:600 11px/1.35 "Chakra Petch",Arial,sans-serif;letter-spacing:.12em;}
+#stTvAdresa b{display:block;margin:6px 0;color:#e9fbff;font:700 min(5.6vw,24px)/1.2 "Chakra Petch",Arial,sans-serif;letter-spacing:.02em;word-break:break-all;user-select:text;-webkit-user-select:text;}
 </style>
 </head>
 <body>
-<main class="stage" aria-label="N&P VISION Retro Universe">
-  <img class="skin" src="nap_ui/nap_vision_intro_screen1.png" alt="N&P VISION Retro Universe">
-  <button id="btnMenu" class="hit" type="button">MENU</button>
-  <button id="btnSettings" class="hit" type="button">SETTINGS</button>
-  <div id="settingsPanel" aria-hidden="true">
+<main id="menu" aria-label="N&amp;P VISION Retro Universe">
+  <header id="hlava">
+    <div id="minca" role="img" aria-label="N&amp;P"></div>
+    <div id="titul">N&amp;P VISION</div>
+    <div id="slogan">RETRO UNIVERSE</div>
+    <button id="ozub" type="button" aria-label="OPTIONS"><span>&#9881;</span></button>
+  </header>
+  <div id="karusel" aria-label="Karty"></div>
+  <div id="popis"></div>
+  <button id="spustit" type="button">&#9654; SPUSTIT</button>
+  <div id="tecky"></div>
+  <div id="podpis">René Frank</div>
+</main>
+
+<div id="settingsPanel" aria-hidden="true">
+  <div class="list">
     <div class="stlabel">OPTIONS</div>
     <button id="stStartTv" type="button">SPUSTIT WEB TV</button>
+    <div id="stTvAdresa"><small>NA TV NEBO PC OTEVŘI V PROHLÍŽEČI</small><b></b><small>stejná Wi-Fi · zvuk pustíš kliknutím do obrazu</small></div>
     <button id="stIntro" type="button">PUSTIT INTRO</button>
-    <button id="stStahni" type="button">STAHNOUT HRY A BIOS</button>
-    <button id="stOdemkni" type="button">ODEMKNOUT DALSI</button>
-    <button id="stZamkni" type="button">ZAMKNOUT VSE</button>
+    <button id="stStahni" type="button">STÁHNOUT HRY A BIOS</button>
+    <button id="stOdemkni" type="button">ODEMKNOUT DALŠÍ</button>
+    <button id="stZamkni" type="button">ZAMKNOUT VŠE</button>
     <button id="stAktual" type="button">AKTUALIZOVAT APLIKACI</button>
-    <button id="stTvPokus" type="button">TV POKUS: OBOJI</button>
+    <button id="stTvPokus" type="button">TV POKUS: OBOJÍ</button>
 
-    <div class="stlabel2">NASTAVENI</div>
+    <div class="stlabel2">NASTAVENÍ</div>
     <div class="qrow">
       <button id="stModeAuto" type="button" class="active">AUTOMATICKY</button>
-      <button id="stModeMan" type="button">MANUALNE</button>
+      <button id="stModeMan" type="button">RUČNĚ</button>
     </div>
-    <div class="sthint" id="stModeHint">Aplikace nastavi vse sama podle telefonu</div>
+    <div class="sthint" id="stModeHint">Aplikace nastaví vše sama podle telefonu</div>
 
     <div id="stManual" style="display:none;margin-top:4px;padding-top:6px;border-top:1px solid rgba(255,195,64,.18)">
-      <div class="stlabel2">KVALITA OBRAZU (TV-CAST)</div>
+      <div class="stlabel2">KVALITA OBRAZU (WEB TV)</div>
       <div class="qrow">
         <button id="stQLow" type="button" data-tier="0">LOW</button>
         <button id="stQMed" type="button" data-tier="1">MED</button>
         <button id="stQHigh" type="button" data-tier="2">HIGH</button>
       </div>
 
-      <div class="stlabel2">ZVUK (ZPOZDENI)</div>
+      <div class="stlabel2">ZVUK (ZPOŽDĚNÍ)</div>
       <div class="qrow">
         <button id="stPLow" type="button" data-perf="0">LOW</button>
         <button id="stPMed" type="button" data-perf="1">MED</button>
         <button id="stPHigh" type="button" data-perf="2">HIGH</button>
       </div>
-      <div class="sthint" id="stPerfHint">LOW = nejjistejsi, HIGH = nejmensi zpozdeni</div>
+      <div class="sthint" id="stPerfHint">LOW = nejjistější, HIGH = nejmenší zpoždění</div>
     </div>
-  </div>
-
-  <!-- B310: ATARI 130XE EMULATOR = Atari 130XE v C++ (driv pod HELP); stary emulator v JavaScriptu (emu_vbxe) je smazany -->
-  <a id="btnAtari" class="hit" href="emu_atari_cpp/index.html">ATARI 130XE EMULATOR</a>
-  <a id="btnSega" class="hit" href="emu_sega/index.html">SEGA MEGA DRIVE</a>
-  <a id="btnPlayer" class="hit" href="player/index.html">PLAYER MP3 WAV</a>
-  <a id="btnPs1" class="hit" href="emu_ps1/index.html">PS1 PLAYSTATION</a>
-  <a id="btnWeb" class="hit" href="https://atarihelp.eu/" data-external="1">ATARIHELP.EU</a>
-  <!-- B310: HELP = napoveda (Rene: "Napoveda"), Atari v C++ je pod ATARI 130XE EMULATOR -->
-  <a id="btnHelp" class="hit" href="#napoveda">HELP</a>
-  <a id="btnRene" class="hit" href="dj/index.html">Rene Frank DJ Pult</a>
-  <div id="toast" class="toast">N&amp;P VISION BUILD2NZ</div>
-</main>
-
-<div id="helpPanel" class="panel" aria-hidden="true">
-  <div class="box">
-    <h2>N&amp;P VISION — NÁPOVĚDA</h2>
-    <p><b>ATARI 130XE EMULATOR</b> – Atari 130XE s grafickou kartou VBXE, celé v C++: klávesnice, joystick, kazeťák a disketová mechanika jako na skutečném stroji.</p>
-    <p>Tlačítka na přístroji: <b>NET HRY</b> hry z atarihelp.eu, <b>XEX MOBIL</b> hra (XEX / ZIP) z telefonu, <b>ATR DISK</b> disketa do D1:, <b>TURBO BASIC</b> Turbo-BASIC XL, <b>BASIC/TBXL TXT</b> program z TXT souboru, <b>EJECT</b> na kazeťáku kazeta (WAV), <b>LOG/CHYBA</b> log a testy (ULOŽIT LOG A ODESLAT), <b>HELP</b> podrobné ovládání, <b>MENU</b> zpět sem.</p>
-    <p>Na šířku: obraz přes celý displej, D-pad a tlačítka, kolečko = nastavení ovládání.</p>
-    <p><b>SEGA MEGA DRIVE</b> – otevře se, až v Atari napíšeš 50 řádků programu (řádky s číslem; započítají se při RUN nebo LIST, aspoň 5 najednou).</p>
-    <p><b>PS1 PLAYSTATION</b> – otevře se po 30 minutách hraní na Seze.</p>
-    <p><b>PLAYER MP3 WAV</b> – přehrávač hudby z telefonu.</p>
-    <p><b>ATARIHELP.EU</b> – web atarihelp.eu. <b>Rene Frank DJ Pult</b> – DJ pult.</p>
-    <p><b>OPTIONS</b> (vpravo nahoře) – WEB TV: obraz a zvuk na televizi nebo počítači v prohlížeči (adresa se ukáže po zapnutí), intro, stažení her a BIOSu, aktualizace aplikace, kvalita obrazu a zvuku.</p>
-    <p>Tlačítko <b>ZPĚT</b> na telefonu: z emulátoru zpět do menu.</p>
-    <button id="helpClose" type="button">ZAVŘÍT NÁPOVĚDU</button>
+    <button id="stZavrit" type="button">ZAVŘÍT</button>
   </div>
 </div>
+<div id="toast" class="toast">N&amp;P VISION</div>
 
 <script>
 (function(){'use strict';
-var BUILD='BUILD2NZ_INTRO_PS1_MENU_STAGE39';
+var BUILD='B311_MENU';
 function $(id){return document.getElementById(id);}
-function log(t){try{console.log('[NAP INTRO '+BUILD+'] '+t);}catch(e){}}
-function toast(t,ms){var el=$('toast');if(!el)return;el.textContent=t;el.classList.add('show');clearTimeout(window.__napIntroToast);window.__napIntroToast=setTimeout(function(){el.classList.remove('show');},ms||2200);}
-function openExternal(url){
-  log('OPEN_EXTERNAL '+url);
-  try{if(window.Android&&typeof window.Android.openExternal==='function'){window.Android.openExternal(url);return;}}catch(e){}
-  try{if(window.Android&&typeof window.Android.openUrl==='function'){window.Android.openUrl(url);return;}}catch(e){}
-  try{if(window.Android&&typeof window.Android.openExternalUrl==='function'){window.Android.openExternalUrl(url);return;}}catch(e){}
-  try{window.location.href=url;}catch(_){location.href=url;}
+function log(t){try{console.log('[NAP MENU '+BUILD+'] '+t);}catch(e){}}
+function toast(t,ms){var el=$('toast');if(!el)return;el.textContent=t;el.classList.add('show');clearTimeout(window.__napToast);window.__napToast=setTimeout(function(){el.classList.remove('show');},ms||2200);}
+function toastBezi(){var el=$('toast');return !!(el&&el.classList.contains('show'));}
+
+// ================= C++ menu nad strankou =================
+// Java: napMenuNativni(true) = C++ menu je videt (HTML karusel schovat), false = C++ menu
+// nejde (ukazat HTML karusel). napOtevriNastaveni() = kolecko v C++ menu.
+window.napMenuNativni=function(zap){
+  var h=document.documentElement;
+  if(zap){ if(!/(^| )nativni( |$)/.test(h.className)) h.className+=' nativni'; }
+  else { h.className=h.className.replace(/(^| )nativni( |$)/g,' '); setTimeout(posunuto,30); }
+};
+
+// ================= karty (stejny soubor jako C++: menu/karty.txt) =================
+var karty=[], vybrana=0;
+function nactiText(){
+  try{ if(window.AHINTRO&&AHINTRO.menuKarty){ var t=AHINTRO.menuKarty(); if(t) return t; } }catch(e){}
+  try{ var x=new XMLHttpRequest(); x.open('GET','menu/karty.txt',false); x.overrideMimeType('text/plain; charset=utf-8'); x.send(null);
+       if(x.status===200||x.status===0) return x.responseText||''; }catch(e){ log('KARTY_XHR '+e); }
+  return '';
 }
-function showHelp(){var p=$('helpPanel');if(p){p.classList.add('open');p.setAttribute('aria-hidden','false');p.scrollTop=0;}}
-function closeHelp(){var p=$('helpPanel');if(p){p.classList.remove('open');p.setAttribute('aria-hidden','true');}}
-// B310: HELP (dole vpravo) i MENU (vlevo nahore) otevrou napovedu
-['btnMenu','btnHelp'].forEach(function(id){var b=$(id);if(b)b.addEventListener('click',function(e){e.preventDefault();e.stopPropagation();showHelp();},true);});
+function rozeber(t){
+  var v=[], ids={};
+  (t||'').replace(/^﻿/,'').split(/\r?\n/).forEach(function(r){
+    r=r.trim(); if(!r||r.charAt(0)==='#') return;
+    var p=r.split('|').map(function(x){return x.trim();});
+    while(p.length<10) p.push('');
+    if(!p[0]) return;
+    if(ids[p[0]]) p[0]+='_'+v.length; ids[p[0]]=1;
+    v.push({id:p[0],nazev:p[1]||p[0].toUpperCase(),podtitul:p[2],popis:p[3],obrazek:p[4],cil:p[5],barva:p[6]||'#F2B640',zamek:p[7],efekt:p[8],tlacitko:p[9]||'OTEVŘÍT'});
+  });
+  return v;
+}
+function postup(){
+  var st={sega:true,ps1:true,zbyvaMinut:0,zbyvaRadku:0};
+  try{ if(window.AHINTRO&&AHINTRO.postupStav) st=JSON.parse(AHINTRO.postupStav()); }catch(e){}
+  return st;
+}
+function radku(n){ return n===1?'řádek':(n>=2&&n<=4?'řádky':'řádků'); }
+function zamekKarty(k,st){
+  if(k.zamek==='sega'&&!st.sega) return 'Napiš v Atari ještě '+(st.zbyvaRadku||0)+' '+radku(st.zbyvaRadku||0)+' programu (řádky s číslem, počítají se při RUN nebo LIST).';
+  if(k.zamek==='ps1'&&!st.ps1) return st.sega?('Hraj na Seze ještě '+(st.zbyvaMinut||0)+' min.'):'Nejdřív odemkni Segu, pak 30 minut hraní na Seze.';
+  return '';
+}
+var kar=$('karusel'), tecky=$('tecky');
+function postav(){
+  karty=rozeber(nactiText());
+  if(!karty.length){ log('KARTY: zadna karta'); return; }
+  var st=postup();
+  kar.innerHTML=''; tecky.innerHTML='';
+  karty.forEach(function(k,i){
+    k.duvod=zamekKarty(k,st);
+    var d=document.createElement('div');
+    d.className='karta'+(k.duvod?' zamcena':'');
+    d.setAttribute('data-i',i);
+    d.innerHTML='<div class="vnitrek"><img alt="" loading="lazy"><div class="zamek"><span>&#128274;</span><b>ZAMČENO</b></div>'
+      +'<div class="stitek"><b></b><i></i></div></div>';
+    d.querySelector('img').src=k.obrazek;
+    d.querySelector('.stitek b').textContent=k.nazev;
+    d.querySelector('.stitek i').textContent=k.podtitul;
+    d.addEventListener('click',function(){ if(i===vybrana) spust(i); else jdi(i); });
+    kar.appendChild(d);
+    var t=document.createElement('i'); t.addEventListener('click',function(){jdi(i);}); tecky.appendChild(t);
+  });
+  posunuto();
+  log('KARTY '+karty.length+': '+karty.map(function(k){return k.id;}).join(','));
+}
+function jdi(i){
+  i=Math.max(0,Math.min(karty.length-1,i));
+  var c=kar.children[i]; if(!c) return;
+  kar.scrollTo({left:c.offsetLeft+c.offsetWidth/2-kar.clientWidth/2,behavior:'smooth'});
+}
+// natoceni a zmenseni karet podle vzdalenosti od stredu (jako C++ karusel)
+var rafCek=false;
+function odsazeni(){
+  var c=kar.children[0]; if(!c) return;
+  var p=Math.max(0,(kar.clientWidth-c.offsetWidth)/2)+'px';
+  if(kar.style.paddingLeft!==p){ kar.style.paddingLeft=p; kar.style.paddingRight=p; }
+}
+function posunuto(){
+  if(rafCek) return; rafCek=true;
+  requestAnimationFrame(function(){
+    rafCek=false;
+    odsazeni();
+    var stred=kar.scrollLeft+kar.clientWidth/2, nej=0, nejD=1e9;
+    for(var i=0;i<kar.children.length;i++){
+      var c=kar.children[i], cx=c.offsetLeft+c.offsetWidth/2, d=(cx-stred)/c.offsetWidth;
+      var a=Math.min(Math.abs(d),2.5);
+      if(Math.abs(d)<nejD){nejD=Math.abs(d);nej=i;}
+      c.style.transform='perspective(1400px) rotateY('+(-Math.max(-1,Math.min(1,d))*16)+'deg) scale('+(1-0.16*Math.min(a,1)-0.06*Math.max(0,a-1))+')';
+      c.style.filter='brightness('+(1-0.42*Math.min(a,1))+')';
+    }
+    if(nej!==vybrana||!$('popis').textContent) ukazVybranou(nej);
+  });
+}
+function ukazVybranou(i){
+  vybrana=i;
+  var k=karty[i]; if(!k) return;
+  var p=$('popis'), b=$('spustit');
+  p.textContent=k.duvod?('ZAMČENO · '+k.duvod):k.popis;
+  p.className=k.duvod?'zamceno':'';
+  b.innerHTML=(k.duvod?'&#128274; ZAMČENO':'&#9654; '+k.tlacitko.replace(/[<>&]/g,''));
+  b.className=k.duvod?'zamceno':'';
+  for(var t=0;t<tecky.children.length;t++) tecky.children[t].className=t===i?'on':'';
+}
+function spust(i){
+  var k=karty[i]; if(!k) return;
+  if(k.duvod){ toast('ZAMČENO\n'+k.duvod,3200); return; }
+  if(!k.cil){ toast(k.nazev,1200); return; }
+  log('SPUSTIT '+k.id+' -> '+k.cil);
+  if(k.cil.indexOf('akce:')===0){ if(k.cil==='akce:nastaveni') openSettings(); return; }
+  location.href=k.cil;
+}
+kar.addEventListener('scroll',posunuto,{passive:true});
+window.addEventListener('resize',posunuto);
+$('spustit').addEventListener('click',function(){spust(vybrana);});
+document.addEventListener('keydown',function(e){
+  if(document.documentElement.className.indexOf('nativni')>=0||sp.classList.contains('open')) return;
+  if(e.key==='ArrowLeft'){jdi(vybrana-1);e.preventDefault();}
+  else if(e.key==='ArrowRight'){jdi(vybrana+1);e.preventDefault();}
+  else if(e.key==='Enter'){spust(vybrana);e.preventDefault();}
+});
+postav();
+
+// ================= OPTIONS =================
 var sp=$('settingsPanel');
 function napQualityRefresh(){
   try{
@@ -140,23 +294,38 @@ function napQualityRefresh(){
     });
   }catch(e){log('QUALITY_REFRESH_ERR '+e);}
 }
-function openSettings(){if(!sp)return;sp.classList.add('open');sp.setAttribute('aria-hidden','false');napQualityRefresh();}
-function closeSettings(){if(!sp)return;sp.classList.remove('open');sp.setAttribute('aria-hidden','true');}
-function toggleSettings(){if(!sp)return;if(sp.classList.contains('open'))closeSettings();else openSettings();}
-var bs=$('btnSettings');
-if(bs)bs.addEventListener('click',function(e){e.preventDefault();e.stopPropagation();toggleSettings();},true);
-// BUILD2SK39: pojistka - klik KAMKOLI mimo panel ho zavre, i kdyby se explicitni
-// zavreni po akci uvnitr nespustilo spolehlive.
-document.addEventListener('click',function(e){
-  if(!sp||!sp.classList.contains('open'))return;
-  if(e.target===sp||sp.contains(e.target)||e.target===bs)return;
-  closeSettings();
-},true);
-// BUILD2SK91: LOW/MEDIUM/HIGH primo z uvodni obrazovky - Rene chtel moznost
-// zmenit kvalitu, aniz by musel jit na TV-cast stranku v prohlizeci.
-// setQualityTier funguje pres AHTVWEB most i kdyz TV-cast jeste vubec
-// nebezi (na rozdil od stareho /quality HTTP pristupu) - ulozi se do
-// stejnych SharedPreferences, takze se pouzije, az cast zacne.
+// B311: adresa WEB TV primo v OPTIONS (zustane, dokud se OPTIONS nezavre) - C++ menu by
+// zpravu dole po zavreni OPTIONS hned zakrylo. Adresu vraci Java (AHTVWEB.start / status),
+// nikdy se nepise natvrdo (jina sit = jina adresa).
+function tvAdresaZ(t){ var m=/https?:\/\/[^\s"']+/.exec(String(t||'')); return m?m[0]:''; }
+function tvAdresaUkaz(adr){
+  var el=$('stTvAdresa'), b=$('stStartTv'); if(!el||!b) return;
+  if(adr){ el.querySelector('b').textContent=adr; el.style.display='block'; b.textContent='WEB TV BĚŽÍ'; }
+  else { el.style.display='none'; b.textContent='SPUSTIT WEB TV'; }
+}
+function tvAdresaObnov(){
+  try{ tvAdresaUkaz((window.AHTVWEB&&typeof window.AHTVWEB.status==='function')?tvAdresaZ(window.AHTVWEB.status()):''); }catch(e){}
+}
+function openSettings(){if(!sp)return;sp.classList.add('open');sp.setAttribute('aria-hidden','false');sp.scrollTop=0;napQualityRefresh();tvAdresaObnov();}
+// zavreni: C++ menu se vrati (Java AHINTRO.menuZpet). Kdyz zrovna sviti zprava (adresa WEB TV),
+// menu pocka, az zhasne - jinak by ji hned zakrylo.
+function closeSettings(){
+  if(!sp)return;
+  var bylo=sp.classList.contains('open');
+  sp.classList.remove('open');sp.setAttribute('aria-hidden','true');
+  if(!bylo) return;
+  var zpet=function(){ try{ if(window.AHINTRO&&AHINTRO.menuZpet) AHINTRO.menuZpet(); }catch(e){} };
+  if(toastBezi()){ var n=0, t=setInterval(function(){ if(!toastBezi()||++n>40){clearInterval(t);zpet();} },100); }
+  else zpet();
+}
+window.napOtevriNastaveni=openSettings;
+window.napZavriNastaveni=closeSettings;
+$('ozub').addEventListener('click',function(e){e.preventDefault();openSettings();},true);
+$('stZavrit').addEventListener('click',function(e){e.preventDefault();e.stopPropagation();closeSettings();},true);
+// klik mimo seznam (na tmave pozadi) panel zavre
+sp.addEventListener('click',function(e){ if(e.target===sp) closeSettings(); },true);
+
+// BUILD2SK91: kvalita primo odsud (AHTVWEB uklada do SharedPreferences, plati i kdyz TV jeste nebezi)
 var qLabels={0:'LOW',1:'MEDIUM',2:'HIGH'};
 [['stQLow',0],['stQMed',1],['stQHigh',2]].forEach(function(pair){
   var el=$(pair[0]); if(!el)return;
@@ -167,148 +336,78 @@ var qLabels={0:'LOW',1:'MEDIUM',2:'HIGH'};
       log('SETTINGS_QUALITY_SET tier='+pair[1]+' result='+r);
       toast('Kvalita: '+qLabels[pair[1]],1800);
       napQualityRefresh();
-    }catch(err){
-      log('SETTINGS_QUALITY_SET_ERR '+err);
-      toast('Kvalita: chyba pri nastaveni',2200);
-    }
+    }catch(err){ log('SETTINGS_QUALITY_SET_ERR '+err); toast('Kvalita: chyba při nastavení',2200); }
   },true);
 });
-var stTv=$('stStartTv');
-if(stTv)stTv.addEventListener('click',function(e){
+$('stStartTv').addEventListener('click',function(e){
   e.preventDefault();e.stopPropagation();
   try{
     var r=(window.AHTVWEB&&typeof window.AHTVWEB.start==='function')?window.AHTVWEB.start():null;
     log('SETTINGS_TV_START result='+r);
-    // Adresa se nesmi psat natvrdo - v jine siti (nebo po restartu routeru)
-    // je jina. AHTVWEB.start() ji vraci; kdyz ne, radeji ji neuvadime vubec.
-    var adr=(typeof r==='string'&&r.indexOf(':')>0)?r:null;
-    toast(adr?('WEB TV zapnuto — '+adr):'WEB TV zapnuto',2600);
-  }catch(err){
-    log('SETTINGS_TV_START_ERR '+err);
-    toast('WEB TV: chyba pri spousteni',2200);
-  }
-  closeSettings();
+    // B311: driv se ukazala cela odpoved Javy ("TV_WEB_CAST_OK http://... APP") jen na chvili;
+    // ted jen adresa a zustane v OPTIONS, dokud ji clovek neopise a OPTIONS nezavre
+    var adr=tvAdresaZ(r);
+    tvAdresaUkaz(adr);
+    if(!adr) toast('WEB TV nejde spustit'+(r?'\n'+String(r):''),3200);
+  }catch(err){ log('SETTINGS_TV_START_ERR '+err); toast('WEB TV: chyba při spouštění',2600); }
 },true);
-// BUILD2SA23: INTRO na pozadani. Da se pustit kdykoli, a protoze se
-// prehrava v tom samem okne jako vsechno ostatni, jde i na WEB TV.
-var stIn=$('stIntro');
-if(stIn)stIn.addEventListener('click',function(e){
+// BUILD2SA23: intro na pozadani (B304: uvodni demo v C++)
+$('stIntro').addEventListener('click',function(e){
   e.preventDefault();e.stopPropagation();
   try{ if(window.AHINTRO&&AHINTRO.znovu) AHINTRO.znovu(); }catch(err){}
   log('SETTINGS_INTRO_START');
   closeSettings();
-  // BUILD2SA38: intro je rozdelene na etapy - Java nacte prvni z nich
-  // sama v AHINTRO.znovu(). Stranka uz nikam neodchazi.
 },true);
-
-// BUILD2SA27: stazeni Sonica a BIOSu PS1 na vyzadani. Aplikace se
-// vzdycky zepta a rekne, co a odkud - nikdy nestahuje potichu.
-var stSt=$('stStahni');
-if(stSt)stSt.addEventListener('click',function(e){
+// BUILD2SA27: stazeni Sonica a BIOSu PS1 na vyzadani - appka se vzdycky zepta
+$('stStahni').addEventListener('click',function(e){
   e.preventDefault();e.stopPropagation();
   try{ if(window.AHINTRO&&AHINTRO.stahniSoubory) AHINTRO.stahniSoubory(); }catch(err){}
   log('SETTINGS_STAHNOUT');
   closeSettings();
 },true);
-
-// BUILD2SA40: POSTUP HRACE.
-// SEGA se otevre, az hrac napise ten kod v Atari.
-// PS1 se otevre po 30 minutach hrani Segy.
-// Tahle dve tlacitka jsou ZADNI VRATKA pro Reneho, aby mohl testovat
-// bez odehrani cele cesty - odemyka se POSTUPNE, jedna uroven po druhe.
-var stOd=$('stOdemkni');
-if(stOd)stOd.addEventListener('click',function(e){
+// BUILD2SA40: POSTUP HRACE - zadni vratka pro Reneho (odemyka postupne)
+$('stOdemkni').addEventListener('click',function(e){
   e.preventDefault();e.stopPropagation();
   var co='?';
   try{ if(window.AHINTRO&&AHINTRO.odemkniDalsi) co=AHINTRO.odemkniDalsi(); }catch(err){}
   log('SETTINGS_ODEMKNUTO '+co);
+  postav();
   closeSettings();
-  zamkyObnov();
 },true);
-
-var stZam=$('stZamkni');
-if(stZam)stZam.addEventListener('click',function(e){
+$('stZamkni').addEventListener('click',function(e){
   e.preventDefault();e.stopPropagation();
   try{ if(window.AHINTRO&&AHINTRO.zamkniVse) AHINTRO.zamkniVse(); }catch(err){}
   log('SETTINGS_ZAMCENO_VSE');
+  postav();
   closeSettings();
-  zamkyObnov();
 },true);
-
-/** Zamkne nebo odemkne tlacitka podle toho, kam se hrac dostal. */
-function zamkyObnov(){
-  var st={sega:true,ps1:true,zbyvaMinut:0};
-  try{ if(window.AHINTRO&&AHINTRO.postupStav) st=JSON.parse(AHINTRO.postupStav()); }catch(e){}
-  nastavZamek('btnSega', st.sega, 'NAPIS JESTE '+(st.zbyvaRadku||0)+' RADKU KODU V ATARI');
-  nastavZamek('btnPs1',  st.ps1,  st.sega ? ('JESTE '+st.zbyvaMinut+' MIN SEGY') : 'NEJDRIV SEGA');
-}
-function nastavZamek(id, otevreno, proc){
-  var b=$(id); if(!b) return;
-  if(otevreno){
-    b.style.opacity=''; b.style.pointerEvents='';
-    b.removeAttribute('data-zamek');
-  }else{
-    b.style.opacity='0.45'; b.style.pointerEvents='auto';
-    b.setAttribute('data-zamek', proc);
-  }
-}
-// zamceny emulator misto spusteni jen rekne, co je potreba
-document.addEventListener('click', function(e){
-  var t=e.target;
-  while(t && t!==document.body){
-    if(t.getAttribute && t.getAttribute('data-zamek')){
-      e.preventDefault(); e.stopPropagation();
-      try{ alert('ZAMCENO\n\n'+t.getAttribute('data-zamek')); }catch(_){}
-      return;
-    }
-    t=t.parentNode;
-  }
-}, true);
-setTimeout(zamkyObnov, 300);
-
-// BUILD2SA42: aktualizace ze site. APK se protece rovnou do instalace,
-// na telefonu nezustane zadny soubor.
-var stAk=$('stAktual');
-if(stAk)stAk.addEventListener('click',function(e){
+// BUILD2SA42: aktualizace ze site
+$('stAktual').addEventListener('click',function(e){
   e.preventDefault();e.stopPropagation();
   try{ if(window.AHINTRO&&AHINTRO.aktualizuj) AHINTRO.aktualizuj(); }catch(err){}
   log('SETTINGS_AKTUALIZACE');
   closeSettings();
 },true);
-
-// BUILD2SA49: pokus, ktery ma rozhodnout, ktera pulka TV zpusobuje
-// kousani Atari. Prepina se dokola: oboji -> jen zvuk -> jen obraz.
-// B310: bez "KRESLENIM" - to bylo jen pro stare Atari v JavaScriptu (smazane)
-var tvPokusStav=0;
-var stTv=$('stTvPokus');
-if(stTv)stTv.addEventListener('click',function(e){
+// BUILD2SA49: TV pokus (oboji -> jen zvuk -> jen obraz); B310 bez KRESLENIM
+var tvPokusStav=0, stTvP=$('stTvPokus');
+stTvP.addEventListener('click',function(e){
   e.preventDefault();e.stopPropagation();
   tvPokusStav=(tvPokusStav+1)%3;
-  var jm=['OBOJI','JEN ZVUK','JEN OBRAZ'][tvPokusStav];
+  var jm=['OBOJÍ','JEN ZVUK','JEN OBRAZ'][tvPokusStav];
   try{ if(window.AHINTRO&&AHINTRO.tvPokus) AHINTRO.tvPokus(tvPokusStav); }catch(err){}
-  stTv.textContent='TV POKUS: '+jm;
+  stTvP.textContent='TV POKUS: '+jm;
   log('TV_POKUS '+jm);
 },true);
-
-var hc=$('helpClose');if(hc)hc.addEventListener('click',function(e){e.preventDefault();closeHelp();},true);
-Array.prototype.forEach.call(document.querySelectorAll('a[data-external="1"]'),function(a){a.addEventListener('click',function(e){e.preventDefault();e.stopPropagation();openExternal(a.href);},true);});
-$('btnAtari')&&$('btnAtari').addEventListener('click',function(){toast('ATARI 130XE EMULATOR',900);},true);
-$('btnSega')&&$('btnSega').addEventListener('click',function(){toast('SEGA MEGA DRIVE',900);},true);
-$('btnPlayer')&&$('btnPlayer').addEventListener('click',function(){toast('PLAYER MP3 / WAV',900);},true);
-$('btnPs1')&&$('btnPs1').addEventListener('click',function(){toast('PS1 PLAYSTATION',900);},true);
-log('BUILD2NZ ready: intro screen buttons Atari/Sega/Player/PS1/Web/Help/Rene Facebook wired.');
+log('ready: karusel karet (B311), OPTIONS, C++ menu '+(document.documentElement.className.indexOf('nativni')>=0?'ANO':'ne'));
 })();
 </script>
-
-
 
 <script>
 (function(){
   function $(id){return document.getElementById(id);}
   var AUTO_IMG=2, AUTO_SND=-1;
   var man=$('stManual'), mh=$('stModeHint'), ph=$('stPerfHint');
-  var sndNames={'0':'LOW - nejjistejsi, nejvetsi zpozdeni','1':'MEDIUM - stredni cesta','2':'HIGH - nejmensi zpozdeni, muze praskat'};
-
+  var sndNames={'0':'LOW - nejjistější, největší zpoždění','1':'MEDIUM - střední cesta','2':'HIGH - nejmenší zpoždění, může praskat'};
   function markRow(ids,attr,val){
     ids.forEach(function(id){var b=$(id); if(b) b.classList.toggle('active', b.getAttribute(attr)===String(val));});
   }
@@ -317,19 +416,17 @@ log('BUILD2NZ ready: intro screen buttons Atari/Sega/Player/PS1/Web/Help/Rene Fa
          else if(window.AHRENDER&&AHRENDER.setPerf)AHRENDER.setPerf(v); }catch(e){}
     try{localStorage.setItem('napSnd',v);}catch(e){}
     markRow(['stPLow','stPMed','stPHigh'],'data-perf',v);
-    if(ph)ph.textContent=(sndNames[String(v)]||'AUTO - podle telefonu')+' (projevi se pri dalsim spusteni hry)';
+    if(ph)ph.textContent=(sndNames[String(v)]||'AUTO - podle telefonu')+' (projeví se při dalším spuštění hry)';
   }
   function setImage(v){
-    var b=$(v===0?'stQLow':v===1?'stQMed':'stQHigh');
-    if(b) b.click();
+    try{ if(window.AHTVWEB&&typeof window.AHTVWEB.setQualityTier==='function') window.AHTVWEB.setQualityTier(v); }catch(e){}
     markRow(['stQLow','stQMed','stQHigh'],'data-tier',v);
   }
   function setMode(auto){
     $('stModeAuto').classList.toggle('active',auto);
     $('stModeMan').classList.toggle('active',!auto);
     man.style.display=auto?'none':'block';
-    if(mh)mh.textContent=auto?'Aplikace nastavi vse sama podle telefonu'
-                             :'Nastavujes rucne - volby nize';
+    if(mh)mh.textContent=auto?'Aplikace nastaví vše sama podle telefonu':'Nastavuješ ručně - volby níže';
     try{localStorage.setItem('napMode',auto?'a':'m');}catch(e){}
     if(auto){ setImage(AUTO_IMG); setSound(AUTO_SND); }
   }
@@ -341,7 +438,6 @@ log('BUILD2NZ ready: intro screen buttons Atari/Sega/Player/PS1/Web/Help/Rene Fa
   ['stQLow','stQMed','stQHigh'].forEach(function(id){
     var b=$(id); if(b) b.addEventListener('click',function(){markRow(['stQLow','stQMed','stQHigh'],'data-tier',parseInt(b.getAttribute('data-tier'),10));});
   });
-
   var mode='a', snd=AUTO_SND;
   try{ mode=localStorage.getItem('napMode')||'a';
        var q=localStorage.getItem('napSnd'); if(q!==null)snd=parseInt(q,10); }catch(e){}

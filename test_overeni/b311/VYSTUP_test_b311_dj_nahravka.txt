@@ -1,0 +1,12 @@
+OK     1) RECORD zapnuto (tlacitko sviti)
+OK     1) souborZacni(DJ_mixy, NP_VISION_mix_20261020_014140.webm, audio/webm)
+OK     1) po zastaveni: SAVED, souborDokonci 1x (videne stavy tlacitka: RECORD, SAVED)
+OK     1) do Javy doslo 49014 B nahravky ve 1 kouscich, zacatek 1A 45 DF A3 = WebM (skutecna nahravka)
+OK     1) hlaska: "MIX SAVED · Download/AtariHelp/DJ_mixy/NP_VISION_mix_20261020_014140.webm"
+OK     1) za chvili tlacitko zase RECORD
+OK     1b) nahravka 24 s po kouscich 16 kB: 94997 B ve 6 kouscich, slozeny soubor jde prehrat: Opus, 24.9 s (ffprobe / ffmpeg bez chyby)
+OK     2) chyba zapisu v Jave: souborZrus 1x, SAVE FAILED, hlaska "MIX NOT SAVED · write error"
+OK     2) po chybe jde nahravat znovu
+OK     3) prohlizec na PC: stazeni NP_VISION_mix_20261020_014222.webm (28422 B, WebM)
+OK     4) zadna chyba JavaScriptu
+VYSLEDEK: 11 kontrol, 0 CHYBA

@@ -1522,18 +1522,57 @@ body{position:relative;display:flex;flex-direction:column;align-items:center;pad
   var limOnBtn=document.getElementById('limOnBtn');
   limOnBtn.onclick=function(){buildMaster();setLimiter(!limOn);limOnBtn.classList.toggle('on',limOn);};
   // RECORD (master -> soubor)
-  var recBtn=document.getElementById('recBtn');
+  // B311: v appce WebView blob: odkaz (<a download>) stahnout neumi - nahravka se nikam
+  // neulozila. Ted jde po kouscich do Javy (AHSAVE.souborZacni / Pridej / Dokonci) do
+  // Download/AtariHelp/DJ_mixy. V prohlizeci na PC (bez AHSAVE) se stahne jako drive.
+  var recBtn=document.getElementById('recBtn'), recUklada=false;
+  function recNapis(t){try{recBtn.lastChild.nodeValue=t;}catch(e){}}
+  function recHlaska(t){try{var el=document.getElementById('asstText');if(el)el.textContent=t;}catch(e){}}
+  function recDatum(){var d=new Date(),p=function(n){return (n<10?'0':'')+n;};
+    return d.getFullYear()+p(d.getMonth()+1)+p(d.getDate())+'_'+p(d.getHours())+p(d.getMinutes())+p(d.getSeconds());}
+  function recUloz(bl,typ){
+    typ=String(typ||'audio/webm').split(';')[0];
+    var jm='NP_VISION_mix_'+recDatum()+(/ogg/.test(typ)?'.ogg':(/mp4|aac|m4a/.test(typ)?'.m4a':'.webm'));
+    if(!(window.AHSAVE&&typeof window.AHSAVE.souborZacni==='function')){
+      var a=document.createElement('a');a.href=URL.createObjectURL(bl);
+      a.download=jm;document.body.appendChild(a);a.click();
+      setTimeout(function(){try{URL.revokeObjectURL(a.href);a.remove();}catch(e){}},4000);
+      return;
+    }
+    var konec=function(t,msg){recUklada=false;recNapis(t);if(msg)recHlaska(msg);
+      setTimeout(function(){if(!recOn&&!recUklada)recNapis('RECORD');},3500);};
+    var id=0;try{id=window.AHSAVE.souborZacni('DJ_mixy',jm,typ);}catch(e){}
+    if(!id){konec('SAVE FAILED','MIX NOT SAVED · storage not available');return;}
+    // kousek 384 kB (base64 ~512 kB na jedno volani Javy); window.napDjKus jen pro test na PC
+    var KUS=(window.napDjKus>0?window.napDjKus:384*1024),od=0;recUklada=true;recNapis('SAVING 0%');
+    var dalsi=function(){
+      if(od>=bl.size){
+        var r='';try{r=String(window.AHSAVE.souborDokonci(id));}catch(e){r='CHYBA '+e;}
+        if(r.indexOf('OK:')===0)konec('SAVED ✓','MIX SAVED · '+r.slice(3));
+        else konec('SAVE FAILED','MIX NOT SAVED · '+r);
+        return;
+      }
+      var fr=new FileReader();
+      fr.onload=function(){
+        var s=String(fr.result||''),c=s.indexOf(','),ok=false;
+        try{ok=window.AHSAVE.souborPridej(id,c>=0?s.slice(c+1):s);}catch(e){}
+        if(!ok){try{window.AHSAVE.souborZrus(id);}catch(e){}konec('SAVE FAILED','MIX NOT SAVED · write error');return;}
+        od+=KUS;recNapis('SAVING '+Math.min(99,Math.round(od*100/bl.size))+'%');setTimeout(dalsi,0);
+      };
+      fr.onerror=function(){try{window.AHSAVE.souborZrus(id);}catch(e){}konec('SAVE FAILED','MIX NOT SAVED · read error');};
+      fr.readAsDataURL(bl.slice(od,od+KUS));
+    };
+    dalsi();
+  }
   recBtn.onclick=function(){
     buildMaster();
+    if(recUklada)return;
     if(!recOn){
       if(!recDest||!window.MediaRecorder)return;
       try{recChunks=[];recorder=new MediaRecorder(recDest.stream);
         recorder.ondataavailable=function(e){if(e.data&&e.data.size)recChunks.push(e.data);};
-        recorder.onstop=function(){try{var bl=new Blob(recChunks,{type:recorder.mimeType||'audio/webm'});
-          var a=document.createElement('a');a.href=URL.createObjectURL(bl);
-          a.download='NP_VISION_mix_'+Date.now()+'.webm';document.body.appendChild(a);a.click();
-          setTimeout(function(){try{URL.revokeObjectURL(a.href);a.remove();}catch(e){}},4000);}catch(e){}};
-        recorder.start();recOn=true;recBtn.classList.add('on');}catch(e){}
+        recorder.onstop=function(){try{var typ=recorder.mimeType||'audio/webm';recUloz(new Blob(recChunks,{type:typ}),typ);}catch(e){}};
+        recorder.start();recOn=true;recBtn.classList.add('on');recNapis('RECORD');}catch(e){}
     }else{try{recorder.stop();}catch(e){}recOn=false;recBtn.classList.remove('on');}
   };
 

@@ -335,3 +335,23 @@ if(NAP_ENABLE_INTRO)
     # stejna prisnost jako NDK: chybejici symbol shodi build, ne az appku
     target_link_options(napintro PRIVATE -Wl,--no-undefined -Wl,-z,max-page-size=16384)
 endif()
+
+# ============================================================
+#  B311: HLAVNI MENU - karusel velkych karet cele v C++ (OpenGL ES na vlastnim
+#  vlakne, dotyk 1:1, obraz pro TV). Samostatna knihovna napmenu
+#  (NativeMenuBridge.java ji nacita). Karty: assets/menu/karty.txt.
+#  Pouziva hlavicky uvodniho dema (pisma, 3D modely Atari a konzoli N&P).
+#  KILL-SWITCH: kdyby zlobila, staci OFF - index.html pak ukaze karusel v HTML.
+# ============================================================
+option(NAP_ENABLE_MENU "Build native main menu (napmenu)" ON)
+if(NAP_ENABLE_MENU)
+    add_library(napmenu SHARED
+            ${CMAKE_CURRENT_LIST_DIR}/menu/nap_menu_gl.cpp)
+    target_compile_features(napmenu PRIVATE cxx_std_17)
+    # jen funkce JNI ven (stb a ostatni zustanou uvnitr knihovny)
+    target_compile_options(napmenu PRIVATE ${NAP_CORE_OPT_FLAGS} -fvisibility=hidden)
+    target_include_directories(napmenu PRIVATE ${CMAKE_CURRENT_LIST_DIR}/menu ${CMAKE_CURRENT_LIST_DIR}/intro ${CMAKE_CURRENT_LIST_DIR}/tvproud)
+    find_package(Threads REQUIRED)
+    target_link_libraries(napmenu ${log-lib} ${android-lib} EGL GLESv2 Threads::Threads)
+    target_link_options(napmenu PRIVATE -Wl,--no-undefined -Wl,-z,max-page-size=16384)
+endif()

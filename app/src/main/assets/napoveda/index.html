@@ -1,0 +1,863 @@
+<!doctype html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#060403">
+<title>N&amp;P VISION — Návod</title>
+<!--
+  B311: UPLNY NAVOD PRO LIDI (karta HELP na konci karuselu v hlavnim menu).
+  Rene: "na samem konci toho skrolovani bude tlacitko HELP, kde bude celkovej
+  a uplnej navod pro lidi".
+  Vsechno, co tu je, je overene v kodu appky (B311) - nazvy tlacitek presne
+  tak, jak je clovek uvidi. Kdyz se tlacitko v appce prejmenuje nebo pribude
+  sekce, uprav i tenhle soubor.
+  Odkazy uvnitr navodu (obsah, ZPET NA OBSAH) jen posunou stranku - netvori
+  historii, takze tlacitko ZPET na telefonu vrati rovnou do menu.
+-->
+<style>
+@font-face{font-family:"NapChakra";src:url(../pisma/chakra_semibold.woff2) format("woff2");font-weight:600;font-style:normal;font-display:swap;}
+@font-face{font-family:"NapChakra";src:url(../pisma/chakra_bold.woff2) format("woff2");font-weight:700;font-style:normal;font-display:swap;}
+@font-face{font-family:"NapChakra";src:url(../pisma/chakra_bolditalic.woff2) format("woff2");font-weight:700;font-style:italic;font-display:swap;}
+:root{
+  --pozadi:#060403;
+  --panel:rgba(24,15,6,.80);
+  --panel2:rgba(36,23,9,.88);
+  --zlata:#f2c35b; --zlata2:#ffe08a; --zlata3:#b9862a;
+  --text:#efe5cf; --text2:#d3bf95; --tlum:#9d8a66;
+  --cara:rgba(255,195,64,.20); --cara2:rgba(255,195,64,.48);
+  --a:#f2c35b;
+  --nadpis:"NapChakra","Chakra Petch","Segoe UI",Roboto,Arial,sans-serif;
+  --telo:Roboto,"Segoe UI",system-ui,-apple-system,Arial,sans-serif;
+  --mono:"Roboto Mono","Droid Sans Mono",Consolas,"Courier New",monospace;
+  --lista:58px;
+}
+*{box-sizing:border-box;}
+html{background:var(--pozadi);-webkit-text-size-adjust:100%;text-size-adjust:100%;scroll-padding-top:calc(var(--lista) + 12px);}
+body{margin:0;min-height:100vh;color:var(--text);font:400 15.5px/1.62 var(--telo);-webkit-tap-highlight-color:transparent;overflow-x:hidden;}
+body:before{content:"";position:fixed;top:0;right:0;bottom:0;left:0;z-index:-1;pointer-events:none;
+  background:
+    radial-gradient(1100px 620px at 50% -160px,rgba(160,98,22,.40),transparent 70%),
+    radial-gradient(640px 520px at 108% 36%,rgba(120,64,200,.13),transparent 70%),
+    radial-gradient(640px 520px at -12% 72%,rgba(30,120,210,.10),transparent 70%),
+    var(--pozadi);}
+a{color:var(--zlata2);}
+b,strong{color:#fff3d6;font-weight:600;}
+p{margin:.55em 0;}
+ul,ol{margin:.5em 0;padding-left:1.25em;}
+li{margin:.32em 0;}
+li::marker{color:var(--zlata);}
+h1,h2,h3,h4{font-family:var(--nadpis);font-weight:700;margin:0;line-height:1.15;}
+
+/* ---------- horni lista ---------- */
+.lista{position:sticky;top:0;z-index:30;display:flex;align-items:center;gap:11px;min-height:var(--lista);
+  padding:calc(8px + env(safe-area-inset-top)) max(14px,env(safe-area-inset-right)) 8px max(14px,env(safe-area-inset-left));
+  background:rgba(7,5,3,.90);border-bottom:1px solid var(--cara);
+  -webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);}
+.minca{flex:0 0 auto;width:36px;height:36px;border-radius:50%;
+  background:url(../design/nap_logo_original.png) 48.2% 45.8%/120% 120% no-repeat;
+  box-shadow:0 0 0 1.5px rgba(255,205,90,.75),0 0 16px rgba(255,170,40,.38);}
+.lista .jmeno{flex:1;min-width:0;}
+.lista .jmeno b{display:block;font:700 17px/1 var(--nadpis);letter-spacing:.2em;color:var(--zlata2);}
+.lista .jmeno small{display:block;margin-top:3px;font:600 9.5px/1.2 var(--nadpis);letter-spacing:.3em;color:var(--tlum);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+
+/* ---------- tlacitka ---------- */
+.tl{display:inline-flex;align-items:center;justify-content:center;gap:.4em;min-height:40px;padding:.55em 1.15em;border:0;border-radius:999px;cursor:pointer;
+  font:700 13px/1 var(--nadpis);letter-spacing:.12em;text-decoration:none;white-space:nowrap;color:#1d1003;
+  background:linear-gradient(180deg,#ffe6a0 0%,#e3ae48 55%,#b97d22 100%);
+  box-shadow:0 2px 0 rgba(0,0,0,.55),inset 0 1px 0 rgba(255,255,255,.55),0 0 16px rgba(255,170,40,.22);}
+.tl:active{transform:translateY(1px);filter:brightness(1.06);}
+.tl.tl2{color:var(--zlata2);background:rgba(40,25,8,.85);box-shadow:inset 0 0 0 1px var(--cara2);}
+
+/* ---------- obsah stranky ---------- */
+.obal{max-width:860px;margin:0 auto;padding:0 max(16px,env(safe-area-inset-right)) calc(36px + env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-left));}
+.hrdina{text-align:center;padding:26px 0 6px;}
+.nadtitul{font:600 11px/1.3 var(--nadpis);letter-spacing:.42em;color:var(--text2);padding-left:.42em;}
+.hrdina h1{margin:10px 0 4px;font-size:clamp(30px,9vw,48px);letter-spacing:.06em;
+  background:linear-gradient(100deg,#b9741b 0%,#ffe9a8 22%,#f2c25a 45%,#fff6d0 52%,#d6912a 70%,#ffe39a 100%);background-size:220% 100%;
+  -webkit-background-clip:text;background-clip:text;color:transparent;animation:lesk 7s ease-in-out infinite;
+  filter:drop-shadow(0 2px 3px rgba(0,0,0,.85));}
+@keyframes lesk{0%,100%{background-position:0% 50%}50%{background-position:100% 50%}}
+.perex{max-width:620px;margin:8px auto 0;color:var(--text2);font-size:16px;}
+.perex b{color:#fff0cc;}
+
+/* hledani */
+.hledat{position:relative;max-width:560px;margin:18px auto 4px;}
+.hledat input{width:100%;height:48px;padding:0 48px 0 46px;border-radius:14px;border:1px solid var(--cara2);outline:none;
+  background:rgba(14,9,4,.92);color:var(--text);font:500 16px var(--telo);
+  box-shadow:inset 0 1px 0 rgba(255,214,130,.08),0 0 0 0 rgba(255,190,60,0);transition:box-shadow .2s,border-color .2s;-webkit-appearance:none;appearance:none;}
+.hledat input::placeholder{color:var(--tlum);}
+.hledat input:focus{border-color:var(--zlata);box-shadow:0 0 0 3px rgba(255,190,60,.18);}
+.hledat input::-webkit-search-cancel-button{display:none;}
+.hledat svg{position:absolute;left:15px;top:14px;width:20px;height:20px;stroke:var(--zlata);fill:none;stroke-width:2;stroke-linecap:round;}
+.hledat button{position:absolute;right:6px;top:6px;width:36px;height:36px;border:0;border-radius:10px;cursor:pointer;display:none;
+  background:rgba(255,195,64,.12);color:var(--zlata2);font:700 16px/1 var(--telo);}
+.hledat.ma button{display:block;}
+.hledat-info{max-width:560px;margin:8px auto 0;text-align:center;color:var(--text2);font:600 13px/1.4 var(--nadpis);letter-spacing:.06em;}
+mark{background:rgba(255,200,70,.32);color:#fff8e6;border-radius:3px;padding:0 1px;box-shadow:0 0 0 1px rgba(255,200,70,.45);}
+
+/* nadpis bloku obsahu */
+.stitek-sekce{display:flex;align-items:center;gap:10px;margin:30px 0 12px;font:700 12px/1 var(--nadpis);letter-spacing:.32em;color:var(--zlata);}
+.stitek-sekce:after{content:"";flex:1;height:1px;background:linear-gradient(90deg,var(--cara2),transparent);}
+
+/* rychly start */
+.rychle{margin-top:22px;padding:16px 16px 10px;border-radius:18px;border:1px solid var(--cara2);
+  background:linear-gradient(160deg,rgba(60,38,10,.85),rgba(20,12,5,.9) 60%);box-shadow:0 10px 30px rgba(0,0,0,.45),inset 0 1px 0 rgba(255,214,130,.12);}
+.rychle h2{font-size:15px;letter-spacing:.28em;color:var(--zlata2);margin:0 0 6px;}
+.kroky{list-style:none;padding:0;margin:8px 0;counter-reset:krok;}
+.kroky>li{position:relative;padding:3px 0 3px 40px;margin:.55em 0;counter-increment:krok;}
+.kroky>li:before{content:counter(krok);position:absolute;left:0;top:1px;width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+  font:700 14px/1 var(--nadpis);color:#1d1003;background:linear-gradient(180deg,#ffe6a0,#d39a3a);box-shadow:0 0 12px rgba(255,170,40,.3);}
+
+/* obsah (dlazdice) */
+.obsah{display:grid;grid-template-columns:repeat(auto-fill,minmax(158px,1fr));gap:10px;}
+.dlazdice{position:relative;display:flex;align-items:center;gap:11px;min-height:74px;padding:8px 10px 8px 8px;border-radius:14px;text-decoration:none;color:var(--text);
+  background:var(--panel);border:1px solid var(--cara);box-shadow:inset 0 1px 0 rgba(255,214,130,.06);overflow:hidden;}
+.dlazdice:after{content:"";position:absolute;left:0;top:10px;bottom:10px;width:3px;border-radius:0 3px 3px 0;background:var(--a);box-shadow:0 0 10px var(--a);}
+.dlazdice:active{background:var(--panel2);}
+.dlazdice .nahled{flex:0 0 auto;width:44px;height:58px;border-radius:8px;overflow:hidden;display:flex;align-items:center;justify-content:center;
+  background:radial-gradient(circle at 50% 35%,rgba(255,200,90,.18),rgba(0,0,0,.4));box-shadow:0 0 0 1px rgba(255,205,110,.35);}
+.dlazdice .nahled img{width:100%;height:100%;object-fit:cover;display:block;}
+.dlazdice .nahled svg{width:26px;height:26px;stroke:var(--a);fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;}
+.dlazdice .txt{min-width:0;}
+.dlazdice .c{display:block;font:600 10px/1 var(--nadpis);letter-spacing:.2em;color:var(--tlum);}
+.dlazdice b{display:block;margin-top:4px;font:700 14px/1.15 var(--nadpis);letter-spacing:.04em;color:#fff1cf;}
+.dlazdice small{display:block;margin-top:3px;font:600 10px/1.25 var(--nadpis);letter-spacing:.1em;color:var(--text2);}
+
+/* ---------- kapitoly ---------- */
+.kap{margin-top:34px;padding:18px 16px 14px;border-radius:20px;background:var(--panel);border:1px solid var(--cara);
+  box-shadow:0 14px 36px rgba(0,0,0,.42),inset 0 1px 0 rgba(255,214,130,.07);position:relative;overflow:hidden;
+  scroll-margin-top:calc(var(--lista) + 12px);}
+.kap:before{content:"";position:absolute;left:0;right:0;top:0;height:3px;background:linear-gradient(90deg,transparent,var(--a),transparent);opacity:.9;}
+.kap-hlava{display:flex;align-items:center;gap:14px;margin-bottom:10px;}
+.kap-obr{flex:0 0 auto;width:66px;height:88px;border-radius:10px;object-fit:cover;box-shadow:0 0 0 1.5px var(--a),0 6px 18px rgba(0,0,0,.6);}
+.kap-ikona{flex:0 0 auto;width:66px;height:66px;border-radius:16px;display:flex;align-items:center;justify-content:center;
+  background:radial-gradient(circle at 50% 30%,rgba(255,200,90,.16),rgba(0,0,0,.45));box-shadow:0 0 0 1.5px var(--a),0 6px 18px rgba(0,0,0,.6);}
+.kap-ikona svg{width:34px;height:34px;stroke:var(--a);fill:none;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round;}
+.kap-cislo{font:600 11px/1 var(--nadpis);letter-spacing:.28em;color:var(--tlum);}
+.kap h2{margin-top:5px;font-size:clamp(21px,6.2vw,28px);letter-spacing:.04em;color:#fff3d4;text-shadow:0 0 18px rgba(255,180,60,.18);}
+.kap-pod{margin:4px 0 0;font:600 11.5px/1.3 var(--nadpis);letter-spacing:.2em;color:var(--a);}
+.uvod{font-size:16px;color:#f4ead6;}
+.blok{margin-top:16px;padding-top:12px;border-top:1px solid var(--cara);}
+.blok h3{font-size:15.5px;letter-spacing:.08em;color:var(--zlata2);margin-bottom:4px;text-transform:uppercase;}
+.blok h4{font-size:13.5px;letter-spacing:.06em;color:var(--text2);margin:12px 0 2px;text-transform:uppercase;}
+
+/* nazev tlacitka v appce */
+.t{display:inline-block;max-width:100%;padding:.08em .5em .1em;margin:.05em 0;border-radius:6px;white-space:normal;
+  font:600 .82em/1.35 var(--nadpis);letter-spacing:.05em;color:#ffe9b0;background:rgba(255,190,60,.10);box-shadow:inset 0 0 0 1px rgba(255,195,64,.45);}
+kbd{display:inline-block;min-width:1.7em;padding:.05em .45em .12em;margin:.05em 0;border-radius:6px;text-align:center;white-space:nowrap;
+  font:700 .8em/1.35 var(--mono);color:#e9f6ff;background:linear-gradient(180deg,#2a3440,#151b22);box-shadow:inset 0 -2px 0 rgba(0,0,0,.6),0 0 0 1px rgba(150,200,255,.35);}
+.nw{white-space:nowrap;}
+.cesta{display:inline;padding:.08em .4em;border-radius:6px;font:500 .86em/1.5 var(--mono);color:#cfe9ff;background:rgba(80,140,200,.12);box-shadow:inset 0 0 0 1px rgba(120,180,240,.28);word-break:break-all;}
+
+/* tabulka "tlacitko - co dela" */
+dl.tab{display:grid;grid-template-columns:minmax(118px,32%) 1fr;margin:10px 0 4px;border-radius:12px;overflow:hidden;border:1px solid var(--cara);}
+dl.tab dt,dl.tab dd{margin:0;padding:9px 11px;border-top:1px solid var(--cara);}
+dl.tab dt:first-of-type,dl.tab dt:first-of-type+dd{border-top:0;}
+dl.tab dt{background:rgba(255,190,60,.06);font:600 13px/1.4 var(--nadpis);letter-spacing:.04em;color:#ffe5a6;}
+dl.tab dd{background:rgba(0,0,0,.16);}
+@media (max-width:360px){dl.tab{grid-template-columns:1fr;}dl.tab dd{border-top:0;padding-top:0;}}
+
+/* rameecky TIP / POZOR */
+.tip,.pozor{margin:12px 0 4px;padding:10px 12px 10px 14px;border-radius:12px;position:relative;}
+.tip{background:rgba(255,190,60,.08);box-shadow:inset 3px 0 0 var(--zlata);}
+.pozor{background:rgba(255,110,60,.09);box-shadow:inset 3px 0 0 #ff8a50;}
+.tip>b:first-child,.pozor>b:first-child{font:700 11.5px/1 var(--nadpis);letter-spacing:.2em;margin-right:6px;}
+.tip>b:first-child{color:var(--zlata);}
+.pozor>b:first-child{color:#ffa070;}
+
+/* klavesy PC */
+.klavesy{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:10px;margin:10px 0;}
+.klavesy>div{padding:10px 12px;border-radius:12px;background:rgba(10,18,26,.55);box-shadow:inset 0 0 0 1px rgba(120,180,240,.22);}
+.klavesy h4{margin:0 0 6px;color:#bfe3ff;}
+.klavesy p{margin:.3em 0;font-size:14.5px;}
+
+/* casté otazky */
+details{margin:8px 0;border-radius:12px;background:rgba(0,0,0,.18);border:1px solid var(--cara);}
+details>summary{list-style:none;cursor:pointer;padding:12px 40px 12px 14px;position:relative;font:600 15px/1.35 var(--nadpis);letter-spacing:.02em;color:#ffeac0;}
+details>summary::-webkit-details-marker{display:none;}
+details>summary:after{content:"";position:absolute;right:16px;top:50%;width:9px;height:9px;margin-top:-7px;border-right:2px solid var(--zlata);border-bottom:2px solid var(--zlata);transform:rotate(45deg);transition:transform .2s;}
+details[open]>summary:after{transform:rotate(225deg);margin-top:-2px;}
+details>div{padding:0 14px 10px;}
+
+/* paticka kapitoly */
+.kap-paticka{display:flex;flex-wrap:wrap;gap:10px;justify-content:flex-end;margin-top:18px;padding-top:14px;border-top:1px solid var(--cara);}
+
+/* plovouci "nahoru" */
+#nahoru{position:fixed;right:max(12px,env(safe-area-inset-right));bottom:calc(14px + env(safe-area-inset-bottom));z-index:25;width:46px;height:46px;border-radius:50%;border:0;cursor:pointer;
+  color:#1d1003;font:700 18px/1 var(--nadpis);background:linear-gradient(180deg,#ffe6a0,#c98a2a);box-shadow:0 6px 18px rgba(0,0,0,.6),0 0 18px rgba(255,170,40,.35);
+  opacity:0;transform:translateY(16px) scale(.9);pointer-events:none;transition:opacity .2s,transform .2s;}
+#nahoru.ukaz{opacity:.94;transform:none;pointer-events:auto;}
+
+.zapati{margin:40px 0 10px;text-align:center;color:var(--tlum);font:600 11px/1.6 var(--nadpis);letter-spacing:.24em;}
+.zapati .podpis{display:block;margin:8px 0;font:700 italic 20px/1 var(--nadpis);letter-spacing:.04em;color:#e3b862;}
+
+/* hledani: schovat to, co nesedi */
+body.hleda .rychle,body.hleda #obsahStitek,body.hleda #obsah{display:none;}
+.skryto{display:none!important;}
+
+@media (min-width:700px){
+  body{font-size:16px;}
+  .kap{padding:24px 26px 18px;}
+  .kap-obr{width:78px;height:104px;}
+}
+@media (prefers-reduced-motion:reduce){
+  .hrdina h1{animation:none;}
+  html{scroll-behavior:auto;}
+}
+</style>
+</head>
+<body>
+
+<div class="lista">
+  <div class="minca" role="img" aria-label="N&amp;P"></div>
+  <div class="jmeno"><b>NÁVOD</b><small>N&amp;P VISION</small></div>
+  <a class="tl" id="listaMenu" href="../index.html" aria-label="Zpět do hlavního menu">&#9664; MENU</a>
+</div>
+
+<main class="obal">
+
+<header class="hrdina" id="nahore">
+  <div class="nadtitul">N&amp;P VISION · RETRO UNIVERSE</div>
+  <h1>ÚPLNÝ NÁVOD</h1>
+  <p class="perex">Jedna aplikace, celé retro: <b>Atari 130XE</b>, <b>Sega Mega Drive</b>, <b>PlayStation</b>, kazeťák na MP3 a DJ pult. Tady najdeš všechno – od prvního spuštění až po hraní na televizi.</p>
+  <div class="hledat" id="hledatObal">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5l5 5"/></svg>
+    <input id="hledat" type="search" placeholder="Hledat v návodu…" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="Hledat v návodu">
+    <button id="hledatZrus" type="button" aria-label="Smazat hledání">&#10005;</button>
+  </div>
+  <p class="hledat-info" id="hledatInfo" hidden></p>
+</header>
+
+<section class="rychle" aria-label="Rychlý start">
+  <h2>RYCHLÝ START</h2>
+  <ol class="kroky">
+    <li>V hlavním menu táhni kartami doleva a doprava. Klepni na <span class="nw"><span class="t">ATARI 130XE</span>.</span></li>
+    <li>Úplně dole na přístroji klepni na <span class="t">NET / HRY</span> a vyber hru – stáhne se a hned běží.</li>
+    <li>Napiš v Atari aspoň 50 řádků programu (a dej <span class="nw"><kbd>RUN</kbd>)</span> – otevře se <span class="nw"><span class="t">SEGA MEGA DRIVE</span>.</span></li>
+    <li>Odehraj 30 minut na Seze – otevře se <span class="nw"><span class="t">PS1</span>.</span></li>
+    <li>Chceš to na velké obrazovce? Kolečko <span class="t">&#9881;</span> v menu → <span class="nw"><span class="t">SPUSTIT WEB TV</span>.</span></li>
+  </ol>
+</section>
+
+<div class="stitek-sekce" id="obsahStitek">OBSAH</div>
+<nav class="obsah" id="obsah" aria-label="Obsah návodu">
+  <a class="dlazdice" href="#menu" style="--a:#f2c35b"><span class="nahled"><svg viewBox="0 0 24 24"><rect x="7" y="4" width="10" height="16" rx="2"/><path d="M3.5 7.5v9M20.5 7.5v9"/></svg></span><span class="txt"><span class="c">01</span><b>HLAVNÍ MENU</b><small>KARTY A OVLÁDÁNÍ</small></span></a>
+  <a class="dlazdice" href="#atari" style="--a:#F2B640"><span class="nahled"><img src="../menu/karta_atari.jpg" alt=""></span><span class="txt"><span class="c">02</span><b>ATARI 130XE</b><small>EMULÁTOR · C++</small></span></a>
+  <a class="dlazdice" href="#sega" style="--a:#3FA9FF"><span class="nahled"><img src="../menu/karta_sega.jpg" alt=""></span><span class="txt"><span class="c">03</span><b>SEGA MEGA DRIVE</b><small>16-BIT KONZOLE</small></span></a>
+  <a class="dlazdice" href="#ps1" style="--a:#B26BFF"><span class="nahled"><img src="../menu/karta_ps1.jpg" alt=""></span><span class="txt"><span class="c">04</span><b>PS1</b><small>PLAYSTATION · 32-BIT</small></span></a>
+  <a class="dlazdice" href="#mp3" style="--a:#FFB347"><span class="nahled"><img src="../menu/karta_mp3.jpg" alt=""></span><span class="txt"><span class="c">05</span><b>MP3 PŘEHRÁVAČ</b><small>RETRO CASSETTE PLAYER</small></span></a>
+  <a class="dlazdice" href="#dzubox" style="--a:#FF4FD8"><span class="nahled"><img src="../menu/karta_dzubox.jpg" alt=""></span><span class="txt"><span class="c">06</span><b>DŽUBOX</b><small>PRO DJ MIXER</small></span></a>
+  <a class="dlazdice" href="#web" style="--a:#4FE0C0"><span class="nahled"><img src="../menu/karta_web.jpg" alt=""></span><span class="txt"><span class="c">07</span><b>ATARIHELP.EU</b><small>OFICIÁLNÍ WEB</small></span></a>
+  <a class="dlazdice" href="#options" style="--a:#f2c35b"><span class="nahled"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.2"/><circle cx="12" cy="12" r="6.6"/><path d="M12 2.6v2.8M12 18.6v2.8M2.6 12h2.8M18.6 12h2.8M5.4 5.4l2 2M16.6 16.6l2 2M5.4 18.6l2-2M16.6 7.4l2-2"/></svg></span><span class="txt"><span class="c">08</span><b>OPTIONS</b><small>NASTAVENÍ APLIKACE</small></span></a>
+  <a class="dlazdice" href="#tv" style="--a:#64dfff"><span class="nahled"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="12" rx="2"/><path d="M8.5 20.5h7M12 17v3.5"/></svg></span><span class="txt"><span class="c">09</span><b>WEB TV A PC</b><small>OBRAZ V PROHLÍŽEČI</small></span></a>
+  <a class="dlazdice" href="#odemykani" style="--a:#ffb35a"><span class="nahled"><svg viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 7.6-1.7"/><path d="M12 15v2.4"/></svg></span><span class="txt"><span class="c">10</span><b>ODEMYKÁNÍ</b><small>SEGA A PS1</small></span></a>
+  <a class="dlazdice" href="#soubory" style="--a:#8fd0ff"><span class="nahled"><svg viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg></span><span class="txt"><span class="c">11</span><b>SOUBORY</b><small>KDE CO V TELEFONU JE</small></span></a>
+  <a class="dlazdice" href="#log" style="--a:#ff9a5a"><span class="nahled"><svg viewBox="0 0 24 24"><path d="M6 3h9l4 4v14H6z"/><path d="M15 3v4h4M9 12h7M9 16h5"/></svg></span><span class="txt"><span class="c">12</span><b>LOG A CHYBY</b><small>KDYŽ NĚCO NEJDE</small></span></a>
+  <a class="dlazdice" href="#otazky" style="--a:#f2d27a"><span class="nahled"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.4a2.5 2.5 0 1 1 3.4 2.4c-.7.3-1 .8-1 1.5v.6"/><path d="M12 17.1v.1"/></svg></span><span class="txt"><span class="c">13</span><b>ČASTÉ OTÁZKY</b><small>RYCHLÉ ODPOVĚDI</small></span></a>
+</nav>
+
+<!-- ======================================================= 01 MENU -->
+<section class="kap" id="menu" style="--a:#f2c35b">
+  <header class="kap-hlava">
+    <div class="kap-ikona"><svg viewBox="0 0 24 24"><rect x="7" y="4" width="10" height="16" rx="2"/><path d="M3.5 7.5v9M20.5 7.5v9"/></svg></div>
+    <div><div class="kap-cislo">KAPITOLA 01</div><h2>HLAVNÍ MENU</h2><p class="kap-pod">KARTY A OVLÁDÁNÍ</p></div>
+  </header>
+  <p class="uvod">Hlavní menu jsou velké karty vedle sebe – jedna karta, jeden svět. Pořadí: <span class="t">ATARI 130XE</span> <span class="t">SEGA MEGA DRIVE</span> <span class="t">PS1</span> <span class="t">MP3 PŘEHRÁVAČ</span> <span class="t">DŽUBOX</span> <span class="t">ATARIHELP.EU</span> <span class="nw"><span class="t">HELP</span>.</span> Menu kreslí čistý C++ přímo grafickým čipem, takže jede plynule a bez zpoždění.</p>
+
+  <div class="blok">
+    <h3>První spuštění</h3>
+    <ul>
+      <li>Když v telefonu chybí Sonic the Hedgehog (Sega) nebo BIOS pro PlayStation, appka se nejdřív zeptá, jestli je má stáhnout z atarihelp.eu: <span class="t">STAHNOUT</span> / <span class="nw"><span class="t">TED NE</span>.</span> Bez nich appka funguje dál.</li>
+      <li>Pak se přehraje úvodní film. Přeskočíš ho tlačítkem <span class="t">SKIP ›</span> nebo tlačítkem ZPĚT na telefonu. Znovu ho pustíš v <a href="#options" data-skok="options">OPTIONS</a> → <span class="nw"><span class="t">PUSTIT INTRO</span>.</span></li>
+      <li>Nakonec naskočí hlavní menu – karty přiletí na své místo.</li>
+    </ul>
+  </div>
+
+  <div class="blok">
+    <h3>Listování a otevření</h3>
+    <dl class="tab">
+      <dt>Tah prstem</dt><dd>Karty jedou plynule za prstem doleva a doprava. Pustíš – karta dojede doprostřed.</dd>
+      <dt>Švihnutí</dt><dd>Rychlým švihem přeskočíš víc karet najednou. Prst položený na jedoucí karty je zastaví.</dd>
+      <dt>Klepnutí doprostřed</dt><dd>Otevře prostřední kartu (karta se rozzáří a appka přepne).</dd>
+      <dt>Tlačítko pod kartou</dt><dd><span class="nw"><span class="t">SPUSTIT</span>,</span> <span class="nw"><span class="t">PŘEHRÁT</span>,</span> <span class="nw"><span class="t">ROZJET</span>,</span> <span class="nw"><span class="t">OTEVŘÍT WEB</span>,</span> <span class="t">OTEVŘÍT NÁVOD</span> – otevře prostřední kartu.</dd>
+      <dt>Karta vedle</dt><dd>Klepni na ni a přijede doprostřed.</dd>
+      <dt>Tečky</dt><dd>Klepnutím na tečku skočíš rovnou na tu kartu.</dd>
+      <dt>Kolečko &#9881;</dt><dd>Vpravo nahoře – otevře <a href="#options" data-skok="options">OPTIONS</a>.</dd>
+    </dl>
+  </div>
+
+  <div class="blok">
+    <h3>Klávesnice, ovladač, dálkové ovládání</h3>
+    <ul>
+      <li><kbd>&#8592;</kbd> <kbd>&#8594;</kbd> (i <kbd>L1</kbd> / <kbd>R1</kbd> na ovladači) – listování kartami.</li>
+      <li><span class="nw"><kbd>Enter</kbd>,</span> <span class="nw"><kbd>OK</kbd>,</span> <kbd>A</kbd> nebo mezerník – otevře prostřední kartu.</li>
+      <li><kbd>Home</kbd> / <kbd>End</kbd> – první / poslední karta.</li>
+      <li>Na TV nebo PC přes WEB TV listuješ šipkami (nebo <kbd>A</kbd> / <span class="nw"><kbd>D</kbd>)</span> a otevíráš klávesou <kbd>Enter</kbd> – viz <a href="#tv" data-skok="tv">WEB TV a PC</a>.</li>
+    </ul>
+  </div>
+
+  <div class="blok">
+    <h3>Zamčené karty</h3>
+    <p>Karty <span class="t">SEGA MEGA DRIVE</span> a <span class="t">PS1</span> se otevírají postupně. Zamčená karta je šedá se zámkem a nápisem <span class="nw"><span class="t">ZAMČENO</span>.</span> Když na ni klepneš, zatřese se a pod kartami se ukáže, co ještě chybí (třeba kolik řádků programu ještě napsat). Jak na to: <a href="#odemykani" data-skok="odemykani">Odemykání</a>.</p>
+  </div>
+
+  <div class="blok">
+    <h3>Zpátky do menu</h3>
+    <ul>
+      <li>V každé sekci je tlačítko <span class="t">MENU</span> (v PS1 <span class="nw"><span class="t">BACK</span>,</span> v DJ pultu <span class="nw"><span class="t">MENU / &#9211;</span>).</span></li>
+      <li>Nebo tlačítko ZPĚT na telefonu.</li>
+      <li>Tlačítko ZPĚT přímo v hlavním menu pošle appku do pozadí – když se vrátíš, menu na tebe čeká.</li>
+    </ul>
+  </div>
+  <nav class="kap-paticka"><a class="tl tl2" href="#obsah" data-skok="obsah">&#9650; OBSAH</a><a class="tl" href="../index.html">&#9664; ZPĚT DO MENU</a></nav>
+</section>
+
+<!-- ======================================================= 02 ATARI -->
+<section class="kap" id="atari" style="--a:#F2B640">
+  <header class="kap-hlava">
+    <img class="kap-obr" src="../menu/karta_atari.jpg" alt="" loading="lazy">
+    <div><div class="kap-cislo">KAPITOLA 02</div><h2>ATARI 130XE</h2><p class="kap-pod">EMULÁTOR · C++</p></div>
+  </header>
+  <p class="uvod">Atari 130XE se 128 kB paměti a grafickou kartou VBXE, celé napsané v C++. Na displeji je celý přístroj: obrazovka, konzolová tlačítka, klávesnice, kazeťák a úplně dole servisní tlačítka.</p>
+
+  <div class="blok">
+    <h3>Zapnutí a konzole</h3>
+    <dl class="tab">
+      <dt>POWER</dt><dd>Zelený vypínač vlevo u obrazovky – vypne / zapne Atari. Zapnutí je studený start: paměť se vymaže.</dd>
+      <dt>RESET</dt><dd>Jako na skutečném Atari – program v paměti zůstane.</dd>
+      <dt>HELP, START, SELECT, OPTION</dt><dd>Konzolová tlačítka nad klávesnicí, drží se, dokud je na nich prst. (HELP tady je klávesa HELP Atari.)</dd>
+      <dt>SHIFT, CONTROL</dt><dd>Ťuknutí = zamčeno (zlaté), další ťuknutí = odemčeno.</dd>
+    </dl>
+  </div>
+
+  <div class="blok">
+    <h3>Joystick</h3>
+    <h4>Na výšku – joystick je obrazovka Atari</h4>
+    <ul>
+      <li>Polož prst na <b>levou půlku</b> obrazovky a posouvej ho (nahoru, dolů, do stran, i šikmo) – joystick ukazuje tím směrem, dokud prst držíš.</li>
+      <li><b>Pravá půlka</b> obrazovky = <span class="t">FIRE</span> (drží, dokud je prst dole). Jde to oběma palci najednou.</li>
+    </ul>
+    <h4>Na šířku – otoč telefon</h4>
+    <ul>
+      <li>Obraz Atari přes celý displej. Vlevo dole D-pad (puntík jede pod palcem, i šikmo), vpravo <span class="nw"><span class="t">FIRE</span>,</span> <span class="t">MEZERA</span> a <span class="nw"><span class="t">RETURN</span>,</span> vlevo nahoře <span class="t">START</span> / <span class="t">SELECT</span> / <span class="nw"><span class="t">OPTION</span>.</span></li>
+      <li>Kolečko <span class="t">&#9881;</span> vpravo nahoře = <span class="nw"><span class="t">D-PAD A OVLÁDÁNÍ</span>:</span> <span class="t">UPRAVIT ROZLOŽENÍ TLAČÍTEK</span> (přetáhneš prstem, <span class="nw"><span class="t">PO SKUPINÁCH</span>,</span> <span class="nw"><span class="t">VÝCHOZÍ</span>,</span> <span class="nw"><span class="t">HOTOVO</span>),</span> <span class="t">OVLÁDÁNÍ: CITLIVOST A VZHLED</span> (citlivost, průhlednost, velikost tlačítek a D-padu, vibrace), <span class="nw"><span class="t">PROHODIT D-PAD A AKCE (LEVÁK)</span>,</span> <span class="nw"><span class="t">VÝCHOZÍ ROZLOŽENÍ TLAČÍTEK</span>,</span> <span class="nw"><span class="t">RESET ATARI</span>,</span> hry, disketa, kazeta a nápověda. Nastavení si appka pamatuje.</li>
+    </ul>
+    <h4>Herní ovladač (Bluetooth / USB)</h4>
+    <p>Kříž nebo páčka = joystick, <kbd>A</kbd> / <kbd>B</kbd> = FIRE, <kbd>X</kbd> = MEZERA, <kbd>Y</kbd> = RETURN, <kbd>START</kbd> / <kbd>SELECT</kbd> = konzole, <kbd>L2</kbd> / <kbd>R2</kbd> = OPTION.</p>
+  </div>
+
+  <div class="blok">
+    <h3>Servisní tlačítka (úplně dole)</h3>
+    <dl class="tab">
+      <dt>NET / HRY</dt><dd>Hry z atarihelp.eu – Galactic Chase, Moon Patrol, Pac-Man, Donkey Kong, River Raid, Bruce Lee, Montezuma's Revenge, Reného Pitt-Kitt a další. Klepneš na hru, stáhne se a spustí. Tlačítko <span class="t">WEB</span> otevře web s hrami.</dd>
+      <dt>XEX / MOBIL</dt><dd>Spustí hru z telefonu – soubor XEX (i zabalený v ZIP).</dd>
+      <dt>ATR / DISK</dt><dd>Disketa ATR (i v ZIP) do mechaniky D1: a start z diskety (podržený <span class="t">OPTION</span> = BASIC vypnutý). Disketa v mechanice zůstává i po vypnutí a zapnutí – jako u skutečné mechaniky. Když v D1: disketa je, nabídne <span class="t">VYSUNOUT DISKETU</span> (Atari znovu s BASICem), <span class="t">VYMĚNIT DISKETU BEZ RESTARTU</span> (hra chce další disketu nebo druhou stranu) a <span class="t">VLOŽIT JINOU DISKETU A NABOOTOVAT</span>.</dd>
+      <dt>TURBO / BASIC</dt><dd>Nahraje Turbo-BASIC XL 1.5.</dd>
+      <dt>BASIC/TBXL TXT</dt><dd>Program z textového souboru: <span class="t">TXT SOUBOR → ATARI BASIC</span> nebo <span class="t">TXT SOUBOR → TURBO-BASIC XL</span> – appka program sama napíše klávesnicí Atari, řádek po řádku (pak RUN, CSAVE…). Nebo <span class="t">NAPSAT / VLOŽIT TEXT RUČNĚ</span> a <span class="t">VLOZIT</span> / <span class="nw"><span class="t">VLOZIT + RUN</span>.</span></dd>
+      <dt>LOG / CHYBA</dt><dd>Log a testy – viz <a href="#log" data-skok="log">Log a chyby</a>.</dd>
+      <dt>HELP</dt><dd>Stručná nápověda k ovládání přímo v Atari.</dd>
+      <dt>MENU</dt><dd>Zpět do hlavního menu.</dd>
+    </dl>
+  </div>
+
+  <div class="blok">
+    <h3>Kazeťák</h3>
+    <ul>
+      <li><span class="t">REC</span> a <span class="t">PLAY</span> drží, <span class="t">STOP</span> je pustí. <span class="t">REW</span> = pásek na začátek, <span class="t">FWD</span> = o 10 s dál. Malé tlačítko vedle počítadla ho vynuluje.</li>
+      <li><span class="t">EJECT</span> otevře dvířka a nabídne kazety – nahrávky z CSAVE nebo jakýkoli WAV z telefonu. Po výběru se kazeta vloží a dvířka zavřou.</li>
+    </ul>
+    <h4>Uložit program na kazetu (CSAVE)</h4>
+    <ol class="kroky">
+      <li>Napiš <kbd>CSAVE</kbd> a <span class="nw"><kbd>RETURN</kbd>.</span></li>
+      <li>Po pípnutí znovu <span class="nw"><kbd>RETURN</kbd>.</span></li>
+      <li>Po nahrání se WAV sám uloží do <span class="cesta">Download/AtariHelp/Atari_emu/csave_&lt;datum&gt;_&lt;čas&gt;.wav</span> – je to přesný signál pro skutečný magnetofon.</li>
+    </ol>
+    <h4>Nahrát program z kazety (CLOAD)</h4>
+    <ol class="kroky">
+      <li><span class="t">EJECT</span> a vyber kazetu (PLAY se zmáčkne samo).</li>
+      <li>Napiš <kbd>CLOAD</kbd> a <kbd>RETURN</kbd> – Atari pípne a čeká.</li>
+      <li>Zmáčkni ještě jednou <span class="nw"><kbd>RETURN</kbd>.</span> Rozběhne se motor, program se nahraje, pak <kbd>READY</kbd> a můžeš dát <kbd>LIST</kbd> nebo <span class="nw"><kbd>RUN</kbd>.</span></li>
+    </ol>
+    <p>Při nahrávání je slyšet to, co pouští skutečné Atari (<kbd>POKE 65,0</kbd> = potichu). U stereo WAV i zvuková stopa kazety.</p>
+    <p class="tip"><b>HRY NA KAZETĚ</b> Appka sama pozná, že kazeta startuje sama (boot): Atari zapne s drženým START + OPTION, po pípnutí stiskne RETURN a hra se nahraje. Ručně: drž START a OPTION a přepni POWER. Na šířku najdeš kazety v kolečku <span class="t">&#9881;</span> → <span class="nw"><span class="t">KAZETA (WAV)</span>.</span></p>
+  </div>
+
+  <div class="blok">
+    <h3>Grafika VBXE</h3>
+    <p>Grafická karta VBXE je v Atari zabudovaná – hry pro VBXE (Wolfenstein 3D, Popeye…) ji najdou samy. Wolfenstein 3D: chůze joystickem, FIRE = střelba, MEZERA = otevřít dveře.</p>
+  </div>
+
+  <div class="blok">
+    <h3>Psaní programů</h3>
+    <p>Piš na klávesnici přístroje nebo na klávesnici počítače přes <a href="#tv" data-skok="tv">WEB TV</a>. Každých 50 řádků, které napíšeš sám, otevírá Segu – viz <a href="#odemykani" data-skok="odemykani">Odemykání</a>.</p>
+  </div>
+  <nav class="kap-paticka"><a class="tl tl2" href="#obsah" data-skok="obsah">&#9650; OBSAH</a><a class="tl" href="../index.html">&#9664; ZPĚT DO MENU</a></nav>
+</section>
+
+<!-- ======================================================= 03 SEGA -->
+<section class="kap" id="sega" style="--a:#3FA9FF">
+  <header class="kap-hlava">
+    <img class="kap-obr" src="../menu/karta_sega.jpg" alt="" loading="lazy">
+    <div><div class="kap-cislo">KAPITOLA 03</div><h2>SEGA MEGA DRIVE</h2><p class="kap-pod">16-BIT KONZOLE</p></div>
+  </header>
+  <p class="uvod">16bitové hry Mega Drive s ovladačem na displeji. Karta se otevře, až v Atari napíšeš 50 řádků programu – <a href="#odemykani" data-skok="odemykani">Odemykání</a>.</p>
+
+  <div class="blok">
+    <h3>Na výšku – konzole</h3>
+    <dl class="tab">
+      <dt>SBIRKA</dt><dd>Klepnutí = sbírka her na atarihelp.eu: klepneš na hru, stáhne se a hraje. Pak se appka zeptá „Uložit … do telefonu?“ – <span class="t">ULOŽIT</span> ji přidá do MOJE HRY. Podržení (0,7 s) = výkon <span class="t">HIGH QUALITY</span> / <span class="nw"><span class="t">LOW PERFORMANCE</span>.</span></dd>
+      <dt>HRY</dt><dd><span class="t">MOJE HRY</span> – hry uložené v telefonu. Klepnutím hru spustíš, koš ji smaže (<span class="t">JEN HRU (uložená pozice zůstane)</span> nebo <span class="nw"><span class="t">HRU I ULOŽENOU POZICI</span>).</span> <span class="nw"><span class="t">VYBRAT SOUBOR RUČNĚ V TELEFONU</span>,</span> <span class="nw"><span class="t">OBNOVIT SEZNAM</span>.</span></dd>
+      <dt>CARTRIDGE</dt><dd>Slot na konzoli – vybereš ROM z telefonu (.gen, .bin, .md, .smd, .zip).</dd>
+      <dt>ULOZENE</dt><dd><span class="t">ULOŽENÉ POZICE</span> – hry s uloženou pozicí. Klepnutím pozici načteš.</dd>
+      <dt>NAVODY</dt><dd>Technické informace o emulátoru.</dd>
+      <dt>WEB</dt><dd>Otevře atarihelp.eu.</dd>
+      <dt>MENU</dt><dd>Zpět do hlavního menu.</dd>
+    </dl>
+    <p>Ovladač na obrázku konzole: D-pad, <span class="t">A</span> <span class="t">B</span> <span class="t">C</span> a <span class="nw"><span class="t">START</span>.</span></p>
+  </div>
+
+  <div class="blok">
+    <h3>Na šířku – hraní</h3>
+    <ul>
+      <li>D-pad vlevo (puntík jede pod palcem, i šikmo), <span class="t">A</span> <span class="t">B</span> <span class="t">C</span> vpravo, <span class="t">START</span> dole uprostřed.</li>
+      <li><span class="t">SAVE</span> (zelené, vlevo od START) uloží pozici ve hře, <span class="t">LOAD GAME</span> (zlaté, vpravo) ji načte – přesně tam, kde jsi skončil. Každá hra má svou pozici.</li>
+      <li>Kolečko <span class="t">&#9881;</span> = <span class="nw"><span class="t">D-PAD A OVLÁDÁNÍ</span>:</span> <span class="nw"><span class="t">UPRAVIT ROZLOŽENÍ TLAČÍTEK</span>,</span> <span class="t">OVLÁDÁNÍ: CITLIVOST A VZHLED</span> (citlivost, průhlednost, velikost, vibrace), <span class="nw"><span class="t">PROHODIT D-PAD A AKCE (LEVÁK)</span>,</span> <span class="nw"><span class="t">ULOŽIT POZICI VE HŘE</span>,</span> <span class="nw"><span class="t">NAČÍST ULOŽENOU POZICI</span>,</span> <span class="nw"><span class="t">EXPORTOVAT LOG (DIAGNOSTIKA)</span>.</span></li>
+    </ul>
+    <p class="tip"><b>TIP</b> Na TV / PC hraješ klávesnicí: <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> pohyb, <kbd>K</kbd> = A, <kbd>L</kbd> = B, <kbd>O</kbd> = C, <kbd>P</kbd> = START.</p>
+  </div>
+  <nav class="kap-paticka"><a class="tl tl2" href="#obsah" data-skok="obsah">&#9650; OBSAH</a><a class="tl" href="../index.html">&#9664; ZPĚT DO MENU</a></nav>
+</section>
+
+<!-- ======================================================= 04 PS1 -->
+<section class="kap" id="ps1" style="--a:#B26BFF">
+  <header class="kap-hlava">
+    <img class="kap-obr" src="../menu/karta_ps1.jpg" alt="" loading="lazy">
+    <div><div class="kap-cislo">KAPITOLA 04</div><h2>PS1</h2><p class="kap-pod">PLAYSTATION · 32-BIT</p></div>
+  </header>
+  <p class="uvod">32bitové hry PlayStation s ovladačem na displeji. Karta se otevře po 30 minutách hraní na Seze – <a href="#odemykani" data-skok="odemykani">Odemykání</a>.</p>
+
+  <div class="blok">
+    <h3>Tlačítka</h3>
+    <dl class="tab">
+      <dt>LOAD GAME</dt><dd>Otevře PS1 stránku na atarihelp.eu s odkazy na Google Drive. Klepneš na hru – při prvním spuštění se stáhne a rozbalí, příště se spustí rovnou z telefonu.</dd>
+      <dt>CD ISO</dt><dd>Knihovna <span class="t">VYBRAT HRU (CD/ISO)</span> – hry v telefonu, <span class="nw"><span class="t">VYBRAT SOUBOR RUČNĚ V TELEFONU</span>,</span> mazání her.</dd>
+      <dt>SAVE GAME</dt><dd>Uloží přesnou pozici ve hře.</dd>
+      <dt>MEMORY CARD</dt><dd><span class="t">PAMĚŤOVÁ KARTA</span> – stav paměťové karty. Hry si na ni ukládají samy (jako na skutečnou kartu).</dd>
+      <dt>BACK</dt><dd>Zpět do hlavního menu.</dd>
+    </dl>
+    <p>Ovladač: D-pad, <span class="t">&#9651;</span> <span class="t">&#9675;</span> <span class="t">&#10005;</span> <span class="nw"><span class="t">&#9633;</span>,</span> <span class="t">L1</span> <span class="t">L2</span> <span class="t">R1</span> <span class="nw"><span class="t">R2</span>,</span> <span class="nw"><span class="t">SELECT</span>,</span> <span class="t">START</span> a <span class="nw"><span class="t">RESET</span>.</span></p>
+  </div>
+
+  <div class="blok">
+    <h3>Kolečko &#9881; – D-PAD A OVLÁDÁNÍ</h3>
+    <p><span class="nw"><span class="t">UPRAVIT ROZLOŽENÍ TLAČÍTEK</span>,</span> <span class="nw"><span class="t">OVLÁDÁNÍ: CITLIVOST A VZHLED</span>,</span> <span class="nw"><span class="t">PROHODIT D-PAD A AKCE (LEVÁK)</span>,</span> <span class="t">NAČÍST RYCHLOU POZICI</span> (nahraje pozici ze SAVE GAME – přesně tam, kde jsi skončil), <span class="t">ULOŽIT LOG A ODESLAT</span> a <span class="nw"><span class="t">DALŠÍ (BIOS, CD, LOG...)</span>.</span></p>
+  </div>
+
+  <div class="blok">
+    <h3>Hry a BIOS</h3>
+    <ul>
+      <li>Formáty her: <b>.bin .cue .iso .img .pbp .chd</b> a <b>.zip</b>. Formát <b>.7z</b> appka neumí.</li>
+      <li>PS1 potřebuje BIOS (soubor <span class="cesta">scph….bin</span>). Když chybí, appka ho vezme ze složky <span class="cesta">Download/AtariHelp</span> (i z podsložky BIOS nebo PS1_BIOS, i ze ZIP se slovem „bios“ v názvu), jinak ho stáhne z atarihelp.eu. Ručně: <a href="#options" data-skok="options">OPTIONS</a> → <span class="nw"><span class="t">STÁHNOUT HRY A BIOS</span>.</span></li>
+    </ul>
+    <p class="tip"><b>TIP</b> Na TV / PC: šipky nebo <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> směr, <kbd>K</kbd> nebo mezerník = &#10005;, <kbd>L</kbd> = &#9675;, <kbd>J</kbd> = &#9633;, <kbd>I</kbd> = &#9651;, <kbd>Q</kbd> / <kbd>E</kbd> = L1 / R1, <kbd>Z</kbd> / <kbd>C</kbd> = L2 / R2, <kbd>Enter</kbd> nebo <kbd>P</kbd> = START, <kbd>Backspace</kbd> nebo <kbd>O</kbd> = SELECT.</p>
+  </div>
+  <nav class="kap-paticka"><a class="tl tl2" href="#obsah" data-skok="obsah">&#9650; OBSAH</a><a class="tl" href="../index.html">&#9664; ZPĚT DO MENU</a></nav>
+</section>
+
+<!-- ======================================================= 05 MP3 -->
+<section class="kap" id="mp3" style="--a:#FFB347">
+  <header class="kap-hlava">
+    <img class="kap-obr" src="../menu/karta_mp3.jpg" alt="" loading="lazy">
+    <div><div class="kap-cislo">KAPITOLA 05</div><h2>MP3 PŘEHRÁVAČ</h2><p class="kap-pod">RETRO CASSETTE PLAYER</p></div>
+  </header>
+  <p class="uvod">Retro kazeťák pro hudbu z telefonu – soubory MP3 a WAV. Ekvalizér, basy, výšky a playlisty.</p>
+
+  <div class="blok">
+    <h3>Přehrávání</h3>
+    <dl class="tab">
+      <dt>PLAY</dt><dd>Pustí skladbu. Když v seznamu nic není, otevře se playlist a výběr hudby.</dd>
+      <dt>PAUSE / STOP</dt><dd>Pozastaví / zastaví.</dd>
+      <dt>REWIND / FAST FWD</dt><dd>O 10 sekund zpět / dopředu.</dd>
+    </dl>
+    <p>Po skončení skladby jede další.</p>
+  </div>
+
+  <div class="blok">
+    <h3>Playlist</h3>
+    <p><span class="nw"><span class="t">MY PLAYLISTS</span>,</span> <span class="nw"><span class="t">PLAYLISTS</span>,</span> <span class="t">LIBRARY</span> nebo pruh se skladbou otevřou panel <span class="nw"><span class="t">MOBIL - LOKALNI MP3 / WAV</span>:</span></p>
+    <ul>
+      <li><span class="t">OBNOVIT SEZNAM V MOBILU</span> – najde hudbu v telefonu (Stažené, Hudba, Dokumenty…).</li>
+      <li><span class="t">VYBRAT SYSTEMOVE</span> – soubory vybereš sám.</li>
+      <li><span class="nw"><span class="t">VYMAZAT PLAYLIST</span>,</span> <span class="nw"><span class="t">ZAVRIT</span>.</span></li>
+    </ul>
+  </div>
+
+  <div class="blok">
+    <h3>Zvuk</h3>
+    <ul>
+      <li><span class="t">EQ 60/250/1K/4K/16K</span> – pět pásem ±12 dB, táhni prstem nahoru / dolů.</li>
+      <li><span class="t">BALANCE</span> – táhni do stran. <span class="t">BASS / TREBLE / VOLUME</span> – basy a výšky ±12 dB, hlasitost.</li>
+      <li><span class="t">SETTINGS</span> → <span class="t">RESET ZVUKU NA ZAKLAD</span> vrátí zvuk do výchozího stavu.</li>
+    </ul>
+  </div>
+
+  <div class="blok">
+    <h3>Další</h3>
+    <ul>
+      <li><span class="t">YOUTUBE</span> – otevře YouTube přímo v appce.</li>
+      <li><span class="t">MENU</span> – zpět do hlavního menu.</li>
+      <li>Když běží <a href="#tv" data-skok="tv">WEB TV</a>, hraje hudba i na televizi / počítači.</li>
+    </ul>
+  </div>
+  <nav class="kap-paticka"><a class="tl tl2" href="#obsah" data-skok="obsah">&#9650; OBSAH</a><a class="tl" href="../index.html">&#9664; ZPĚT DO MENU</a></nav>
+</section>
+
+<!-- ======================================================= 06 DZUBOX -->
+<section class="kap" id="dzubox" style="--a:#FF4FD8">
+  <header class="kap-hlava">
+    <img class="kap-obr" src="../menu/karta_dzubox.jpg" alt="" loading="lazy">
+    <div><div class="kap-cislo">KAPITOLA 06</div><h2>DŽUBOX</h2><p class="kap-pod">PRO DJ MIXER</p></div>
+  </header>
+  <p class="uvod">Dva decky, crossfader, ekvalizéry a samply. Ať to má pořádné basy a tancuje to! Krátká nápověda je i přímo v pultu pod tlačítkem <span class="nw"><span class="t">HELP</span>.</span></p>
+
+  <div class="blok">
+    <h3>Nahrání skladeb</h3>
+    <p><span class="t">USB 1 &#9662;</span> (deck A) a <span class="t">USB 2 &#9662;</span> (deck B) – nebo <span class="nw"><span class="t">PLAYLIST</span>,</span> <span class="nw"><span class="t">BROWSE</span>,</span> <span class="t">LIBRARY</span> – otevřou playlist decku: <span class="t">+ ADD</span> přidá skladby z telefonu, <span class="t">&#9671; LOAD</span> nahraje vybranou do decku.</p>
+  </div>
+
+  <div class="blok">
+    <h3>Deck</h3>
+    <dl class="tab">
+      <dt>CUE</dt><dd>Skok na začátek a hraje.</dd>
+      <dt>&#9654; PLAY / &#10074;&#10074;</dt><dd>Hraje / pauza.</dd>
+      <dt>STUTTER</dt><dd>Zadrhnutí o 0,15 s zpět.</dd>
+      <dt>&#9664;&#9664; / &#9654;&#9654;</dt><dd>O 5 sekund zpět / dopředu.</dd>
+      <dt>SYNC</dt><dd>Srovná tempo s druhým deckem.</dd>
+      <dt>TAP</dt><dd>Vyťukej tempo (BPM) – aspoň 2 klepnutí.</dd>
+      <dt>KEY LOCK</dt><dd>Tempo se mění, tónina zůstane.</dd>
+      <dt>TEMPO, GAIN</dt><dd>Tempo ±8 %, hlasitost decku.</dd>
+      <dt>EQ</dt><dd>10 pásem (31 Hz – 16 kHz) pod fadery.</dd>
+      <dt>HOT CUE</dt><dd>Pady: 1. klepnutí uloží bod, další klepnutí na něj skočí, podržení ho smaže.</dd>
+    </dl>
+  </div>
+
+  <div class="blok">
+    <h3>Mix a samply</h3>
+    <ul>
+      <li><span class="t">CROSSFADE</span> – plynule z decku A na B. <span class="t">◄ HARD A</span> / <span class="t">HARD B ►</span> – okamžitě jen jeden deck. <span class="t">⇄ SYNC BPM</span> srovná tempa.</li>
+      <li><span class="nw"><span class="t">MASTER</span>:</span> <span class="nw"><span class="t">BAL</span>,</span> <span class="nw"><span class="t">BASS</span>,</span> <span class="nw"><span class="t">TREB</span>;</span> <span class="t">MASTER LIMITER ON</span> chrání před přebuzením.</li>
+      <li>Sampler: <span class="t">KICK</span> <span class="t">SNARE</span> <span class="t">HAT</span> <span class="t">CLAP</span> <span class="t">BASS</span> <span class="t">SYNTH</span> <span class="t">VOCAL</span> <span class="nw"><span class="t">FX</span>.</span></li>
+      <li><span class="t">RECORD</span> nahrává celý mix, druhým klepnutím se nahrávka uloží do <span class="cesta">Download/AtariHelp/DJ_mixy</span>.</li>
+      <li><span class="t">EFFECTS</span> nahoře schová / ukáže řady EQ, <span class="t">SETTINGS</span> ukáže asistenta, <span class="t">MENU / &#9211;</span> = zpět do appky.</li>
+    </ul>
+  </div>
+  <nav class="kap-paticka"><a class="tl tl2" href="#obsah" data-skok="obsah">&#9650; OBSAH</a><a class="tl" href="../index.html">&#9664; ZPĚT DO MENU</a></nav>
+</section>
+
+<!-- ======================================================= 07 WEB -->
+<section class="kap" id="web" style="--a:#4FE0C0">
+  <header class="kap-hlava">
+    <img class="kap-obr" src="../menu/karta_web.jpg" alt="" loading="lazy">
+    <div><div class="kap-cislo">KAPITOLA 07</div><h2>ATARIHELP.EU</h2><p class="kap-pod">OFICIÁLNÍ WEB</p></div>
+  </header>
+  <p class="uvod">Karta <span class="t">ATARIHELP.EU</span> otevře web atarihelp.eu přímo v appce: hry, návody a novinky.</p>
+  <div class="blok">
+    <h3>Hry z webu</h3>
+    <ul>
+      <li>Na hru stačí klepnout – appka ji stáhne a spustí ve správném emulátoru: hra pro Atari (XEX, ATR, ZIP) v <a href="#atari" data-skok="atari">Atari 130XE</a>, hra pro Segu v <a href="#sega" data-skok="sega">Sega Mega Drive</a>, hra pro PlayStation (i odkaz na Google Drive) v <a href="#ps1" data-skok="ps1">PS1</a>.</li>
+      <li>Zpátky do menu tlačítkem ZPĚT na telefonu.</li>
+    </ul>
+  </div>
+  <nav class="kap-paticka"><a class="tl tl2" href="#obsah" data-skok="obsah">&#9650; OBSAH</a><a class="tl" href="../index.html">&#9664; ZPĚT DO MENU</a></nav>
+</section>
+
+<!-- ======================================================= 08 OPTIONS -->
+<section class="kap" id="options" style="--a:#f2c35b">
+  <header class="kap-hlava">
+    <div class="kap-ikona"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.2"/><circle cx="12" cy="12" r="6.6"/><path d="M12 2.6v2.8M12 18.6v2.8M2.6 12h2.8M18.6 12h2.8M5.4 5.4l2 2M16.6 16.6l2 2M5.4 18.6l2-2M16.6 7.4l2-2"/></svg></div>
+    <div><div class="kap-cislo">KAPITOLA 08</div><h2>OPTIONS</h2><p class="kap-pod">NASTAVENÍ APLIKACE</p></div>
+  </header>
+  <p class="uvod">Otevře se kolečkem <span class="t">&#9881;</span> vpravo nahoře v hlavním menu. Zavřeš ho tlačítkem <span class="nw"><span class="t">ZAVŘÍT</span>,</span> klepnutím vedle panelu nebo tlačítkem ZPĚT.</p>
+  <div class="blok">
+    <h3>Tlačítka</h3>
+    <dl class="tab">
+      <dt>SPUSTIT WEB TV</dt><dd>Obraz a zvuk appky do prohlížeče na televizi nebo počítači. Hned pod tlačítkem se ukáže adresa pro prohlížeč a tlačítko se přepne na <span class="t">WEB TV BĚŽÍ</span>. Adresa tam zůstane, dokud OPTIONS nezavřeš – viz <a href="#tv" data-skok="tv">WEB TV a PC</a>.</dd>
+      <dt>PUSTIT INTRO</dt><dd>Úvodní film znovu.</dd>
+      <dt>STÁHNOUT HRY A BIOS</dt><dd>Z atarihelp.eu stáhne Sonic the Hedgehog (Sega, asi 0,5 MB) a BIOS pro PlayStation (asi 1 MB). Appka se nejdřív zeptá. Soubory zůstanou v telefonu a fungují i bez internetu.</dd>
+      <dt>ODEMKNOUT DALŠÍ</dt><dd>Hned odemkne další stupeň – nejdřív SEGU, pak PS1.</dd>
+      <dt>ZAMKNOUT VŠE</dt><dd>Vrátí postup na začátek: SEGA i PS1 zamčené, řádky i minuty od nuly.</dd>
+      <dt>AKTUALIZOVAT APLIKACI</dt><dd>Zjistí na atarihelp.eu novou verzi a nabídne <span class="t">AKTUALIZOVAT</span> / <span class="nw"><span class="t">TED NE</span>.</span> Stáhne se rovnou do instalace – v telefonu nezůstane žádný soubor. Poprvé se telefon zeptá, jestli instalaci z appky povolíš.</dd>
+      <dt>TV POKUS</dt><dd><span class="t">OBOJÍ</span> / <span class="t">JEN ZVUK</span> / <span class="t">JEN OBRAZ</span> – zkouška přenosu na TV, když se něco seká. Normálně nech <span class="nw"><span class="t">OBOJÍ</span>.</span></dd>
+    </dl>
+  </div>
+  <div class="blok">
+    <h3>Nastavení</h3>
+    <ul>
+      <li><span class="t">AUTOMATICKY</span> – appka nastaví vše sama podle telefonu (doporučeno).</li>
+      <li><span class="t">RUČNĚ</span> – <span class="nw"><span class="t">KVALITA OBRAZU (WEB TV)</span>:</span> <span class="t">LOW</span> / <span class="t">MED</span> / <span class="nw"><span class="t">HIGH</span>;</span> <span class="nw"><span class="t">ZVUK (ZPOŽDĚNÍ)</span>:</span> <span class="t">LOW</span> = nejjistější, ale největší zpoždění, <span class="t">MED</span> = střední cesta, <span class="t">HIGH</span> = nejmenší zpoždění, může praskat. Zvuk se projeví při dalším spuštění hry.</li>
+    </ul>
+  </div>
+  <nav class="kap-paticka"><a class="tl tl2" href="#obsah" data-skok="obsah">&#9650; OBSAH</a><a class="tl" href="../index.html">&#9664; ZPĚT DO MENU</a></nav>
+</section>
+
+<!-- ======================================================= 09 WEB TV -->
+<section class="kap" id="tv" style="--a:#64dfff">
+  <header class="kap-hlava">
+    <div class="kap-ikona"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="12" rx="2"/><path d="M8.5 20.5h7M12 17v3.5"/></svg></div>
+    <div><div class="kap-cislo">KAPITOLA 09</div><h2>WEB TV A PC</h2><p class="kap-pod">OBRAZ A ZVUK V PROHLÍŽEČI</p></div>
+  </header>
+  <p class="uvod">Appka umí posílat obraz i zvuk do obyčejného prohlížeče na televizi nebo počítači – bez kabelu a bez instalace. Na PC pak hraješ i píšeš klávesnicí.</p>
+  <div class="blok">
+    <h3>Jak to zapnout</h3>
+    <ol class="kroky">
+      <li>Telefon a TV / PC musí být ve <b>stejné <span class="nw">Wi-Fi</span></b>.</li>
+      <li>V hlavním menu kolečko <span class="t">&#9881;</span> → <span class="nw"><span class="t">SPUSTIT WEB TV</span>.</span> Pod tlačítkem se ukáže adresa, třeba <span class="cesta">http://192.168.1.23:8765/</span> – čísla jsou podle tvé sítě. Adresu najdeš kdykoli znovu: <span class="t">&#9881;</span> → pod <span class="nw"><span class="t">WEB TV BĚŽÍ</span>.</span></li>
+      <li>Na TV nebo PC otevři prohlížeč (Chrome, Edge, Firefox…) a napiš tu adresu přesně, i s číslem za dvojtečkou.</li>
+      <li><b>Zvuk:</b> prohlížeč pustí zvuk až po kliknutí nebo klávese – klikni kamkoli do obrazu (po obnovení stránky znovu).</li>
+    </ol>
+    <p>WEB TV běží, dokud appku nezavřeš. Po dobu přenosu drží telefon <span class="nw">Wi-Fi</span> v režimu nízkého zpoždění.</p>
+  </div>
+  <div class="blok">
+    <h3>V prohlížeči</h3>
+    <ul>
+      <li>Celá obrazovka na PC: klávesa <span class="nw"><kbd>F11</kbd>.</span></li>
+      <li>Pohneš myší (nebo se dotkneš obrazu) – vpravo dole se ukáže panel <span class="nw"><span class="t">OBRAZ</span>:</span> jas, kontrast, sytost, <span class="nw"><span class="t">PUVODNI NASTAVENI</span>,</span> <span class="t">OBRAZ: vyplnit obrazovku</span> a vyladění obrazu. Nastavení si prohlížeč pamatuje.</li>
+      <li>Vpravo dole je vždycky nápověda, které klávesy právě platí.</li>
+    </ul>
+  </div>
+  <div class="blok">
+    <h3>Klávesnice počítače</h3>
+    <div class="klavesy">
+      <div><h4>HLAVNÍ MENU</h4><p><kbd>&#8592;</kbd> <kbd>&#8594;</kbd> nebo <kbd>A</kbd> <kbd>D</kbd> listují, <kbd>Enter</kbd> / mezerník otevře kartu, <kbd>Home</kbd> / <kbd>End</kbd> první / poslední.</p></div>
+      <div><h4>ATARI – PSANÍ</h4><p>Piš normálně (i česká klávesnice). <kbd>F1</kbd> START, <kbd>F3</kbd> SELECT, <kbd>F4</kbd> OPTION, <kbd>F2</kbd> BREAK, <kbd>F6</kbd> HELP, <kbd>F8</kbd> INVERZE, <kbd>Ctrl</kbd> + klávesa = CONTROL. <kbd>F9</kbd> přepne na hraní.</p></div>
+      <div><h4>ATARI – HRANÍ (F9)</h4><p><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> / šipky = joystick, <kbd>L</kbd> = FIRE, <kbd>K</kbd> / mezerník = skok, <kbd>F1</kbd> START. <kbd>F9</kbd> zpět na psaní.</p></div>
+      <div><h4>SEGA</h4><p><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> pohyb, <kbd>K</kbd> = A, <kbd>L</kbd> = B, <kbd>O</kbd> = C, <kbd>P</kbd> = START.</p></div>
+      <div><h4>PS1</h4><p>Šipky / <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><span class="nw"><kbd>D</kbd>,</span> <kbd>K</kbd> / mezerník &#10005;, <kbd>L</kbd> &#9675;, <kbd>J</kbd> &#9633;, <kbd>I</kbd> &#9651;, <kbd>Q</kbd> / <kbd>E</kbd> L1 / R1, <kbd>Z</kbd> / <kbd>C</kbd> L2 / R2, <kbd>Enter</kbd> / <kbd>P</kbd> START, <kbd>Backspace</kbd> / <kbd>O</kbd> SELECT.</p></div>
+    </div>
+    <p class="tip"><b>PROGRAM Z PC DO ATARI</b> Když je na TV Atari 130XE: <kbd>Ctrl</kbd> + <kbd>V</kbd> vloží text ze schránky, nebo přetáhni TXT soubor do okna prohlížeče – appka ho napíše do Atari (nejvýš 512 kB).</p>
+  </div>
+  <nav class="kap-paticka"><a class="tl tl2" href="#obsah" data-skok="obsah">&#9650; OBSAH</a><a class="tl" href="../index.html">&#9664; ZPĚT DO MENU</a></nav>
+</section>
+
+<!-- ======================================================= 10 ODEMYKANI -->
+<section class="kap" id="odemykani" style="--a:#ffb35a">
+  <header class="kap-hlava">
+    <div class="kap-ikona"><svg viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 7.6-1.7"/><path d="M12 15v2.4"/></svg></div>
+    <div><div class="kap-cislo">KAPITOLA 10</div><h2>ODEMYKÁNÍ</h2><p class="kap-pod">SEGA A PS1</p></div>
+  </header>
+  <p class="uvod">Od začátku je otevřené Atari 130XE, MP3 přehrávač, DŽUBOX, ATARIHELP.EU a HELP. Sega a PlayStation se otevírají postupně – jako cesta retro hráče od osmibitu dál.</p>
+  <div class="blok">
+    <h3>SEGA MEGA DRIVE – napiš 50 řádků v Atari</h3>
+    <ul>
+      <li>Počítají se <b>řádky programu</b> – řádky s číslem, třeba <span class="nw"><kbd>10 PRINT "AHOJ"</kbd>.</span></li>
+      <li>Započítají se ve chvíli, kdy dáš <kbd>RUN</kbd> nebo <span class="nw"><kbd>LIST</kbd>.</span></li>
+      <li>Najednou musí přibýt <b>aspoň 5 řádků</b> – kratší dávka se nepočítá. Nemusí to být jeden program: stačí třeba deset programů po pěti řádcích.</li>
+      <li>Počítá se jen to, co napíšeš sám – na klávesnici přístroje nebo na klávesnici počítače přes WEB TV. Vložený text (<kbd>Ctrl</kbd> + <span class="nw"><kbd>V</kbd>,</span> přetažený soubor, <span class="nw"><span class="t">BASIC/TBXL TXT</span>)</span> se nepočítá.</li>
+      <li>Když je hotovo, na Atari se ukáže <span class="nw"><span class="t">SEGA ODEMČENA! JE V MENU</span>.</span></li>
+    </ul>
+  </div>
+  <div class="blok">
+    <h3>PS1 – hraj 30 minut na Seze</h3>
+    <ul>
+      <li>Počítá se jen čas, kdy hra na Seze opravdu běží – ne appka na pozadí nebo jiný emulátor.</li>
+      <li>Minuty se sčítají, nemusíš hrát vkuse.</li>
+    </ul>
+  </div>
+  <p class="tip"><b>KOLIK JEŠTĚ?</b> Klepni v menu na zamčenou kartu – pod kartami se ukáže, kolik řádků nebo minut ještě chybí.</p>
+  <nav class="kap-paticka"><a class="tl tl2" href="#obsah" data-skok="obsah">&#9650; OBSAH</a><a class="tl" href="../index.html">&#9664; ZPĚT DO MENU</a></nav>
+</section>
+
+<!-- ======================================================= 11 SOUBORY -->
+<section class="kap" id="soubory" style="--a:#8fd0ff">
+  <header class="kap-hlava">
+    <div class="kap-ikona"><svg viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg></div>
+    <div><div class="kap-cislo">KAPITOLA 11</div><h2>SOUBORY V TELEFONU</h2><p class="kap-pod">KDE CO NAJDEŠ</p></div>
+  </header>
+  <p class="uvod">Všechno důležité ukládá appka do složky <span class="cesta">Download/AtariHelp</span> (ve správci souborů „Stažené“). Tahle složka zůstane, i když appku odinstaluješ.</p>
+  <div class="blok">
+    <dl class="tab">
+      <dt>Atari_emu</dt><dd>Kazety Atari – nahrávky z CSAVE (<span class="cesta">csave_&lt;datum&gt;_&lt;čas&gt;.wav</span>). EJECT je nabízí jako první.</dd>
+      <dt>Sega_hry</dt><dd>Hry Segy v MOJE HRY.</dd>
+      <dt>Sega_ulozene_pozice</dt><dd>Uložené pozice Segy – jedna pro každou hru.</dd>
+      <dt>PS1</dt><dd>Hry PS1 stažené přes LOAD GAME.</dd>
+      <dt>PS1_pametova_karta</dt><dd>Paměťová karta PS1 – uložené hry. Jako skutečná karta: přežije i odinstalování appky.</dd>
+      <dt>emu/sega, emu/ps1</dt><dd>Sonic the Hedgehog a BIOS pro PlayStation (z OPTIONS → STÁHNOUT HRY A BIOS).</dd>
+      <dt>DJ_mixy</dt><dd>Nahrávky mixů z DŽUBOXU (RECORD).</dd>
+      <dt>PS1_LOG.txt</dt><dd>Log PS1 (a PS1_LOG_predchozi.txt z minula).</dd>
+    </dl>
+  </div>
+  <p class="pozor"><b>POZOR</b> Postup odemykání (zámky Segy a PS1) a nastavení appky jsou uložené v appce – po odinstalování se smažou. Hry, pozice, paměťová karta a kazety v Download/AtariHelp zůstanou.</p>
+  <nav class="kap-paticka"><a class="tl tl2" href="#obsah" data-skok="obsah">&#9650; OBSAH</a><a class="tl" href="../index.html">&#9664; ZPĚT DO MENU</a></nav>
+</section>
+
+<!-- ======================================================= 12 LOG -->
+<section class="kap" id="log" style="--a:#ff9a5a">
+  <header class="kap-hlava">
+    <div class="kap-ikona"><svg viewBox="0 0 24 24"><path d="M6 3h9l4 4v14H6z"/><path d="M15 3v4h4M9 12h7M9 16h5"/></svg></div>
+    <div><div class="kap-cislo">KAPITOLA 12</div><h2>LOG A HLÁŠENÍ CHYBY</h2><p class="kap-pod">KDYŽ NĚCO NEJDE</p></div>
+  </header>
+  <p class="uvod">Appka si zapisuje, co dělá (log). Když něco nejde, pošli log – podle něj se chyba najde nejrychleji.</p>
+  <div class="blok">
+    <h3>Atari 130XE</h3>
+    <ol class="kroky">
+      <li>Na přístroji klepni na <span class="nw"><span class="t">LOG / CHYBA</span>.</span></li>
+      <li>Zmáčkni <span class="t">ULOZIT LOG A ODESLAT</span> – log se uloží jako soubor a hned se otevře nabídka, čím ho poslat (mail, Messenger…). Pro jistotu je i ve schránce.</li>
+      <li>Zpátky na Atari: <span class="t">ZPET NA ATARI 130XE</span> nebo ZPĚT.</li>
+    </ol>
+    <p class="tip"><b>KDYŽ APPKA SPADLA</b> Na stránce LOG / CHYBA je u položky <b>Soubor z minula</b> cesta k logu z minulého spuštění – ten soubor pošli.</p>
+  </div>
+  <div class="blok">
+    <h3>PS1 a Sega</h3>
+    <ul>
+      <li><b>PS1:</b> kolečko <span class="t">&#9881;</span> → <span class="t">ULOŽIT LOG A ODESLAT</span> – log se uloží do <span class="cesta">Download/AtariHelp</span> a hned se otevře nabídka, čím ho poslat.</li>
+      <li><b>Sega:</b> na šířku kolečko <span class="t">&#9881;</span> → <span class="t">EXPORTOVAT LOG (DIAGNOSTIKA)</span> – log se uloží do <span class="cesta">Download/AtariHelp</span>.</li>
+    </ul>
+  </div>
+  <nav class="kap-paticka"><a class="tl tl2" href="#obsah" data-skok="obsah">&#9650; OBSAH</a><a class="tl" href="../index.html">&#9664; ZPĚT DO MENU</a></nav>
+</section>
+
+<!-- ======================================================= 13 OTAZKY -->
+<section class="kap" id="otazky" style="--a:#f2d27a">
+  <header class="kap-hlava">
+    <div class="kap-ikona"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.4a2.5 2.5 0 1 1 3.4 2.4c-.7.3-1 .8-1 1.5v.6"/><path d="M12 17.1v.1"/></svg></div>
+    <div><div class="kap-cislo">KAPITOLA 13</div><h2>ČASTÉ OTÁZKY</h2><p class="kap-pod">RYCHLÉ ODPOVĚDI</p></div>
+  </header>
+  <details><summary>Karta SEGA nebo PS1 je zamčená. Co s tím?</summary><div><p>Sega se otevře po 50 napsaných řádcích programu v Atari, PS1 po 30 minutách hraní na Seze. Kolik ještě chybí, uvidíš po klepnutí na zamčenou kartu. Podrobně: <a href="#odemykani" data-skok="odemykani">Odemykání</a>.</p></div></details>
+  <details><summary>Na televizi není zvuk.</summary><div><p>Klikni kamkoli do obrazu v prohlížeči (nebo zmáčkni klávesu). Prohlížeče pouští zvuk až po kliknutí – a po obnovení stránky znovu.</p></div></details>
+  <details><summary>Adresa WEB TV se v prohlížeči neotevře.</summary><div><p>Telefon i TV / PC musí být ve stejné <span class="nw">Wi-Fi</span>. Adresu napiš přesně, i s číslem za dvojtečkou (třeba <span class="cesta">:8765</span>). Některé sítě (hlavně <span class="nw">Wi-Fi</span> pro hosty) zařízení mezi sebou nepustí – zkus domácí síť.</p></div></details>
+  <details><summary>Obraz na TV se trhá nebo zvuk praská.</summary><div><p>V <a href="#options" data-skok="options">OPTIONS</a> přepni <span class="t">RUČNĚ</span> a zkus nižší <span class="t">KVALITA OBRAZU (WEB TV)</span> a pro zvuk <span class="t">LOW</span> (nejjistější). Pomůže i telefon blíž k routeru.</p></div></details>
+  <details><summary>PS1 hra nejde spustit.</summary><div><p>Zkontroluj formát: .bin, .cue, .iso, .img, .pbp, .chd nebo .zip (.7z appka neumí). PS1 potřebuje BIOS – appka ho stáhne sama, nebo <a href="#options" data-skok="options">OPTIONS</a> → <span class="nw"><span class="t">STÁHNOUT HRY A BIOS</span>.</span> Když to pořád nejde, pošli log (<a href="#log" data-skok="log">Log a chyby</a>).</p></div></details>
+  <details><summary>Kde najdu svoje hry, pozice a kazety?</summary><div><p>Ve složce <span class="cesta">Download/AtariHelp</span> – přehled je v kapitole <a href="#soubory" data-skok="soubory">Soubory v telefonu</a>.</p></div></details>
+  <details><summary>Přijdu o něco, když appku odinstaluju?</summary><div><p>Hry, uložené pozice, paměťová karta PS1 a kazety Atari zůstanou v Download/AtariHelp. Smaže se postup odemykání (Sega a PS1 budou zase zamčené) a nastavení appky.</p></div></details>
+  <details><summary>Přehrávač nenajde moje písničky.</summary><div><p>Když se appka zeptá na přístup k hudbě, povol ho (když jsi to odmítl, povol ho v nastavení telefonu u aplikace). Pak <span class="nw"><span class="t">OBNOVIT SEZNAM V MOBILU</span>,</span> nebo vyber soubory sám přes <span class="nw"><span class="t">VYBRAT SYSTEMOVE</span>.</span> Přehrávač hraje MP3 a WAV.</p></div></details>
+  <details><summary>Jak dostanu do Atari program z počítače?</summary><div><p>Zapni WEB TV, na PC otevři adresu, spusť Atari 130XE a dej <kbd>Ctrl</kbd> + <kbd>V</kbd> (nebo přetáhni TXT soubor do prohlížeče). V telefonu jde totéž přes <span class="nw"><span class="t">BASIC/TBXL TXT</span>.</span></p></div></details>
+  <details><summary>Hra z NET / HRY se nestáhne.</summary><div><p>Zkontroluj internet a zkus to za chvíli znovu. Hru můžeš spustit i ze souboru v telefonu přes <span class="nw"><span class="t">XEX / MOBIL</span>.</span></p></div></details>
+  <details><summary>Ovladač na displeji mi nesedí.</summary><div><p>Na šířku kolečko <span class="t">&#9881;</span> → <span class="nw"><span class="t">D-PAD A OVLÁDÁNÍ</span>:</span> tlačítka přetáhneš, kam chceš, nastavíš citlivost, velikost i průhlednost a pro leváky je prohodíš. Funguje to u Atari, Segy i PS1.</p></div></details>
+  <details><summary>Jak aktualizuju appku?</summary><div><p><a href="#options" data-skok="options">OPTIONS</a> → <span class="nw"><span class="t">AKTUALIZOVAT APLIKACI</span>.</span> Telefon se ještě zeptá, jestli instalaci povolíš.</p></div></details>
+  <details><summary>Chci znovu vidět úvodní film.</summary><div><p><a href="#options" data-skok="options">OPTIONS</a> → <span class="nw"><span class="t">PUSTIT INTRO</span>.</span> Přeskočíš ho tlačítkem <span class="t">SKIP ›</span> nebo ZPĚT.</p></div></details>
+  <nav class="kap-paticka"><a class="tl tl2" href="#obsah" data-skok="obsah">&#9650; OBSAH</a><a class="tl" href="../index.html">&#9664; ZPĚT DO MENU</a></nav>
+</section>
+
+<footer class="zapati">
+  N&amp;P VISION · RETRO UNIVERSE
+  <span class="podpis">René Frank</span>
+  ATARIHELP.EU · B311
+</footer>
+</main>
+
+<button id="nahoru" type="button" aria-label="Nahoru na obsah">&#9650;</button>
+
+<script>
+(function(){'use strict';
+function $(id){return document.getElementById(id);}
+
+// ---------- posun na kapitolu (bez zapisu do historie: ZPET na telefonu = rovnou menu) ----------
+var lista=document.querySelector('.lista');
+function skocNa(id){
+  var cil=$(id); if(!cil) return;
+  // kapitola schovana hledanim -> nejdriv hledani zrusit
+  if(cil.classList.contains('skryto')||(cil.closest&&cil.closest('.skryto'))) zrusHledani();
+  var y=cil.getBoundingClientRect().top+window.pageYOffset-((lista?lista.offsetHeight:58)+10);
+  try{window.scrollTo({top:Math.max(0,y),behavior:'smooth'});}catch(e){window.scrollTo(0,Math.max(0,y));}
+}
+document.addEventListener('click',function(e){
+  var a=e.target; while(a&&a.tagName!=='A') a=a.parentElement;
+  if(!a) return;
+  var h=a.getAttribute('href')||'';
+  if(h.charAt(0)!=='#') return;          // odkaz ven (MENU) - normalne
+  e.preventDefault();
+  skocNa(h.slice(1));
+},false);
+
+// ---------- plovouci "nahoru" ----------
+var nahoru=$('nahoru'), obsah=$('obsah');
+nahoru.addEventListener('click',function(){ skocNa(document.body.classList.contains('hleda')?'nahore':'obsah'); });
+var tik=false;
+function hlidejScroll(){
+  tik=false;
+  var hranice=obsah&&!document.body.classList.contains('hleda')?obsah.getBoundingClientRect().bottom:200;
+  nahoru.classList.toggle('ukaz',hranice<0);
+}
+window.addEventListener('scroll',function(){ if(!tik){tik=true;requestAnimationFrame(hlidejScroll);} },{passive:true});
+
+// ---------- hledani (bez ohledu na diakritiku: "sipky" najde "šipky") ----------
+function bez(s){ return String(s).normalize?String(s).normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase():String(s).toLowerCase(); }
+var vstup=$('hledat'), obalH=$('hledatObal'), info=$('hledatInfo'), kapitoly=[].slice.call(document.querySelectorAll('.kap'));
+var otevrenoHledanim=[];
+
+function odznac(){
+  var m=[].slice.call(document.querySelectorAll('main mark'));
+  m.forEach(function(x){ var p=x.parentNode; if(!p) return; p.replaceChild(document.createTextNode(x.textContent),x); p.normalize(); });
+}
+// oznaci vsechny vyskyty q (uz bez diakritiky) v textovych uzlech prvku el; vrati pocet
+function oznac(el,q){
+  var n=0, uzly=[], w=document.createTreeWalker(el,NodeFilter.SHOW_TEXT,null,false), u;
+  while((u=w.nextNode())){ if(u.nodeValue&&u.nodeValue.trim()) uzly.push(u); }
+  uzly.forEach(function(uzel){
+    var src=uzel.nodeValue, norm='', mapa=[];
+    for(var i=0;i<src.length;i++){ var c=bez(src.charAt(i)); for(var j=0;j<c.length;j++){ norm+=c.charAt(j); mapa.push(i); } }
+    var kde=[], od=0, k;
+    while((k=norm.indexOf(q,od))>=0){ kde.push([mapa[k],mapa[k+q.length-1]+1]); od=k+q.length; }
+    for(var x=kde.length-1;x>=0;x--){
+      var zac=kde[x][0], kon=kde[x][1];
+      var stred=uzel.splitText(zac); stred.splitText(kon-zac);
+      var mk=document.createElement('mark'); mk.textContent=stred.nodeValue;
+      stred.parentNode.replaceChild(mk,stred);
+      n++;
+    }
+  });
+  return n;
+}
+function zrusHledani(){
+  vstup.value=''; obalH.classList.remove('ma'); proved('');
+}
+function proved(dotaz){
+  odznac();
+  otevrenoHledanim.forEach(function(d){ d.open=false; }); otevrenoHledanim=[];
+  [].slice.call(document.querySelectorAll('.skryto')).forEach(function(x){ x.classList.remove('skryto'); });
+  var q=bez(dotaz).replace(/\s+/g,' ').trim();
+  if(q.length<2){ document.body.classList.remove('hleda'); info.hidden=true; hlidejScroll(); return; }
+  // cestina sklonuje: "kazeta" ma najit i "kazety", "sipky" i "sipkami" - u delsiho slova
+  // se koncova samohlaska nehleda
+  if(q.length>=5&&/[aeiouy]$/.test(q)) q=q.slice(0,-1);
+  document.body.classList.add('hleda');
+  var celkem=0, kapNalez=0;
+  kapitoly.forEach(function(kap){
+    var hlava=kap.querySelector('.kap-hlava');
+    var celaKap=bez(hlava?hlava.textContent:'').indexOf(q)>=0;
+    var casti=[].slice.call(kap.querySelectorAll('.uvod,.blok,details,.tip,.pozor')).filter(function(c){
+      // jen nejvyssi casti (tip uvnitr bloku hleda blok)
+      var p=c.parentElement; while(p&&p!==kap){ if(p.matches&&p.matches('.uvod,.blok,details,.tip,.pozor')) return false; p=p.parentElement; }
+      return true;
+    });
+    var nasel=0, nejaka=false;
+    if(hlava) nasel+=oznac(hlava,q);
+    casti.forEach(function(c){
+      var sedi=bez(c.textContent).indexOf(q)>=0;
+      if(sedi){
+        nejaka=true; nasel+=oznac(c,q);
+        if(c.tagName==='DETAILS'&&!c.open){ c.open=true; otevrenoHledanim.push(c); }
+      } else if(!celaKap) c.classList.add('skryto');
+    });
+    if(!celaKap&&!nejaka) kap.classList.add('skryto');
+    else { kapNalez++; celkem+=nasel; }
+  });
+  info.hidden=false;
+  info.textContent=celkem>0?('NALEZENO '+celkem+'× · '+kapNalez+' '+(kapNalez===1?'KAPITOLA':(kapNalez<5?'KAPITOLY':'KAPITOL'))):'NIC NENALEZENO – ZKUS JINÉ SLOVO';
+  hlidejScroll();
+}
+var casovac=0;
+vstup.addEventListener('input',function(){
+  obalH.classList.toggle('ma',vstup.value.length>0);
+  clearTimeout(casovac); casovac=setTimeout(function(){ proved(vstup.value); },140);
+});
+vstup.addEventListener('keydown',function(e){ if(e.key==='Enter'){ e.preventDefault(); vstup.blur(); } else if(e.key==='Escape'){ zrusHledani(); } });
+$('hledatZrus').addEventListener('click',function(){ zrusHledani(); vstup.focus(); });
+
+// odkaz z menu na konkretni kapitolu (napoveda/index.html#tv) - bez zapisu do historie
+if(location.hash&&location.hash.length>1){ var id=location.hash.slice(1); setTimeout(function(){ skocNa(id); },60); }
+})();
+</script>
+</body>
+</html>

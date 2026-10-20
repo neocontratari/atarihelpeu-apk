@@ -1,0 +1,68 @@
+B311 - hlavni menu = karusel velkych karet v C++, HELP = uplny navod, menu na TV / PC
+====================================================================================
+
+Kod v appce:
+  cpp/menu/nap_menu_karty.h       karty z assets/menu/karty.txt (10 sloupcu, komentare, BOM, CRLF,
+                                  chybne radky do logu), KARTY_ZALOHA (7 karet, kdyby soubor chybel)
+  cpp/menu/nap_menu_karusel.h     rozlozeni (na vysku / na sirku / TV), poloha karet (perspektiva),
+                                  fyzika prstu (1:1, rychlost z poslednich 70 ms, svih, kriticky
+                                  tlumena pruzina, guma na krajich), klepnuti (karta, tlacitko, tecky,
+                                  kolecko), klavesy
+  cpp/menu/nap_menu_shadery.h     shadery menu (GLSL ES 1.00)
+  cpp/menu/nap_menu_umeni*.h      zive karty: 3D Atari, N&P 16 / 32, kazeta, dzubox, zemekoule, kniha
+                                  (+ obrazek z assets pro karty bez efektu)
+  cpp/menu/nap_menu_platno.h      CPU platno (stitek kazety, stranky knihy)
+  cpp/menu/nap_menu_kresba.h      kresleni celeho menu (karty do FBO, texty, UI, nastup, spusteni,
+                                  zatreseni zamcene karty, adaptivni uroven 0-3)
+  cpp/menu/nap_menu_gl.cpp        JNI NativeMenuBridge, EGL vlakno (GLES3 -> GLES2), proud na TV
+                                  (/menu.stream, Hub<KodekJpeg> 854x480), snimek pro stary prohlizec
+  cpp/CMakeLists.txt              knihovna napmenu (NAP_ENABLE_MENU)
+  NativeMenuBridge.java, NapMenuView.java   most a plocha (SurfaceView nad strankou, dotyk hned)
+  MainActivity.java               menuUkaz / Skryj / Kontrola / Akce / Spust, zamky z NapPostup, OPTIONS
+                                  z kolecka, /menu.stream + /status menu=1 + klavesy menu z prohlizece,
+                                  ZPET v menu = appka do pozadi (menuDoPozadi), AHSave.souborZacni /
+                                  Pridej / Dokonci / Zrus (velky soubor po kouscich -> Download/AtariHelp)
+  assets/menu/karty.txt + karta_*.jpg      karty menu
+  assets/index.html               OPTIONS (adresa WEB TV zustava), zalozni karusel v HTML, pismo
+  assets/napoveda/index.html      uplny navod (13 kapitol, hledani, ZPET DO MENU)
+  assets/pisma/*.woff2            Chakra Petch (SemiBold, Bold, Bold Italic) pro stranky, OFL
+  assets/dj/index.html            RECORD -> AHSAVE po kouscich (DJ_mixy)
+  assets/emu_atari_cpp/index.html poznamka B311 a body testu pro Reneho
+
+Spoustet z adresare test_overeni/b311 (nebo odkudkoli: bash test_overeni/b311/vse.sh).
+Potreba: g++, JAVA_HOME = JDK (javac, hlavicky JNI), hlavicky EGL / GLES2 / KHR v $INC (jako ../b304),
+knihovny Mesa (libEGL, libGLESv2), Python 3 + Pillow, Chromium + Playwright pro Python, ffmpeg / ffprobe,
+glslangValidator ($GLSLANG), android.jar API 34 ($ANDROID_JAR, napr. z github.com/Sable/android-platforms
+android-34/android.jar - jen jako classpath pro javac).
+Vse najednou: PRAC=... INC=... GLSLANG=... ANDROID_JAR=... bash vse.sh      (vystupy VYSTUP_* sem)
+
+1) Logika karuselu (C++ bez GPU): test_karusel.cpp                          -> VYSTUP_test_karusel.txt
+   g++ -std=c++17 -O2 -I../../app/src/main/cpp/menu -o test_karusel test_karusel.cpp && ./test_karusel
+2) Snimky menu pres Mesa (PNG): menu_snimky VYSTUP W H [--tv] [--zamky] poz:t ... | --karty | --vykon S
+   g++ -std=c++17 -O2 -I$INC -o menu_snimky menu_snimky.cpp -l:libEGL.so.1 -l:libGLESv2.so.2
+   EGL_PLATFORM=surfaceless ./menu_snimky PRAC 1080 2340 0:3 1:3 ...        -> VYSTUP_menu_snimky.txt
+   (--karty = obrazky karet bez textu pro zalozni HTML: assets/menu/karta_<id>.jpg)
+3) SKUTECNY nap_menu_gl.cpp pres JNI jako z Javy: test_menu_host.cpp + tv_menu.cpp
+   g++ -std=c++17 -O2 -pthread -I../b304/stub -I../b291/stub -I$INC -I$JAVA_HOME/include
+       -I$JAVA_HOME/include/linux -I../../app/src/main/cpp/tvproud -o test_menu_host test_menu_host.cpp
+       -l:libEGL.so.1 -l:libGLESv2.so.2                                      -> VYSTUP_test_menu_host.txt
+4) ThreadSanitizer: totez s -O1 -g -fsanitize=thread, rozbor python3 tsan_rozbor.py VYSTUP
+   (hlaseni s obema stranami v Mese - libgallium - se nepocitaji)           -> VYSTUP_tsan_menu_host.txt
+5) Shadery: GLSLANG=... python3 kontrola_shaderu.py (GLSL ES 1.00, i spojeni VS + FS)
+                                                                             -> VYSTUP_kontrola_shaderu.txt
+6) Menu v Chromiu (assets/index.html): python3 test_b311_menu.py PRAC       -> VYSTUP_test_b311_menu.txt
+7) Navod v Chromiu: python3 test_b311_navod.py PRAC                         -> VYSTUP_test_b311_navod.txt
+   Nazvy tlacitek v navodu proti appce: python3 kontrola_navodu.py          -> VYSTUP_kontrola_navodu.txt
+8) DZUBOX RECORD: python3 test_b311_dj_nahravka.py PRAC                     -> VYSTUP_test_b311_dj_nahravka.txt
+9) Menu na TV / PC: knihovna libmenu_b311.so z tv_menu_lib.cpp (prepinace jako 3, -shared -fPIC),
+   python3 test_b311_tv_menu.py ADR_KNIHOVNY PRAC                           -> VYSTUP_test_b311_tv_menu.txt
+   (stranka prohlizece PRESNE z MainActivity.java, server v Pythonu = to, co dela Java)
+10) Mosty JS -> Java: python3 kontrola_mostu.py; odkazy: python3 kontrola_odkazu.py
+                                                -> VYSTUP_kontrola_mostu.txt, VYSTUP_kontrola_odkazu.txt
+11) Java proti skutecnemu Androidu: javac --release 17 -cp android.jar ... (vsechny zdrojaky appky)
+                                                                             -> VYSTUP_javac_android.txt
+11b) Podpisy JNI: javac -h (proti android.jar) z NativeMenuBridge.java, python3 kontrola_jni.py HLAVICKA.h
+    (jmeno, navratovy typ a typy parametru vsech 22 native metod) + readelf: vsech 22 funkci je
+    z knihovny videt i s -fvisibility=hidden                                 -> VYSTUP_kontrola_jni.txt
+12) Regrese TV / PC (Chromium) se strankou z B311: ../b302 (klavesnice PC), ../b303 (Atari na TV, Ctrl+V)
+                                -> VYSTUP_b302_klavesnice_pc_se_strankou_b311.txt, VYSTUP_b303_atari_tv_se_strankou_b311.txt

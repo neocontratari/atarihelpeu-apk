@@ -1,0 +1,33 @@
+OK     1) karty z assets/menu/karty.txt (Java dostane id, nazev, cil a zamek)  -- karet 7: [atari|ATARI 130XE|emu_atari_cpp/index.html|] [sega|SEGA MEGA DRIVE|emu_sega/index.html|sega] [help|HELP|napoveda/index.html|]
+MENU: GL OpenGL ES 3.2 Mesa 25.2.8-0ubuntu0.24.04.4 | llvmpipe (LLVM 20.1.2, 256 bits) (ES 3)
+MENU kresba pripravena: ANO (pisma 1, logo ano, mipmapy karet ano)
+DEMO model Atari 130XE: 686 trojuhelniku
+MENU snimek 8.2 ms (perioda displeje 5.9 ms = 169 Hz), zmeskano 29 z 60, uroven 1, plocha 360x780, prekresleno karet 1, TV ne
+OK     2) plocha: GL vlakno kresli menu (do logu appky GPU, priprava, rychlost)  -- pripraveno za 0.5 s (Mesa na CPU), snimku za 1 s: 150, chyba 0; GPU llvmpipe (LLVM 20.1.2, 256 bits) | OpenGL ES 3.2 Mesa 25.2.8-0ubuntu0.24.04.4 | ES 3, mipmapy karet ano | priprava 380 ms, plocha 360x780, karet 7, obrazky karet 280x368 || snimek 6.9 ms (perioda displeje 5.1 ms = 196 Hz), zme
+OK     2) karty maji zive obrazky (3D Atari, N&P 16 ...)  -- obrazky karet 280x368 bodu (karta na obrazovce 274x365)
+karta atari: 3d:atari
+karta sega: 3d:nap16
+karta ps1: 3d:nap32
+karta mp3: fx:kazeta
+
+MENU snimek 4.7 ms (perioda displeje 5.1 ms = 196 Hz), zmeskano 20 z 60, uroven 0, plocha 360x780, prekresleno karet 0, TV ne
+OK     3) tah prstem o rozestup karet doleva (pomalu) = dalsi karta (SEGA)  -- akce 0, vybrana 1
+OK     3) rychly svih dojede dal (o 2 karty), Home + sipka zpet na SEGU  -- svih 5 karet/s z karty 1 -> 3, pak Home a sipka vpravo -> 1
+OK     4) klepnuti na zamcenou SEGU: nespusti, C++ ukaze proc (zatrese)  -- akce 3001 (3001 = zamcena karta 1)
+OK     5) kolecko OPTIONS (body view 2x vetsi nez plocha - prepocet)  -- kolecko klepnuto v view 2x vetsim: akce 2000
+MENU snimek 4.3 ms (perioda displeje 4.7 ms = 214 Hz), zmeskano 20 z 60, uroven 0, plocha 360x780, prekresleno karet 0, TV ne
+OK     6) klavesy: sipka vlevo, Enter = spustit ATARI; behem spousteni se nic dalsiho nespusti  -- po sipce vlevo vybrana 0, Enter 1000, pak klepnuti 0 a sipka 0 (behem spousteni)
+OK     6) menuUkaz (navrat do menu) spusteni zrusi - klepnuti zase spusti  -- po menuUkaz klepnuti na ATARI: 1000
+OK     7) svih jede pres vic karet, End = posledni karta HELP  -- po svihu 4, po End 6
+OK     8) TV / PC: menu proudem z C++ (854x480 JPEG, jako uvodni demo)  -- paket 42516 B, znacka NA, verze 3, 854x480, stav 3; B306 TV PROUD MENU: prohlizec 1 pripojen (celkem 1) - obraz a zvuk primo z C++ (JPEG po castech), kazdy snimek, zvuk 441
+OK     9) stary prohlizec bez ReadableStream: snimek menu 16:9 pro Javu  -- menuGrabFrame 55968224 (854x480), prumerny jas 26.4
+MENU: plocha uvolnena
+MENU: plocha odpojena
+OK     10) plocha odpojena: vlakno skoncilo, okno a assety uvolnene  -- okno refs 1, vlakno konec, assety otevreno 2 / zavreno 2
+MENU: GL OpenGL ES 3.2 Mesa 25.2.8-0ubuntu0.24.04.4 | llvmpipe (LLVM 20.1.2, 256 bits) (ES 3)
+MENU kresba pripravena: ANO (pisma 1, logo ano, mipmapy karet ano)
+OK     10) plocha znovu (navrat z emulatoru): menu jede, porad na stejne karte  -- znovu pripraveno ano, vybrana pred 6 / po 6
+MENU: plocha uvolnena
+MENU: plocha odpojena
+
+VYSLEDEK: 14 OK, 0 CHYBA

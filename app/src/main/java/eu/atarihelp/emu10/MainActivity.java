@@ -1384,6 +1384,29 @@ public class MainActivity extends Activity {
                 }
                 return true;
             }
+            // B311: hlavni menu (C++) - stejne jako demo: prohlizec ho bere z /menu.stream,
+            // stare prohlizece dostanou hotovy snimek 16:9 z C++ (okno se pod menu nesnima -
+            // plocha SurfaceView v nem neni videt)
+            if (menuPlocha != null) {
+                if (napTvMenuProudKlientu.get() > 0) return true;
+                if (tvMenuArgb == null) tvMenuArgb = new int[854 * 480];
+                int wh = NativeMenuBridge.grabFrameSafe(tvMenuArgb);
+                if (wh < 0) {
+                    tvMenuArgb = new int[((-wh) >> 16) * ((-wh) & 0xFFFF)];
+                    wh = NativeMenuBridge.grabFrameSafe(tvMenuArgb);
+                }
+                if (wh > 0) {
+                    final int sw = wh >> 16, sh = wh & 0xFFFF;
+                    if (tvMenuBmp == null || tvMenuBmp.getWidth() != sw || tvMenuBmp.getHeight() != sh) {
+                        if (tvMenuBmp != null) { try { tvMenuBmp.recycle(); } catch (Throwable ignored) {} }
+                        tvMenuBmp = Bitmap.createBitmap(sw, sh, Bitmap.Config.ARGB_8888);
+                        try { tvMenuBmp.setHasAlpha(false); } catch (Throwable ignored) {}
+                    }
+                    tvMenuBmp.setPixels(tvMenuArgb, 0, sw, 0, 0, sw, sh);
+                    napTvWebPublishBitmap(tvMenuBmp, "MENU");
+                }
+                return true;
+            }
             if (!introZivaCast) return false;
             boolean jeSega = (segaPlocha != null);
             int wh = jeSega ? NativeSegaCoreBridge.grabFrameSafe(tvCoreArgb)
@@ -2973,10 +2996,12 @@ public class MainActivity extends Activity {
     private final java.util.concurrent.atomic.AtomicInteger napTvSegaProudKlientu = new java.util.concurrent.atomic.AtomicInteger();
     private final java.util.concurrent.atomic.AtomicInteger napTvPs1ProudKlientu = new java.util.concurrent.atomic.AtomicInteger();
     private final java.util.concurrent.atomic.AtomicInteger napTvIntroProudKlientu = new java.util.concurrent.atomic.AtomicInteger();   // B306
+    private final java.util.concurrent.atomic.AtomicInteger napTvMenuProudKlientu = new java.util.concurrent.atomic.AtomicInteger();    // B311
 
     /** Je jadro (SEGA / PS1) nebo uvodni demo (INTRO) na obrazovce telefonu? (stejne podminky jako snimani pro TV) */
     private boolean napTvJadroNaObrazovce(String druh) {
         if ("INTRO".equals(druh)) return demoPlocha != null;      // B306: demo lezi nad vsim
+        if ("MENU".equals(druh)) return menuPlocha != null;       // B311: hlavni menu (C++) lezi nad index.html
         String u = napTvWebCurrentUrl;
         if (u == null) return false;
         if ("SEGA".equals(druh)) return u.contains("emu_sega");
@@ -2987,6 +3012,8 @@ public class MainActivity extends Activity {
     private String napTvProudDruh() {
         // B306: uvodni demo lezi nad vsim ostatnim - kdyz bezi, na TV patri ono
         if (napTvJadroNaObrazovce("INTRO") && (NativeIntroBridge.proudStavSafe() & 1) != 0) return "intro";
+        // B311: hlavni menu (C++) - na TV jde proudem z C++ jako demo
+        if (napTvJadroNaObrazovce("MENU") && (NativeMenuBridge.proudStavSafe() & 1) != 0) return "menu";
         if (atariCppNaObrazovce && NativeAtariCoreBridge.isLoaded()) return "atari";
         try {
             if (napTvJadroNaObrazovce("SEGA") && (NativeSegaCoreBridge.proudStavSafe() & 1) != 0) return "sega";
@@ -3000,6 +3027,7 @@ public class MainActivity extends Activity {
         try {
             if ("SEGA".equals(druh)) s = NativeSegaCoreBridge.proudLogSafe();
             else if ("INTRO".equals(druh)) s = NativeIntroBridge.proudLogSafe();
+            else if ("MENU".equals(druh)) s = NativeMenuBridge.proudLogSafe();
             else s = NativePs1CoreBridge.proudLogSafe();
         } catch (Throwable t) { return; }
         if (s == null || s.isEmpty()) return;
@@ -3010,21 +3038,25 @@ public class MainActivity extends Activity {
     private int napTvProudOtevri(String druh) {
         if ("SEGA".equals(druh)) return NativeSegaCoreBridge.proudOtevriSafe();
         if ("INTRO".equals(druh)) return NativeIntroBridge.proudOtevriSafe();
+        if ("MENU".equals(druh)) return NativeMenuBridge.proudOtevriSafe();
         return NativePs1CoreBridge.proudOtevriSafe();
     }
     private int napTvProudDalsi(String druh, int id, byte[] b, int zapisMs) {
         if ("SEGA".equals(druh)) return NativeSegaCoreBridge.proudDalsiSafe(id, b, 250, zapisMs);
         if ("INTRO".equals(druh)) return NativeIntroBridge.proudDalsiSafe(id, b, 250, zapisMs);
+        if ("MENU".equals(druh)) return NativeMenuBridge.proudDalsiSafe(id, b, 250, zapisMs);
         return NativePs1CoreBridge.proudDalsiSafe(id, b, 250, zapisMs);
     }
     private int napTvProudStav(String druh) {
         if ("SEGA".equals(druh)) return NativeSegaCoreBridge.proudStavSafe();
         if ("INTRO".equals(druh)) return NativeIntroBridge.proudStavSafe();
+        if ("MENU".equals(druh)) return NativeMenuBridge.proudStavSafe();
         return NativePs1CoreBridge.proudStavSafe();
     }
     private void napTvProudZavri(String druh, int id) {
         if ("SEGA".equals(druh)) NativeSegaCoreBridge.proudZavriSafe(id);
         else if ("INTRO".equals(druh)) NativeIntroBridge.proudZavriSafe(id);
+        else if ("MENU".equals(druh)) NativeMenuBridge.proudZavriSafe(id);
         else NativePs1CoreBridge.proudZavriSafe(id);
     }
 
@@ -3039,8 +3071,9 @@ public class MainActivity extends Activity {
         out.flush();
         final boolean sega = "SEGA".equals(druh);
         final boolean intro = "INTRO".equals(druh);
+        final boolean menuP = "MENU".equals(druh);           // B311
         if (!napTvJadroNaObrazovce(druh)) return;
-        if (!sega && !intro && !NativePs1CoreBridge.isLoaded()) return;
+        if (!sega && !intro && !menuP && !NativePs1CoreBridge.isLoaded()) return;
         // maly odesilaci buffer: kdyz Wi-Fi nestiha, nesmi se ve fronte systemu
         // nahromadit sekundy obrazu (zpozdeni) - radsi se snimky preskoci
         try { sock.setSendBufferSize(64 * 1024); } catch (Throwable ignored) {}
@@ -3048,7 +3081,8 @@ public class MainActivity extends Activity {
         try { id0 = napTvProudOtevri(druh); } catch (Throwable t) { id0 = 0; }
         final int id = id0;
         if (id <= 0) return;
-        final java.util.concurrent.atomic.AtomicInteger klientu = sega ? napTvSegaProudKlientu : (intro ? napTvIntroProudKlientu : napTvPs1ProudKlientu);
+        final java.util.concurrent.atomic.AtomicInteger klientu = sega ? napTvSegaProudKlientu
+                : (intro ? napTvIntroProudKlientu : (menuP ? napTvMenuProudKlientu : napTvPs1ProudKlientu));
         klientu.incrementAndGet();
         napTvProudLog(druh);
         // B306: v tomhle vlakne C++ balí pakety (Sega LZ, PS1 / demo JPEG) - o kousek vys
@@ -3165,6 +3199,16 @@ public class MainActivity extends Activity {
      *  (B310: stranka stareho Atari v JavaScriptu, ktera tu byla taky, je smazana.)
      *  Vraci odpoved pro prohlizec. modL < 0 = stary prohlizec bez "mod" (jen ctrl). */
     private String napTvWebJednaKlavesa(final String code, String znak, final boolean dolu, boolean ctrl, long modL) {
+        // B311: HLAVNI MENU (C++) - z klavesnice PC / TV stejne jako na telefonu:
+        // sipky (A / D) listuji karty, Enter / mezernik spusti, Home / End prvni / posledni
+        if (menuPlocha != null) {
+            if (!dolu) return "MENU";
+            final int kl = napTvMenuKlavesa(code);
+            if (kl == 0) return "MENU";
+            final int r = NativeMenuBridge.klavesaSafe(kl);
+            if (r != NativeMenuBridge.AKCE_NIC) ui.post(() -> menuAkce(r, "klavesa z TV / PC"));
+            return "MENU";
+        }
         // B302: ATARI 130XE V HELP (C++). Rene: "udelej klavesnici - a mysli na to, ze vse
         // v C++ pokud mozno". Klavesa jde primo do jadra: co udela (klavesa Atari, joystick,
         // START/SELECT/OPTION, BREAK), rezim PSANI/HRANI i drzene klavesy resi C++
@@ -3236,6 +3280,19 @@ public class MainActivity extends Activity {
             }
         });
         return "OK";
+    }
+
+    /** B311: klavesa z prohlizece (KeyboardEvent.code) -> klavesa menu (0 = nic). */
+    private static int napTvMenuKlavesa(String code) {
+        if (code == null) return 0;
+        switch (code) {
+            case "ArrowLeft": case "KeyA": return NativeMenuBridge.KL_VLEVO;
+            case "ArrowRight": case "KeyD": return NativeMenuBridge.KL_VPRAVO;
+            case "Enter": case "NumpadEnter": case "Space": return NativeMenuBridge.KL_POTVRD;
+            case "Home": return NativeMenuBridge.KL_ZACATEK;
+            case "End": return NativeMenuBridge.KL_KONEC;
+            default: return 0;
+        }
     }
 
     /**
@@ -3606,6 +3663,9 @@ public class MainActivity extends Activity {
             } else if ("/ps1.stream".equals(path)) {
                 // B305: PS1 na TV/PC - obraz a zvuk primo z C++
                 napTvWebJadroProud(out, s, "PS1");
+            } else if ("/menu.stream".equals(path)) {
+                // B311: hlavni menu na TV/PC - obraz primo z C++
+                napTvWebJadroProud(out, s, "MENU");
             } else if ("/intro.stream".equals(path)) {
                 // B306: uvodni demo na TV/PC - obraz a zvuk primo z C++
                 napTvWebJadroProud(out, s, "INTRO");
@@ -3675,6 +3735,7 @@ public class MainActivity extends Activity {
                         + (klavRezim != null ? " klavRezim=" + klavRezim : "")
                         + " sega=" + (vSeze ? 1 : 0)
                         + " ps1=" + (vPs1 ? 1 : 0)
+                        + " menu=" + (menuPlocha != null ? 1 : 0)
                         + " seq=" + napTvWebSeq
                         + " mirror=" + (napTvWebSystemMirrorActive ? "SCREEN" : "APP")
                         + " profile=" + napTvWebVideoProfile
@@ -3877,7 +3938,7 @@ public class MainActivity extends Activity {
                 + "fb.onclick=function(){var el=document.documentElement;try{if(!isFs()){(el.requestFullscreen||el.webkitRequestFullscreen||el.msRequestFullscreen).call(el);}else{(document.exitFullscreen||document.webkitExitFullscreen||document.msExitFullscreen).call(document);}}catch(e){}};"
                 + "document.addEventListener('fullscreenchange',upd);document.addEventListener('webkitfullscreenchange',upd);document.addEventListener('msfullscreenchange',upd);upd();})();"
                 + "v.onerror=function(){if(!fb)fallback();};v.src='/stream.mjpg?'+Date.now();label('MJPEG');"
-                + "function pollFps(){fetch('/status').then(function(r){return r.text();}).then(function(t){var mp=/ proud=(\\w+)/.exec(t),pd=(mp&&mp[1]!=='0')?mp[1]:'';if(!mp){var m0=/atariProud=(\\d)/.exec(t);if(m0&&m0[1]==='1')pd='atari';}window.napProud=pd;window.napAtariProud=(pd==='atari');if(pd&&apLze()){ap.bez=0;if(ap.chce&&ap.druh&&ap.druh!==pd)apZnovu();else if(!ap.on&&!ap.rd)apStart();}else if(ap.chce){if(!ap.bez)ap.bez=Date.now();else if(Date.now()-ap.bez>2500){ap.bez=0;apStop();}}if(ap.chce)apHlidej();var m=/seq=(\\d+)/.exec(t);var m2=/h264Seq=(\\d+)/.exec(t);if(!h264Active&&!h264Loading&&!ap.chce&&!(window.napProud&&apLze())){clog('pollFps calling startH264 (universal)');startH264();}var useM=h264Active&&m2?m2:m;if(useM){var sq=parseInt(useM[1],10),now=Date.now();if(lastSeqT>0){var dt=(now-lastSeqT)/1000;if(dt>0)curFps=Math.round((sq-lastSeq)/dt*10)/10;}if(sq===lastSeq&&sq>0){staleTicks++;}else{staleTicks=0;}lastSeq=sq;lastSeqT=now;if(staleTicks>=4&&!fb&&!h264Active&&!ap.chce){staleTicks=0;v.src='/stream.mjpg?'+Date.now();}}var ma=/atari=(\\d)/.exec(t), ms=/sega=(\\d)/.exec(t);var vA=!!(ma&&ma[1]==='1'), vS=!!(ms&&ms[1]==='1');window.napVAtari=vA;window.napVSeze=vS;var mp1=/ ps1=(\\d)/.exec(t);var vP=!!(mp1&&mp1[1]==='1');window.napVPs1=vP;var mc=/atariCpp=(\\d)/.exec(t), mr=/klavRezim=(\\w+)/.exec(t);window.napVAtariCpp=!!(mc&&mc[1]==='1');if(window.napVAtariCpp&&mr)window.napRezim=mr[1];if(window.napKlavesnicePopis)window.napKlavesnicePopis(vA||vS||vP);label(h264Active?'H264':(fb?'JPEG':'MJPEG'));}).catch(function(e){clog('pollFps fetch err '+e);label(h264Active?'H264':(fb?'JPEG':'MJPEG'));});}" // BUILD2SK45+SK57+SK59: stale-reconnect jen v MJPEG rezimu; "seq" v /status je porad ta sama zachytavaci sekvence i v H264 rezimu
+                + "function pollFps(){fetch('/status').then(function(r){return r.text();}).then(function(t){var mp=/ proud=(\\w+)/.exec(t),pd=(mp&&mp[1]!=='0')?mp[1]:'';if(!mp){var m0=/atariProud=(\\d)/.exec(t);if(m0&&m0[1]==='1')pd='atari';}window.napProud=pd;window.napAtariProud=(pd==='atari');if(pd&&apLze()){ap.bez=0;if(ap.chce&&ap.druh&&ap.druh!==pd)apZnovu();else if(!ap.on&&!ap.rd)apStart();}else if(ap.chce){if(!ap.bez)ap.bez=Date.now();else if(Date.now()-ap.bez>2500){ap.bez=0;apStop();}}if(ap.chce)apHlidej();var m=/seq=(\\d+)/.exec(t);var m2=/h264Seq=(\\d+)/.exec(t);if(!h264Active&&!h264Loading&&!ap.chce&&!(window.napProud&&apLze())){clog('pollFps calling startH264 (universal)');startH264();}var useM=h264Active&&m2?m2:m;if(useM){var sq=parseInt(useM[1],10),now=Date.now();if(lastSeqT>0){var dt=(now-lastSeqT)/1000;if(dt>0)curFps=Math.round((sq-lastSeq)/dt*10)/10;}if(sq===lastSeq&&sq>0){staleTicks++;}else{staleTicks=0;}lastSeq=sq;lastSeqT=now;if(staleTicks>=4&&!fb&&!h264Active&&!ap.chce){staleTicks=0;v.src='/stream.mjpg?'+Date.now();}}var ma=/atari=(\\d)/.exec(t), ms=/sega=(\\d)/.exec(t);var vA=!!(ma&&ma[1]==='1'), vS=!!(ms&&ms[1]==='1');window.napVAtari=vA;window.napVSeze=vS;var mp1=/ ps1=(\\d)/.exec(t);var vP=!!(mp1&&mp1[1]==='1');window.napVPs1=vP;var mc=/atariCpp=(\\d)/.exec(t), mr=/klavRezim=(\\w+)/.exec(t);window.napVAtariCpp=!!(mc&&mc[1]==='1');if(window.napVAtariCpp&&mr)window.napRezim=mr[1];var mm=/ menu=(\\d)/.exec(t);window.napVMenu=!!(mm&&mm[1]==='1');if(window.napKlavesnicePopis)window.napKlavesnicePopis(vA||vS||vP||window.napVMenu);label(h264Active?'H264':(fb?'JPEG':'MJPEG'));}).catch(function(e){clog('pollFps fetch err '+e);label(h264Active?'H264':(fb?'JPEG':'MJPEG'));});}" // BUILD2SK45+SK57+SK59: stale-reconnect jen v MJPEG rezimu; "seq" v /status je porad ta sama zachytavaci sekvence i v H264 rezimu
                 // ===== B303 + B305: ATARI 130XE, SEGA A PS1 - OBRAZ A ZVUK PRIMO Z C++ =====
                 // B303 (Atari): "ma to na TV zpozdeni - nejde to vylepsit?" Misto H.264 / JPEG
                 // z Javy (zvetsovani, komprese, buffer prohlizece) posila C++ kazdy snimek
@@ -4185,7 +4246,7 @@ public class MainActivity extends Activity {
                 // B302: mod = 1 Shift, 2 Ctrl, 4 Alt, 8 AltGr, 16 opakovani (drzena
                 // klavesa) - co s tim, rozhoduje C++ (nap_atari_pc_klavesnice.h)
                 + "function posli(code,znak,dolu,ctrl,mod){"
-                + "  if(!window.napVAtari && !window.napVSeze && !window.napVPs1) return;"
+                + "  if(!window.napVAtari && !window.napVSeze && !window.napVPs1 && !window.napVMenu) return;"
                 + "  try{"
                 // pojistka (server nebezi): fronta se zahodi, ale pak VSECHNO
                 // pustit - zahozene pusteni by jinak nechalo klavesu drzenou
@@ -4284,11 +4345,17 @@ public class MainActivity extends Activity {
                 + "background:rgba(0,0,0,.6);border-radius:4px;font:13px monospace;color:#9fdcff;z-index:99999';"
                 + "kn.style.display='none';"
                 + "window.napKlavesnicePopis=function(zap){"
-                + "  if(kn.style.display===(zap?'':'none')) return;"   // jen pri zmene
+                // jen pri zmene (B311: i zmena textu - z menu rovnou do Atari je "zap" porad)
+                + "  var tx=zap?napPopisKlaves():'';"
+                // (text muze mit na konci jeste [posledni akce] - ten se neprepisuje, jinak by blikal)
+                + "  if(kn.style.display===(zap?'':'none')&&(!zap||kn.textContent.indexOf(tx)===0)) return;"
                 + "  kn.style.display=zap?'':'none';"
-                + "  kn.textContent=napPopisKlaves(); };"
+                + "  if(zap) kn.textContent=tx; };"
                 // B302: Atari 130XE v HELP (C++) ma vlastni popis - umi vic klaves
                 + "function napPopisKlaves(){"
+                // B311: hlavni menu (C++) - sipky listuji, Enter spusti
+                // (kratce - C++ ma v obraze vlastni radek "SIPKAMI LISTUJ - ENTER OTEVRE" dole uprostred)
+                + "  if(window.napVMenu) return 'MENU - sipky / A D listuji, Enter otevre, Home / End';"
                 // B308: PS1 (C++) - mapovani je v nap_ps1_native.cpp (ps1_klavesa_id)
                 + "  if(window.napVPs1) return 'PS1 - sipky/WASD smer, K/mezernik KRIZEK, L KOLECKO, J CTVEREC, I TROJUHELNIK,"
                 + " Q/E L1/R1, Z/C L2/R2, Enter/P START, Backspace/O SELECT';"
@@ -4779,6 +4846,36 @@ public class MainActivity extends Activity {
         @JavascriptInterface public void zamkniVse() {
             NapPostup.zamkniVse(MainActivity.this);
             appendNativeLog("BUILD2SA40 ZAMCENO VSE -> " + NapPostup.stav(MainActivity.this));
+        }
+
+        /**
+         * B311: OPTIONS se zavrelo (index.html) - kdyz se otevrelo z C++ menu,
+         * menu se vrati (se zamky podle postupu - mohly se zmenit).
+         */
+        @JavascriptInterface public void menuZpet() {
+            ui.post(() -> {
+                if (!menuSkryteProOptions) return;
+                menuSkryteProOptions = false;
+                if (web != null && jeMenuUrl(web.getUrl()) && demoPlocha == null) menuUkaz("zpet z OPTIONS");
+            });
+        }
+
+        /** B311: bude nad strankou C++ menu? (index.html pak rovnou schova karusel v HTML) */
+        @JavascriptInterface public boolean menuBude() {
+            return MainActivity.this.menuBude();
+        }
+
+        /** B311: obsah assets/menu/karty.txt pro karusel v HTML (zaloha, kdyz C++ menu nejde). */
+        @JavascriptInterface public String menuKarty() {
+            try (java.io.InputStream in = getAssets().open("menu/karty.txt")) {
+                java.io.ByteArrayOutputStream o = new java.io.ByteArrayOutputStream();
+                byte[] b = new byte[8192];
+                int n;
+                while ((n = in.read(b)) > 0) o.write(b, 0, n);
+                return o.toString("UTF-8");
+            } catch (Throwable t) {
+                return "";
+            }
         }
 
         /** BUILD2SA27: stazeni Sonica a BIOSu na vyzadani z nabidky OPTIONS. */
@@ -5610,7 +5707,154 @@ public class MainActivity extends Activity {
         }
         // B310: saveBase64 (ukladani souboru ze stareho Atari v JavaScriptu) smazano
         // se starym emulatorem - CSAVE WAV z Atari 130XE uklada ulozitAtariPcmWav.
+
+        // B311: VELKY SOUBOR PO KOUSCICH - nahravka mixu z DJ pultu (RECORD). Pult nahrava
+        // MediaRecorderem do blobu a drive ho "stahl" pres <a download> - WebView ale
+        // blob: adresu stahnout neumi (DownloadListener ji zahodil), takze se nahravka
+        // nikam neulozila. Ted ji stranka posle sem po kouscich (base64) a Java ji zapise
+        // do Download/AtariHelp/<slozka> (kdyz to nejde, do slozky appky).
+        /** Vraci cislo souboru (0 = nejde). */
+        @JavascriptInterface public int souborZacni(String slozka, String jmeno, String mime) {
+            return napSouborZacni(slozka, jmeno, mime);
+        }
+        /** Dalsi kousek (base64); false = chyba (stranka pak zavola souborZrus). */
+        @JavascriptInterface public boolean souborPridej(int id, String base64) {
+            return napSouborPridej(id, base64);
+        }
+        /** "OK:cesta" nebo "CHYBA: ..." */
+        @JavascriptInterface public String souborDokonci(int id) {
+            return napSouborDokonci(id);
+        }
+        @JavascriptInterface public void souborZrus(int id) {
+            napSouborZrus(id);
+        }
     }
+
+    // ===== B311: soubory zapisovane po kouscich (AHSave.souborZacni / Pridej / Dokonci) =====
+    private static final class NapSouborVPrubehu {
+        OutputStream out;
+        Uri uri;          // Android 10+ (MediaStore)
+        File soubor;      // Android 9 a starsi / zaloha ve slozce appky
+        String cesta;
+        long bajtu;
+    }
+    private final java.util.HashMap<Integer, NapSouborVPrubehu> napSoubory = new java.util.HashMap<>();
+    private int napSouborDalsiId = 1;
+
+    /** Volne jmeno ve slozce (jmeno_1.pripona ...), kdyz uz soubor existuje. */
+    private static File napVolnySoubor(File dir, String safe) {
+        File f = new File(dir, safe);
+        String base = safe, ext = "";
+        int dot = safe.lastIndexOf('.');
+        if (dot > 0) { base = safe.substring(0, dot); ext = safe.substring(dot); }
+        for (int n = 1; f.exists() && n < 1000; n++) f = new File(dir, base + "_" + n + ext);
+        return f;
+    }
+
+    private int napSouborZacni(String slozka, String jmeno, String mime) {
+        String podslozka = slozka == null ? "" : slozka.replaceAll("[^A-Za-z0-9_-]", "_");
+        if (podslozka.length() > 40) podslozka = podslozka.substring(0, 40);
+        final String safe = safeFileName(jmeno);
+        final String typ = (mime == null || mime.trim().isEmpty()) ? "application/octet-stream" : mime.trim();
+        final NapSouborVPrubehu s = new NapSouborVPrubehu();
+        try {
+            if (Build.VERSION.SDK_INT >= 29) {
+                ContentValues v = new ContentValues();
+                v.put(MediaStore.MediaColumns.DISPLAY_NAME, safe);
+                v.put(MediaStore.MediaColumns.MIME_TYPE, typ);
+                v.put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS + "/AtariHelp"
+                        + (podslozka.isEmpty() ? "" : "/" + podslozka));
+                v.put(MediaStore.MediaColumns.IS_PENDING, 1);   // dokud se zapisuje, ostatni appky ho nevidi
+                Uri uri = getContentResolver().insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, v);
+                if (uri == null) throw new IOException("MediaStore insert vratil null");
+                OutputStream o = getContentResolver().openOutputStream(uri);
+                if (o == null) {
+                    try { getContentResolver().delete(uri, null, null); } catch (Throwable ignored) {}
+                    throw new IOException("MediaStore openOutputStream vratil null");
+                }
+                s.uri = uri;
+                s.out = o;
+                s.cesta = "Download/AtariHelp/" + (podslozka.isEmpty() ? "" : podslozka + "/") + safe;
+            } else {
+                File dir = podslozka.isEmpty() ? getPublicAtariHelpDownloadsDir() : new File(getPublicAtariHelpDownloadsDir(), podslozka);
+                if (!dir.exists() && !dir.mkdirs()) throw new IOException("nejde vytvorit slozku " + dir.getAbsolutePath());
+                File f = napVolnySoubor(dir, safe);
+                s.out = new FileOutputStream(f);
+                s.soubor = f;
+                s.cesta = f.getAbsolutePath();
+            }
+        } catch (Throwable t) {
+            // zaloha: slozka appky (zadne opravneni nepotrebuje)
+            try {
+                File dir = getExternalFilesDir(podslozka.isEmpty() ? null : podslozka);
+                if (dir == null) dir = new File(getFilesDir(), podslozka.isEmpty() ? "soubory" : podslozka);
+                if (!dir.exists()) dir.mkdirs();
+                File f = napVolnySoubor(dir, safe);
+                s.out = new FileOutputStream(f);
+                s.soubor = f;
+                s.uri = null;
+                s.cesta = f.getAbsolutePath();
+                appendNativeLog("B311 SOUBOR " + safe + ": do Download nejde (" + safeMsg(t) + ") - uklada se do slozky appky");
+            } catch (Throwable t2) {
+                appendNativeLog("B311 SOUBOR_CHYBA " + safe + ": " + safeMsg(t) + " / " + safeMsg(t2));
+                return 0;
+            }
+        }
+        synchronized (napSoubory) {
+            final int id = napSouborDalsiId++;
+            napSoubory.put(id, s);
+            appendNativeLog("B311 SOUBOR_ZACATEK #" + id + " " + s.cesta + " (" + typ + ")");
+            return id;
+        }
+    }
+
+    private boolean napSouborPridej(int id, String base64) {
+        final NapSouborVPrubehu s;
+        synchronized (napSoubory) { s = napSoubory.get(id); }
+        if (s == null || base64 == null) return false;
+        try {
+            byte[] d = android.util.Base64.decode(base64, android.util.Base64.DEFAULT);
+            s.out.write(d);
+            s.bajtu += d.length;
+            return true;
+        } catch (Throwable t) {
+            appendNativeLog("B311 SOUBOR_CHYBA_ZAPISU #" + id + " " + s.cesta + " po " + s.bajtu + " B: " + safeMsg(t));
+            return false;
+        }
+    }
+
+    private String napSouborDokonci(int id) {
+        final NapSouborVPrubehu s;
+        synchronized (napSoubory) { s = napSoubory.remove(id); }
+        if (s == null) return "CHYBA: neznamy soubor " + id;
+        try {
+            s.out.close();
+            if (s.uri != null && Build.VERSION.SDK_INT >= 29) {
+                ContentValues v = new ContentValues();
+                v.put(MediaStore.MediaColumns.IS_PENDING, 0);
+                getContentResolver().update(s.uri, v, null, null);
+            }
+            appendNativeLog("B311 SOUBOR_ULOZEN #" + id + " " + s.cesta + " (" + s.bajtu + " B)");
+            return "OK:" + s.cesta;
+        } catch (Throwable t) {
+            appendNativeLog("B311 SOUBOR_CHYBA_DOKONCENI #" + id + " " + s.cesta + ": " + safeMsg(t));
+            return "CHYBA: " + safeMsg(t);
+        }
+    }
+
+    private void napSouborZrus(int id) {
+        final NapSouborVPrubehu s;
+        synchronized (napSoubory) { s = napSoubory.remove(id); }
+        if (s == null) return;
+        try { s.out.close(); } catch (Throwable ignored) {}
+        try {
+            if (s.uri != null) getContentResolver().delete(s.uri, null, null);
+            else if (s.soubor != null) s.soubor.delete();
+        } catch (Throwable ignored) {}
+        appendNativeLog("B311 SOUBOR_ZRUSEN #" + id + " " + s.cesta + " (" + s.bajtu + " B)");
+    }
+
+    // (konec B311 souboru po kouscich)
 
     private String ps1CleanBiosName(String name) {
         if (name == null) name = "bios.bin";
@@ -7424,6 +7668,8 @@ public class MainActivity extends Activity {
                     ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
             demoPlocha = v;
             v.requestFocus();
+            menuPoprve = true;                 // B311: po demu karty menu zase prileti
+            menuSkryj("uvodni demo");          // B311: demo lezi nad vsim, menu se pak ukaze znovu
             demoStartMs = System.currentTimeMillis();
             demoHlaseno = false;
             ui.removeCallbacks(demoTik);
@@ -7476,6 +7722,238 @@ public class MainActivity extends Activity {
                 + " (~" + (snimku * 1000 / trvalo) + " snimku/s)");
         appendNativeLog("B304 DEMO_INFO " + info);
         try { if (web != null) web.requestFocus(); } catch (Throwable ignored) {}
+        // B311: pod demem uz je index.html - ted na nej C++ menu (karty prileti)
+        try { if (web != null && jeMenuUrl(web.getUrl())) menuUkaz("po intru"); } catch (Throwable ignored) {}
+    }
+
+    // ===== B311: HLAVNI MENU - KARUSEL VELKYCH KARET (cele v C++) =====
+    // Rene: "cela ta uvodni stranka v aplikaci musi byt uplne jinak. Zadny nudny staticky
+    // ikony pod sebou. Chci aby tam bylo plynuly horizontalni skrolovani velkych obrazku
+    // a karet z prava do leva a zpatky ... napis modularne a dynamicky ... at tam pak staci
+    // jenom jednoduse prihodit dalsi velkou ikonu ... cistej lehkej C++ kod pro grafiku."
+    // Menu kresli C++ (NativeMenuBridge, knihovna napmenu) do NapMenuView, ktera lezi
+    // NAD index.html. Karty: assets/menu/karty.txt (nova masina = obrazek + radek).
+    // C++ rozhodne o dotyku a vrati, co se ma stat; Java jen prepne stranku.
+    // index.html pod menu: OPTIONS (C++ menu se na ne schova) a zaloha - karusel v HTML,
+    // kdyby knihovna napmenu chybela nebo GPU menu nezvladl. Viz CO_JE_V_B311.md.
+    private volatile NapMenuView menuPlocha = null;
+    private boolean menuKartyNacteny = false;
+    private boolean menuPoprve = true;            // prvni ukazani (po intru) = nastup, karty prileti
+    private boolean menuSkryteProOptions = false; // menu schovane, na index.html je otevrene OPTIONS
+    private boolean menuNelze = false;            // C++ menu na tomhle telefonu nejde - zustava HTML
+    private boolean menuHlasenoChybi = false;
+    private long menuStartMs = 0;
+    private boolean menuHlaseno = false;
+    private int[] tvMenuArgb = null;
+    private Bitmap tvMenuBmp = null;
+    private final Runnable menuTik = new Runnable() {
+        @Override public void run() { menuKontrola(); }
+    };
+
+    /** Je to adresa hlavni nabidky (index.html v assets)? */
+    static boolean jeMenuUrl(String url) {
+        if (url == null) return false;
+        String u = url;
+        int q = u.indexOf('?'); if (q >= 0) u = u.substring(0, q);
+        int h = u.indexOf('#'); if (h >= 0) u = u.substring(0, h);
+        return u.equals("file:///android_asset/index.html");
+    }
+
+    /** Ceske tvary: 1 radek, 2-4 radky, 5 radku. */
+    static String radkuSlovo(int n) {
+        if (n == 1) return "řádek";
+        if (n >= 2 && n <= 4) return "řádky";
+        return "řádků";
+    }
+
+    /** Zamky karet podle postupu hrace (NapPostup): SEGA po 50 radcich v Atari, PS1 po 30 min Segy. */
+    private void menuZamky() {
+        try {
+            final boolean sega = NapPostup.segaOdemcena(this), ps1 = NapPostup.ps1Odemcena(this);
+            final int radku = Math.max(0, NapPostup.zbyvaRadku(this));
+            final int minut = Math.max(0, NapPostup.zbyvaMinutSegy(this));
+            NativeMenuBridge.zamekSafe("sega", !sega, "Napiš v Atari ještě " + radku + " " + radkuSlovo(radku)
+                    + " programu (řádky s číslem, počítají se při RUN nebo LIST).");
+            NativeMenuBridge.zamekSafe("ps1", !ps1, sega ? ("Hraj na Seze ještě " + minut + " min.")
+                    : "Nejdřív odemkni Segu, pak 30 minut hraní na Seze.");
+        } catch (Throwable t) {
+            appendNativeLog("B311 MENU_ZAMKY_CHYBA " + safeMsg(t));
+        }
+    }
+
+    private void menuLog() {
+        try {
+            String s = NativeMenuBridge.logSafe();
+            if (s == null || s.isEmpty()) return;
+            for (String r : s.split("\n")) if (!r.isEmpty()) appendNativeLog("B311 MENU " + r);
+        } catch (Throwable ignored) {}
+    }
+
+    /** index.html: schovat (true) nebo ukazat (false) karusel v HTML pod C++ menu. */
+    private void menuNativniVHtml(boolean nativni) {
+        try {
+            if (web != null) web.evaluateJavascript("window.napMenuNativni&&napMenuNativni(" + nativni + ")", null);
+        } catch (Throwable ignored) {}
+    }
+
+    /** Bude na index.html C++ menu? (stranka podle toho rovnou schova karusel v HTML) */
+    boolean menuBude() {
+        return NativeMenuBridge.jeNactena() && !menuNelze;
+    }
+
+    /** Ukazat C++ menu nad index.html. false = nejde (zustava menu v HTML). */
+    private boolean menuUkaz(String proc) {
+        if (rootFrame == null || web == null) return false;
+        if (demoPlocha != null) return false;                // nejdriv dobehne uvodni demo
+        if (!NativeMenuBridge.jeNactena()) {
+            if (!menuHlasenoChybi) {
+                menuHlasenoChybi = true;
+                appendNativeLog("B311 MENU_NELZE knihovna napmenu: " + NativeMenuBridge.chybaNacteni() + " - menu zustava v HTML");
+            }
+            return false;
+        }
+        if (menuNelze) return false;
+        try {
+            if (!menuKartyNacteny) {
+                final int n = NativeMenuBridge.nastavAssetySafe(getAssets());
+                menuKartyNacteny = n > 0;
+                appendNativeLog("B311 MENU_KARTY " + n + " karet (assets/menu/karty.txt)");
+                menuLog();
+                if (n <= 0) return false;
+            }
+            menuZamky();
+            menuSkryteProOptions = false;
+            if (menuPlocha == null) {
+                NativeMenuBridge.ukazSafe(menuPoprve ? 1 : 0);
+                final NapMenuView v = new NapMenuView(this, this::menuAkce);
+                rootFrame.addView(v, new FrameLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+                menuPlocha = v;
+                v.requestFocus();
+                menuStartMs = System.currentTimeMillis();
+                menuHlaseno = false;
+                ui.removeCallbacks(menuTik);
+                ui.postDelayed(menuTik, 400);
+                appendNativeLog("B311 MENU_UKAZ (" + proc + ") " + (menuPoprve ? "nastup - karty prileti" : "prolnuti")
+                        + ", karta " + NativeMenuBridge.vybranaSafe());
+                menuPoprve = false;
+            } else {
+                NativeMenuBridge.ukazSafe(0);
+            }
+            menuNativniVHtml(true);
+            return true;
+        } catch (Throwable t) {
+            appendNativeLog("B311 MENU_CHYBA_UKAZ " + safeMsg(t));
+            menuSkryj("chyba pri ukazani");
+            return false;
+        }
+    }
+
+    private void menuSkryj(String proc) {
+        ui.removeCallbacks(menuTik);
+        if (menuPlocha == null) return;
+        final NapMenuView v = menuPlocha;
+        menuPlocha = null;
+        // C++ zastavi kresleni sam (surfaceDestroyed -> plocha null, vlakno skonci)
+        try { if (v.getParent() instanceof ViewGroup) ((ViewGroup) v.getParent()).removeView(v); } catch (Throwable ignored) {}
+        appendNativeLog("B311 MENU_SKRYJ (" + proc + ") snimku " + NativeMenuBridge.snimkuSafe() + ", karta " + NativeMenuBridge.vybranaSafe());
+        menuLog();
+    }
+
+    /** Hlidac: GPU menu nezvladlo (chyba GL) nebo se nepripravilo -> zpet na HTML menu. */
+    private void menuKontrola() {
+        if (menuPlocha == null) return;
+        final long bezi = System.currentTimeMillis() - menuStartMs;
+        final boolean chyba = NativeMenuBridge.chybaSafe(), prip = NativeMenuBridge.pripravenoSafe();
+        if (chyba || (!prip && bezi > 8000)) {
+            menuNelze = true;
+            appendNativeLog("B311 MENU_NEJDE " + (chyba ? "chyba OpenGL" : "nepripravilo se do 8 s") + " - prepinam na menu v HTML. "
+                    + NativeMenuBridge.infoSafe());
+            menuSkryj("C++ menu nejde");
+            menuNativniVHtml(false);
+            return;
+        }
+        if (!menuHlaseno && prip && bezi > 2500) {
+            menuHlaseno = true;
+            appendNativeLog("B311 MENU_BEZI " + NativeMenuBridge.infoSafe());
+        }
+        menuLog();
+        ui.postDelayed(menuTik, 1000);
+    }
+
+    /** Vysledek dotyku / klavesy z C++ (NativeMenuBridge.AKCE_*) - na vlakne UI. */
+    private void menuAkce(int kod, String odkud) {
+        if (kod >= NativeMenuBridge.AKCE_ZAMCENO) {
+            final int i = kod - NativeMenuBridge.AKCE_ZAMCENO;
+            appendNativeLog("B311 MENU_ZAMCENO karta " + i + " [" + NativeMenuBridge.kartaSafe(i) + "] (" + odkud + ") "
+                    + NapPostup.stav(this));
+            return;
+        }
+        if (kod == NativeMenuBridge.AKCE_NASTAVENI) {
+            appendNativeLog("B311 MENU_OPTIONS (" + odkud + ")");
+            ui.postDelayed(this::menuOtevriOptions, 150);
+            return;
+        }
+        if (kod >= NativeMenuBridge.AKCE_KARTA && kod < NativeMenuBridge.AKCE_NASTAVENI) {
+            final int i = kod - NativeMenuBridge.AKCE_KARTA;
+            final String k = NativeMenuBridge.kartaSafe(i);
+            appendNativeLog("B311 MENU_SPUSTIT karta " + i + " [" + k + "] (" + odkud + ")");
+            // C++ ted kartu priblizi a zatmi obraz - pak teprve prepnout stranku
+            ui.postDelayed(() -> menuSpust(i, k), NativeMenuBridge.SPUSTENI_MS);
+        }
+    }
+
+    private void menuSpust(int i, String karta) {
+        if (menuPlocha == null || karta == null || web == null) return;
+        final String[] p = karta.split("\\|", -1);
+        final String id = p.length > 0 ? p[0] : "?";
+        final String cil = p.length > 2 ? p[2].trim() : "";
+        try {
+            if (cil.isEmpty()) {
+                appendNativeLog("B311 MENU karta " + id + " nema cil - zustavam v menu");
+                NativeMenuBridge.ukazSafe(0);
+                return;
+            }
+            if (cil.startsWith("akce:")) {
+                final String a = cil.substring(5);
+                NativeMenuBridge.ukazSafe(0);
+                if ("nastaveni".equals(a) || "options".equals(a)) menuOtevriOptions();
+                else if ("intro".equals(a)) { menuSkryj("intro z karty"); if (!demoSpust("karta menu")) menuUkaz("intro nejde"); }
+                else appendNativeLog("B311 MENU karta " + id + ": neznama akce " + a);
+                return;
+            }
+            menuSkryj("karta " + id);
+            if (cil.startsWith("http://") || cil.startsWith("https://")) {
+                if (isProviderBlockedUrl(cil)) loadAtariHelpGuarded(cil, "menuKarta");
+                else if (!openExternalBrowserUrl(cil)) web.loadUrl(cil);
+                return;
+            }
+            final String url = "file:///android_asset/" + cil;
+            applyWebViewVisualMode(url, "menuKarta");
+            web.loadUrl(url);
+        } catch (Throwable t) {
+            appendNativeLog("B311 MENU_CHYBA_SPUSTENI karta " + id + " " + safeMsg(t));
+            if (menuPlocha != null) NativeMenuBridge.ukazSafe(0);
+            else menuUkaz("chyba spusteni");
+        }
+    }
+
+    /** B311: tlacitko ZPET v hlavnim menu - appka do pozadi (stav i menu zustanou). */
+    private void menuDoPozadi() {
+        appendNativeLog("B311 MENU: tlacitko ZPET v hlavnim menu - appka jde do pozadi");
+        boolean ok = false;
+        try { ok = moveTaskToBack(true); } catch (Throwable ignored) {}
+        if (!ok) {
+            try { super.onBackPressed(); } catch (Throwable ignored) {}
+        }
+    }
+
+    /** Kolecko: C++ menu se schova a na index.html se otevre OPTIONS (po zavreni se menu vrati). */
+    private void menuOtevriOptions() {
+        if (menuPlocha == null || web == null) return;
+        menuSkryj("OPTIONS");
+        menuSkryteProOptions = true;
+        try { web.evaluateJavascript("window.napOtevriNastaveni&&napOtevriNastaveni()", null); } catch (Throwable ignored) {}
     }
 
     /** onPageStarted: Atari 130XE (emu_atari_cpp) -> pristroj zapnout, jinam -> vypnout. */
@@ -9924,6 +10402,8 @@ public class MainActivity extends Activity {
                 stopPs1IfLeaving(url, "onPageStarted");
                 stopAtariNativeAudioIfLeaving(url, "onPageStarted");
                 atariZarizeniPodleUrl(url);   // B291: pristroj Atari 130XE (C++) v HELP
+                // B311: hlavni menu (C++) jen nad index.html
+                if (!jeMenuUrl(url)) { menuSkryj("odchod na " + compactUrl(url)); menuSkryteProOptions = false; }
             }
 
             @Override
@@ -9958,6 +10438,8 @@ public class MainActivity extends Activity {
                 if (url != null && url.toLowerCase().contains("atarihelp.eu")) {
                     injectGameLinkBridge();
                 }
+                // B311: hlavni nabidka nactena -> nad ni C++ menu (karusel karet)
+                if (jeMenuUrl(url) && !menuSkryteProOptions) menuUkaz("stranka menu");
             }
             @Override
             public WebResourceResponse shouldInterceptRequest(WebView v, String url) {
@@ -12438,9 +12920,26 @@ public class MainActivity extends Activity {
                 demoKonec("tlacitko zpet");
                 return;
             }
+            // B311: OPTIONS otevrene z menu -> zavrit, menu se vrati
+            if (menuSkryteProOptions && web != null && jeMenuUrl(web.getUrl())) {
+                web.evaluateJavascript("window.napZavriNastaveni&&napZavriNastaveni()", null);
+                ui.postDelayed(() -> { if (menuSkryteProOptions) menuUkaz("zpet z OPTIONS (tlacitko zpet)"); }, 120);
+                return;
+            }
             // B291: ze stranky s logem (LOG/CHYBA) se zpet vraci na pristroj
             if (atariZarizeni != null && atariZarizeniSkryte) {
                 atariZarizeniSkryj(false);
+                return;
+            }
+            // B311: ZPET v hlavnim menu = appka do pozadi (jako tlacitko plochy, menu na
+            // cloveka pocka). Drive skocil podle historie stranek zpatky do posledniho
+            // emulatoru (menu -> Sega -> MENU -> ZPET = zase Sega). V HTML zaloze (C++ menu
+            // nejde) se napred zavre otevrene OPTIONS.
+            if (web != null && jeMenuUrl(web.getUrl())) {
+                if (menuPlocha != null) { menuDoPozadi(); return; }
+                web.evaluateJavascript("(function(){var p=document.getElementById('settingsPanel');"
+                        + "if(p&&p.classList.contains('open')){if(window.napZavriNastaveni)napZavriNastaveni();return 1;}return 0;})()",
+                        v -> { if (!"1".equals(v)) menuDoPozadi(); });
                 return;
             }
             if (web != null && web.canGoBack()) {
@@ -12510,6 +13009,7 @@ public class MainActivity extends Activity {
     protected void onDestroy() {
         zapisOdchod("ZRUSENA");
         if (demoPlocha != null) demoKonec("appka zrusena");   // B304
+        menuSkryj("appka zrusena");                            // B311
         try { napTvWebStop("activityDestroy"); } catch (Throwable ignored) {} // BUILD2SA13C
         try { if (napTvPresentation != null) napTvPresentation.dismiss(); } catch (Throwable ignored) {} // BUILD2SA13
         try { if (napDisplayManager != null) napDisplayManager.unregisterDisplayListener(napTvListener); } catch (Throwable ignored) {}
@@ -12525,6 +13025,11 @@ public class MainActivity extends Activity {
     protected void onResume() {
         super.onResume();
         if (web != null) web.onResume();
+        // B311: navrat do appky (napr. z prohlizece po karte s webem) na index.html -> menu zpet
+        try {
+            if (menuPlocha == null && demoPlocha == null && !menuSkryteProOptions && web != null && jeMenuUrl(web.getUrl()))
+                menuUkaz("navrat do appky");
+        } catch (Throwable ignored) {}
         // ====== NÁVRAT Z OKNA HRY ======
         // Kdyz se sem vracime a PS1 relace je jeste "zapnuta", znamena to, ze
         // se okno hry zavrelo (jadro uz se vypnulo samo pres core_shutdown).

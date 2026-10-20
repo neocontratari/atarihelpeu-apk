@@ -2811,3 +2811,48 @@
      potvrdil) - drive ulozene v base64 v emu_vbxe/index.html.
 
 ===============================================================================
+
+   B311: HLAVNI MENU = KARUSEL VELKYCH KARET V C++ (knihovna napmenu).
+     Rene: "zadny nudny staticky ikony pod sebou ... plynuly horizontalni
+     skrolovani velkych karet ... napis modularne a dynamicky - staci
+     prihodit dalsi velkou ikonu ... cistej lehkej C++ kod pro grafiku,
+     at to lita s nulovou odezvou". Od B311:
+     - Menu kresli C++ (cpp/menu/, libnapmenu.so - ODDELENA knihovna, ne
+       napintro) do NapMenuView (SurfaceView, setZOrderOnTop) NAD
+       index.html. Java (NativeMenuBridge) preda plochu, kazdy bod prstu
+       (requestUnbufferedDispatch + historicke body) a klavesy; C++ vrati
+       Akce (1000+i spustit kartu, 2000 OPTIONS, 3000+i zamcena karta).
+       Java pak jen prepne stranku (menuSpust, po SPUSTENI_MS = 300 ms).
+     - KARTY: assets/menu/karty.txt (id|NAZEV|podtitul|popis|obrazek|cil|
+       barva|zamek|efekt|tlacitko). Efekt = ziva karta v C++ (3d:atari,
+       3d:nap16, 3d:nap32, fx:kazeta, fx:dzubox, fx:web, fx:help), prazdne
+       = obrazek. Zamky (sega / ps1) bere Java z NapPostup (menuZamky).
+     - index.html pod menu: OPTIONS (kolecko v C++ -> napOtevriNastaveni,
+       zavreni -> AHINTRO.menuZpet) a ZALOHA - stejny karusel v HTML, kdyz
+       C++ menu nejde (menuKontrola: chyba GL nebo nepripraveno do 8 s ->
+       menuNelze, napMenuNativni(false)). Trida "nativni" na <html> schova
+       HTML karusel hned (AHINTRO.menuBude), at nic neproblikne.
+     - TV / PC: /menu.stream (Hub<KodekJpeg> 854x480 jako demo), /status
+       menu=1, klavesy z prohlizece -> napTvMenuKlavesa -> menuKlavesa.
+     - HELP = assets/napoveda/index.html (uplny navod). VSE v nem je
+       opsane z kodu - pri zmene tlacitka v appce uprav i navod a spust
+       test_overeni/b311/kontrola_navodu.py (kazdy nazev tlacitka v navodu
+       musi v appce byt presne tak, jak ho clovek vidi).
+     - ZPET v hlavnim menu = moveTaskToBack (drive webView historie zpet do
+       emulatoru). DZUBOX RECORD -> AHSAVE.souborZacni/Pridej/Dokonci
+       (WebView neumi stahnout blob: - nahravka se driv zahodila).
+     POUCKA PRO NASTUPCE: Javu jde na PC prelozit proti SKUTECNEMU
+     Androidu - android.jar API 34 z github.com/Sable/android-platforms
+     (raw.githubusercontent.com jde, Maven ne): javac --release 17 -cp
+     android.jar app/src/main/java/eu/atarihelp/*/*.java = 0 chyb. Je to
+     mnohem silnejsi kontrola nez srovnani chyb "bez Androidu" (B310).
+     A DRUHA: v testech s Playwrightem (sync API) NEzachytavat page.route
+     pozadavky na vlastni server - zachyceny pozadavek ceka, az Python
+     zavola dalsi prikaz Playwrightu (klavesy pak chodily "o jednu pozde").
+     OTEVRENE OTAZKY PRO RENEHO (CO_JE_V_B311.md bod 8): zadni vratka
+     ODEMKNOUT DALSI / ZAMKNOUT VSE viditelna v OPTIONS; zamky hlida jen
+     menu (hra pro Segu / PS1 z webu se spusti i zamcena); RECORD a
+     FAVORITES na kazetaku nic nedelaji; ~11 MB nepouzitych obrazku
+     v assets/design a assets/img.
+
+===============================================================================
