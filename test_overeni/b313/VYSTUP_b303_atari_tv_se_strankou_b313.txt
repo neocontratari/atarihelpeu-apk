@@ -1,0 +1,102 @@
+B303: prohlizec (Chromium) <- server jako Java <- SKUTECNY nap_atari_native.cpp (proud z C++, vkladani z PC)
+stranka z MainActivity.java: 37677 bajtu, skriptu 2
+OK     Atari 130XE (C++) nastartovalo do READY (vlakna emulace a kresleni jako v appce)
+po nacteni: {'cv': True, 'cvVid': 'block', 'W': 672, 'H': 240, 'cw': 887, 'ch': 720, 'img': 'none', 'imgSrc': '', 'h264': 'none'}
+OK     stranka z appky (/status atariProud=1) sama prepnula na proud z C++: canvas 672x240
+OK     MJPEG obrazek i H.264 video vypnute (zadny JPEG ani H.264 z Javy)
+OK     canvas roztazeny na okno 1280x720 se spravnym pomerem stran Atari (887x720)
+canvas proti obrazu z jadra (devGrabFrame): 0 ruznych bodu ze 161280
+OK     obraz v prohlizeci je PRESNE obraz Atari z C++ (vsech 161280 bodu)
+za 4 s: 50.0 snimku/s, zvuk 44100 vzorku/s, podteceni zvuku 0, zahozeno 0, polstar zvuku 45 ms, chyb 0, 0.72 Mbit/s
+OK     prohlizec dostava kazdy snimek Atari (50/s), zadna chyba paketu
+OK     zvuk Atari jde proudem a hraje ve WebAudio (44100 vzorku/s)
+OK     polstar zvuku na rychle siti maly (45 ms)
+zpozdeni klavesa -> obraz v prohlizeci (bez Wi-Fi): 33, 36, 41, 50, 32, 37, 45, 46, 54, 36 ms
+  median 39 ms, nejvic 54 ms (snimek Atari = 20 ms)
+OK     klavesa je v obraze prohlizece do 2-3 snimku Atari (median 39 ms)
+Ctrl+V (skutecne z klavesnice): server dostal [(52, 'VLOZENO: 2 RADKU PROGRAMU (BEZ NEW) - PISU')], zprava v okne: VLOZENO: 2 RADKU PROGRAMU (BEZ NEW) - PISU
+OK     Ctrl+V v okne prohlizece = udalost paste (schranka -> /vloz)
+OK     Ctrl+V nejde do Atari jako klavesa V (KeyV: 0)
+OK     program ze schranky prijat (2 radky, bez NEW), zprava v okne
+--- LIST ---
+
+  READY
+  5 REM PRVNI
+  10 PRINT "Prilis zlutoucky kun"
+20 ? 6*7
+LIST
+
+  5 REM PRVNI
+  10 PRINT "Prilis zlutoucky kun"
+  20 ? 6*7
+
+  READY
+
+
+
+
+
+
+
+
+
+
+
+
+---
+OK     LIST: radek 5 zustal (bez NEW), radky 10 a 20 vlozene, cestina bez hacku a carek
+vlozeny text "RUN": [(4, 'NAPSANO: 4 ZNAKU')]
+
+  READY
+  5 REM PRVNI
+  10 PRINT "Prilis zlutoucky kun"
+20 ? 6*7
+LIST
+
+  5 REM PRVNI
+  10 PRINT "Prilis zlutoucky kun"
+  20 ? 6*7
+
+  READY
+  RUN
+  Prilis zlutoucky kun
+  42
+
+  READY
+
+
+
+
+
+
+
+
+OK     vlozeny text (ne program) napsany jako klavesy: RUN -> program bezi (Prilis zlutoucky kun, 42)
+pretazeny prog.txt: [(24, 'VLOZENO: 2 RADKU PROGRAMU (BEZ NEW) - PISU')]
+OK     pretazeny TXT soubor do okna -> radky 30 a 40 v programu
+pretazeny hra.xex: [(12, 'VLOZENI: TO NENI TEXT (XEX / ATR / BAS NAHRAJ V APPCE)')], zprava: VLOZENI: TO NENI TEXT (XEX / ATR / BAS NAHRAJ V APPCE)
+OK     pretazeny XEX se nepise (zprava TO NENI TEXT)
+spojeni zavreno serverem: pozadavku na proud 1 -> 2, rozdil obrazu 0
+OK     spadle spojeni: prohlizec se pripojil znovu sam a obraz je zase presne
+z prohlizece do logu appky: ['B303 ATARI PROUD start', 'B303 ATARI PROUD start', 'B303 PROHLIZEC: 50.1 snimku/s, zvuk hraje, napred 51 ms (min 14, pri rozjezdu 47), zvuk za obrazem ~90 ms, rychlost 0..+0.3 %, 44100->44100 Hz, podteceni 0, zahozeno 0, chyb 0, okno 1280x720']
+OK     prohlizec hlasi do logu appky start proudu a kazdych 30 s snimky/s a zvuk
+OK     behem proudu (i pri znovupripojeni) zadne dotazy na JPEG / MJPEG / H.264 / stary zvuk (48 -> 48)
+Atari pryc z obrazovky: {'on': False, 'cv': 'none', 'img': '', 'src': '/stream.mjpg'}
+OK     Atari pryc z obrazovky -> proud konci, stranka zpet na MJPEG / JPEG (postaru)
+OK     Atari zpet na obrazovce -> proud z C++ zase bezi, obraz presne
+OK     zadna chyba JavaScriptu na strance []
+log appky (B303):
+  B303 TV/PC CELE V C++: kazdy snimek Atari (50/s) jako paleta + jen zmenene radky a zvuk v jednom proudu (/atari.stream) - Java uz nezvetsuje ani nekomprimuje (H.264/JPEG); Ctrl+V nebo pretazeny TXT v prohlizeci = program do BASICu bez NEW (UTF-8 s e s hackem uz neni ATASCII), jiny text = klavesy.
+  B303 TV PROUD: prohlizec 1 pripojen (celkem 1) - obraz a zvuk Atari jdou primo z C++, 50 snimku/s, jen zmeny
+  B303 VLOZENI z PC: program 52 B -> VLOZENO: 2 RADKU PROGRAMU (BEZ NEW) - PISU
+  B303 VLOZENI z PC: text 4 B -> NAPSANO: 4 ZNAKU
+  B303 VLOZENI z PC: program 24 B -> VLOZENO: 2 RADKU PROGRAMU (BEZ NEW) - PISU
+  B303 VLOZENI z PC: 12 B neni text - nic se nepise
+  B303 TV PROUD: prohlizec 1 odpojen po 22 s - 1123 snimku (50.1/s), 1.9 MB celkem, klicovych 1 (zbyva 0)
+  B303 TV PROUD: prohlizec 2 pripojen (celkem 1) - obraz a zvuk Atari jdou primo z C++, 50 snimku/s, jen zmeny
+  B303 TV PROUD: prohlizec 2 odpojen po 10 s - 486 snimku (50.2/s), 0.8 MB celkem, klicovych 1 (zbyva 0)
+  B303 TV PROUD: prohlizec 3 pripojen (celkem 1) - obraz a zvuk Atari jdou primo z C++, 50 snimku/s, jen zmeny
+  B303 TV PROUD: prohlizec 3 odpojen po 0 s - 8 snimku (58.0/s), 0.0 MB celkem, klicovych 1 (zbyva 0)
+OK     log appky: prohlizec pripojen / odpojen (snimku, MB, klicovych)
+
+VYSLEDEK: 23 kontrol, 0 chyb

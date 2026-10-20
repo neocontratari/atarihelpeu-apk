@@ -4,6 +4,8 @@
 //   3d:atari  - Atari 130XE (Reneho stroj; model z nap_demo_model.h, shader FS_MODEL)
 //   3d:nap16  - konzole N&P 16 (vlastni navrh, nap_demo_konzole.h, shader FS_KONZOLE)
 //   3d:nap32  - konzole N&P 32 (vlastni navrh)
+//  B313: konzole s pohyblivymi dily a kontrolkami - kdyz karta prijede doprostred,
+//  N&P 16 zasune cartridge a zapne se, N&P 32 vlozi disk, zavre viko a roztoci ho.
 //  Predmet stoji na zlatem kruhu, studiove svetlo zleva shora, zezadu
 //  protisvetlo v barve karty, zespodu zare kruhu. Pomalu se otaci; kdyz
 //  karta jede karuselem, natoci se ke stredu (paralaxa).
@@ -73,11 +75,19 @@ class UmeniAtari : public Umeni {
 class UmeniKonzole : public Umeni {
  public:
   explicit UmeniKonzole(int bitu) : bitu_(bitu) {}
+  ~UmeniKonzole() override { model_.uvolni(); }
   bool init(KontextUmeni &k) override {
-    (void)k;
     p_.sestav(napdemo::VS_MODEL, sSumem(napdemo::FS_KONZOLE).c_str(), bitu_ == 16 ? "menu-nap16" : "menu-nap32");
-    if (bitu_ == 16) model_.postav16(); else model_.postav32();
+    if (bitu_ == 16) model_.postav16(k.bold, k.semi, k.ital); else model_.postav32(k.bold, k.semi, k.ital);
     return p_.ok && model_.sit.pocet > 0;
+  }
+  // B313: animace podle toho, kdy karta prisla doprostred (N&P 16 zasune cartridge,
+  // N&P 32 vlozi disk, zavre viko a roztoci ho); kdyz odjede, je zase "venku"
+  float casAnimace(const RamecUmeni &r) {
+    if (r.nahled) return 10.f;
+    if (r.fokus > 0.85f && !fokus_) { fokus_ = true; tStart_ = r.t; }
+    else if (r.fokus < 0.35f) fokus_ = false;
+    return fokus_ ? (float)(r.t - tStart_) : -1.f;
   }
   void kresli(KontextUmeni &k, const RamecUmeni &r) override {
     k.pozadi(r, 0.39f, 0.40f, 0.9f);
@@ -85,13 +95,14 @@ class UmeniKonzole : public Umeni {
     const float pomer = r.pomer();
     const float fov = 0.50f;
     const bool k16 = bitu_ == 16;
-    // N&P 16 je vyssi (cartridge), N&P 32 ma vpredu disk
-    const float sirka = k16 ? 33.f : 34.f, vys = k16 ? 22.f : 21.f;
-    const float vzd = Kamera3D::vzdalenostPro(sirka, vys, fov, pomer, 0.90f);
-    const Kamera3D kam = Kamera3D::spocti(V3(0, 0, 0), 0.50f, vzd, fov, pomer, 0.f, 0.20f);
+    const napdemo::AnimKonzole a = k16 ? napdemo::ModelKonzole::anim16(casAnimace(r), t) : napdemo::ModelKonzole::anim32(casAnimace(r), t);
+    // N&P 16: nad vezi muze viset cartridge, N&P 32: otevrene viko - zaber s rezervou nahore
+    const float sirka = k16 ? 29.f : 30.f, vys = 21.5f;
+    const float vzd = Kamera3D::vzdalenostPro(sirka, vys, fov, pomer, 0.92f);
+    const Kamera3D kam = Kamera3D::spocti(V3(0, 0, 0), 0.46f, vzd, fov, pomer, 0.f, 0.17f);
     const float yaw = (k16 ? 0.30f : -0.30f) * std::sin(t * 0.40f + (k16 ? 0.f : 1.7f)) - r.d * 0.50f;
-    const float vznos = 0.35f * std::sin(t * 1.1f + 0.8f) * r.fokus;
-    const float stredY = k16 ? -5.0f : -3.8f, stredZ = k16 ? 0.f : -2.0f;
+    const float vznos = 0.30f * std::sin(t * 1.1f + 0.8f) * r.fokus;
+    const float stredY = k16 ? -6.6f : -6.4f, stredZ = k16 ? 1.0f : 0.5f;
     const M4 model = M4::posun(0.f, vznos, 0.f) * M4::rotY(yaw) * M4::posun(0.f, stredY, stredZ);
     glEnable(GL_DEPTH_TEST);
     glDepthFunc(GL_LEQUAL);
@@ -110,22 +121,35 @@ class UmeniKonzole : public Umeni {
     p_.f1("uCas", t);
     // neonova svetla v barve karty (zleva zepredu) a doplnkove (zprava zezadu)
     p_.f3("uNeon1Pos", V3(-30.f, 22.f, 30.f));
-    p_.f3("uNeon1", r.barva * (1.4f + 0.4f * r.fokus));
+    p_.f3("uNeon1", r.barva * (1.2f + 0.4f * r.fokus));
     p_.f3("uNeon2Pos", V3(32.f, 18.f, -20.f));
-    p_.f3("uNeon2", (k16 ? V3(1.0f, 0.45f, 0.25f) : V3(0.25f, 0.85f, 1.0f)) * 1.1f);
+    p_.f3("uNeon2", (k16 ? V3(1.0f, 0.45f, 0.25f) : V3(0.25f, 0.85f, 1.0f)) * 1.0f);
     p_.f1("uOdhal", 1000.f);
     p_.f3("uOdhalBarva", r.barva);
     p_.f1("uSvit", 1.f);
+    p_.f1("uPodlaha", stredY + vznos);                      // B313: zastineni u podlahy
+    p_.f1("uStudio", 0.85f);                                // B313: studiove odlesky
     // odlesk pres zlaty emblem N&P jednou za 5 s
     const float f = std::fmod(t + (k16 ? 0.f : 2.5f), 5.f) / 1.6f;
     p_.f1("uLogoLesk", -0.5f + 2.4f * std::min(f, 1.f));
     p_.tex("uLogo", 0, k.texLogo ? k.texLogo : k.texSum);
     p_.tex("uSum", 1, k.texSum);
-    p_.m4("uModel", model);
-    p_.m4("uMVP", kam.vp * model);
-    model_.sit.kresli();
+    model_.kresli(p_, model, kam.vp, a);
     glActiveTexture(GL_TEXTURE0);
     glDisable(GL_DEPTH_TEST);
+    // B313: zare kolem svitici kontrolek
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_ONE, GL_ONE);
+    const M4 mvp = kam.vp * model;
+    for (const auto &l : model_.ledy) {
+      const float jas = a.led[l.i];
+      if (jas < 0.04f) continue;
+      float x, y, z;
+      if (!mvp.promitni(l.p, x, y, z)) continue;
+      const float rr = 0.028f * r.fokus + 0.016f;
+      k.zare(x, y, rr / pomer, rr, l.barva * (0.38f * jas));
+    }
+    glDisable(GL_BLEND);
   }
   const char *nazev() const override { return bitu_ == 16 ? "3d:nap16" : "3d:nap32"; }
 
@@ -133,6 +157,8 @@ class UmeniKonzole : public Umeni {
   int bitu_;
   napdemo::ModelKonzole model_;
   Prog p_;
+  bool fokus_ = false;
+  double tStart_ = 0;
 };
 
 }  // namespace napmenu

@@ -1,0 +1,76 @@
+B313 - postup se po nove instalaci nevraci, TV / PC: ostre hlavni menu a spravne prepnuti proudu,
+        vykon menu podle skutecne obnovovaci frekvence, konzole N&P 16 / N&P 32 s detaily a animacemi
+=====================================================================================================
+
+Kod v appce:
+  AndroidManifest.xml          android:allowBackup="false" - Android po smazani a nove instalaci
+                               neobnovi SharedPreferences (nap_postup = odemcene konzole) ze zalohy
+  MainActivity.java            log "B313 POSTUP_PRI_STARTU <postup> | nova instalace / aktualizace";
+                               TV: proud, ktery neni na obrazovce -> 409 + X-Nap-Proud (napTvProudNeniTu),
+                               log zmeny /status proud=, log odmitnuteho spojeni (vsechna vlakna obsazena);
+                               stranka prohlizece: 409 -> hned spravny proud (napOdmit), /status s casovym
+                               limitem 2,5 s a bez prekryvu (pollFps), priznak 8 = dalsi cast snimku;
+                               menuNastav (obnova displeje + kvalita TV) pri ukazani menu a zmene kvality
+  NativeMenuBridge.java        menuNastav / nastavSafe (23. native metoda)
+  cpp/menu/nap_menu_gl.cpp     obraz pro TV podle kvality: 854x480 / 1024x576 / 1280x720, ~30x za sekundu
+                               podle displeje; na TV v klidu stoji ozdoby (tOzdoby); snimek jde do proudu
+                               bez kopie (snimekRgbaZdola); perioda displeje z Javy (drive odhad - S8 "uroven 0")
+  cpp/menu/nap_menu_kresba.h   casOzdob (mlhovina, hvezdy, lesky, dychani tlacitka), pozadi se nekresli
+                               znovu, kdyz se nezmenilo; nahled_ (obrazky karet pro HTML: konzole zapnute)
+  cpp/tvproud/nap_tv_proud_jpeg.h  KodekJpeg: viceObdelniku, jemneBloky (zjemneni stojicich casti za pohybu),
+                               qVelkaZmena (listovani 75), qZpetMs, qStrop, maxCasti; nastavKodekMenu
+  cpp/tvproud/nap_tv_proud.h   Hub: dalsi casti snimku jako dalsi pakety (priznak 8), nastavKodek,
+                               snimekRgbaZdola (zasoba bufferu, prevod RGBA zdola -> ARGB ve vlakne prohlizece)
+  cpp/intro/nap_demo_konzole.h konzole N&P 16 a N&P 32 znovu: pohyblive dily (cartridge, klapky, vypinac,
+                               viko, disk, sklo), potisky (atlas pres napmenu::Platno), kontrolky 20-27,
+                               novy FS_KONZOLE (studiove odlesky, Fresnel, zastineni u podlahy, kourove sklo,
+                               rozmazani potisku disku), AnimKonzole anim16 / anim32
+  cpp/menu/nap_menu_umeni_3d.h karta konzole: animace kdyz karta prijede doprostred, zare kontrolek
+  cpp/intro/nap_demo.h         konzole ve scene 4 s animaci (po zhmotneni), zare kontrolek
+  assets/menu/karta_sega.jpg, karta_ps1.jpg   obrazky karet pro HTML zalohu a HELP (nove konzole)
+  assets/napoveda/index.html   KVALITA OBRAZU (WEB TV) = i velikost menu na TV
+
+Spoustet z adresare test_overeni/b313 (nebo odkudkoli: bash test_overeni/b313/vse.sh).
+Potreba: g++, JAVA_HOME = JDK (javac, hlavicky JNI), hlavicky EGL / GLES2 / KHR + stb_image_write.h
+v $INC (jako ../b311), knihovny Mesa (libEGL, libGLESv2), zlib, Python 3 + numpy + Pillow, Chromium +
+Playwright pro Python, glslangValidator ($GLSLANG), android.jar API 34 ($ANDROID_JAR).
+Vse najednou: PRAC=... INC=... GLSLANG=... ANDROID_JAR=... bash vse.sh      (vystupy VYSTUP_* sem)
+
+1) Zaloha Androidu vypnuta, log pri startu: python3 kontrola_zalohy.py   -> VYSTUP_kontrola_zalohy.txt
+2) TV / PC prepnuti proudu po odchodu z menu (Chromium, stranka PRESNE z MainActivity.java, server
+   v Pythonu = Java vcetne 409 + X-Nap-Proud): python3 test_b313_tv_prepnuti.py
+   A) /status hned rika atari, B) /status porad rika menu (jako u Reneho), C) server bez hlavicky
+                                                                        -> VYSTUP_test_b313_tv_prepnuti.txt
+3) Kodek pro menu na TV (Hub + KodekJpeg z appky, "prohlizec" prohlizec_v3.h rozebira pakety jako
+   stranka): g++ -std=c++17 -O2 -pthread -I../../app/src/main/cpp/tvproud -I../../app/src/main/cpp/vendor/stb
+   -o test_kodek_menu test_kodek_menu.cpp && ./test_kodek_menu          -> VYSTUP_test_kodek_menu.txt
+   (vic obdelniku, zjemneni za pohybu, kvalita 75 pri listovani / 85 konzole / 94 stojici casti,
+   PS1 a demo beze zmeny, zmena velikosti, pomala sit, glReadPixels bez kopie, vlakna)
+   totez -O1 -g -fsanitize=thread                                        -> VYSTUP_test_kodek_menu_tsan.txt
+4) SKUTECNY nap_menu_gl.cpp pres JNI (kopie ../b311/test_menu_host.cpp + menuNastav): test_menu_host_b313.cpp
+   g++ -std=c++17 -O2 -pthread -I../b304/stub -I../b291/stub -I$INC -I$JAVA_HOME/include
+       -I$JAVA_HOME/include/linux -I../../app/src/main/cpp/tvproud -o test_menu_host_b313 test_menu_host_b313.cpp
+       -l:libEGL.so.1 -l:libGLESv2.so.2                                  -> VYSTUP_test_menu_host_b313.txt
+   ThreadSanitizer + python3 tsan_rozbor.py VYSTUP                       -> VYSTUP_tsan_menu_host_b313.txt
+5) Menu na TV / PC v Chromiu (libmenu_b313.so z tv_menu_lib_b313.cpp, prepinace jako 4, -shared -fPIC):
+   python3 test_b313_tv_menu.py ADR_KNIHOVNY PRAC                         -> VYSTUP_test_b313_tv_menu.txt
+   1280x720, canvas prohlizece v klidu proti obrazu menu (PSNR napisu >= 38 dB), kvalita za chodu,
+   klavesnice PC (jako B311)
+6) Mereni (informace, ne test): mereni_menu_tv.cpp - skutecne menu s plochou jako S8 (1080x2004),
+   TV 1280x720: kB na snimek pri listovani / v klidu, casti, ostrost; obrazky PPM do PRAC
+                                                                         -> VYSTUP_mereni_menu_tv.txt
+7) Konzole: test_konzole_anim.cpp (logika animaci a kolize dilu, bez GPU) -> VYSTUP_test_konzole_anim.txt
+   konzole_nahled.cpp (karta N&P 16 / N&P 32 v case, Mesa, PNG do PRAC)  -> VYSTUP_konzole_nahled.txt
+8) Shadery GLSL ES 1.00 (glslangValidator, vcetne noveho FS_KONZOLE): GLSLANG=... python3 kontrola_shaderu.py
+                                                                         -> VYSTUP_kontrola_shaderu.txt
+9) Java proti android.jar (API 34)                                        -> VYSTUP_javac_android.txt
+   podpisy JNI (javac -h + kontrola_jni.py, 23 native metod) a export z knihovny -> VYSTUP_kontrola_jni.txt
+10) Regrese (regrese.sh): B305 kodeky / pasy / rozbocovac (+ TSan), B306 pakety jen se zvukem, B309 demo
+    z Javy (cela stopa bit po bitu), cele demo po 0,25 s, B311 karusel, snimky menu (telefon, na sirku,
+    TV 1280x720, karty pro HTML, vykon), nazvy v navodu proti appce, stranka TV B313 s testy B302
+    (klavesnice PC do Atari) a B303 (Atari na TV, Ctrl+V)              -> VYSTUP_regrese.txt
+    (VYSTUP_kontrola_navodu_b313.txt, VYSTUP_b302_..._se_strankou_b313.txt, VYSTUP_b303_..._b313.txt)
+
+Pozn.: ../b311/test_menu_host.cpp (kontroly 8, 9) a ../b311/test_b311_tv_menu.py cekaji obraz menu
+pro TV 854x480 - v B313 je velikost podle kvality TV (vychozi v testech 1280x720), proto jejich nove
+verze jsou tady (test_menu_host_b313.cpp, test_b313_tv_menu.py).

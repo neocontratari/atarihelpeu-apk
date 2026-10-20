@@ -71,6 +71,9 @@ struct KodekIndex {
   // statistika (do logu)
   long long klicovych = 0, prestaveb = 0, nejblizsich = 0, snimku = 0, beze = 0;
   long long opLit = 0, opRun = 0, opCopy = 0, opRep = 0, opSkip = 0;
+  // B313: Hub umi poslat snimek ve vic castech (JPEG menu) - Sega ma vzdy jednu
+  size_t dalsiN = 0;
+  std::vector<std::vector<uint8_t>> dalsi;
 
   KodekIndex() { zapomen(); }
 

@@ -51,7 +51,13 @@ struct StavMenu {
   double tZamek = -1;
   double tOzub = -1;               // klepnuti na kolecko
   double tPrichod = -10;           // nastup menu
+  // B313: cas ozdob (mlhovina, hvezdy, lesky, dychani tlacitka); < 0 = jako t.
+  // Obraz pro TV ho v klidu zastavi - stojici obraz se pak v prohlizeci zjemni.
+  double tOzdoby = -1;
 };
+
+// B313: cas pro ozdoby (ne pro animace spusteni / zamku / nastupu - ty jedou podle t)
+inline float casOzdob(const StavMenu &s) { return (float)(s.tOzdoby >= 0 ? s.tOzdoby : s.t); }
 
 constexpr float SPUSTENI_S = 0.30f;   // delka animace spusteni (Java po ni prepne stranku)
 
@@ -69,6 +75,8 @@ struct CilMenu {
   uint32_t textVerze = 0xFFFFFFFFu;
   int textW = -1, textH = -1;
   Fbo pozadi;
+  float pozadiCas = -1.f;          // B313: pozadi nakreslene pro tenhle cas ozdob a barvu
+  V3 pozadiBarva = V3(-1.f, -1.f, -1.f);
   int snimku = 0;
   std::vector<float> hvezdy;
   GLuint vboHvezdy = 0;
@@ -188,7 +196,7 @@ class Kresba {
     c.snimku++;
 
     // ---- animace ----
-    const float t = (float)s.t;
+    const float t = casOzdob(s);            // B313: ozdoby (na TV v klidu stoji)
     const float prichod = easeOut3((float)((s.t - s.tPrichod) / 0.65));
     const float uiAlfa = napdemo::smooth(0.f, 0.45f, (float)(s.t - s.tPrichod));
     float spust = 0.f;
@@ -282,6 +290,7 @@ class Kresba {
     if (i < 0 || i >= (int)karty_.size()) return 0;
     nastavVelikostUmeni(w, h, (float)w, (float)h);
     jenObrazek_ = !sNazvem;
+    nahled_ = true;
     StavMenu s;
     s.t = t;
     s.poz = (float)i;
@@ -290,6 +299,7 @@ class Kresba {
     p.d = 0.f;
     kresliUmeni(i, s, p);
     jenObrazek_ = false;
+    nahled_ = false;
     return sloty_[(size_t)i].fbo;
   }
 
@@ -322,6 +332,7 @@ class Kresba {
   GLuint tmpTex_ = 0, tmpFbo_ = 0;  // pomocny framebuffer (zamcena karta)
   int prekresleno_ = 0;
   bool jenObrazek_ = false;         // export: obrazek karty bez nazvu
+  bool nahled_ = false;             // B313: export - animace karet v konecnem stavu
   unsigned snimekCislo_ = 0;
   int kolo_ = 0;                    // ktera vedlejsi karta je na rade
   std::string log_;
@@ -465,6 +476,7 @@ class Kresba {
     ram.fokus = 1.f - std::min(1.f, std::fabs(p.d));
     ram.barva = barvaV3(kar.barva);
     ram.karta = &kar;
+    ram.nahled = nahled_;
     const bool zam = kar.zamceno;
     if (zam && !pripravFbo(tmpTex_, tmpFbo_, false)) return;
     glBindFramebuffer(GL_FRAMEBUFFER, zam ? tmpFbo_ : sl.fbo);
@@ -697,13 +709,18 @@ class Kresba {
     const int dw = std::max(32, c.w / 3), dh = std::max(32, c.h / 3);
     const bool novy = c.pozadi.priprav(dw, dh, false);
     const int kazdy = uroven_ >= 2 ? 2 : 3;
-    if (novy || (c.snimku % kazdy) == 0) {
+    // B313: stejny cas, barva i stred = stejny obraz (TV v klidu) - nekreslit znovu
+    const float cas = casOzdob(s);
+    const bool stejne = cas == c.pozadiCas && barva.x == c.pozadiBarva.x && barva.y == c.pozadiBarva.y && barva.z == c.pozadiBarva.z;
+    if (novy || ((c.snimku % kazdy) == 0 && !stejne)) {
+      c.pozadiCas = cas;
+      c.pozadiBarva = barva;
       glBindFramebuffer(GL_FRAMEBUFFER, c.pozadi.fbo);
       glViewport(0, 0, dw, dh);
       glDisable(GL_BLEND);
       pPozadi_.pouzij();
       pPozadi_.f2("uRozmer", (float)c.w, (float)c.h);
-      pPozadi_.f1("uCas", (float)s.t);
+      pPozadi_.f1("uCas", casOzdob(s));
       pPozadi_.f3("uBarva", barva);
       pPozadi_.f2("uStred", r.cx / c.w, 1.f - (r.cy + r.ch * 0.40f) / c.h);
       pPozadi_.f1("uPortal", (r.naSirku ? r.cw * 1.9f : r.cw * 0.9f) / c.w * ((float)c.w / c.h));
@@ -794,7 +811,7 @@ class Kresba {
   void kresliHlavicku(CilMenu &c, const StavMenu &s, float alfa) {
     if (alfa <= 0.002f) return;
     const Rozlozeni &r = c.roz;
-    const float W = (float)c.w, H = (float)c.h, t = (float)s.t;
+    const float W = (float)c.w, H = (float)c.h, t = casOzdob(s);
     // zare za minci
     glBlendFunc(GL_ONE, GL_ONE);
     ui(c, 6, r.logoX - r.logoR * 2.2f, r.logoY - r.logoR * 2.2f, r.logoR * 4.4f, r.logoR * 4.4f, V3(1.0f, 0.62f, 0.18f) * (0.40f * alfa), 1.f);
@@ -842,7 +859,7 @@ class Kresba {
   void kresliSpodek(CilMenu &c, const StavMenu &s, float pozVid, const V3 &barva, float alfa) {
     if (alfa <= 0.002f) return;
     const Rozlozeni &r = c.roz;
-    const float W = (float)c.w, H = (float)c.h, t = (float)s.t;
+    const float W = (float)c.w, H = (float)c.h, t = casOzdob(s);
     const int n = (int)karty_.size();
     const float pz = std::min(std::max(pozVid, 0.f), (float)(n - 1));
     const int k = std::min(std::max((int)std::lround(pz), 0), n - 1);

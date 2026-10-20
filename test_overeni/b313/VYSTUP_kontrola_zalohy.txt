@@ -1,0 +1,6 @@
+B313 - postup se po smazani a nove instalaci appky nevraci (zaloha Androidu vypnuta)
+OK     1) AndroidManifest <application android:allowBackup="false"> - Android po nove instalaci nic neobnovi
+OK     2) zadna pravidla zalohy (fullBackupContent / dataExtractionRules), ktera by zalohu zapnula zpet
+OK     3) postup je v SharedPreferences "nap_postup" (NapPostup) - to je to, co se drive obnovovalo
+OK     4) pri startu log "B313 POSTUP_PRI_STARTU <postup> | nova instalace / aktualizace" (videt v 8765/log)
+VYSLEDEK: 4 kontrol, 0 CHYBA

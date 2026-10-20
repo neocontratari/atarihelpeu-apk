@@ -1,0 +1,40 @@
+B313 - shadery hlavniho menu a dema (vcetne noveho FS_KONZOLE) podle GLSL ES 1.00 (OpenGL ES 2.0), Khronos glslangValidator
+OK    FS_HVEZDY          (menu/nap_menu_shadery.h)
+OK    FS_KARTA           (menu/nap_menu_shadery.h)
+OK    FS_KARTA_POZADI    (menu/nap_menu_shadery.h)
+OK    FS_KOPIE_MENU      (menu/nap_menu_shadery.h)
+OK    FS_LOGO_MENU       (menu/nap_menu_shadery.h)
+OK    FS_OBR             (menu/nap_menu_shadery.h)
+OK    FS_POZADI          (menu/nap_menu_shadery.h)
+OK    FS_STITEK          (menu/nap_menu_shadery.h)
+OK    FS_STUDIO          (menu/nap_menu_shadery.h)
+OK    FS_TEXT            (menu/nap_menu_shadery.h)
+OK    FS_UI              (menu/nap_menu_shadery.h)
+OK    FS_ZAMCENO         (menu/nap_menu_shadery.h)
+OK    VS_HVEZDY          (menu/nap_menu_shadery.h)
+OK    VS_KARTA           (menu/nap_menu_shadery.h)
+OK    VS_OBD2            (menu/nap_menu_shadery.h)
+OK    FS_DZUBOX          (menu/nap_menu_umeni_dzubox.h)
+OK    FS_WEB             (menu/nap_menu_umeni_web.h)
+--- programy menu (vertex + fragment spojene, -l) ---
+OK    menu-karta           VS_KARTA + FS_KARTA
+OK    menu-text            VS_OBD2 + FS_TEXT
+OK    menu-ui              VS_OBD2 + FS_UI
+OK    menu-logo            VS_OBD2 + FS_LOGO_MENU
+OK    menu-pozadi          napdemo::VS_PLNY + FS_POZADI
+OK    menu-kopie           VS_OBD2 + FS_KOPIE_MENU
+OK    menu-hvezdy          VS_HVEZDY + FS_HVEZDY
+OK    menu-stitek          VS_OBD2 + FS_STITEK
+OK    menu-zamceno         VS_OBD2 + FS_ZAMCENO
+OK    menu-karta-pozadi    napdemo::VS_PLNY + FS_KARTA_POZADI
+OK    menu-obr             VS_OBD2 + FS_OBR
+OK    menu-minca           VS_OBD2 + FS_LOGO_MENU
+OK    menu-umeni-text      VS_OBD2 + FS_TEXT
+OK    menu-umeni-ui        VS_OBD2 + FS_UI
+OK    menu-atari           napdemo::VS_MODEL + napdemo::FS_MODEL
+OK    menu-nap16/menu-nap32 napdemo::VS_MODEL + napdemo::FS_KONZOLE
+OK    menu-dzubox          napdemo::VS_PLNY + FS_DZUBOX
+OK    menu-kniha           napdemo::VS_MODEL + FS_STUDIO
+OK    menu-kazeta          napdemo::VS_MODEL + FS_STUDIO
+OK    menu-web             napdemo::VS_PLNY + FS_WEB
+VYSLEDEK: 17 shaderu menu, 20 programu, 0 chyb

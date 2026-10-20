@@ -1,0 +1,14 @@
+B313 - regrese (starsi testy na kodu B313)
+OK     B305 kodeky Sega (bez ztraty) a PS1 (JPEG po castech)  -- VYSLEDEK: 35 kontrol, 0 chyb
+OK     B305 koder JPEG na vic jadrech (bajt po bajtu stejne)  -- VYSLEDEK: OK
+OK     B305 rozbocovac (jadro 60/s, zvuk, rychly a pomaly prohlizec)  -- VYSLEDEK: 16 kontrol, 0 chyb
+OK     B305 rozbocovac pod ThreadSanitizerem  -- VYSLEDEK: 14 kontrol, 0 chyb, hlaseni TSan 0
+OK     B306 rozbocovac: pakety jen se zvukem  -- VYSLEDEK: 0 chyb
+OK     B309 uvodni demo z Javy (JNI, OpenSL, SKIP, cela stopa)  -- VYSLEDEK: 11 OK, 0 CHYB
+OK     B307 cele demo po 0,25 s (854x480)  -- snimku 237, chyb GL 0
+OK     B311 logika karuselu (karty.txt, fyzika prstu, rozlozeni, klavesy)  -- VYSLEDEK: 61 OK, 0 CHYBA
+OK     B311 snimky menu (na vysku, zamky, na sirku, TV 1280x720, karty, vykon)  -- snimku 16, CHYB GL celkem nenulovych 0, VYKON 1080x2340: 49 snimku, prumer 122.63 ms, nejhorsi 525.03 ms (Mesa llvmpipe na CPU - telefon ma GPU)
+OK     B311 nazvy tlacitek v navodu proti appce (navod B313)  -- VYSLEDEK: 162 nazvu, 0 CHYBA (nazev v navodu, ktery v appce neni)
+OK     B302 klavesnice PC do Atari se strankou B313  -- VYSLEDEK: 23 kontrol, 0 chyb
+OK     B303 Atari na TV (proud z C++, Ctrl+V) se strankou B313  -- VYSLEDEK: 23 kontrol, 0 chyb
+VYSLEDEK: 12 OK, 0 CHYBA

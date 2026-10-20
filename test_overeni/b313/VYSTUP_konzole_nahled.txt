@@ -1,0 +1,24 @@
+GL OpenGL ES 3.2 Mesa 25.2.8-0ubuntu0.24.04.4 | llvmpipe (LLVM 20.1.2, 256 bits) (kontext ES 3)
+3d:nap16: init OK za 21 ms
+  a_venku    t 1.00 fokus 0.2: jas  34.6, kresleni 36 ms -> PRAC/konzole/nap16_a_venku.png
+  b_prijela  t 2.00 fokus 1.0: jas  34.7, kresleni 22 ms -> PRAC/konzole/nap16_b_prijela.png
+  c_0.45     t 2.45 fokus 1.0: jas  34.0, kresleni 23 ms -> PRAC/konzole/nap16_c_0.45.png
+  d_0.90     t 2.90 fokus 1.0: jas  33.4, kresleni 22 ms -> PRAC/konzole/nap16_d_0.90.png
+  e_1.10     t 3.10 fokus 1.0: jas  34.2, kresleni 22 ms -> PRAC/konzole/nap16_e_1.10.png
+  f_1.30     t 3.30 fokus 1.0: jas  34.2, kresleni 19 ms -> PRAC/konzole/nap16_f_1.30.png
+  g_1.60     t 3.60 fokus 1.0: jas  34.2, kresleni 20 ms -> PRAC/konzole/nap16_g_1.60.png
+  h_2.00     t 4.00 fokus 1.0: jas  34.2, kresleni 21 ms -> PRAC/konzole/nap16_h_2.00.png
+  i_3.50     t 5.50 fokus 1.0: jas  34.3, kresleni 23 ms -> PRAC/konzole/nap16_i_3.50.png
+  j_nahled   t 1.50 fokus 1.0: jas  34.6, kresleni 23 ms -> PRAC/konzole/nap16_j_nahled.png
+3d:nap32: init OK za 19 ms
+  a_venku    t 1.00 fokus 0.2: jas  36.4, kresleni 29 ms -> PRAC/konzole/nap32_a_venku.png
+  b_prijela  t 2.00 fokus 1.0: jas  36.7, kresleni 20 ms -> PRAC/konzole/nap32_b_prijela.png
+  c_0.45     t 2.45 fokus 1.0: jas  34.6, kresleni 23 ms -> PRAC/konzole/nap32_c_0.45.png
+  d_0.90     t 2.90 fokus 1.0: jas  33.3, kresleni 22 ms -> PRAC/konzole/nap32_d_0.90.png
+  e_1.10     t 3.10 fokus 1.0: jas  33.7, kresleni 21 ms -> PRAC/konzole/nap32_e_1.10.png
+  f_1.30     t 3.30 fokus 1.0: jas  34.7, kresleni 19 ms -> PRAC/konzole/nap32_f_1.30.png
+  g_1.60     t 3.60 fokus 1.0: jas  34.7, kresleni 19 ms -> PRAC/konzole/nap32_g_1.60.png
+  h_2.00     t 4.00 fokus 1.0: jas  35.6, kresleni 19 ms -> PRAC/konzole/nap32_h_2.00.png
+  i_3.50     t 5.50 fokus 1.0: jas  34.8, kresleni 20 ms -> PRAC/konzole/nap32_i_3.50.png
+  j_nahled   t 1.50 fokus 1.0: jas  36.8, kresleni 20 ms -> PRAC/konzole/nap32_j_nahled.png
+CHYB GL celkem: 0

@@ -585,6 +585,7 @@ public class MainActivity extends Activity {
                     r -> { Thread t = new Thread(r, "nap-tv-web-client");
                            t.setDaemon(true); return t; });
     private Thread napTvWebServerThread;
+    private volatile long napTvWebOdmitnutoLogMs = 0L;   // B313
     private volatile boolean napTvWebRunning = false;
     private volatile int napTvWebPort = 0;
     private volatile byte[] napTvWebJpeg = null;
@@ -2929,7 +2930,35 @@ public class MainActivity extends Activity {
     // ===================================================================
     private final java.util.concurrent.atomic.AtomicInteger napTvAtariProudKlientu = new java.util.concurrent.atomic.AtomicInteger();
 
+    // B313: prohlizec chce proud, ktery zrovna neni na obrazovce (napr. MENU, kdyz uz je
+    // otevrene Atari). Drive dostal prazdnou odpoved 200 a zkousel to znovu kazdou vterinu -
+    // u Reneho 25 s (Atari mezitim slo na TV starou pomalou cestou). Ted dostane 409
+    // a v hlavicce X-Nap-Proud, co na obrazovce opravdu je - hned se prepne.
+    private volatile long napTvProudNeniTuLogMs = 0L;
+    private volatile String napTvPosledniProud = "-";
+    private void napTvProudNeniTu(OutputStream out, String chtel) throws IOException {
+        final String je = napTvProudDruh();
+        byte[] body = ("proud=" + je + "\n").getBytes("UTF-8");
+        String h = "HTTP/1.1 409 Conflict\r\n"
+                + "Content-Type: text/plain; charset=utf-8\r\n"
+                + "Cache-Control: no-store, no-cache, must-revalidate, max-age=0\r\n"
+                + "X-Nap-Proud: " + je + "\r\n"
+                + "Content-Length: " + body.length + "\r\n"
+                + "Connection: close\r\n\r\n";
+        out.write(h.getBytes("ISO-8859-1"));
+        out.write(body);
+        out.flush();
+        long ted = System.currentTimeMillis();
+        if (ted - napTvProudNeniTuLogMs > 5000L) {
+            napTvProudNeniTuLogMs = ted;
+            appendNativeLog("B313 TV PROUD " + chtel + " neni na obrazovce - prohlizeci receno proud=" + je
+                    + " (menu " + (menuPlocha != null ? "ano" : "ne") + ", atari " + (atariCppNaObrazovce ? "ano" : "ne")
+                    + ", demo " + (demoPlocha != null ? "ano" : "ne") + ", url " + compactUrl(napTvWebCurrentUrl) + ")");
+        }
+    }
+
     private void napTvWebAtariProud(OutputStream out, Socket sock) throws IOException {
+        if (!atariCppNaObrazovce) { napTvProudNeniTu(out, "ATARI"); return; }   // B313
         String h = "HTTP/1.1 200 OK\r\n"
                 + "Content-Type: application/octet-stream\r\n"
                 + "Cache-Control: no-store, no-cache, must-revalidate, max-age=0\r\n"
@@ -3061,6 +3090,7 @@ public class MainActivity extends Activity {
     }
 
     private void napTvWebJadroProud(OutputStream out, Socket sock, final String druh) throws IOException {
+        if (!napTvJadroNaObrazovce(druh)) { napTvProudNeniTu(out, druh); return; }   // B313
         String h = "HTTP/1.1 200 OK\r\n"
                 + "Content-Type: application/octet-stream\r\n"
                 + "Cache-Control: no-store, no-cache, must-revalidate, max-age=0\r\n"
@@ -3609,6 +3639,13 @@ public class MainActivity extends Activity {
                     // zasoba je plna - spojeni radeji zavreme, nez abychom
                     // vyrabeli dalsi vlakno
                     try { s.close(); } catch (Throwable ignored) {}
+                    // B313: do logu (nejvys jednou za 5 s) - prohlizec pak nedostane /status
+                    long ted = System.currentTimeMillis();
+                    if (ted - napTvWebOdmitnutoLogMs > 5000L) {
+                        napTvWebOdmitnutoLogMs = ted;
+                        appendNativeLog("B313 TV SERVER: vsech " + napTvWebVlakna.getMaximumPoolSize()
+                                + " vlaken obsazeno - spojeni odmitnuto (aktivnich " + napTvWebVlakna.getActiveCount() + ")");
+                    }
                 }
             } catch (Throwable t) {
                 if (napTvWebRunning) appendNativeLog("BUILD2SA13C TV_WEB_ACCEPT_ERR " + safeMsg(t));
@@ -3627,6 +3664,8 @@ public class MainActivity extends Activity {
         napTvWebQualityTier = (int) Math.max(0, Math.min(2, t));
         try { getSharedPreferences("nap_tv_prefs", MODE_PRIVATE).edit().putInt("quality_tier", napTvWebQualityTier).apply(); } catch (Throwable ignored) {}
         appendNativeLog("BUILD2SK91 TV_WEB_QUALITY_TIER_SET tier=" + napTvWebQualityTier);
+        // B313: menu na TV podle kvality (854x480 / 1024x576 / 1280x720) - hned, i kdyz menu bezi
+        try { menuNastav("kvalita TV"); } catch (Throwable ignored) {}
         // BUILD2SK18: pokud uz system mirror bezi, prekonfiguruj VirtualDisplay
         // na nove rozliseni HNED - zadny "vypni a zapni cast" jiz neni potreba.
         if (napTvWebSystemMirrorActive) { ui.post(this::napTvWebResizeSystemMirror); }
@@ -3727,6 +3766,12 @@ public class MainActivity extends Activity {
                 if (atariCpp) klavRezim = NativeAtariCoreBridge.devPcKlavesaSafe("STAV", "", 0, true);
                 // B305: ktery proud z C++ ma prohlizec brat (atari / sega / ps1 / 0)
                 final String proudDruh = napTvProudDruh();
+                // B313: zmena proudu do logu (jen kdyz se zmeni) - kdyby prohlizec zase visel na starem
+                if (!proudDruh.equals(napTvPosledniProud)) {
+                    appendNativeLog("B313 TV STATUS proud=" + proudDruh + " (drive " + napTvPosledniProud + "; menu "
+                            + (menuPlocha != null ? "ano" : "ne") + ", atari " + (atariCpp ? "ano" : "ne") + ", url " + compactUrl(curUrl3) + ")");
+                    napTvPosledniProud = proudDruh;
+                }
                 byte[] body = ("running=" + napTvWebRunning
                         + " atari=" + (vAtari ? 1 : 0)
                         + " atariCpp=" + (atariCpp ? 1 : 0)
@@ -3938,7 +3983,7 @@ public class MainActivity extends Activity {
                 + "fb.onclick=function(){var el=document.documentElement;try{if(!isFs()){(el.requestFullscreen||el.webkitRequestFullscreen||el.msRequestFullscreen).call(el);}else{(document.exitFullscreen||document.webkitExitFullscreen||document.msExitFullscreen).call(document);}}catch(e){}};"
                 + "document.addEventListener('fullscreenchange',upd);document.addEventListener('webkitfullscreenchange',upd);document.addEventListener('msfullscreenchange',upd);upd();})();"
                 + "v.onerror=function(){if(!fb)fallback();};v.src='/stream.mjpg?'+Date.now();label('MJPEG');"
-                + "function pollFps(){fetch('/status').then(function(r){return r.text();}).then(function(t){var mp=/ proud=(\\w+)/.exec(t),pd=(mp&&mp[1]!=='0')?mp[1]:'';if(!mp){var m0=/atariProud=(\\d)/.exec(t);if(m0&&m0[1]==='1')pd='atari';}window.napProud=pd;window.napAtariProud=(pd==='atari');if(pd&&apLze()){ap.bez=0;if(ap.chce&&ap.druh&&ap.druh!==pd)apZnovu();else if(!ap.on&&!ap.rd)apStart();}else if(ap.chce){if(!ap.bez)ap.bez=Date.now();else if(Date.now()-ap.bez>2500){ap.bez=0;apStop();}}if(ap.chce)apHlidej();var m=/seq=(\\d+)/.exec(t);var m2=/h264Seq=(\\d+)/.exec(t);if(!h264Active&&!h264Loading&&!ap.chce&&!(window.napProud&&apLze())){clog('pollFps calling startH264 (universal)');startH264();}var useM=h264Active&&m2?m2:m;if(useM){var sq=parseInt(useM[1],10),now=Date.now();if(lastSeqT>0){var dt=(now-lastSeqT)/1000;if(dt>0)curFps=Math.round((sq-lastSeq)/dt*10)/10;}if(sq===lastSeq&&sq>0){staleTicks++;}else{staleTicks=0;}lastSeq=sq;lastSeqT=now;if(staleTicks>=4&&!fb&&!h264Active&&!ap.chce){staleTicks=0;v.src='/stream.mjpg?'+Date.now();}}var ma=/atari=(\\d)/.exec(t), ms=/sega=(\\d)/.exec(t);var vA=!!(ma&&ma[1]==='1'), vS=!!(ms&&ms[1]==='1');window.napVAtari=vA;window.napVSeze=vS;var mp1=/ ps1=(\\d)/.exec(t);var vP=!!(mp1&&mp1[1]==='1');window.napVPs1=vP;var mc=/atariCpp=(\\d)/.exec(t), mr=/klavRezim=(\\w+)/.exec(t);window.napVAtariCpp=!!(mc&&mc[1]==='1');if(window.napVAtariCpp&&mr)window.napRezim=mr[1];var mm=/ menu=(\\d)/.exec(t);window.napVMenu=!!(mm&&mm[1]==='1');if(window.napKlavesnicePopis)window.napKlavesnicePopis(vA||vS||vP||window.napVMenu);label(h264Active?'H264':(fb?'JPEG':'MJPEG'));}).catch(function(e){clog('pollFps fetch err '+e);label(h264Active?'H264':(fb?'JPEG':'MJPEG'));});}" // BUILD2SK45+SK57+SK59: stale-reconnect jen v MJPEG rezimu; "seq" v /status je porad ta sama zachytavaci sekvence i v H264 rezimu
+                + "function pollFps(){if(window.napPollBezi&&Date.now()-window.napPollBezi<2600)return;window.napPollBezi=Date.now();var ac=window.AbortController?new AbortController():null;var tm=setTimeout(function(){if(ac)try{ac.abort();}catch(e){}},2500);fetch('/status?'+Date.now(),ac?{cache:'no-store',signal:ac.signal}:{cache:'no-store'}).then(function(r){return r.text();}).then(function(t){clearTimeout(tm);window.napPollBezi=0;var mp=/ proud=(\\w+)/.exec(t),pd=(mp&&mp[1]!=='0')?mp[1]:'';var od=window.napOdmit;if(od&&Date.now()<od.t&&pd===od.d)pd=od.n;if(!mp){var m0=/atariProud=(\\d)/.exec(t);if(m0&&m0[1]==='1')pd='atari';}window.napProud=pd;window.napAtariProud=(pd==='atari');if(pd&&apLze()){ap.bez=0;if(ap.chce&&ap.druh&&ap.druh!==pd)apZnovu();else if(!ap.on&&!ap.rd)apStart();}else if(ap.chce){if(!ap.bez)ap.bez=Date.now();else if(Date.now()-ap.bez>2500){ap.bez=0;apStop();}}if(ap.chce)apHlidej();var m=/seq=(\\d+)/.exec(t);var m2=/h264Seq=(\\d+)/.exec(t);if(!h264Active&&!h264Loading&&!ap.chce&&!(window.napProud&&apLze())){clog('pollFps calling startH264 (universal)');startH264();}var useM=h264Active&&m2?m2:m;if(useM){var sq=parseInt(useM[1],10),now=Date.now();if(lastSeqT>0){var dt=(now-lastSeqT)/1000;if(dt>0)curFps=Math.round((sq-lastSeq)/dt*10)/10;}if(sq===lastSeq&&sq>0){staleTicks++;}else{staleTicks=0;}lastSeq=sq;lastSeqT=now;if(staleTicks>=4&&!fb&&!h264Active&&!ap.chce){staleTicks=0;v.src='/stream.mjpg?'+Date.now();}}var ma=/atari=(\\d)/.exec(t), ms=/sega=(\\d)/.exec(t);var vA=!!(ma&&ma[1]==='1'), vS=!!(ms&&ms[1]==='1');window.napVAtari=vA;window.napVSeze=vS;var mp1=/ ps1=(\\d)/.exec(t);var vP=!!(mp1&&mp1[1]==='1');window.napVPs1=vP;var mc=/atariCpp=(\\d)/.exec(t), mr=/klavRezim=(\\w+)/.exec(t);window.napVAtariCpp=!!(mc&&mc[1]==='1');if(window.napVAtariCpp&&mr)window.napRezim=mr[1];var mm=/ menu=(\\d)/.exec(t);window.napVMenu=!!(mm&&mm[1]==='1');if(window.napKlavesnicePopis)window.napKlavesnicePopis(vA||vS||vP||window.napVMenu);label(h264Active?'H264':(fb?'JPEG':'MJPEG'));}).catch(function(e){clearTimeout(tm);window.napPollBezi=0;var n=Date.now();if(!window.napPollErrT||n-window.napPollErrT>5000){window.napPollErrT=n;clog('pollFps fetch err '+e);}label(h264Active?'H264':(fb?'JPEG':'MJPEG'));});}" // BUILD2SK45+SK57+SK59: stale-reconnect jen v MJPEG rezimu; "seq" v /status je porad ta sama zachytavaci sekvence i v H264 rezimu
                 // ===== B303 + B305: ATARI 130XE, SEGA A PS1 - OBRAZ A ZVUK PRIMO Z C++ =====
                 // B303 (Atari): "ma to na TV zpozdeni - nejde to vylepsit?" Misto H.264 / JPEG
                 // z Javy (zvetsovani, komprese, buffer prohlizece) posila C++ kazdy snimek
@@ -3988,7 +4033,12 @@ public class MainActivity extends Activity {
                 + "ap.cv.style.imageRendering=napV?'auto':'pixelated';ap.tPak=0;"
                 + "ap.cv.style.display='';napF();apRozmer();"
                 // (spojeni z drivejsiho pokusu, ktere se otevre az po prepnuti Sega -> PS1, se hned zavre)
-                + "var g0=ap.gen;fetch('/'+d+'.stream?'+Date.now(),{cache:'no-store'}).then(function(r){if(!ap.on||g0!==ap.gen){try{r.body.cancel();}catch(e){}return;}ap.rd=r.body.getReader();apCti();})"
+                + "var g0=ap.gen;fetch('/'+d+'.stream?'+Date.now(),{cache:'no-store'}).then(function(r){if(!ap.on||g0!==ap.gen){try{r.body.cancel();}catch(e){}return;}"
+                // B313: proud, ktery zrovna neni na obrazovce (409) - server rekne, co tam je (X-Nap-Proud),
+                // a prohlizec se hned prepne (drive to zkousel dokola, u Reneho 25 s po odchodu z menu do Atari)
+                + "if(r.status!==200){var np=r.headers.get('X-Nap-Proud')||'';clog('B313 proud '+d+' na obrazovce neni, server rika: '+(np||'?'));"
+                + "window.napProud=(np&&np!=='0')?np:'';window.napOdmit={d:d,n:window.napProud,t:Date.now()+4000};try{r.body.cancel();}catch(e){}apKonec();return;}"
+                + "ap.rd=r.body.getReader();apCti();})"
                 + ".catch(function(e){if(g0!==ap.gen)return;clog('B303 proud chyba '+e);apKonec();});}"
                 + "function apCti(){var rd=ap.rd;if(!ap.on||!rd)return;rd.read().then(function(res){if(rd!==ap.rd)return;if(res.done){apKonec();return;}"
                 + "try{apPrichod();apPridej(res.value);}catch(e){ap.chyb++;ap.buf=null;clog('B303 paket chyba '+e);}if(rd===ap.rd)apCti();}).catch(function(e){if(rd===ap.rd)apKonec();});}"
@@ -4034,7 +4084,8 @@ public class MainActivity extends Activity {
                 + "var rate=dv.getUint32(24,true)||44100;"
                 + "o=(ver===2)?apObraz2(p,dv,o,pr,W,H):apObraz3(p,dv,o);"
                 + "if(o<0||o+3>p.length){ap.chyb++;clog('B306 paket '+ver+' chyba v datech - spojuji znovu');apZnovu();return;}"
-                + "var an=dv.getUint16(o,true),kan=p[o+2];o+=3;if(an>0)apZvuk(dv,o,an,kan,rate);ap.pak++;}"
+                // B313: priznak 8 = dalsi cast tehoz snimku (menu po obdelnicich) - nepocitat jako snimek
+                + "var an=dv.getUint16(o,true),kan=p[o+2];o+=3;if(an>0)apZvuk(dv,o,an,kan,rate);if(!(pr&8))ap.pak++;}"
                 // ---- verze 2: Sega - paleta + LZ nad [minuly snimek | novy snimek] v indexech barev ----
                 // op = horni 2 bity: 0 primo, 1 stejna barva, 2 kopie ze vzdalenosti (0 = jako minule), 3 jako minule na stejnem miste
                 + "function apObraz2(p,dv,o,pr,W,H){var N=W*H,N2=2*N,b=ap.lz,pal=ap.pal,rd=ap.radky,i,j;"
@@ -7911,6 +7962,7 @@ public class MainActivity extends Activity {
                 if (n <= 0) return false;
             }
             menuZamky();
+            menuNastav("ukazani menu");
             menuSkryteProOptions = false;
             if (menuPlocha == null) {
                 NativeMenuBridge.ukazSafe(menuPoprve ? 1 : 0);
@@ -7935,6 +7987,30 @@ public class MainActivity extends Activity {
             appendNativeLog("B311 MENU_CHYBA_UKAZ " + safeMsg(t));
             menuSkryj("chyba pri ukazani");
             return false;
+        }
+    }
+
+    // B313: C++ menu potrebuje skutecnou obnovovaci frekvenci displeje (meri podle ni,
+    // jestli stiha - drive si ji odhadovalo a u S8 se spletlo: "uroven 0" porad) a kvalitu
+    // TV z OPTIONS (velikost obrazu menu na TV / PC: 854x480 / 1024x576 / 1280x720).
+    private String menuNastavPosledni = "";
+    private float obnovaDispleje() {
+        try {
+            android.view.Display d = null;
+            if (android.os.Build.VERSION.SDK_INT >= 30) d = getDisplay();
+            if (d == null) d = getWindowManager().getDefaultDisplay();
+            if (d != null) return d.getRefreshRate();
+        } catch (Throwable ignored) {}
+        return 0f;
+    }
+    private void menuNastav(String proc) {
+        final float hz = obnovaDispleje();
+        final int k = Math.max(0, Math.min(2, napTvWebQualityTier));
+        NativeMenuBridge.nastavSafe(hz, k);
+        final String s = Math.round(hz * 10f) / 10f + " Hz, TV " + (k == 0 ? "854x480" : (k == 1 ? "1024x576" : "1280x720"));
+        if (!s.equals(menuNastavPosledni)) {
+            menuNastavPosledni = s;
+            appendNativeLog("B313 MENU_NASTAV (" + proc + ") displej " + s + " (kvalita TV " + k + ")");
         }
     }
 
@@ -10409,6 +10485,13 @@ public class MainActivity extends Activity {
             android.content.pm.PackageInfo pi =
                 getPackageManager().getPackageInfo(getPackageName(), 0);
             appendNativeLog("VERZE APKY = " + pi.versionName + " (code " + pi.versionCode + ")");
+            // B313: postup hrace hned pri startu - Rene po nove instalaci videl odemcenou Segu
+            // i PS1: Android appce po instalaci vratil nastaveni ze zalohy v Google uctu
+            // (Auto Backup). Od B313 je zaloha vypnuta (AndroidManifest allowBackup=false).
+            // prvniInstalace == posledniAktualizace -> appka je nainstalovana nove (ne aktualizace).
+            appendNativeLog("B313 POSTUP_PRI_STARTU " + NapPostup.stav(this)
+                    + (pi.firstInstallTime == pi.lastUpdateTime ? " | nova instalace" : " | aktualizace")
+                    + " | zaloha Androidu vypnuta (allowBackup=false)");
         } catch (Throwable t) {
             appendNativeLog("VERZE APKY = nezjistena: " + safeMsg(t));
         }

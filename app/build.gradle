@@ -9,8 +9,8 @@ android {
         applicationId "eu.atarihelp.emu10.test"  // TEST vedle prave apky (neprepise ji)
         minSdk 24
         targetSdk 34
-        versionCode 355
-        versionName "EMU10-B312-MIXTAPE-SERVIS-ZAMKY"
+        versionCode 356
+        versionName "EMU10-B313-OSTRE-TV-MENU-KONZOLE"
         // B310: Rene - "cely emu atari vbxe 130 xe vymazat v te JAVE - a na spravne tlacitko
         // presunout emu atari 130xe vbxe c++ z HELPU ... emu atari v c++ funguje na 120
         // procent". Stare Atari v JavaScriptu (assets/emu_vbxe + presmerovani emu/,

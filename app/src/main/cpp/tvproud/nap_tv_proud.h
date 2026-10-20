@@ -28,6 +28,8 @@
 //   2  u8  verze           2 = Sega (indexy + LZ), 3 = PS1 (JPEG po castech)
 //   3  u8  priznaky        bit0 klicovy (prohlizec zacina od nuly)
 //                          bit2 obraz beze zmeny
+//                          bit3 B313: dalsi cast tehoz snimku (JPEG menu po obdelnicich,
+//                               jde hned za prvni casti, zvuk 0 vzorku)
 //   4  u16 W, u16 H        rozmer snimku jadra
 //   8  u32 cislo snimku jadra
 //  12  u16 x, y, w, h      obsah bez cernych okraju (pro "vyplnit obrazovku")
@@ -43,6 +45,7 @@
 #include <cstdint>
 #include <cstdio>
 #include <cstring>
+#include <functional>
 #include <map>
 #include <memory>
 #include <mutex>
@@ -115,6 +118,37 @@ class Hub {
       if (snimek_.size() != n) snimek_.resize(n);
       std::memcpy(snimek_.data(), argb, n * 4);
       sw_ = w; sh_ = h;
+      surovy_ = false;
+      seq_++;
+    }
+    cv_.notify_all();
+  }
+
+  // B313: snimek primo z glReadPixels (bajty R G B A, radky ZDOLA nahoru). Vlakno kresleni
+  // jen vymeni buffer (zadna kopie ani prevod - menu 1280x720 = 3,7 MB); otoceni a prevod
+  // na 0x00RRGGBB udela az vlakno prohlizece, MIMO zamek (kresleni na nej nikdy neceka
+  // dele nez na vymenu ukazatele). buf dostane zpet volny buffer (k dalsimu pouziti).
+  void snimekRgbaZdola(std::vector<uint8_t> &buf, int w, int h) {
+    posledniMs_.store(tedMs(), std::memory_order_relaxed);
+    snimku_.fetch_add(1, std::memory_order_relaxed);
+    if (pocet_.load(std::memory_order_acquire) <= 0 || w <= 0 || h <= 0 || buf.size() < (size_t)w * h * 4) return;
+    Surovy *nova = nullptr;
+    {
+      std::lock_guard<std::mutex> l(m_);
+      // volny buffer: neni vystaveny a zadny prohlizec ho prave neprevadi (pocita se pod zamkem)
+      for (auto &z : zasoba_)
+        if (z.get() != surova_ && z->ctenaru == 0) { nova = z.get(); break; }
+      if (!nova) {
+        zasoba_.push_back(std::unique_ptr<Surovy>(new Surovy()));
+        nova = zasoba_.back().get();
+      }
+    }
+    nova->data.swap(buf);                  // nikdo jiny ho nema (vystavuje jen tohle vlakno) - bez zamku
+    {
+      std::lock_guard<std::mutex> l(m_);
+      surova_ = nova;
+      sw_ = w; sh_ = h;
+      surovy_ = true;
       seq_++;
     }
     cv_.notify_all();
@@ -130,6 +164,12 @@ class Hub {
     zvZapis_ += shortu;
   }
 
+  // B313: nastaveni kodeku pro kazdeho noveho prohlizece (menu: vic pasu, vyssi kvalita)
+  void nastavKodek(std::function<void(Kodek &)> f) {
+    std::lock_guard<std::mutex> l(m_);
+    nastaveniKodeku_ = std::move(f);
+  }
+
   // ---- prohlizec ----
   int otevri() {
     int id, celkem;
@@ -138,6 +178,7 @@ class Hub {
       id = dalsiId_++;
       auto k = std::make_shared<Klient>();
       k->id = id;
+      if (nastaveniKodeku_) nastaveniKodeku_(k->kodek);
       k->seq = seq_;                    // ceka na cerstvy snimek (stary muze byt z jine hry)
       k->startMs = k->logMs = tedMs();
       klienti_[id] = k;
@@ -156,6 +197,7 @@ class Hub {
   // Vraci 1 = paket, 0 = nic noveho, -1 = neznamy prohlizec.
   int dalsi(int id, int cekejMs, int zapisMs, std::vector<uint8_t> &pk) {
     std::shared_ptr<Klient> kp;
+    Surovy *sur = nullptr;                // B313: snimek z glReadPixels (prevod mimo zamek)
     unsigned long long seq;
     int W, H;
     {
@@ -188,7 +230,8 @@ class Hub {
         seq = seq_; W = sw_; H = sh_;
         k.seq = seq;
         k.rgb.resize((size_t)W * H);
-        std::memcpy(k.rgb.data(), snimek_.data(), (size_t)W * H * 4);
+        if (surovy_ && surova_) { sur = surova_; sur->ctenaru++; }   // B313: prevede se az za zamkem
+        else std::memcpy(k.rgb.data(), snimek_.data(), (size_t)W * H * 4);
         k.W = W; k.H = H;
       } else {
         seq = k.seq; W = k.W; H = k.H;          // stejny obraz jako minule
@@ -210,6 +253,16 @@ class Hub {
     }
     // klienta meni jen tohle vlakno - koduje se bez zamku (jadro bezi dal)
     Klient &k = *kp;
+    if (sur) {
+      // B313: RGBA zdola nahoru (glReadPixels) -> 0x00RRGGBB shora dolu
+      for (int y = 0; y < H; y++) {
+        const uint8_t *r = &sur->data[(size_t)(H - 1 - y) * W * 4];
+        uint32_t *o = &k.rgb[(size_t)y * W];
+        for (int x = 0; x < W; x++, r += 4) o[x] = ((uint32_t)r[0] << 16) | ((uint32_t)r[1] << 8) | (uint32_t)r[2];
+      }
+      std::lock_guard<std::mutex> l(m_);
+      sur->ctenaru--;
+    }
     const long long ted = tedMs();
     k.poslMs = ted;
     if (orez_) k.orez.spocti(k.rgb.data(), W, H);
@@ -237,6 +290,26 @@ class Hub {
     else for (size_t i = 0; i < vz * 2; i++) p16(pk, (unsigned)(uint16_t)k.zvuk[i]);
     const uint32_t delka = (uint32_t)(pk.size() - 4);
     pk[0] = (uint8_t)delka; pk[1] = (uint8_t)(delka >> 8); pk[2] = (uint8_t)(delka >> 16); pk[3] = (uint8_t)(delka >> 24);
+    // B313: dalsi casti tehoz snimku (JPEG menu: vic obdelniku) - kazda jako samostatny
+    // paket hned za prvnim: stejna hlavicka, priznak 8 = "dalsi cast snimku", zadny zvuk.
+    // Java posle vse jednim zapisem, prohlizec kazdou cast nakresli na jeji misto.
+    for (size_t i = 0; i < k.kodek.dalsiN && i < k.kodek.dalsi.size(); i++) {
+      const size_t zac = pk.size();
+      p32(pk, 0);
+      p8(pk, 'N'); p8(pk, 'A'); p8(pk, Kodek::VERZE); p8(pk, 8u);
+      p16(pk, (unsigned)W); p16(pk, (unsigned)H);
+      p32(pk, (uint32_t)(seq & 0xFFFFFFFFull));
+      p16(pk, (unsigned)k.orez.x0); p16(pk, (unsigned)k.orez.y0);
+      p16(pk, (unsigned)(k.orez.x1 - k.orez.x0)); p16(pk, (unsigned)(k.orez.y1 - k.orez.y0));
+      p8(pk, (unsigned)pomerX_); p8(pk, (unsigned)pomerY_); p16(pk, 0);
+      p32(pk, (uint32_t)vzorkovani_);
+      const std::vector<uint8_t> &c = k.kodek.dalsi[i];
+      pk.insert(pk.end(), c.begin(), c.end());
+      p16(pk, 0); p8(pk, 1u);                      // zvuk: 0 vzorku
+      const uint32_t d = (uint32_t)(pk.size() - zac - 4);
+      pk[zac] = (uint8_t)d; pk[zac + 1] = (uint8_t)(d >> 8); pk[zac + 2] = (uint8_t)(d >> 16); pk[zac + 3] = (uint8_t)(d >> 24);
+      k.dalsichCasti++;
+    }
     // statistika
     k.paketu++; k.bajtu += (long long)pk.size(); k.logPaketu++; k.logBajtu += (long long)pk.size();
     if (pr & 4u) k.logBeze++;
@@ -245,7 +318,7 @@ class Hub {
     if (ted - k.logMs >= 30000) {
       const double s = (ted - k.logMs) / 1000.0;
       const long long zmen = k.logPaketu - k.logBeze;
-      char b[520];
+      char b[700];
       snprintf(b, sizeof(b), "B306 TV PROUD %s: prohlizec %d - %.1f paketu/s (%.1f snimku/s se zmenou), %.2f Mbit/s, prumer %.1f kB na snimek, %dx%d, "
                "baleni prumer %.2f ms max %.1f ms, zvuk %.0f vzorku/s (preskoku %lld, paketu jen se zvukem %lld), %s",
                jmeno_, k.id, k.logPaketu / s, zmen / s, k.logBajtu * 8.0 / 1e6 / s, k.logBajtu / 1024.0 / std::max(1LL, k.logPaketu), W, H,
@@ -277,7 +350,7 @@ class Hub {
       pocet_.store(celkem, std::memory_order_release);
     }
     const double s = std::max(0.001, (tedMs() - k->startMs) / 1000.0);
-    char b[520];
+    char b[760];
     snprintf(b, sizeof(b), "B306 TV PROUD %s: prohlizec %d odpojen po %.0f s - %lld paketu (%.1f/s), %.1f MB celkem, %s, zvuk preskoku %lld, paketu jen se zvukem %lld (zbyva %d)",
              jmeno_, k->id, s, k->paketu, k->paketu / s, k->bajtu / 1048576.0, k->kodek.info().c_str(), k->zvukSkoku, k->jenZvuk, celkem);
     log(b);
@@ -319,6 +392,7 @@ class Hub {
     int W = 0, H = 0;                    // rozmer rgb (posledni poslany snimek)
     long long poslMs = 0;                // kdy se balil posledni paket
     long long jenZvuk = 0;               // B306: paketu jen se zvukem (obraz se zadrhl)
+    long long dalsichCasti = 0;          // B313: paketu "dalsi cast snimku" (JPEG menu)
     std::vector<int16_t> zvuk;
     std::vector<uint8_t> odlozeny;
     unsigned long long seq = 0;
@@ -334,11 +408,18 @@ class Hub {
   std::mutex m_;
   std::condition_variable cv_;
   std::vector<uint32_t> snimek_;
+  // B313: snimky z glReadPixels (snimekRgbaZdola): zasoba bufferu, vystaveny je surova_;
+  // ctenaru = kolik prohlizecu ho prave prevadi (vse pod m_; buffery se nikdy nemazou)
+  struct Surovy { std::vector<uint8_t> data; int ctenaru = 0; };
+  std::vector<std::unique_ptr<Surovy>> zasoba_;
+  Surovy *surova_ = nullptr;
+  bool surovy_ = false;                  // posledni snimek je v surova_ (ne v snimek_)
   int sw_ = 0, sh_ = 0;
   unsigned long long seq_ = 0;
   std::vector<int16_t> zv_;
   unsigned long long zvZapis_ = 0;
   std::map<int, std::shared_ptr<Klient>> klienti_;
+  std::function<void(Kodek &)> nastaveniKodeku_;   // B313
   int dalsiId_ = 1;
   std::atomic<int> pocet_{0};
   std::atomic<long long> posledniMs_{0};

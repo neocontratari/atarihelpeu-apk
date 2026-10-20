@@ -1,0 +1,3 @@
+B313 - test_kodek_menu pod ThreadSanitizer (-O1 -g -fsanitize=thread)
+VYSLEDEK: 11 OK, 0 CHYBA
+hlaseni ThreadSanitizeru: 0

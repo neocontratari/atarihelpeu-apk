@@ -1,0 +1,12 @@
+B313 - mereni: skutecne menu (Mesa) na TV, plocha 1080x2004, kvalita TV 2
+karet 7, pripraveno ano
+   po klidu 1: prohlizec 1280x720, ostrost proti snimku menu: horni pas 37.9 dB, spodni pas (popis, tlacitko) 40.8 dB, cely 38.5 dB
+   1,5 s po listovani: prohlizec 1280x720, ostrost proti snimku menu: horni pas 30.5 dB, spodni pas (popis, tlacitko) 32.7 dB, cely 29.2 dB
+   po klidu 2 (5 s): prohlizec 1280x720, ostrost proti snimku menu: horni pas 44.0 dB, spodni pas (popis, tlacitko) 47.2 dB, cely 31.9 dB
+   klid 1 (4 s)             5.2 snimku/s,   44.8 kB na snimek (nejvic   69.7 kB), 3.29 casti na snimek, 1.93 Mbit/s
+   listovani (3x sipka)     3.3 snimku/s,   84.9 kB na snimek (nejvic  127.6 kB), 3.00 casti na snimek, 2.32 Mbit/s
+   klid 2 (5 s)             7.0 snimku/s,   36.7 kB na snimek (nejvic   89.5 kB), 3.46 casti na snimek, 2.10 Mbit/s
+   log: B306 TV PROUD MENU: prohlizec 1 pripojen (celkem 1) - obraz a zvuk primo z C++ (JPEG po castech), kazdy snimek, zvuk 44100 Hz v tomtez paketu
+   log: B306 TV PROUD MENU: prohlizec 1 odpojen po 11 s - 61 paketu (5.6/s), 2.6 MB celkem, JPEG kvalita 85 (max 85, snizeno 0x), kodovani prumer 6.4 ms max 30.8 ms (pasu 1), castecnych 184, zjemneni 0, beze zmeny 1 z 61, B313: obdelniku 205 (snimku s vic castmi 40), zjemneni za pohybu 6, zvuk preskoku 0, paketu jen se zvukem 0 (zbyva 0)
+   menu: GPU llvmpipe (LLVM 20.1.2, 256 bits) | OpenGL ES 3.2 Mesa 25.2.8-0ubuntu0.24.04.4 | ES 3, mipmapy karet ano | priprava 476 ms, plocha 1080x2004, karet 7, obrazky karet 784x1048 || snimek 74.4 ms (perioda displeje 16.7 ms = 60 Hz z displeje), zmeskano 30 z 60, uroven 0, plocha 1080x2004, prekresleno karet 0, TV proud 1280x720
+   chyb v paketech 0, paketu 206, snimku 61

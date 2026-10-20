@@ -18,8 +18,17 @@
 //    a rozlozeni nap_menu_karusel.h, kresleni nap_menu_kresba.h
 //  - vykon: vlakno meri, jestli stiha snimky displeje; kdyz ne, prekresluje
 //    zive obrazky karet mene casto (karusel sam jede vzdy plynule)
-//  - TV / PC: obraz menu 16:9 (854x480) proudem z C++ (/menu.stream, stejne
-//    jako uvodni demo B306) - kresli se jen kdyz se nekdo diva
+//  - TV / PC: obraz menu 16:9 proudem z C++ (/menu.stream, stejne jako uvodni
+//    demo B306) - kresli se jen kdyz se nekdo diva
+//
+//  B313 (Rene: "grafika hlavniho menu je rozmazana na TV ci PC prenosu"):
+//  - obraz pro TV podle kvality v OPTIONS (Java menuNastav): NIZKA 854x480,
+//    STREDNI 1024x576, VYSOKA 1280x720 (drive vzdy 854x480 -> na TV 2,25x zvetseno)
+//  - na TV v klidu stoji ozdoby (mlhovina, hvezdy, lesky) - konzole na karte se toci
+//    dal; stojici casti se v prohlizeci zjemni na kvalitu 94 (kodek: vic obdelniku,
+//    zjemneni za pohybu). Drive se v menu porad vsechno hybalo -> "zjemneni 0".
+//  - vykon: perioda displeje ze skutecne obnovovaci frekvence (Java), ne odhad -
+//    odhad u S8 ujel na 6-8 ms a menu si myslelo, ze nestiha (uroven 0 porad)
 // ====================================================================
 #include <jni.h>
 #include <android/asset_manager.h>
@@ -114,10 +123,24 @@ std::mutex g_infoZamek;
 std::string g_infoGl, g_infoBeh, g_infoLog;
 
 // ---- TV / PC: obraz 16:9 proudem z C++ (jako uvodni demo) ----
-constexpr int TV_W = 854, TV_H = 480;
-nap::proud::Hub<nap::proud::KodekJpeg> &g_proud = *new nap::proud::Hub<nap::proud::KodekJpeg>("MENU", 44100, 16, 9, false);
+// B313: velikost podle kvality TV z OPTIONS (Java: napTvWebQualityTier 0 / 1 / 2)
+std::atomic<int> g_tvKvalita{2};
+std::atomic<float> g_obnovaHz{0.f};   // B313: obnovovaci frekvence displeje (Display.getRefreshRate)
+inline void tvRozmer(int kvalita, int &w, int &h) {
+  if (kvalita <= 0) { w = 854; h = 480; }
+  else if (kvalita == 1) { w = 1024; h = 576; }
+  else { w = 1280; h = 720; }
+}
+constexpr double TV_OZDOBY_DOBEH_S = 0.8;   // B313: ozdoby na TV dobehnou po poslednim pohybu
+nap::proud::Hub<nap::proud::KodekJpeg> &vytvorProud() {
+  auto *h = new nap::proud::Hub<nap::proud::KodekJpeg>("MENU", 44100, 16, 9, false);
+  h->nastavKodek(nap::proud::nastavKodekMenu);   // B313: vic obdelniku, zjemneni za pohybu, 4 pasy
+  return *h;
+}
+nap::proud::Hub<nap::proud::KodekJpeg> &g_proud = vytvorProud();
 std::mutex g_tvZamek;                 // stare prohlizece (Java si snimek vyzvedne)
 std::vector<unsigned char> g_tvBody;
+int g_tvBodyW = 0, g_tvBodyH = 0;     // B313: rozmer g_tvBody (pod g_tvZamek)
 bool g_tvNovy = false;
 std::atomic<long long> g_tvChceNs{0};
 
@@ -233,10 +256,10 @@ void vlaknoMenu(ANativeWindow *okno) {
     for (size_t i = 0; i < karty.size(); i++) kr->nastavZamek((int)i, karty[i].zamceno, karty[i].zamekText);
     kr->nastavUroven(g_uroven.load());
     napmenu::CilMenu cil, tv;
-    tv.w = TV_W; tv.h = TV_H; tv.tv = true; tv.hlavni = false;
+    tvRozmer(g_tvKvalita.load(), tv.w, tv.h);
+    tv.tv = true; tv.hlavni = false;
     napdemo::Fbo tvFbo;
     std::vector<unsigned char> tvBuf;
-    std::vector<uint32_t> tvArgb;
     if (ok) {
       // "nanecisto": prvni snimek (pripravi obrazky viditelnych karet, texty, shadery
       // v ovladaci GPU) bez zobrazeni - pak uz se jen kresli
@@ -286,10 +309,16 @@ void vlaknoMenu(ANativeWindow *okno) {
 
     // ---- hlavni smycka ----
     long long predNs = tedNs();
-    double perioda = 1.0 / 60.0;      // odhad periody displeje (nejkratsi interval)
+    // B313: perioda displeje ze skutecne obnovovaci frekvence (Java menuNastav). Drive
+    // odhad "nejkratsi interval" - ten u S8 ujel na 6-8 ms (snimky, ktere eglSwapBuffers
+    // pusti hned, protoze je volny buffer), a kazdy normalni snimek 16,7 ms pak vypadal
+    // jako zmeskany -> uroven 0 porad, i kdyz telefon stihal.
     int okno60 = 0, zmeskano = 0, bezChyby = 0;
     double soucetMs = 0;
-    int snimekCislo = 0, hlaseni = 0;
+    int hlaseni = 0;
+    // B313: TV - ozdoby v klidu stoji, obraz pro TV ~30 za sekundu (podle displeje)
+    double tvOzdoby = 0.0, tvPredT = -1.0, tvPohybT = -100.0;
+    int tvOdminule = 1000;
     while (ok && g_bezi.load()) {
       EGLint w = 0, h = 0;
       eglQuerySurface(dpy, surf, EGL_WIDTH, &w);
@@ -325,44 +354,54 @@ void vlaknoMenu(ANativeWindow *okno) {
       }
       eglSwapBuffers(dpy, surf);
       g_snimku.fetch_add(1);
-      snimekCislo++;
       const std::string kl = kr->log();
       if (!kl.empty()) { logInfo(kl); kr->vymazLog(); }
 
-      // TV / PC: vlastni obraz 16:9 kazdy druhy snimek, jen kdyz se nekdo diva
+      // TV / PC: vlastni obraz 16:9 ~30x za sekundu, jen kdyz se nekdo diva
       const bool tvProud = g_proud.klientu() > 0;
       const bool tvJava = ted - g_tvChceNs.load() < 2000000000LL;
       if (!tvProud) g_proud.snimek(nullptr, 0, 0);            // jen "menu bezi" (pro /status proud=menu)
-      if ((snimekCislo & 1) == 0 && (tvProud || tvJava)) {
-        tvFbo.priprav(TV_W, TV_H, false);
+      // B313: ozdoby na TV bezi jen pri pohybu (a chvili po nem), jinak stoji
+      {
+        const bool deje = s.pohyb || s.spustena >= 0 || t - s.tPrichod < 1.0 || (s.tZamek >= 0 && t - s.tZamek < 0.6) ||
+                          (s.tOzub >= 0 && t - s.tOzub < 0.6);
+        if (deje) tvPohybT = t;
+        if (tvPredT >= 0 && t - tvPohybT < TV_OZDOBY_DOBEH_S) tvOzdoby += t - tvPredT;
+        tvPredT = t;
+      }
+      const float hz = g_obnovaHz.load();
+      const int tvKrok = (hz >= 20.f && hz <= 250.f) ? std::max(1, (int)std::lround(hz / 30.0)) : 2;
+      if (++tvOdminule >= tvKrok && (tvProud || tvJava)) {
+        tvOdminule = 0;
+        int tvW = 0, tvH = 0;
+        tvRozmer(g_tvKvalita.load(), tvW, tvH);
+        tv.w = tvW; tv.h = tvH;
+        tvFbo.priprav(tvW, tvH, false);
         tv.fbo = tvFbo.fbo;
-        kr->snimek(s, tv);
+        napmenu::StavMenu sTv = s;
+        sTv.tOzdoby = tvOzdoby;
+        kr->snimek(sTv, tv);
         glBindFramebuffer(GL_FRAMEBUFFER, tvFbo.fbo);
-        tvBuf.resize((size_t)TV_W * TV_H * 4);
-        glReadPixels(0, 0, TV_W, TV_H, GL_RGBA, GL_UNSIGNED_BYTE, tvBuf.data());
+        tvBuf.resize((size_t)tvW * tvH * 4);
+        glReadPixels(0, 0, tvW, tvH, GL_RGBA, GL_UNSIGNED_BYTE, tvBuf.data());
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
-        if (tvProud) {
-          tvArgb.resize((size_t)TV_W * TV_H);
-          for (int y = 0; y < TV_H; y++) {
-            const unsigned char *r = &tvBuf[(size_t)(TV_H - 1 - y) * TV_W * 4];
-            uint32_t *o = &tvArgb[(size_t)y * TV_W];
-            for (int x = 0; x < TV_W; x++, r += 4) o[x] = ((uint32_t)r[0] << 16) | ((uint32_t)r[1] << 8) | (uint32_t)r[2];
-          }
-          g_proud.snimek(tvArgb.data(), TV_W, TV_H);
-        }
         if (tvJava) {
           std::lock_guard<std::mutex> z(g_tvZamek);
-          g_tvBody.swap(tvBuf);
+          if (tvProud) g_tvBody = tvBuf; else g_tvBody.swap(tvBuf);
+          g_tvBodyW = tvW; g_tvBodyH = tvH;
           g_tvNovy = true;
         }
+        // B313: proud dostane buffer z glReadPixels jak je (vymena, bez kopie) - otoceni a
+        // prevod barev udela vlakno prohlizece, ne tohle (kresleni menu na telefonu)
+        if (tvProud) g_proud.snimekRgbaZdola(tvBuf, tvW, tvH);
       }
 
       // ---- vykon: stiha displej? (interval mezi snimky vs. perioda displeje) ----
       const long long po = tedNs();
       const double dt = (double)(po - predNs) * 1e-9;
       predNs = po;
-      if (dt > 0.004 && dt < perioda) perioda = perioda * 0.5 + dt * 0.5;
-      if (dt > perioda * 1.6) zmeskano++;
+      const double perioda = (hz >= 20.f && hz <= 250.f) ? 1.0 / hz : 1.0 / 60.0;
+      if (dt > perioda * 1.5) zmeskano++;
       soucetMs += (double)(po - ted) / 1e6;
       if (++okno60 >= 60) {
         int u = g_uroven.load();
@@ -370,10 +409,10 @@ void vlaknoMenu(ANativeWindow *okno) {
         else if (zmeskano == 0 && ++bezChyby >= 3 && u < 3) { u++; bezChyby = 0; }
         else if (zmeskano > 0) bezChyby = 0;
         g_uroven.store(u);
-        char b[260];
-        std::snprintf(b, sizeof b, "snimek %.1f ms (perioda displeje %.1f ms = %.0f Hz), zmeskano %d z 60, uroven %d, plocha %dx%d, prekresleno karet %d, TV %s",
-                      soucetMs / okno60, perioda * 1000.0, 1.0 / perioda, zmeskano, u, (int)w, (int)h, kr->prekreslenoMinule(),
-                      tvProud ? "proud" : (tvJava ? "Java" : "ne"));
+        char b[320];
+        std::snprintf(b, sizeof b, "snimek %.1f ms (perioda displeje %.1f ms = %.0f Hz %s), zmeskano %d z 60, uroven %d, plocha %dx%d, prekresleno karet %d, TV %s %dx%d",
+                      soucetMs / okno60, perioda * 1000.0, 1.0 / perioda, (hz >= 20.f && hz <= 250.f) ? "z displeje" : "vychozi",
+                      zmeskano, u, (int)w, (int)h, kr->prekreslenoMinule(), tvProud ? "proud" : (tvJava ? "Java" : "ne"), tv.w, tv.h);
         {
           std::lock_guard<std::mutex> z(g_infoZamek);
           g_infoBeh = b;
@@ -656,20 +695,31 @@ JNIEXPORT jstring JNICALL Java_eu_atarihelp_emu10_NativeMenuBridge_proudLogNativ
 JNIEXPORT jint JNICALL Java_eu_atarihelp_emu10_NativeMenuBridge_menuGrabFrame(JNIEnv *env, jclass, jintArray jven) {
   g_tvChceNs.store(tedNs());
   std::lock_guard<std::mutex> z(g_tvZamek);
-  if (!g_tvNovy || g_tvBody.size() < (size_t)TV_W * TV_H * 4) return 0;
-  const int potreba = TV_W * TV_H;
-  if (!jven || env->GetArrayLength(jven) < potreba) return -((TV_W << 16) | TV_H);
+  const int W = g_tvBodyW, H = g_tvBodyH;     // B313: velikost podle kvality TV
+  if (!g_tvNovy || W <= 0 || H <= 0 || g_tvBody.size() < (size_t)W * H * 4) return 0;
+  const int potreba = W * H;
+  if (!jven || env->GetArrayLength(jven) < potreba) return -((W << 16) | H);
   jint *ven = env->GetIntArrayElements(jven, nullptr);
   if (!ven) return 0;
-  for (int y = 0; y < TV_H; y++) {
-    const unsigned char *r = &g_tvBody[(size_t)(TV_H - 1 - y) * TV_W * 4];
-    jint *o = ven + (size_t)y * TV_W;
-    for (int x = 0; x < TV_W; x++)
+  for (int y = 0; y < H; y++) {
+    const unsigned char *r = &g_tvBody[(size_t)(H - 1 - y) * W * 4];
+    jint *o = ven + (size_t)y * W;
+    for (int x = 0; x < W; x++)
       o[x] = (jint)(0xFF000000u | ((unsigned)r[x * 4] << 16) | ((unsigned)r[x * 4 + 1] << 8) | (unsigned)r[x * 4 + 2]);
   }
   env->ReleaseIntArrayElements(jven, ven, 0);
   g_tvNovy = false;
-  return (jint)((TV_W << 16) | TV_H);
+  return (jint)((W << 16) | H);
+}
+
+/**
+ * B313: obnovovaci frekvence displeje (Display.getRefreshRate - pro mereni, jestli
+ * menu stiha) a kvalita TV z OPTIONS (0 NIZKA 854x480, 1 STREDNI 1024x576,
+ * 2 VYSOKA 1280x720). Java vola pri ukazani menu a pri zmene kvality.
+ */
+JNIEXPORT void JNICALL Java_eu_atarihelp_emu10_NativeMenuBridge_menuNastav(JNIEnv *, jclass, jfloat hz, jint tvKvalita) {
+  if (hz >= 20.f && hz <= 250.f) g_obnovaHz.store(hz);
+  g_tvKvalita.store(std::max(0, std::min(2, (int)tvKvalita)));
 }
 
 }  // extern "C"

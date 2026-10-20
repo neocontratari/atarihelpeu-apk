@@ -65,6 +65,7 @@ public final class NativeMenuBridge {
     private static native String menuInfo();
     private static native String menuLog();
     private static native int menuGrabFrame(int[] ven);
+    private static native void menuNastav(float hz, int tvKvalita);       // B313
     // TV / PC proudem z C++ (stejne jako NativeIntroBridge)
     private static native int proudOtevriNative();
     private static native int proudDalsiNative(int id, byte[] out, int cekejMs, int zapisMs);
@@ -140,6 +141,15 @@ public final class NativeMenuBridge {
     public static String logSafe() {
         if (!nactena) return null;
         try { return menuLog(); } catch (Throwable t) { return null; }
+    }
+    /**
+     * B313: obnovovaci frekvence displeje (Display.getRefreshRate: C++ podle ni meri,
+     * jestli menu stiha) a kvalita TV z OPTIONS (0 NIZKA 854x480, 1 STREDNI 1024x576,
+     * 2 VYSOKA 1280x720 - velikost obrazu menu na TV / PC).
+     */
+    public static void nastavSafe(float hz, int tvKvalita) {
+        if (!nactena) return;
+        try { menuNastav(hz, tvKvalita); } catch (Throwable ignored) {}
     }
     /** Snimek pro stare prohlizece bez ReadableStream: (sirka<<16)|vyska, zaporne = male pole, 0 = nic. */
     public static int grabFrameSafe(int[] ven) {

@@ -2911,3 +2911,66 @@
      s Opusem; na telefonu muze vzniknout M4A s AAC.
 
 ===============================================================================
+
+   B313: OSTRE MENU NA TV, POSTUP PO NOVE INSTALACI, KONZOLE N&P S ANIMACEMI.
+     Rene k B312: "i pred zadanim kodu je aplikace odemcena (apku mazu);
+     grafika hlavniho menu je rozmazana na TV ci PC; vic detailu na tele,
+     kardrydz s nalepkou, oteviraci viko na CD, kontrolky, lepsi materialy
+     a svetlo, animace v menu i v introdukci; vyber jazyka CZE / ANG".
+     - ODEMCENO PO NOVE INSTALACI = Android Auto Backup (bez allowBackup
+       platilo true -> po smazani a instalaci se obnovily SharedPreferences
+       nap_postup i cesty ke hram). AndroidManifest allowBackup="false";
+       log "B313 POSTUP_PRI_STARTU <NapPostup.stav> | nova instalace /
+       aktualizace" (firstInstallTime == lastUpdateTime). Instalace PRES
+       starou verzi data necha (Rene: SERVIS -> ZAMKNOUT VSE).
+     - MENU NA TV: nap_menu_gl.cpp kresli obraz pro TV podle kvality TV
+       (Java menuNastav(hz, napTvWebQualityTier): 0 = 854x480, 1 = 1024x576,
+       2 = 1280x720), ~30/s podle obnovovaci frekvence (krok = hz / 30).
+       StavMenu.tOzdoby = cas ozdob (mlhovina, hvezdy, lesky, dychani
+       tlacitka, jiskra na ramecku karty) - pro TV stoji, kdyz se 0,8 s nic
+       nedeje (s.pohyb, spusteni, nastup, zamek, kolecko); umeni karet
+       (konzole) bezi podle s.t dal. Snimek z glReadPixels jde do Hubu bez
+       kopie: Hub::snimekRgbaZdola (zasoba bufferu Surovy s poctem ctenaru
+       pod zamkem; prevod RGBA zdola -> 0x00RRGGBB dela vlakno prohlizece
+       MIMO zamek). Kodek menu: nastavKodekMenu (nap_tv_proud_jpeg.h) -
+       viceObdelniku (souvisle skupiny ctvercu 16x16, slouceni, max 6),
+       jemneBloky (ctverce, ktere 12 snimku neodesly a maji kvalitu < 94,
+       se zjemni na 94 i za pohybu; po ctvrtinach obrazu, jen kdyz zapis
+       < 8 ms), qStrop 85, qVelkaZmena 75 (meni se > 40 % obrazu; klesa
+       s q, kdyz sit nestiha), qZpetMs 600, maxCasti 4. Dalsi casti snimku
+       = dalsi pakety za prvnim (priznak 8, zvuk 0) - stranka je kresli
+       bez zmeny (stary prohlizec taky), jen je nepocita jako snimky.
+       PS1 a demo maji vychozi volby = chovani jako B305-B312 (testy B305
+       35/0, 16/0). POZOR: B311 testy cekaji menu na TV 854x480 - nove
+       verze jsou v test_overeni/b313.
+     - VYKON MENU: perioda displeje = 1 / Display.getRefreshRate (Java
+       menuNastav pri ukazani menu); odhad "nejkratsi interval" ujel na S8
+       na 6-8 ms (eglSwapBuffers obcas vrati hned) -> kazdy snimek
+       "zmeskany" -> uroven 0 porad. Zmeskany = interval > 1,5 periody.
+     - TV PREPNUTI: /atari.stream a /<jadro>.stream, kdyz neni na
+       obrazovce -> 409 + X-Nap-Proud: <co je> (napTvProudNeniTu); stranka
+       se hned prepne a 4 s ignoruje stary /status (napOdmit); pollFps:
+       AbortController 2,5 s, zadne prekryvajici se dotazy. Logy: zmena
+       /status proud=, odmitnute spojeni (vsech 24 vlaken obsazeno).
+     - KONZOLE (intro/nap_demo_konzole.h, sdileji intro i menu): ModelKonzole
+       = skrin (sit) + dily (N&P 16: kazeta, klapkaP, klapkaZ, posuvnik;
+       N&P 32: viko, disk, sklo - sklo pruhledne, kresli se posledni bez
+       zapisu hloubky) + atlas potisku 512x512 (potisk::atlas16 / atlas32
+       pres napmenu::Platno - proto intro includuje ../menu/nap_menu_platno.h)
+       + kresli(prog, model, vp, AnimKonzole). Animace jen z casu:
+       anim16(tv, t) / anim32(tv, t), tv < 0 = "venku" (cartridge / disk se
+       vznasi, viko otevrene). Menu: UmeniKonzole pocita tv od chvile, kdy
+       fokus karty > 0,85 (pod 0,35 zpet venku); RamecUmeni.nahled (export
+       obrazku karet pro HTML) = konecny stav. Intro: animKonzole(i, t) -
+       N&P 16 od ODHAL_KONEC, N&P 32 od ODHAL_KONEC + 0,05 (zapne se ~31,95 s,
+       pred CRT 32,35 s). FS_KONZOLE: materialy 0-14, kontrolky 20-27
+       (uLedA / uLedB - v GLSL ES 1.00 se uniform pole ve fragment shaderu
+       nesmi indexovat promennou -> retez ?:), studio(R) + Fresnel (uStudio:
+       menu 0,85, intro 0,22), zastineni u podlahy (uPodlaha), potisk disku
+       s rozmazanim (uRozmaz, 5 vzorku), kourove sklo (alfa). Kolize dilu
+       hlida test_overeni/b313/test_konzole_anim.cpp (disk vs. otevrene viko
+       0,64 cm - proto je mechanika v z = -2,7, ne uprostred vika).
+     - JAZYK CZ / EN: slibeno na B314 (cela appka, volba v OPTIONS, poprve
+       podle jazyka telefonu).
+
+===============================================================================

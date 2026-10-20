@@ -14,7 +14,12 @@
     <!-- BUILD2SA42: aktualizace primo ze site (PackageInstaller) -->
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
 
+    <!-- B313: allowBackup=false - Android appce po nove instalaci vracel nastaveni ze zalohy
+         v Google uctu (Auto Backup), i odemcenou Segu a PS1 (Rene: "i pred zadanim kodu je
+         aplikace odemcena", appku vzdy maze a instaluje znovu). Navod rika, ze postup se
+         odinstalovanim smaze - ted to plati. -->
     <application
+        android:allowBackup="false"
         android:label="AtariHelp TEST"
         android:icon="@mipmap/ic_launcher"
         android:roundIcon="@mipmap/ic_launcher_round"

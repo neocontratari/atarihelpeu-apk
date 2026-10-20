@@ -58,6 +58,7 @@ struct RamecUmeni {
   float fokus = 0;               // 1 = karta je uprostred
   V3 barva{1, 0.8f, 0.4f};       // barva karty
   const Karta *karta = nullptr;
+  bool nahled = false;           // B313: obrazek pro HTML zalohu - animace v konecnem stavu (konzole zapnute)
   float pomer() const { return h > 0 ? (float)w / (float)h : 0.75f; }
 };
 

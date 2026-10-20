@@ -118,8 +118,8 @@ class Demo {
       texSum = novaTextura(256, 256, GL_RGBA, n.data(), true, true);
     }
     atari.postav(pBold, pItal, pMed);
-    k16.postav16();
-    k32.postav32();
+    k16.postav16(&pBold, &pSemi, &pItal);       // B313: s potisky (stitek cartridge, panel, disk)
+    k32.postav32(&pBold, &pSemi, &pItal);
     crt.postav();
     postavPruty();
     // ukazky na CRT: 16 bit (procesor), 32 bit (GPU), Atari (klip)
@@ -166,7 +166,7 @@ class Demo {
     postavBlesk();
     pripraveno = pSemi.ok && pModel.ok && pGaraz.ok && pNebe.ok && pFinal.ok && pKonzole.ok && pCrt.ok;
     NAPDEMO_LOG("DEMO pripraveno: %s (pisma %d, model %d tri, konzole %d+%d tri, CRT %d tri, 32bit %s)", pripraveno ? "ANO" : "NE",
-                (int)pSemi.ok, atari.sit.pocet / 3, k16.sit.pocet / 3, k32.sit.pocet / 3, (crt.sit.pocet + crt.sklo.pocet) / 3,
+                (int)pSemi.ok, atari.sit.pocet / 3, k16.trojuhelniku(), k32.trojuhelniku(), (crt.sit.pocet + crt.sklo.pocet) / 3,
                 hra32ok ? "ANO" : "NE");
     return pripraveno;
   }
@@ -917,6 +917,31 @@ class Demo {
     pasyKresli(V3(1.0f, 1.0f, 1.0f), V3(0.22f, 0.85f, 1.0f), V3(1.0f, 0.28f, 0.85f), 1.f);
   }
 
+  // B313: animace konzoli ve scene 4 - hned po zhmotneni: N&P 16 zasune cartridge (kamera
+  // je u ni v 30,8 s), N&P 32 vlozi disk a zavre viko; kdyz k ni kamera dojede (31,85 s),
+  // rozsviti se a disk se roztoci - pak kamera leti k CRT, ktery se zapne ve 32,35 s
+  static AnimKonzole animKonzole(int i, float t) {
+    return i == 0 ? ModelKonzole::anim16(t - cas::ODHAL_KONEC, t) : ModelKonzole::anim32(t - (cas::ODHAL_KONEC + 0.05f), t);
+  }
+  // zare kolem svitici kontrolek konzoli (jako LED Atari)
+  void konzoleZare(Cil &c, float t) {
+    if (t < cas::ODHAL_KONEC) return;
+    glEnable(GL_BLEND); glBlendFunc(GL_ONE, GL_ONE);
+    for (int i = 0; i < 2; i++) {
+      const ModelKonzole &kk = i == 0 ? k16 : k32;
+      const AnimKonzole a = animKonzole(i, t);
+      const M4 m = maticeKonzole(i);
+      for (const auto &l : kk.ledy) {
+        const float jas = a.led[l.i];
+        if (jas < 0.04f) continue;
+        float x, y, z;
+        if (!vp.promitni(transformuj(m, l.p), x, y, z) || z > 1.f) continue;
+        zareNDC(c, x, y, 0.022f, l.barva * (0.45f * jas), 3.0f);
+      }
+    }
+    glDisable(GL_BLEND);
+  }
+
   // ---- konzole a CRT (stejna lampa a okno jako u Atari) ----
   void kresliKonzole(Cil &c, float t, const Kamera &k, float bl) {
     (void)c;
@@ -941,6 +966,8 @@ class Demo {
     // odlesk pres emblem N&P - kdyz kolem kamera projizdi
     pKonzole.tex("uLogo", 0, texLogo ? texLogo : texSum);
     pKonzole.tex("uSum", 1, texSum);
+    pKonzole.f1("uPodlaha", 0.f);           // B313: stul je v y = 0
+    pKonzole.f1("uStudio", 0.22f);          // B313: jemne studiove odlesky (v mistnosti sviti hlavne lampa)
     glActiveTexture(GL_TEXTURE0);
     for (int i = 0; i < 2; i++) {
       const ModelKonzole &kk = i == 0 ? k16 : k32;
@@ -951,10 +978,7 @@ class Demo {
       pKonzole.f3("uOdhalBarva", i == 0 ? V3(0.25f, 0.9f, 1.0f) : V3(1.0f, 0.32f, 0.9f));
       pKonzole.f1("uSvit", smooth(cas::ODHAL_KONEC - 0.1f + i * 0.15f, cas::ODHAL_KONEC + 0.3f + i * 0.15f, t));
       pKonzole.f1("uLogoLesk", -0.5f + 2.4f * smooth(i == 0 ? 30.45f : 31.40f, i == 0 ? 31.05f : 32.0f, t));
-      const M4 m = maticeKonzole(i);
-      pKonzole.m4("uModel", m);
-      pKonzole.m4("uMVP", vp * m);
-      kk.sit.kresli();
+      kk.kresli(pKonzole, maticeKonzole(i), vp, animKonzole(i, t));     // B313: skrin + pohyblive dily
     }
     const M4 mc = M4::posun(PCRT().x, PCRT().y, PCRT().z);
     pKonzole.f1("uOdhal", 1000.f);
@@ -1067,6 +1091,7 @@ class Demo {
     glDisable(GL_DEPTH_TEST);
     paraLampy(c, t, k, 0.f, t < cas::PRULET ? 0.6f : 0.6f * (1.f - smooth(cas::PRULET, cas::STRIH_ATARI, t) * 0.6f), cilFbo);
     ledZare(c, t);
+    konzoleZare(c, t);                   // B313
     if (t < cas::ODHAL_KONEC + 0.6f) {
       kresliPruty(c, t);
       kresliDrat(c, t);
