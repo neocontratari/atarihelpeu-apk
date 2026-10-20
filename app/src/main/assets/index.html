@@ -98,6 +98,11 @@ body{background:radial-gradient(120% 70% at 50% 40%,#1c1006 0%,#0a0603 45%,#0302
 #stTvAdresa{display:none;margin:8px 0 2px;padding:11px 10px 10px;border-radius:12px;text-align:center;background:rgba(10,30,40,.55);border:1px solid rgba(100,223,255,.55);box-shadow:0 0 18px rgba(80,200,255,.15);}
 #stTvAdresa small{display:block;color:#9fdcff;font:600 11px/1.35 "Chakra Petch",Arial,sans-serif;letter-spacing:.12em;}
 #stTvAdresa b{display:block;margin:6px 0;color:#e9fbff;font:700 min(5.6vw,24px)/1.2 "Chakra Petch",Arial,sans-serif;letter-spacing:.02em;word-break:break-all;user-select:text;-webkit-user-select:text;}
+/* B312: servisni kod */
+#settingsPanel #stKod{display:block;width:100%;margin-top:8px;padding:12px 10px;border-radius:12px;border:1px solid rgba(255,195,64,.55);
+  background:#140c03;color:#ffe6a0;font:800 17px "Chakra Petch",Arial,sans-serif;letter-spacing:.22em;text-align:center;text-transform:uppercase;outline:none;}
+#settingsPanel #stKod:focus{border-color:#ffd479;box-shadow:0 0 14px rgba(255,190,60,.35);}
+#settingsPanel #stKodHlaska{min-height:1.2em;color:#ffb38a;opacity:1;}
 </style>
 </head>
 <body>
@@ -117,15 +122,28 @@ body{background:radial-gradient(120% 70% at 50% 40%,#1c1006 0%,#0a0603 45%,#0302
 
 <div id="settingsPanel" aria-hidden="true">
   <div class="list">
-    <div class="stlabel">OPTIONS</div>
+    <div class="stlabel" id="stTitul">OPTIONS</div>
     <button id="stStartTv" type="button">SPUSTIT WEB TV</button>
     <div id="stTvAdresa"><small>NA TV NEBO PC OTEVŘI V PROHLÍŽEČI</small><b></b><small>stejná Wi-Fi · zvuk pustíš kliknutím do obrazu</small></div>
     <button id="stIntro" type="button">PUSTIT INTRO</button>
     <button id="stStahni" type="button">STÁHNOUT HRY A BIOS</button>
-    <button id="stOdemkni" type="button">ODEMKNOUT DALŠÍ</button>
-    <button id="stZamkni" type="button">ZAMKNOUT VŠE</button>
     <button id="stAktual" type="button">AKTUALIZOVAT APLIKACI</button>
     <button id="stTvPokus" type="button">TV POKUS: OBOJÍ</button>
+
+    <!-- B312: SERVIS (jen pro Reneho) - pole pro servisni kod a servisni tlacitka, normalne skryte -->
+    <div id="stServisKod" style="display:none">
+      <div class="stlabel2">SERVIS</div>
+      <input id="stKod" type="password" autocomplete="off" autocapitalize="characters" spellcheck="false"
+             maxlength="32" placeholder="SERVISNÍ KÓD" aria-label="Servisní kód">
+      <button id="stKodOk" type="button">POTVRDIT KÓD</button>
+      <div class="sthint" id="stKodHlaska"></div>
+    </div>
+    <div id="stServis" style="display:none">
+      <div class="stlabel2">SERVIS</div>
+      <button id="stOdemkni" type="button">ODEMKNOUT DALŠÍ</button>
+      <button id="stZamkni" type="button">ZAMKNOUT VŠE</button>
+      <div class="sthint" id="stServisHint"></div>
+    </div>
 
     <div class="stlabel2">NASTAVENÍ</div>
     <div class="qrow">
@@ -157,7 +175,7 @@ body{background:radial-gradient(120% 70% at 50% 40%,#1c1006 0%,#0a0603 45%,#0302
 
 <script>
 (function(){'use strict';
-var BUILD='B311_MENU';
+var BUILD='B312_MENU';
 function $(id){return document.getElementById(id);}
 function log(t){try{console.log('[NAP MENU '+BUILD+'] '+t);}catch(e){}}
 function toast(t,ms){var el=$('toast');if(!el)return;el.textContent=t;el.classList.add('show');clearTimeout(window.__napToast);window.__napToast=setTimeout(function(){el.classList.remove('show');},ms||2200);}
@@ -306,7 +324,8 @@ function tvAdresaUkaz(adr){
 function tvAdresaObnov(){
   try{ tvAdresaUkaz((window.AHTVWEB&&typeof window.AHTVWEB.status==='function')?tvAdresaZ(window.AHTVWEB.status()):''); }catch(e){}
 }
-function openSettings(){if(!sp)return;sp.classList.add('open');sp.setAttribute('aria-hidden','false');sp.scrollTop=0;napQualityRefresh();tvAdresaObnov();}
+function openSettings(){if(!sp)return;sp.classList.add('open');sp.setAttribute('aria-hidden','false');sp.scrollTop=0;napQualityRefresh();tvAdresaObnov();
+  try{ $('stServisKod').style.display='none'; servisUkaz(); }catch(e){}}
 // zavreni: C++ menu se vrati (Java AHINTRO.menuZpet). Kdyz zrovna sviti zprava (adresa WEB TV),
 // menu pocka, az zhasne - jinak by ji hned zakrylo.
 function closeSettings(){
@@ -366,18 +385,61 @@ $('stStahni').addEventListener('click',function(e){
   closeSettings();
 },true);
 // BUILD2SA40: POSTUP HRACE - zadni vratka pro Reneho (odemyka postupne)
+// B312: SERVIS - tlacitka uz nejsou videt. 5x rychle klepnout na nadpis OPTIONS -> pole pro
+// servisni kod. Kod overuje Java (AHINTRO.servisKod; v appce je jen jeho otisk, kod sam ne),
+// spravny kod otevre servis na 10 minut. Bez otevreneho servisu Java tlacitka odmitne.
+function servisZbyva(){
+  try{ return (window.AHINTRO&&AHINTRO.servisZbyva)?(Number(AHINTRO.servisZbyva())||0):0; }catch(e){ return 0; }
+}
+function servisUkaz(){
+  var s=servisZbyva();
+  $('stServis').style.display=s>0?'block':'none';
+  if(s>0) $('stServisHint').textContent='Servis je otevřený ještě '+Math.ceil(s/60)+' min.';
+  return s>0;
+}
+function servisZadej(){
+  if(servisUkaz()) return;
+  $('stServisKod').style.display='block';
+  $('stKodHlaska').textContent='';
+  var k=$('stKod'); k.value='';
+  try{ k.focus(); }catch(e){}
+}
+var servisKlepnuti=[];
+$('stTitul').addEventListener('click',function(e){
+  e.preventDefault();e.stopPropagation();
+  var ted=Date.now();
+  servisKlepnuti=servisKlepnuti.filter(function(t){ return ted-t<3000; });
+  servisKlepnuti.push(ted);
+  if(servisKlepnuti.length>=5){ servisKlepnuti=[]; servisZadej(); }
+},true);
+function servisPotvrd(){
+  var k=$('stKod'), kod=k.value, r='';
+  k.value='';
+  try{ r=(window.AHINTRO&&AHINTRO.servisKod)?String(AHINTRO.servisKod(kod)):'NENI'; }catch(err){ r='CHYBA'; }
+  log('SERVIS '+(r==='OK'?'otevren':'odmitnut '+r.split(':')[0]));
+  if(r==='OK'){ $('stServisKod').style.display='none'; servisUkaz(); toast('SERVIS OTEVŘEN NA 10 MINUT',2200); }
+  else if(r.indexOf('POCKEJ:')===0) $('stKodHlaska').textContent='Moc pokusů – počkej '+r.slice(7)+' s.';
+  else $('stKodHlaska').textContent='Špatný kód.';
+}
+$('stKodOk').addEventListener('click',function(e){ e.preventDefault();e.stopPropagation(); servisPotvrd(); },true);
+$('stKod').addEventListener('keydown',function(e){ if(e.key==='Enter'){ e.preventDefault(); servisPotvrd(); } });
 $('stOdemkni').addEventListener('click',function(e){
   e.preventDefault();e.stopPropagation();
   var co='?';
-  try{ if(window.AHINTRO&&AHINTRO.odemkniDalsi) co=AHINTRO.odemkniDalsi(); }catch(err){}
+  try{ if(window.AHINTRO&&AHINTRO.odemkniDalsi) co=String(AHINTRO.odemkniDalsi()); }catch(err){}
   log('SETTINGS_ODEMKNUTO '+co);
+  if(co==='ZAMCENO'){ servisUkaz(); toast('SERVIS VYPRŠEL – zadej kód znovu',2600); return; }
+  toast(co==='SEGA'?'ODEMČENO: SEGA':co==='PS1'?'ODEMČENO: PS1':'UŽ JE VŠE ODEMČENÉ',2200);
   postav();
   closeSettings();
 },true);
 $('stZamkni').addEventListener('click',function(e){
   e.preventDefault();e.stopPropagation();
-  try{ if(window.AHINTRO&&AHINTRO.zamkniVse) AHINTRO.zamkniVse(); }catch(err){}
-  log('SETTINGS_ZAMCENO_VSE');
+  var r='?';
+  try{ if(window.AHINTRO&&AHINTRO.zamkniVse) r=String(AHINTRO.zamkniVse()); }catch(err){}
+  log('SETTINGS_ZAMCENO_VSE '+r);
+  if(r==='ZAMCENO'){ servisUkaz(); toast('SERVIS VYPRŠEL – zadej kód znovu',2600); return; }
+  toast('ZAMČENO VŠE – pohled nového hráče',2200);
   postav();
   closeSettings();
 },true);

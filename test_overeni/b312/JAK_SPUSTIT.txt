@@ -1,0 +1,58 @@
+B312 - MP3 PREHRAVAC: RECORD (mixtape) a FAVORITES, SERVIS pod kodem, ZAMKY SEGA / PS1 i pro hry z webu
+=======================================================================================================
+
+Kod v appce:
+  assets/player/index.html        RECORD = mixtape (MediaRecorder za EQ / BASS / TREBLE / BALANCE, pred
+                                  VOLUME; nahrava jen kdyz hraje; konec RECORD / STOP / konec playlistu /
+                                  MENU / ZPET / 90 min), FAVORITES (hvezdicky, panel, localStorage, HRAT
+                                  VSECHNY OBLIBENE, presunuty soubor podle jmena), nacitani skladeb z Javy po
+                                  jedne (kazda odpoved patri sve skladbe) a uvolnovani pameti, VOLUME jen
+                                  jednou (s grafem audio.volume = 1), window.napZpet (tlacitko ZPET)
+  assets/spolecne/nap_nahravka.js spolecne pro prehravac a DZUBOX: format (M4A s AAC / M4A s Opusem / WebM),
+                                  delka do hlavicky WebM (EBML Duration), ulozeni po kouscich do Javy
+  assets/dj/index.html            RECORD pres spolecny modul (M4A, WebM s delkou), odchod pri nahravani ulozi
+  assets/index.html               OPTIONS: ODEMKNOUT DALSI / ZAMKNOUT VSE schovane, pole pro servisni kod
+  assets/napoveda/index.html      navod: MP3 (RECORD, FAVORITES), DZUBOX, OPTIONS, web, odemykani, soubory
+  java/.../NapServis.java         servisni kod: PBKDF2-HMAC-SHA256 (60 000x, sul), v repozitari JEN otisk,
+                                  3 spatne pokusy = minuta pauza, servis 10 minut
+  java/.../NapPravidla.java       ciste rozhodovani: ktera stranka je SEGA / PS1, zamceno, duvod (slova jako
+                                  menu), hudba v seznamu (i M4A / WebM ...), stranky se ZPET
+  java/.../MainActivity.java      konzoleZamcena + brany ve vsech cestach ke hre Segy / PS1 (stazeni z webu,
+                                  ZIP s ROM, AHPS1.ps1DownloadAndBoot, ps1PickGame), zamcena stranka emulatoru
+                                  (shouldInterceptRequest + onPageStarted -> menu), AHINTRO.servisKod /
+                                  servisZbyva, odemkniDalsi / zamkniVse jen s otevrenym servisem, ZPET pro
+                                  MP3 / DZUBOX (napZpet), seznam hudby i M4A / OGG / FLAC / WebM
+  smazano                         nepouzite obrazky design/ (6), img/logo.png, img/pecet.png,
+                                  nap_ui/nap_intro_command_center.png a mrtva trida nap/NapExactImageScreens.java
+  C++                             beze zmeny (testy C++ z B311 a starsich plati dal)
+
+Spoustet z adresare test_overeni/b312 (nebo odkudkoli: bash test_overeni/b312/vse.sh).
+Potreba: JAVA_HOME = JDK (javac, java), Python 3, Chromium + Playwright pro Python, ffmpeg / ffprobe
+(s libmp3lame - pisnicky do testu), android.jar API 34 ($ANDROID_JAR, napr. z github.com/Sable/
+android-platforms android-34/android.jar - jen jako classpath pro javac).
+Vse najednou: PRAC=... ANDROID_JAR=... [NAP_SERVIS_KOD=...] bash vse.sh      (vystupy VYSTUP_* sem)
+NAP_SERVIS_KOD = skutecny servisni kod (zna ho jen Rene; v repozitari neni) - s nim JVM test overi i otisk
+v appce a bod 10 overi, ze kod v repozitari neni. Kod se nikam nevypisuje.
+
+0) C++ beze zmeny: git diff od B311 (21c3aad) v app/src/main/cpp            -> VYSTUP_cpp_beze_zmeny.txt
+1) JVM (bez Androidu): python3 pbkdf2_vektory.py VEKTORY.txt (hashlib), pak
+   javac --release 17 -d OUT NapServis.java NapPravidla.java TestB312Java.java
+   java -cp OUT eu.atarihelp.emu10.TestB312Java VEKTORY.txt                 -> VYSTUP_test_b312_java.txt
+2) python3 kontrola_zamku.py (zdrojak MainActivity: brany zamku, servis)    -> VYSTUP_kontrola_zamku.txt
+3) MP3 prehravac v Chromiu: python3 test_b312_prehravac.py PRAC              -> VYSTUP_test_b312_prehravac.txt
+   (Java napodobena: AHPICK.listLocalAudio / playLocalAudio jako MainActivity.injectAudio, AHSAVE;
+   nahravky rozebira ffprobe / ffmpeg: format, delka, hlasitost, kanaly)
+4) DZUBOX v Chromiu: python3 test_b312_dj.py PRAC                            -> VYSTUP_test_b312_dj.txt
+   (nahrazuje test_b311_dj_nahravka.py - ten cekal WebM, B312 nahrava M4A, kdyz ho WebView umi)
+5) OPTIONS v Chromiu: python3 test_b312_servis.py PRAC                       -> VYSTUP_test_b312_servis.txt
+   (zkusebni kod TESTKOD234 v napodobene Jave - NE skutecny kod; bod 9 = stranka Atari 130XE
+   s kroky testu B312 pro Reneho, ktere neprozrazuji, jak se servis otevira)
+6) navod v Chromiu: python3 test_b312_navod.py PRAC (B311 + B312)           -> VYSTUP_test_b312_navod.txt
+   nazvy tlacitek v navodu proti appce: python3 kontrola_navodu.py          -> VYSTUP_kontrola_navodu.txt
+7) mosty JS -> Java: python3 kontrola_mostu.py; odkazy: python3 kontrola_odkazu.py
+                                                -> VYSTUP_kontrola_mostu.txt, VYSTUP_kontrola_odkazu.txt
+8) Java proti skutecnemu Androidu: javac --release 17 -cp android.jar ...   -> VYSTUP_javac_android.txt
+9) regrese: ../b311/test_b311_menu.py se strankou z B312                    -> VYSTUP_b311_menu_se_strankou_b312.txt
+   (jedina CHYBA je zamerna: A11 ceka 10 kroku testu B311 na strance Atari 130XE - v B312 jsou tam
+   nove kroky B312, ty kontroluje test_b312_servis.py bod 9)
+10) servisni kod neni v repozitari (git grep, soubory, git log -S)          -> VYSTUP_kod_neni_v_repu.txt

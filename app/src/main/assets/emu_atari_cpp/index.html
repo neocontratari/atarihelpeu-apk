@@ -113,6 +113,16 @@ Tenhle test pousti jadro na desetitisicich nahodnych stavu a porovnava vysledek
 s cislem, ktere vyslo na pocitaci. Delam to proto, ze pocitac je x86 a telefon
 ARM - a na ARM se nektere veci chovaji jinak. Kdyz se to rozejde, ma se to
 poznat ted, a ne az podle spatneho obrazu.<br><br>
+B312: MP3 PREHRAVAC - RECORD nahrava vlastni MIXTAPE (to, co hraje, i s EQ / BASS / TREBLE /
+BALANCE; pauza a nacitani dalsi skladby se nenahravaji; konec RECORD, STOP, konec playlistu,
+MENU / ZPET, nejdel 90 minut) do Download/AtariHelp/Mixtape (M4A, na starsim WebView WebM
+s delkou). FAVORITES: hvezdicka u skladby, seznam oblibenych zustane i po vypnuti appky,
+HRAT VSECHNY OBLIBENE. Knoflik VOLUME se uz neuplatnuje dvakrat (50 % hralo jako 25 %).
+Seznam hudby ukaze i M4A / OGG / FLAC / WebM. DZUBOX RECORD: M4A, kdyz to WebView umi; odchod
+z pultu behem nahravani mix nejdriv ulozi. ZAMKY SEGA / PS1 PLATI VSUDE - i hra z webu
+atarihelp.eu (odkaz, stazeni, Google Drive) se u zamcene konzole nestahne ani nespusti a appka
+napise proc. ODEMKNOUT DALSI a ZAMKNOUT VSE jsou v OPTIONS schovane pod servisnim kodem.
+Smazane nepouzite obrazky (13,8 MB).
 B311: HLAVNI MENU = KARUSEL VELKYCH KARET V C++ (knihovna napmenu, OpenGL ES na vlastnim
 vlakne): ATARI 130XE, SEGA MEGA DRIVE, PS1, MP3 PREHRAVAC, DZUBOX, ATARIHELP.EU a na konci HELP
 (uplny navod napoveda/index.html). Karty jsou v assets/menu/karty.txt - dalsi masina = obrazek
@@ -224,37 +234,31 @@ try{ if(window.AHATARICPP && !AHATARICPP.jeNactene()){
 } }catch(e){}
 function set(id,t,cls){var e=$(id); if(!e)return; e.textContent=t; if(cls)e.className='v '+cls;}
 var KROKY=[
- // B311: hlavni menu = karusel velkych karet v C++ (napmenu), HELP = uplny navod
- {n:1,co:'MENU: tahni kartami doleva / doprava (pomalu i svihem), klepni na kartu vedle a na tecky',
-  ok:'Karty jedou plynule primo za prstem, svih preskoci vic karet, klepnuta karta / tecka dojede doprostred. Zadne trhani ani zpozdeni.',
-  ne:'Trha se, zasekne nebo reaguje pozde - napis na kterem telefonu a posli LOG (radky B311 MENU snimek ... ms, uroven).'},
- {n:2,co:'MENU: otevri ATARI 130XE, MP3 PREHRAVAC, DZUBOX, ATARIHELP.EU a HELP (klepnutim doprostred i tlacitkem pod kartou)',
-  ok:'Karta se rozzari a otevre se spravna sekce. Tlacitko MENU / BACK nebo ZPET vrati do menu (karty se rychle prolnou, ne cely nastup).',
-  ne:'Otevre se neco jineho, cerno, nebo menu zmizi - napis kterou kartu a posli LOG.'},
- {n:3,co:'ZAMKY: OPTIONS - ZAMKNOUT VSE, klepni na SEGU. Pak ATARI 130XE, napis 5 radku programu (10 A=1 ... 50 A=5) a RUN, zpet do menu, klepni na SEGU.',
-  ok:'Zamcena SEGA se zatrese a pod kartami je: ZAMCENO - Napis v Atari jeste 50 radku ... po 5 radcich uz jen 45. Na konec OPTIONS - ODEMKNOUT DALSI (2x) = SEGA i PS1 zase otevrene.',
-  ne:'Porad 50, karta se nezatrese, nebo se zamcena karta spusti - napis co a posli LOG.'},
- {n:4,co:'OPTIONS: kolecko vpravo nahore - SPUSTIT WEB TV - pak ZAVRIT',
-  ok:'Pod tlacitkem zustane adresa (napr. http://192.168.1.23:8765/), tlacitko pise WEB TV BEZI. ZAVRIT vrati menu.',
-  ne:'Adresa se neukaze nebo hned zmizi, menu se nevrati - napis co.'},
- {n:5,co:'TV / PC: menu na TV, na PC sipky (nebo A / D) a Enter; pak Atari na TV a Ctrl+V jako v B310',
-  ok:'Na TV je menu s kartami (obraz z C++), sipky z PC listuji, Enter otevre kartu. Atari na TV jako v B310.',
-  ne:'Na TV cerno / stary obraz nebo klavesy nereaguji - napis co a posli LOG.'},
- {n:6,co:'HELP: karta HELP - uplny navod. Zkus obsah, hledani (napis kazeta) a ZPET DO MENU; z navodu i tlacitkem ZPET na telefonu',
-  ok:'Navod se otevre (zlate-cerny, cesky), obsah skace na kapitoly, hledani najde, ZPET DO MENU i ZPET na telefonu vrati rovnou do menu.',
-  ne:'Neco nesedi s appkou (jine tlacitko, spatny popis) - napis co, opravim.'},
- {n:7,co:'ZPET na telefonu primo v hlavnim menu',
-  ok:'Appka jde do pozadi (jako tlacitko plochy). Po navratu je menu na stejne karte. (Drive skocil zpet do posledniho emulatoru.)',
-  ne:'Otevre se emulator nebo appka spadne - napis co.'},
- {n:8,co:'DZUBOX: RECORD, zahraj neco (pady KICK / BASS, deck), RECORD znovu',
-  ok:'Tlacitko pise SAVING ... pak SAVED, nahore MIX SAVED a cesta. Soubor v Download/AtariHelp/DJ_mixy jde prehrat.',
-  ne:'SAVE FAILED nebo soubor neni - posli LOG (radky B311 SOUBOR).'},
- {n:9,co:'TEST JADRA (tlacitko SPUSTIT TEST JADRA nize) a hry jako minule: Ghostbusters, Popeye, Donkey Kong, W3D',
-  ok:'Procesor i Pamet = SEDI (29C55806 / D3949DC5); hry stejne jako v B310.',
-  ne:'NESEDI, nebo hra hur nez v B310 - napis ktera.'},
- {n:10,co:'Sega, PS1 (Doom), MP3 prehravac a uvodni demo',
-  ok:'Bezi UPLNE STEJNE jako v B310 (tech se B311 netyka).',
-  ne:'Jakakoli zmena proti B310 - napis co.'}
+ // B312: MP3 RECORD (mixtape) a FAVORITES, servis pod kodem, zamky i pro hry z webu
+ {n:1,co:'MP3 PREHRAVAC: LIBRARY - klepni na skladbu, pak STOP a RECORD. Po chvili PAUSE, za chvili PLAY, pak STOP',
+  ok:'Prehravani se samo rozjede, RECORD jemne cervene sviti, dole bezi ● REC 00:12 • skladba (pri PAUSE ❚❚ REC a cas stoji). Po STOP: UKLADAM MIXTAPE ... a MIXTAPE ULOZENA s cestou. V LIBRARY je NP_VISION_mixtape_....m4a, jde prehrat a pauza v ni neni.',
+  ne:'MIXTAPE SE NEULOZILA, soubor neni nebo nejde prehrat - posli LOG (radky B312 RECORD a B311 SOUBOR).'},
+ {n:2,co:'MP3: hvezdicka ☆ u 2-3 skladeb v LIBRARY, pak FAVORITES - HRAT VSECHNY OBLIBENE. Zavri appku uplne a otevri znovu - FAVORITES',
+  ok:'Hvezdicky se zmeni na ★, FAVORITES ukaze oblibene i po novem spusteni appky, skladby hraji jedna po druhe. ✕ (2x) skladbu z oblibenych odebere.',
+  ne:'Oblibene zmizi, nehraji nebo hraje jina skladba - napis co a posli LOG.'},
+ {n:3,co:'MP3 a DZUBOX: behem RECORD zmackni ZPET na telefonu (jindy MENU / BACK)',
+  ok:'Nahravka se nejdriv ulozi (MIXTAPE ULOZENA / SAVED), teprve pak je menu. Otevreny panel (playlist, FAVORITES) ZPET jen zavre.',
+  ne:'Appka odejde bez ulozeni nebo spadne - napis co.'},
+ {n:4,co:'OPTIONS: ODEMKNOUT DALSI a ZAMKNOUT VSE nejsou videt. Otevri SERVIS (jak, vis z me zpravy), zkus spatny kod a pak svuj',
+  ok:'Bez kodu tlacitka nikde nejsou. Spatny kod: Spatny kod. (po 3 spatnych minuta pauza). Spravny: SERVIS OTEVREN NA 10 MINUT a pod nadpisem SERVIS jsou ODEMKNOUT DALSI a ZAMKNOUT VSE.',
+  ne:'Tlacitka jsou videt bez kodu, nebo spravny kod nejde - napis co.'},
+ {n:5,co:'ZAMKY Z WEBU: SERVIS - ZAMKNOUT VSE. Pak ATARIHELP.EU a klepni na hru pro Segu a na hru pro PS1',
+  ok:'Hra se nestahne ani nespusti, dole se ukaze SEGA JE ZAMCENA / PS1 JE ZAMCENA s tim, kolik jeste chybi. Hra pro Atari jde normalne. Pak SERVIS - ODEMKNOUT DALSI (2x) a ty same hry z webu se spusti.',
+  ne:'Hra se u zamcene konzole spusti, nebo po odemceni nejde - napis kterou a posli LOG (radky B312 ZAMEK).'},
+ {n:6,co:'DZUBOX: RECORD, zahraj neco (pady, deck), RECORD znovu; soubor zkus pustit i v jinem prehravaci',
+  ok:'SAVED a cesta, v Download/AtariHelp/DJ_mixy je NP_VISION_mix_....m4a (na starsim telefonu .webm), jiny prehravac ukaze delku a jde posouvat.',
+  ne:'SAVE FAILED nebo soubor nejde prehrat - posli LOG (radky B311 SOUBOR).'},
+ {n:7,co:'MP3: nahraj neco s EQ / BASS a stazenym VOLUME, pak nahravku pust',
+  ok:'Nahravka zni s ekvalizerem a basy, ale neni tissi kvuli VOLUME. Samotne VOLUME na pulce hraje o pulku tiseji (drive skoro na ctvrtinu).',
+  ne:'Nahravka je potichu nebo bez ekvalizeru - napis co.'},
+ {n:8,co:'MENU, Atari 130XE (TEST JADRA nize), Sega, PS1, HELP, WEB TV',
+  ok:'Bezi UPLNE STEJNE jako v B311 (Procesor i Pamet = SEDI 29C55806 / D3949DC5).',
+  ne:'Jakakoli zmena proti B311 - napis co.'}
 ];
 var vysledky={};
 function vykresliKroky(){

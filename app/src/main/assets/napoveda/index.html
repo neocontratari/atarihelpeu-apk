@@ -471,7 +471,7 @@ body.hleda .rychle,body.hleda #obsahStitek,body.hleda #obsah{display:none;}
     <img class="kap-obr" src="../menu/karta_mp3.jpg" alt="" loading="lazy">
     <div><div class="kap-cislo">KAPITOLA 05</div><h2>MP3 PŘEHRÁVAČ</h2><p class="kap-pod">RETRO CASSETTE PLAYER</p></div>
   </header>
-  <p class="uvod">Retro kazeťák pro hudbu z telefonu – soubory MP3 a WAV. Ekvalizér, basy, výšky a playlisty.</p>
+  <p class="uvod">Retro kazeťák pro hudbu z telefonu – MP3, WAV, M4A, OGG a další. Ekvalizér, basy, výšky, playlisty, oblíbené skladby a nahrávání vlastní mixtape.</p>
 
   <div class="blok">
     <h3>Přehrávání</h3>
@@ -479,18 +479,44 @@ body.hleda .rychle,body.hleda #obsahStitek,body.hleda #obsah{display:none;}
       <dt>PLAY</dt><dd>Pustí skladbu. Když v seznamu nic není, otevře se playlist a výběr hudby.</dd>
       <dt>PAUSE / STOP</dt><dd>Pozastaví / zastaví.</dd>
       <dt>REWIND / FAST FWD</dt><dd>O 10 sekund zpět / dopředu.</dd>
+      <dt>RECORD</dt><dd>Nahrává vlastní mixtape – viz níže.</dd>
     </dl>
     <p>Po skončení skladby jede další.</p>
   </div>
 
   <div class="blok">
     <h3>Playlist</h3>
-    <p><span class="nw"><span class="t">MY PLAYLISTS</span>,</span> <span class="nw"><span class="t">PLAYLISTS</span>,</span> <span class="t">LIBRARY</span> nebo pruh se skladbou otevřou panel <span class="nw"><span class="t">MOBIL - LOKALNI MP3 / WAV</span>:</span></p>
+    <p><span class="nw"><span class="t">MY PLAYLISTS</span>,</span> <span class="nw"><span class="t">PLAYLISTS</span>,</span> <span class="t">LIBRARY</span> nebo pruh se skladbou otevřou panel se seznamem hudby v telefonu <span class="nw"><span class="t">MOBIL - LOKALNI HUDBA (MP3, WAV, M4A, OGG...)</span>:</span></p>
     <ul>
-      <li><span class="t">OBNOVIT SEZNAM V MOBILU</span> – najde hudbu v telefonu (Stažené, Hudba, Dokumenty…).</li>
+      <li>Klepnutí na skladbu ji pustí (a přidá do playlistu). Hvězdička <b>☆</b> vedle ní ji přidá do oblíbených.</li>
+      <li><span class="t">OBNOVIT SEZNAM V MOBILU</span> – najde hudbu v telefonu (Stažené, Hudba, Dokumenty…), i nahrávky z <span class="t">RECORD</span> a z DŽUBOXU.</li>
       <li><span class="t">VYBRAT SYSTEMOVE</span> – soubory vybereš sám.</li>
-      <li><span class="nw"><span class="t">VYMAZAT PLAYLIST</span>,</span> <span class="nw"><span class="t">ZAVRIT</span>.</span></li>
+      <li><span class="nw"><span class="t">VYMAZAT PLAYLIST</span>,</span> <span class="nw"><span class="t">ZAVRIT</span>.</span> Otevřený panel zavře i ZPĚT na telefonu.</li>
     </ul>
+  </div>
+
+  <div class="blok">
+    <h3>FAVORITES – oblíbené skladby</h3>
+    <ul>
+      <li>Hvězdička <b>☆</b> u skladby (v playlistu i v seznamu hudby v telefonu) ji přidá do oblíbených – změní se na <b>★</b>. Další klepnutí ji zase odebere.</li>
+      <li><span class="t">FAVORITES</span> dole otevře oblíbené: klepnutí na skladbu ji pustí, <b>✕</b> ji odebere (nejdřív se zeptá <span class="nw"><span class="t">ODEBRAT?</span>,</span> klepni znovu).</li>
+      <li><span class="t">★ PRIDAT HRAJICI SKLADBU</span> / <span class="t">☆ ODEBRAT HRAJICI SKLADBU</span> – právě hrající skladba do oblíbených / pryč.</li>
+      <li><span class="t">▶ HRAT VSECHNY OBLIBENE</span> – playlist z oblíbených, hrají jedna po druhé.</li>
+      <li>Oblíbené si appka pamatuje i po vypnutí. Když soubor v telefonu přesuneš, najde ho podle jména; když už v telefonu není, napíše <span class="nw"><span class="t">SKLADBA NENI DOSTUPNA</span>.</span></li>
+      <li>Jde to se skladbami z telefonu – ne se souborem vybraným v prohlížeči na počítači.</li>
+    </ul>
+  </div>
+
+  <div class="blok">
+    <h3>RECORD – vlastní mixtape</h3>
+    <ul>
+      <li><span class="t">RECORD</span> nahrává, co přehrávač hraje – i s nastavením <span class="nw"><span class="t">EQ</span>,</span> <span class="nw"><span class="t">BASS</span>,</span> <span class="t">TREBLE</span> a <span class="nw"><span class="t">BALANCE</span>.</span> Knoflík <span class="t">VOLUME</span> nahrávku neztlumí.</li>
+      <li>Když nic nehraje, přehrávání se rozjede samo – jako na kazeťáku. Tlačítko jemně červeně svítí a dole běží čas <span class="nw"><span class="t">● REC</span>.</span></li>
+      <li><span class="t">PAUSE</span> nahrávání pozastaví <span class="nw">(<span class="t">❚❚ REC</span>),</span> <span class="t">PLAY</span> pokračuje. Pauza ani načítání další skladby se nenahrávají – skladby jdou v nahrávce rovnou za sebou.</li>
+      <li>Konec a uložení: <span class="t">RECORD</span> znovu, <span class="nw"><span class="t">STOP</span>,</span> konec playlistu, <span class="t">MENU</span> nebo ZPĚT na telefonu (appka nejdřív uloží, pak teprve odejde). Nejdéle 90 minut – jako kazeta C90.</li>
+      <li>Nahrávka se uloží do <span class="cesta">Download/AtariHelp/Mixtape</span> jako <span class="cesta">NP_VISION_mixtape_&lt;datum&gt;_&lt;čas&gt;.m4a</span> (na starším telefonu <span class="cesta">.webm</span>) a dole se ukáže <span class="nw"><span class="t">MIXTAPE ULOZENA</span>.</span> Hned je i v seznamu hudby v telefonu.</li>
+    </ul>
+    <p class="tip"><b>MIXTAPE Z OBLÍBENÝCH</b> <span class="t">FAVORITES</span> → <span class="nw"><span class="t">▶ HRAT VSECHNY OBLIBENE</span>,</span> pak <span class="t">STOP</span> a <span class="nw"><span class="t">RECORD</span>.</span> Nahraje se celý playlist a na konci se sám uloží.</p>
   </div>
 
   <div class="blok">
@@ -548,7 +574,7 @@ body.hleda .rychle,body.hleda #obsahStitek,body.hleda #obsah{display:none;}
       <li><span class="t">CROSSFADE</span> – plynule z decku A na B. <span class="t">◄ HARD A</span> / <span class="t">HARD B ►</span> – okamžitě jen jeden deck. <span class="t">⇄ SYNC BPM</span> srovná tempa.</li>
       <li><span class="nw"><span class="t">MASTER</span>:</span> <span class="nw"><span class="t">BAL</span>,</span> <span class="nw"><span class="t">BASS</span>,</span> <span class="nw"><span class="t">TREB</span>;</span> <span class="t">MASTER LIMITER ON</span> chrání před přebuzením.</li>
       <li>Sampler: <span class="t">KICK</span> <span class="t">SNARE</span> <span class="t">HAT</span> <span class="t">CLAP</span> <span class="t">BASS</span> <span class="t">SYNTH</span> <span class="t">VOCAL</span> <span class="nw"><span class="t">FX</span>.</span></li>
-      <li><span class="t">RECORD</span> nahrává celý mix, druhým klepnutím se nahrávka uloží do <span class="cesta">Download/AtariHelp/DJ_mixy</span>.</li>
+      <li><span class="t">RECORD</span> nahrává celý mix, druhým klepnutím se nahrávka uloží do <span class="cesta">Download/AtariHelp/DJ_mixy</span> (M4A, na starším telefonu WebM). Když z pultu odejdeš během nahrávání (<span class="t">MENU / &#9211;</span> nebo ZPĚT na telefonu), mix se nejdřív uloží.</li>
       <li><span class="t">EFFECTS</span> nahoře schová / ukáže řady EQ, <span class="t">SETTINGS</span> ukáže asistenta, <span class="t">MENU / &#9211;</span> = zpět do appky.</li>
     </ul>
   </div>
@@ -566,6 +592,7 @@ body.hleda .rychle,body.hleda #obsahStitek,body.hleda #obsah{display:none;}
     <h3>Hry z webu</h3>
     <ul>
       <li>Na hru stačí klepnout – appka ji stáhne a spustí ve správném emulátoru: hra pro Atari (XEX, ATR, ZIP) v <a href="#atari" data-skok="atari">Atari 130XE</a>, hra pro Segu v <a href="#sega" data-skok="sega">Sega Mega Drive</a>, hra pro PlayStation (i odkaz na Google Drive) v <a href="#ps1" data-skok="ps1">PS1</a>.</li>
+      <li>Hra pro Segu nebo PS1 se spustí, jen když je ta konzole už odemčená – zámky platí i pro hry z webu. Jinak appka nic nestahuje a napíše, kolik ještě chybí (<span class="t">SEGA JE ZAMČENÁ</span> / <span class="nw"><span class="t">PS1 JE ZAMČENÁ</span>)</span> – viz <a href="#odemykani" data-skok="odemykani">Odemykání</a>.</li>
       <li>Zpátky do menu tlačítkem ZPĚT na telefonu.</li>
     </ul>
   </div>
@@ -585,8 +612,6 @@ body.hleda .rychle,body.hleda #obsahStitek,body.hleda #obsah{display:none;}
       <dt>SPUSTIT WEB TV</dt><dd>Obraz a zvuk appky do prohlížeče na televizi nebo počítači. Hned pod tlačítkem se ukáže adresa pro prohlížeč a tlačítko se přepne na <span class="t">WEB TV BĚŽÍ</span>. Adresa tam zůstane, dokud OPTIONS nezavřeš – viz <a href="#tv" data-skok="tv">WEB TV a PC</a>.</dd>
       <dt>PUSTIT INTRO</dt><dd>Úvodní film znovu.</dd>
       <dt>STÁHNOUT HRY A BIOS</dt><dd>Z atarihelp.eu stáhne Sonic the Hedgehog (Sega, asi 0,5 MB) a BIOS pro PlayStation (asi 1 MB). Appka se nejdřív zeptá. Soubory zůstanou v telefonu a fungují i bez internetu.</dd>
-      <dt>ODEMKNOUT DALŠÍ</dt><dd>Hned odemkne další stupeň – nejdřív SEGU, pak PS1.</dd>
-      <dt>ZAMKNOUT VŠE</dt><dd>Vrátí postup na začátek: SEGA i PS1 zamčené, řádky i minuty od nuly.</dd>
       <dt>AKTUALIZOVAT APLIKACI</dt><dd>Zjistí na atarihelp.eu novou verzi a nabídne <span class="t">AKTUALIZOVAT</span> / <span class="nw"><span class="t">TED NE</span>.</span> Stáhne se rovnou do instalace – v telefonu nezůstane žádný soubor. Poprvé se telefon zeptá, jestli instalaci z appky povolíš.</dd>
       <dt>TV POKUS</dt><dd><span class="t">OBOJÍ</span> / <span class="t">JEN ZVUK</span> / <span class="t">JEN OBRAZ</span> – zkouška přenosu na TV, když se něco seká. Normálně nech <span class="nw"><span class="t">OBOJÍ</span>.</span></dd>
     </dl>
@@ -664,6 +689,10 @@ body.hleda .rychle,body.hleda #obsahStitek,body.hleda #obsah{display:none;}
       <li>Minuty se sčítají, nemusíš hrát vkuse.</li>
     </ul>
   </div>
+  <div class="blok">
+    <h3>Zámky platí všude</h3>
+    <p>Zamčenou konzoli neotevře ani hra z webu atarihelp.eu (odkaz, stažený soubor, odkaz na Google Drive) – appka ji nestáhne, nespustí a napíše proč, třeba <span class="nw"><span class="t">SEGA JE ZAMČENÁ</span>:</span> „Napiš v Atari ještě 37 řádků programu…“ Stejně tak se neotevře stránka emulátoru jinou cestou – appka se vrátí do hlavního menu.</p>
+  </div>
   <p class="tip"><b>KOLIK JEŠTĚ?</b> Klepni v menu na zamčenou kartu – pod kartami se ukáže, kolik řádků nebo minut ještě chybí.</p>
   <nav class="kap-paticka"><a class="tl tl2" href="#obsah" data-skok="obsah">&#9650; OBSAH</a><a class="tl" href="../index.html">&#9664; ZPĚT DO MENU</a></nav>
 </section>
@@ -684,6 +713,7 @@ body.hleda .rychle,body.hleda #obsahStitek,body.hleda #obsah{display:none;}
       <dt>PS1_pametova_karta</dt><dd>Paměťová karta PS1 – uložené hry. Jako skutečná karta: přežije i odinstalování appky.</dd>
       <dt>emu/sega, emu/ps1</dt><dd>Sonic the Hedgehog a BIOS pro PlayStation (z OPTIONS → STÁHNOUT HRY A BIOS).</dd>
       <dt>DJ_mixy</dt><dd>Nahrávky mixů z DŽUBOXU (RECORD).</dd>
+      <dt>Mixtape</dt><dd>Nahrávky z MP3 přehrávače (RECORD) – <span class="cesta">NP_VISION_mixtape_&lt;datum&gt;_&lt;čas&gt;.m4a</span>.</dd>
       <dt>PS1_LOG.txt</dt><dd>Log PS1 (a PS1_LOG_predchozi.txt z minula).</dd>
     </dl>
   </div>
@@ -724,6 +754,8 @@ body.hleda .rychle,body.hleda #obsahStitek,body.hleda #obsah{display:none;}
     <div><div class="kap-cislo">KAPITOLA 13</div><h2>ČASTÉ OTÁZKY</h2><p class="kap-pod">RYCHLÉ ODPOVĚDI</p></div>
   </header>
   <details><summary>Karta SEGA nebo PS1 je zamčená. Co s tím?</summary><div><p>Sega se otevře po 50 napsaných řádcích programu v Atari, PS1 po 30 minutách hraní na Seze. Kolik ještě chybí, uvidíš po klepnutí na zamčenou kartu. Podrobně: <a href="#odemykani" data-skok="odemykani">Odemykání</a>.</p></div></details>
+  <details><summary>Hra z webu se nespustila, appka píše, že je Sega / PS1 zamčená.</summary><div><p>Zámky platí i pro hry z atarihelp.eu. Až konzoli odemkneš, stejná hra z webu se spustí. Podrobně: <a href="#odemykani" data-skok="odemykani">Odemykání</a>.</p></div></details>
+  <details><summary>Jak si nahraju vlastní mixtape?</summary><div><p>V MP3 přehrávači pusť skladby (třeba <span class="t">▶ HRAT VSECHNY OBLIBENE</span>) a zmáčkni <span class="nw"><span class="t">RECORD</span>.</span> Nahrávka se uloží do <span class="cesta">Download/AtariHelp/Mixtape</span>. Podrobně: <a href="#mp3" data-skok="mp3">MP3 přehrávač</a>.</p></div></details>
   <details><summary>Na televizi není zvuk.</summary><div><p>Klikni kamkoli do obrazu v prohlížeči (nebo zmáčkni klávesu). Prohlížeče pouští zvuk až po kliknutí – a po obnovení stránky znovu.</p></div></details>
   <details><summary>Adresa WEB TV se v prohlížeči neotevře.</summary><div><p>Telefon i TV / PC musí být ve stejné <span class="nw">Wi-Fi</span>. Adresu napiš přesně, i s číslem za dvojtečkou (třeba <span class="cesta">:8765</span>). Některé sítě (hlavně <span class="nw">Wi-Fi</span> pro hosty) zařízení mezi sebou nepustí – zkus domácí síť.</p></div></details>
   <details><summary>Obraz na TV se trhá nebo zvuk praská.</summary><div><p>V <a href="#options" data-skok="options">OPTIONS</a> přepni <span class="t">RUČNĚ</span> a zkus nižší <span class="t">KVALITA OBRAZU (WEB TV)</span> a pro zvuk <span class="t">LOW</span> (nejjistější). Pomůže i telefon blíž k routeru.</p></div></details>

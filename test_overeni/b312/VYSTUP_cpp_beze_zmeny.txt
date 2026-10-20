@@ -1,0 +1,1 @@
+   souboru v app/src/main/cpp zmenenych od B311 (21c3aad): 0

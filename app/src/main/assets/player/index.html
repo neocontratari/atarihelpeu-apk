@@ -142,6 +142,29 @@ body{display:flex;justify-content:center;align-items:flex-start;}
 .box p,.box li{font:800 14px/1.45 "Courier New",monospace;color:#dfe6ef;margin:8px 0;}
 .box b{color:#8fd8ff;}
 
+/* B312: radek seznamu = skladba + hvezdicka (oblibene) */
+.radek{display:flex;gap:8px;align-items:stretch;}
+#playlistItems .radek button.hlavni,#libraryItems .radek button.hlavni,#favItems .radek button.hlavni{
+  flex:1 1 auto;min-width:0;width:auto;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+#favItems .radek button.hlavni{padding:11px;border:1px solid rgba(242,196,100,.38);border-radius:10px;
+  background:#121821;color:#f2c464;text-align:left;font:900 13px "Courier New",monospace;}
+#favItems .radek button.hlavni.active{border-color:#8fd8ff;color:#8fd8ff;}
+#playlistItems .radek button.hvezda,#libraryItems .radek button.hvezda,#favItems .radek button.pryc{
+  flex:0 0 52px;width:52px;padding:0;border:1px solid rgba(242,196,100,.38);border-radius:10px;
+  background:#121821;color:#f2c464;font:900 22px/1 "Courier New",monospace;text-align:center;}
+#playlistItems .radek button.hvezda.ano,#libraryItems .radek button.hvezda.ano{
+  color:#ffd879;border-color:#ffd879;text-shadow:0 0 10px rgba(255,216,121,.55);}
+#favItems .radek button.pryc{font-size:15px;color:#dfe6ef;}
+#favItems .radek button.pryc.potvrd{flex-basis:96px;width:96px;background:#7a1f1f;color:#fff;border-color:#ff8a8a;font-size:12px;}
+#favoritesPanel{display:none;position:fixed;inset:0;z-index:100;background:rgba(0,0,0,.92);padding:18px;overflow:auto;color:#f2c464;}
+#favoritesPanel.open{display:block;}
+#favItems{display:flex;flex-direction:column;gap:8px;margin:10px 0;}
+.panelBtn:disabled{opacity:.45;}
+/* B312: RECORD nahrava - tlacitko jemne zhava cervene (jen kdyz se nahrava) */
+#btnRec.recOn{border-radius:16px;animation:recPuls 1.6s ease-in-out infinite;}
+@keyframes recPuls{0%,100%{box-shadow:0 0 10px rgba(255,48,48,.35) inset,0 0 12px rgba(255,48,48,.25);}
+  50%{box-shadow:0 0 26px rgba(255,48,48,.70) inset,0 0 22px rgba(255,48,48,.45);}}
+
 /* BUILD2GD: zadne hnusne dodatecne posuvniky/pointery pres obrazek.
    Ladeni zvuku zustava funkcni naslepo pres puvodni grafiku/hitzony. */
 .eqTrack,.eqHandle,.knobPointer,.valueLabel{display:none!important;visibility:hidden!important;opacity:0!important;}
@@ -173,7 +196,7 @@ body{display:flex;justify-content:center;align-items:flex-start;}
   <div id="lblVolume" class="valueLabel">100%</div>
 
   <div id="status">READY • MY PLAYLISTS</div>
-  <input id="filePick" type="file" accept=".mp3,.wav,audio/mpeg,audio/mp3,audio/wav,audio/x-wav" multiple>
+  <input id="filePick" type="file" accept=".mp3,.wav,.m4a,.aac,.ogg,.oga,.opus,.flac,.webm,audio/*" multiple>
 
   <a id="btnMenu" class="hit" href="../index.html">MENU</a>
   <button id="btnSettingsTop" class="hit" type="button">SETTINGS</button>
@@ -206,9 +229,9 @@ body{display:flex;justify-content:center;align-items:flex-start;}
 
 <div id="playlistPanel" aria-hidden="true">
   <div class="box">
-    <h2>MY PLAYLISTS — MP3 / WAV</h2>
+    <h2>MY PLAYLISTS</h2>
     <div id="playlistItems"></div>
-    <div class="libraryTitle">MOBIL - LOKALNI MP3 / WAV</div>
+    <div class="libraryTitle">MOBIL - LOKALNI HUDBA (MP3, WAV, M4A, OGG...)</div>
     <div id="libraryItems"></div>
     <button id="panelScan" class="panelBtn" type="button">OBNOVIT SEZNAM V MOBILU</button>
     <button id="panelAdd" class="panelBtn dark" type="button">VYBRAT SYSTEMOVE</button>
@@ -232,6 +255,17 @@ body{display:flex;justify-content:center;align-items:flex-start;}
   </div>
 </div>
 
+<div id="favoritesPanel" aria-hidden="true">
+  <div class="box">
+    <h2>FAVORITES — OBLIBENE</h2>
+    <button id="favToggle" class="panelBtn" type="button">★ PRIDAT HRAJICI SKLADBU</button>
+    <div id="favItems"></div>
+    <button id="favPlayAll" class="panelBtn" type="button">▶ HRAT VSECHNY OBLIBENE</button>
+    <button id="favClose" class="panelBtn dark" type="button">ZAVRIT</button>
+  </div>
+</div>
+
+<script src="../spolecne/nap_nahravka.js"></script>
 <script>
 (function(){
 'use strict';
@@ -244,30 +278,56 @@ var items=document.getElementById('playlistItems');
 var libraryItems=document.getElementById('libraryItems');
 var audio=new Audio();
 audio.volume=1;
+// B312: skladba = {name, url (prehratelna adresa, u skladby z mobilu blob v pameti - nebo null,
+// dokud se nenacte), revoke, src (adresa souboru v mobilu - pro OBLIBENE a nove nacteni),
+// zJavy (nacita se pres Javu - po prepnuti se z pameti uvolni)}
 var tracks=[], active=-1;
+var favoritesPanel=document.getElementById('favoritesPanel');
+var favItems=document.getElementById('favItems');
 
 var ctx=null, source=null, eqFilters=[], bassFilter=null, trebleFilter=null, panNode=null, gainNode=null;
+var predHlasitosti=null;   // B312: uzel za EQ / BASS / TREBLE / BALANCE, pred VOLUME - z nej nahrava RECORD
 var tvTap=null, tvZero=null, tvAudioLastErr=0;
 var nativeMp3Added=0, nativeAudioName='', nativeAudioParts=[];
-var nativeAudioAutoplay=false;
 var eqFreq=[60,250,1000,4000,16000];
 var soundState={eq:[0,0,0,0,0], bass:0, treble:0, balance:0, volume:1};
 var tvSoundSyncTimer=0;
 var tvSoundLastJson='';
+var rec=null, recJinaHlaskaDo=0;   // B312: RECORD (nize)
 
 function log(t){try{console.log('[NAP PLAYER] '+t);}catch(e){}}
-function setStatus(t){status.textContent=t;log(t);}
+function setStatus(t){status.textContent=t;log(t);if(rec)recJinaHlaskaDo=Date.now()+1600;}
 function clamp(v,min,max){return Math.max(min,Math.min(max,v));}
+// B312: i M4A / AAC / OGG / OPUS / FLAC / WEBM (nahravky RECORD a DZUBOXU jsou M4A nebo WebM)
+var AUDIO_JMENO=/\.(mp3|wav|m4a|aac|ogg|oga|opus|flac|webm)$/i;
 function mimeForName(name){
   var n=(name||'').toLowerCase();
   if(/\.wav$/.test(n)) return 'audio/wav';
+  if(/\.(m4a|m4b|mp4)$/.test(n)) return 'audio/mp4';
+  if(/\.aac$/.test(n)) return 'audio/aac';
+  if(/\.(ogg|oga|opus)$/.test(n)) return 'audio/ogg';
+  if(/\.flac$/.test(n)) return 'audio/flac';
+  if(/\.(webm|weba)$/.test(n)) return 'audio/webm';
   return 'audio/mpeg';
 }
-function addTrack(name,url,revoke){
-  if(!url) return;
-  tracks.push({name:name||('track_'+tracks.length),url:url,revoke:revoke!==false});
-  if(active<0) loadTrack(0,false);
+function maJava(){ return !!(window.AHPICK && typeof window.AHPICK.playLocalAudio==='function'); }
+function addTrack(name,url,revoke,src,zJavy){
+  if(!url && !src) return -1;
+  tracks.push({name:name||('track_'+tracks.length),url:url||null,revoke:revoke!==false,src:src||null,zJavy:!!zJavy});
+  if(active<0 && url) loadTrack(0,false);
   renderPlaylist();
+  return tracks.length-1;
+}
+function najdiSkladbu(src){
+  if(!src) return -1;
+  for(var i=0;i<tracks.length;i++) if(tracks[i].src===src) return i;
+  return -1;
+}
+// skladba ze seznamu v mobilu / z oblibenych: uz je v playlistu -> hraje ta, jinak se prida
+function hrajZMobilu(name,src){
+  var idx=najdiSkladbu(src);
+  if(idx<0) idx=maJava()?addTrack(name,null,true,src,true):addTrack(name,src,false,src,false);
+  if(idx>=0) loadTrack(idx,true);
 }
 function formatSize(bytes){
   bytes=Number(bytes||0);
@@ -278,34 +338,32 @@ function formatSize(bytes){
 function hasLocalAudioLibrary(){
   return !!(window.AHPICK && typeof window.AHPICK.listLocalAudio==='function');
 }
+var posledniKnihovna=[];
 function renderLocalLibrary(list){
   if(!libraryItems) return;
+  posledniKnihovna=list||[];
   libraryItems.innerHTML='';
   if(!list || !list.length){
     var empty=document.createElement('div');
     empty.className='libraryInfo';
-    empty.textContent='ZADNE LOKALNI MP3/WAV NENALEZENO';
+    empty.textContent='ZADNA LOKALNI HUDBA NENALEZENA';
     libraryItems.appendChild(empty);
     return;
   }
   list.slice(0,120).forEach(function(t){
+    var r=document.createElement('div');
+    r.className='radek';
     var b=document.createElement('button');
     b.type='button';
+    b.className='hlavni';
     b.textContent=t.name+(t.size?('  '+formatSize(t.size)):'');
     b.onclick=function(){
-      if(window.AHPICK && typeof window.AHPICK.playLocalAudio==='function'){
-        nativeAudioAutoplay=true;
-        closePlaylistPanel();
-        setStatus('NACITAM Z MOBILU - '+t.name);
-        window.AHPICK.playLocalAudio(t.name,t.uri);
-        return;
-      }
-      var idx=tracks.length;
-      addTrack(t.name,t.uri,false);
       closePlaylistPanel();
-      loadTrack(idx,true);
+      hrajZMobilu(t.name,t.uri);
     };
-    libraryItems.appendChild(b);
+    r.appendChild(b);
+    r.appendChild(hvezda(t.name,t.uri,t.size));
+    libraryItems.appendChild(r);
   });
 }
 function refreshLocalLibrary(showStatus){
@@ -315,12 +373,12 @@ function refreshLocalLibrary(showStatus){
     return false;
   }
   try{
-    if(showStatus) setStatus('HLEDAM MP3/WAV V MOBILU');
+    if(showStatus) setStatus('HLEDAM HUDBU V MOBILU');
     var raw=window.AHPICK.listLocalAudio();
     var data=JSON.parse(raw||'{}');
     if(data && data.ok){
       renderLocalLibrary(data.items||[]);
-      if(showStatus) setStatus('NALEZENO MP3/WAV - '+((data.items&&data.items.length)||0));
+      if(showStatus) setStatus('NALEZENO SKLADEB - '+((data.items&&data.items.length)||0));
       return true;
     }
     if(data && data.needsPermission){
@@ -421,10 +479,11 @@ function initAudioGraph(){
     gainNode=ctx.createGain(); gainNode.gain.value=1;
     if(panNode){ trebleFilter.connect(panNode); panNode.connect(gainNode); }
     else { trebleFilter.connect(gainNode); }
+    predHlasitosti=panNode||trebleFilter;
     gainNode.connect(ctx.destination);
     setupTvWebAudioTap(gainNode);
     applySoundState();
-  }catch(e){ log('WebAudio graph unavailable: '+e.message); ctx=null; source=null; }
+  }catch(e){ log('WebAudio graph unavailable: '+e.message); ctx=null; source=null; predHlasitosti=null; }
 }
 function applySoundState(){
   if(eqFilters.length){
@@ -434,7 +493,10 @@ function applySoundState(){
   if(trebleFilter) trebleFilter.gain.value=soundState.treble;
   if(panNode) panNode.pan.value=soundState.balance;
   if(gainNode) gainNode.gain.value=soundState.volume;
-  audio.volume=soundState.volume;
+  // B312: s postavenym grafem dela hlasitost jen gainNode. Drive se VOLUME uplatnil dvakrat
+  // (audio.volume zeslabuje i signal, ktery do grafu vstupuje - overeno v Chromiu), takze
+  // 50 % hralo jako 25 % - a nahravka RECORD by se zeslabila knoflikem VOLUME.
+  audio.volume=gainNode?1:soundState.volume;
   updateVisuals();
   syncTvWebSoundState(false);
 }
@@ -466,18 +528,44 @@ function renderPlaylist(){
     items.appendChild(empty); return;
   }
   tracks.forEach(function(t,i){
+    var r=document.createElement('div');
+    r.className='radek';
     var b=document.createElement('button');
-    b.type='button'; b.className=i===active?'active':'';
+    b.type='button'; b.className='hlavni'+(i===active?' active':'');
     b.textContent=(i+1)+'. '+t.name;
     b.onclick=function(){loadTrack(i,true); closePlaylistPanel();};
-    items.appendChild(b);
+    r.appendChild(b);
+    if(t.src) r.appendChild(hvezda(t.name,t.src,0));
+    items.appendChild(r);
   });
 }
 function loadTrack(i,autoplay){
   if(i<0||i>=tracks.length)return;
-  active=i; audio.src=tracks[i].url; try{audio.currentTime=0;}catch(e){} renderPlaylist();
-  setStatus('NACITANO • '+tracks[i].name);
+  var pred=(active>=0&&active<tracks.length)?tracks[active]:null;
+  active=i;
+  var t=tracks[i];
+  if(!t.url){
+    // B312: skladba z mobilu jeste neni v pameti - nacte se (Java) a pak hraje
+    try{audio.pause();}catch(e){}
+    try{audio.removeAttribute('src');audio.load();}catch(e){}
+    stage.classList.remove('playing','seeking');
+    uvolni(pred,t);
+    renderPlaylist(); obnovFavorites();
+    pozadej(i,autoplay);
+    return;
+  }
+  audio.src=t.url; try{audio.currentTime=0;}catch(e){}
+  uvolni(pred,t);
+  renderPlaylist(); obnovFavorites();
+  setStatus('NACITANO • '+t.name);
   if(autoplay) play();
+}
+// B312: skladba nactena z mobilu (cela v pameti jako blob) se po prepnuti na jinou uvolni -
+// pri dalsim prehrani se nacte znovu. Dlouhy playlist (napr. vsechny oblibene) tak nezere pamet.
+function uvolni(pred,ted){
+  if(!pred||pred===ted||!pred.zJavy||!pred.url||!pred.src) return;
+  try{URL.revokeObjectURL(pred.url);}catch(e){}
+  pred.url=null;
 }
 function play(){
   /* BUILD2SA15: ORIGINAL FIRST - zadny audio graf pri prehravani.
@@ -488,7 +576,8 @@ function play(){
      (obraz jde, zvuk ne). Kdyz casting nebezi, chova se jako dosud. */
   if(ctx && ctx.state==='suspended') ctx.resume();
   if(!tracks.length){openPlaylistPanel(); pickFiles(); return;}
-  if(active<0) loadTrack(0,false);
+  if(active<0||!tracks[active]){ loadTrack(0,true); return; }
+  if(!tracks[active].url){ loadTrack(active,true); return; }   // B312: jeste se nacita z mobilu
   try{ if(napTvWebIsCasting()){ log('SH2 PLAY: casting BEZI -> stavim audio graf pro stream'); initAudioGraph(); } else { log('SH2 PLAY: casting nebezi (status='+(window.AHTVWEB&&window.AHTVWEB.status?window.AHTVWEB.status():'AHTVWEB chybi')+')'); } }catch(e){ log('SH2 PLAY chyba: '+e.message); }
   try{
     var p=audio.play();
@@ -505,8 +594,11 @@ function napTvWebIsCasting(){
     return !!(st && st.indexOf('http')===0);
   }catch(e){ return false; }
 }
-function pause(){try{audio.pause();stage.classList.remove('playing','seeking');setStatus('PAUSE');}catch(e){log(e.message);}}
-function stop(){try{audio.pause();audio.currentTime=0;stage.classList.remove('playing','seeking');setStatus('STOP');}catch(e){log(e.message);}}
+function pause(){try{audio.pause();stage.classList.remove('playing','seeking');setStatus(rec?'PAUSE • RECORD CEKA':'PAUSE');}catch(e){log(e.message);}}
+function stop(){
+  try{audio.pause();audio.currentTime=0;stage.classList.remove('playing','seeking');setStatus('STOP');}catch(e){log(e.message);}
+  if(rec) recKonec('STOP');   // B312: STOP ukonci i nahravani a ulozi mixtape
+}
 function seek(delta){
   if(!audio.src){setStatus('SEEK • NENI TRACK');return;}
   audio.currentTime=Math.max(0, Math.min((audio.duration||0), audio.currentTime+delta));
@@ -516,8 +608,9 @@ function seek(delta){
 }
 function clearAll(){
   stop();
-  tracks.forEach(function(t){try{if(t.revoke!==false)URL.revokeObjectURL(t.url);}catch(e){}});
-  tracks=[]; active=-1; renderPlaylist(); setStatus('PLAYLIST VYMAZAN');
+  zrusNacitani();
+  tracks.forEach(function(t){try{if(t.revoke!==false&&t.url)URL.revokeObjectURL(t.url);}catch(e){}});
+  tracks=[]; active=-1; renderPlaylist(); obnovFavorites(); setStatus('PLAYLIST VYMAZAN');
 }
 function openPlaylistPanel(){
   renderPlaylist();
@@ -548,7 +641,7 @@ function pickFiles(){
 pick.onchange=function(){
   var files=Array.prototype.slice.call(pick.files||[]);
   files.forEach(function(f){
-    if(!/\.(mp3|wav)$/i.test(f.name||'')){setStatus('PRESKOCENO • NE MP3/WAV');return;}
+    if(!AUDIO_JMENO.test(f.name||'')){setStatus('PRESKOCENO • NENI TO HUDBA');return;}
     addTrack(f.name,URL.createObjectURL(f),true);
   });
   pick.value=''; renderPlaylist();
@@ -561,7 +654,7 @@ window.AHLOCAL_MP3_PLAYLIST_BEGIN=function(){
   setStatus('ANDROID VYBER - PRIJIMAM MP3/WAV');
 };
 window.AHLOCAL_MP3_URI=function(name,uri){
-  addTrack(name||'audio',uri,false);
+  addTrack(name||'audio',uri,false,uri,false);
   nativeMp3Added++;
   setStatus('PRIDANO - '+(name||'audio'));
 };
@@ -571,30 +664,114 @@ window.AHLOCAL_MP3_PLAYLIST_END=function(){
   closePlaylistPanel();
   setStatus(nativeMp3Added>0 ? ('PLAYLIST READY - '+tracks.length+' TRACKU') : 'NIC NEVYBRANO');
 };
+
+// ===== B312: NACITANI SKLADEB Z MOBILU PO JEDNE =====
+// AHPICK.playLocalAudio(jmeno, adresa) cte soubor v Jave na pozadi a posle ho sem
+// (AHLOCAL_AUDIO_BEGIN / PART / END, pri chybe AHJAVA_ERROR). Zadosti jdou po jedne, takze
+// kazda odpoved patri prave te jedne skladbe (drive se nactena skladba jen pridala na konec).
+// Kdyz soubor na sve adrese neni (oblibena skladba se presunula), zkusi se najit podle jmena.
+var fronta=[], probiha=null, probihaCas=0, prijimam=false, seznamGen=0;
+function pozadej(idx,hraj){
+  var t=tracks[idx];
+  if(!t||!t.src) return;
+  if(probiha&&probiha.gen===seznamGen&&probiha.idx===idx){ probiha.hraj=probiha.hraj||hraj; return; }
+  for(var i=0;i<fronta.length;i++) if(fronta[i].gen===seznamGen&&fronta[i].idx===idx){ fronta[i].hraj=fronta[i].hraj||hraj; return; }
+  // na nove prehravanou skladbu se neceka za jinymi
+  var z={idx:idx,name:t.name,uri:t.src,hraj:!!hraj,gen:seznamGen,podleJmena:false};
+  if(hraj) fronta.unshift(z); else fronta.push(z);
+  setStatus('NACITAM Z MOBILU - '+t.name);
+  dalsiNacteni();
+}
+function dalsiNacteni(){
+  if(probiha||!fronta.length) return;
+  probiha=fronta.shift(); probihaCas=Date.now(); prijimam=false;
+  var r='';
+  try{ r=String(window.AHPICK.playLocalAudio(probiha.name,probiha.uri)); }catch(e){ r='LOCAL_AUDIO_FAIL '+(e&&e.message); }
+  if(r.indexOf('LOCAL_AUDIO_LOADING')!==0) nacteniChyba(r);
+}
+function zrusNacitani(){ fronta=[]; seznamGen++; }
+function nacteniHotovo(url){
+  var z=probiha; probiha=null; prijimam=false;
+  if(!z){ setTimeout(dalsiNacteni,0); return null; }
+  var t=(z.gen===seznamGen)?tracks[z.idx]:null;
+  if(!t||t.src!==z.uri||active!==z.idx){
+    // mezitim jiny playlist nebo jina skladba - neni proc drzet v pameti
+    if(url) try{URL.revokeObjectURL(url);}catch(e){}
+    setTimeout(dalsiNacteni,0);
+    return null;
+  }
+  t.url=url;
+  audio.src=url; try{audio.currentTime=0;}catch(e){}
+  setStatus('NACITANO • '+t.name);
+  if(z.hraj) play();
+  setTimeout(dalsiNacteni,0);
+  return t;
+}
+function nacteniChyba(msg){
+  var z=probiha; probiha=null; prijimam=false;
+  if(!z){ setStatus('ANDROID CHYBA - '+(msg||'')); return; }
+  log('B312 NACTENI_CHYBA '+z.name+': '+msg);
+  var t=(z.gen===seznamGen)?tracks[z.idx]:null;
+  if(t&&!z.podleJmena&&hasLocalAudioLibrary()){
+    // soubor se mohl presunout / dostat jinou adresu: najit stejne jmeno v knihovne
+    var nova=null;
+    try{
+      var data=JSON.parse(window.AHPICK.listLocalAudio()||'{}');
+      (data.items||[]).forEach(function(it){ if(!nova&&it&&it.name===z.name&&it.uri&&it.uri!==z.uri) nova=it; });
+    }catch(e){}
+    if(nova){
+      var oi=oblIndex(z.uri);
+      if(oi>=0){ oblibene[oi].u=nova.uri; oblUloz(); }
+      t.src=nova.uri;
+      var z2={idx:z.idx,name:z.name,uri:nova.uri,hraj:z.hraj,gen:z.gen,podleJmena:true};
+      fronta.unshift(z2);
+      log('B312 NACTENI znovu podle jmena: '+z.name);
+      setTimeout(dalsiNacteni,0);
+      return;
+    }
+  }
+  setStatus('SKLADBA NENI DOSTUPNA • '+z.name);
+  // hraje se playlist (napr. oblibene) - preskocit na dalsi
+  if(t&&z.hraj&&active===z.idx&&z.idx+1<tracks.length){
+    var dalsi=z.idx+1;
+    setTimeout(function(){ if(active===z.idx&&!tracks[z.idx].url) loadTrack(dalsi,true); },1500);
+  }
+  setTimeout(dalsiNacteni,0);
+}
+// pojistka: kdyby Java neodpovedela vubec (ani chybou) - 90 s bez jedineho kousku
+setInterval(function(){
+  if(probiha&&Date.now()-probihaCas>90000) nacteniChyba('CAS VYPRSEL');
+},5000);
+
 window.AHLOCAL_AUDIO_BEGIN=function(name){
   nativeAudioName=name||'audio';
   nativeAudioParts=[];
+  prijimam=true; probihaCas=Date.now();
   setStatus('ANDROID AUDIO - NACITAM '+nativeAudioName);
 };
-window.AHLOCAL_AUDIO_PART=function(b64){nativeAudioParts.push(b64);};
+window.AHLOCAL_AUDIO_PART=function(b64){nativeAudioParts.push(b64);probihaCas=Date.now();};
 window.AHLOCAL_AUDIO_END=function(){
   try{
     var raw=atob(nativeAudioParts.join(''));
     var bytes=new Uint8Array(raw.length);
     for(var i=0;i<raw.length;i++) bytes[i]=raw.charCodeAt(i)&255;
-    var blob=new Blob([bytes],{type:mimeForName(nativeAudioName)});
-    var idx=tracks.length;
-    addTrack(nativeAudioName,URL.createObjectURL(blob),true);
-    nativeMp3Added++;
     nativeAudioParts=[];
-    if(nativeAudioAutoplay){
-      nativeAudioAutoplay=false;
-      loadTrack(idx,true);
-    }
+    var url=URL.createObjectURL(new Blob([bytes],{type:mimeForName(nativeAudioName)}));
+    nativeMp3Added++;
+    if(probiha){ nacteniHotovo(url); return; }
+    // (odpoved bez zadosti - jako drive: pridat na konec)
+    addTrack(nativeAudioName,url,true);
     setStatus('PRIDANO - '+nativeAudioName);
-  }catch(e){setStatus('AUDIO CHYBA');log(e.message);}
+  }catch(e){
+    nativeAudioParts=[];
+    if(probiha) nacteniChyba('AUDIO CHYBA '+(e&&e.message));
+    else { setStatus('AUDIO CHYBA'); log(e.message); }
+  }
 };
-window.AHJAVA_ERROR=function(msg){setStatus('ANDROID CHYBA - '+(msg||''));};
+window.AHJAVA_ERROR=function(msg){
+  if(probiha){ nacteniChyba(msg||'chyba'); return; }
+  setStatus('ANDROID CHYBA - '+(msg||''));
+};
 
 function updateVisuals(){ /* BUILD2GD: vizualni posuvniky vypnute, zvuk se ladi pres neviditelne hitzony. */ }
 
@@ -656,6 +833,220 @@ bindVertical(document.getElementById('knVolume'), function(){return soundState.v
   initAudioGraph(); soundState.volume=clamp(v,0,1); applySoundState();
 }, 0, 1, 'VOLUME');
 
+// ===== B312: RECORD = MIXTAPE =====
+// Nahrava to, co prehravac prave hraje, i s EQ / BASS / TREBLE / BALANCE (knoflik VOLUME
+// nahravku nezeslabi). Nahrava jen kdyz hraje: PAUSE, STOP i nacitani dalsi skladby nahravani
+// pozastavi a PLAY ho pusti dal - skladby jsou v nahravce za sebou bez ticha.
+// Konec: RECORD znovu, STOP, konec playlistu, MENU / ZPET, nebo 90 minut (jako kazeta C90).
+// Ulozi se do Download/AtariHelp/Mixtape (M4A, kdyz to WebView umi, jinak WebM s delkou).
+var btnRec=document.getElementById('btnRec');
+var recCil=null, recKusy=[], recTyp='', recMs=0, recPosledni=0, recUklada=false, recTik=0, recPoUlozeni=null;
+var REC_MAX_MS=90*60*1000;
+function recCasZ(ms){ var s=Math.floor(ms/1000), m=Math.floor(s/60); s%=60; return (m<10?'0':'')+m+':'+(s<10?'0':'')+s; }
+function recPricti(){
+  var ted=performance.now();
+  if(rec&&rec.state==='recording'&&recPosledni) recMs+=ted-recPosledni;
+  recPosledni=ted;
+}
+function recUkaz(){
+  if(!rec) return;
+  recPricti();
+  if(recMs>=REC_MAX_MS){ setStatus('RECORD • 90 MINUT (C90) - KONEC'); recKonec('C90'); return; }
+  if(Date.now()<recJinaHlaskaDo) return;
+  var nm=(active>=0&&tracks[active])?tracks[active].name:'';
+  status.textContent=(rec.state==='recording'?'● REC ':'❚❚ REC ')+recCasZ(recMs)+(nm?' • '+nm:'');
+}
+function recStart(){
+  if(recUklada){ setStatus('UKLADAM MIXTAPE - CHVILI POCKEJ'); return; }
+  if(!window.MediaRecorder){ setStatus('RECORD NEJDE - TENHLE SYSTEM NEUMI NAHRAVAT'); return; }
+  if(!tracks.length){ setStatus('RECORD • NEJDRIV VYBER SKLADBY'); openPlaylistPanel(); return; }
+  initAudioGraph();
+  if(!ctx||!predHlasitosti){ setStatus('RECORD NEJDE - ZVUK BEZ WEBAUDIO'); return; }
+  try{ if(ctx.state==='suspended') ctx.resume(); }catch(e){}
+  var r=null;
+  try{
+    if(!recCil){ recCil=ctx.createMediaStreamDestination(); predHlasitosti.connect(recCil); }
+    recTyp=(window.NapNahravka&&NapNahravka.typ())||'';
+    var volby={audioBitsPerSecond:128000};
+    if(recTyp) volby.mimeType=recTyp;
+    r=new MediaRecorder(recCil.stream,volby);
+    recKusy=[]; recMs=0; recPosledni=0;
+    r.ondataavailable=function(e){ if(e.data&&e.data.size) recKusy.push(e.data); };
+    r.onerror=function(e){ log('B312 RECORD chyba '+(e&&e.error&&e.error.name||'')); if(rec===r) recKonec('chyba'); };
+    r.start(1000);
+  }catch(e){ setStatus('RECORD NEJDE - '+((e&&e.message)||e)); log('B312 RECORD start chyba '+((e&&e.message)||e)); return; }
+  rec=r;
+  recPosledni=performance.now();
+  btnRec.classList.add('recOn');
+  log('B312 RECORD start typ='+(r.mimeType||recTyp||'?'));
+  // REC jako na kazetaku: kdyz nic nehraje, rozjede se prehravani (nahrava se az od zvuku)
+  if(audio.paused||!audio.src){ try{r.pause();}catch(e){} play(); }
+  recJinaHlaskaDo=0;
+  recUkaz();
+  if(!recTik) recTik=setInterval(recUkaz,500);
+}
+function recKonec(proc,potom){
+  if(!rec){ if(potom){ if(recUklada) recPoUlozeni=potom; else potom(); } return; }
+  recPricti();
+  var r=rec, ms=recMs, typ=r.mimeType||recTyp||'audio/webm';
+  rec=null;
+  clearInterval(recTik); recTik=0;
+  btnRec.classList.remove('recOn');
+  recUklada=true; recPoUlozeni=potom||null;
+  log('B312 RECORD konec ('+proc+') '+Math.round(ms)+' ms typ='+typ);
+  var hotovo=false;
+  r.onstop=function(){
+    if(hotovo) return;
+    hotovo=true;
+    var blob=new Blob(recKusy,{type:typ});
+    recKusy=[];
+    if(ms<1000||!blob.size){ recHotovo(false,'NIC SE NENAHRALO (PUST SKLADBU A ZMACKNI RECORD)'); return; }
+    setStatus('UKLADAM MIXTAPE 0%');
+    NapNahravka.opravDelku(blob,ms,function(b2){
+      var jm='NP_VISION_mixtape_'+NapNahravka.datum()+NapNahravka.pripona(typ);
+      NapNahravka.uloz(b2,typ,{slozka:'Mixtape',jmeno:jm,kus:window.napMixKus,
+        prubeh:function(p){ setStatus('UKLADAM MIXTAPE '+p+'%'); },
+        hotovo:function(ok,text,stazeno){
+          if(ok) recHotovo(true,recCasZ(ms)+' • '+(stazeno?'STAZENO ':'')+text);
+          else recHotovo(false,text==='uloziste'?'ULOZISTE NENI K DISPOZICI':text==='zapis'?'CHYBA ZAPISU':text==='cteni'?'CHYBA CTENI NAHRAVKY':text);
+        }});
+    });
+  };
+  try{ if(r.state!=='inactive') r.stop(); else r.onstop(); }catch(e){ r.onstop(); }
+}
+function recHotovo(ok,text){
+  recUklada=false;
+  setStatus(ok?('MIXTAPE ULOZENA '+text):('MIXTAPE SE NEULOZILA • '+text));
+  var po=recPoUlozeni; recPoUlozeni=null;
+  // odchod do MENU az po ulozeni; kdyz se ulozit nepovedlo, zustat - at je chyba videt
+  if(po&&ok) setTimeout(po,1200);
+}
+// nahrava se jen to, co opravdu hraje
+audio.addEventListener('playing',function(){
+  if(rec&&rec.state==='paused'){ recPricti(); try{rec.resume();}catch(e){} recPosledni=performance.now(); }
+});
+audio.addEventListener('pause',function(){
+  if(rec&&rec.state==='recording'){ recPricti(); try{rec.pause();}catch(e){} }
+});
+// MENU / ZPET behem nahravani: nejdriv ulozit, pak odejit (drive by se nahravka zahodila)
+function odejdiDoMenu(){
+  var jdi=function(){ location.href='../index.html'; };
+  if(rec){ recKonec('MENU',jdi); return; }
+  if(recUklada){ recPoUlozeni=jdi; setStatus('UKLADAM MIXTAPE - PAK MENU'); return; }
+  jdi();
+}
+
+// ===== B312: FAVORITES = OBLIBENE =====
+// Hvezdicka u skladby (MY PLAYLISTS i seznam hudby v mobilu) nebo tlacitko v panelu FAVORITES.
+// Seznam se pamatuje i po vypnuti appky (localStorage: jmeno + adresa souboru v mobilu).
+// Jde jen u skladeb z mobilu - soubor vybrany v prohlizeci (PC) adresu na pozdeji nema.
+var OBL_KLIC='nap_player_oblibene_v1', oblibene=[], oblUlozitelne=true;
+function oblNacti(){
+  try{
+    var s=localStorage.getItem(OBL_KLIC), a=s?JSON.parse(s):[];
+    oblibene=Array.isArray(a)?a.filter(function(o){return o&&typeof o.u==='string'&&o.u&&typeof o.n==='string';}):[];
+  }catch(e){ oblibene=[]; oblUlozitelne=false; log('B312 OBLIBENE nejde nacist: '+(e&&e.message)); }
+}
+function oblUloz(){
+  try{ localStorage.setItem(OBL_KLIC,JSON.stringify(oblibene)); oblUlozitelne=true; }
+  catch(e){ oblUlozitelne=false; log('B312 OBLIBENE nejde ulozit: '+(e&&e.message)); }
+}
+function oblIndex(src){
+  if(!src) return -1;
+  for(var i=0;i<oblibene.length;i++) if(oblibene[i].u===src) return i;
+  return -1;
+}
+function oblPrepni(name,src,size){
+  if(!src){ setStatus('OBLIBENE JEN PRO SKLADBY Z MOBILU'); return false; }
+  var i=oblIndex(src);
+  if(i>=0){
+    oblibene.splice(i,1); oblUloz();
+    setStatus('☆ ODEBRANO Z OBLIBENYCH • '+name);
+  }else{
+    if(oblibene.length>=300){ setStatus('OBLIBENYCH JE UZ 300 - NEJDRIV NECO ODEBER'); return false; }
+    oblibene.push({n:String(name||'audio'),u:src,s:size||0,t:Date.now()}); oblUloz();
+    setStatus('★ PRIDANO DO OBLIBENYCH • '+name+(oblUlozitelne?'':' (NEULOZI SE)'));
+  }
+  renderPlaylist(); obnovFavorites();
+  if(posledniKnihovna.length) renderLocalLibrary(posledniKnihovna);
+  return true;
+}
+function hvezda(name,src,size){
+  var h=document.createElement('button');
+  var ano=oblIndex(src)>=0;
+  h.type='button';
+  h.className='hvezda'+(ano?' ano':'');
+  h.textContent=ano?'★':'☆';
+  h.setAttribute('aria-label',ano?'Odebrat z oblibenych':'Pridat do oblibenych');
+  h.onclick=function(e){ e.stopPropagation(); oblPrepni(name,src,size); };
+  return h;
+}
+function obnovFavorites(){ if(favoritesPanel.classList.contains('open')) renderFavorites(); }
+function renderFavorites(){
+  var tg=document.getElementById('favToggle'), t=(active>=0&&tracks[active])?tracks[active]:null;
+  if(!t){ tg.disabled=true; tg.textContent='NIC NEHRAJE - VYBER SKLADBU'; }
+  else if(!t.src){ tg.disabled=true; tg.textContent='TAHLE SKLADBA NENI Z MOBILU'; }
+  else { tg.disabled=false; tg.textContent=oblIndex(t.src)>=0?'☆ ODEBRAT HRAJICI SKLADBU':'★ PRIDAT HRAJICI SKLADBU'; }
+  favItems.innerHTML='';
+  if(!oblibene.length){
+    var e=document.createElement('div');
+    e.className='libraryInfo';
+    e.textContent='ZATIM ZADNE OBLIBENE - PRIDAS JE HVEZDICKOU ☆ U SKLADBY';
+    favItems.appendChild(e);
+  }
+  oblibene.forEach(function(o,i){
+    var r=document.createElement('div');
+    r.className='radek';
+    var b=document.createElement('button');
+    b.type='button';
+    b.className='hlavni'+((t&&t.src===o.u)?' active':'');
+    b.textContent=(i+1)+'. ★ '+o.n;
+    b.onclick=function(){ closeFavoritesPanel(); hrajZMobilu(o.n,o.u); };
+    var x=document.createElement('button');
+    x.type='button';
+    x.className='pryc';
+    x.textContent='✕';
+    x.setAttribute('aria-label','Odebrat z oblibenych');
+    x.onclick=function(){
+      if(!x.classList.contains('potvrd')){
+        x.classList.add('potvrd'); x.textContent='ODEBRAT?';
+        setTimeout(function(){ x.classList.remove('potvrd'); x.textContent='✕'; },3000);
+        return;
+      }
+      oblPrepni(o.n,o.u,o.s);
+    };
+    r.appendChild(b); r.appendChild(x);
+    favItems.appendChild(r);
+  });
+  document.getElementById('favPlayAll').disabled=!oblibene.length;
+}
+function openFavoritesPanel(){ renderFavorites(); favoritesPanel.classList.add('open'); favoritesPanel.setAttribute('aria-hidden','false'); }
+function closeFavoritesPanel(){ favoritesPanel.classList.remove('open'); favoritesPanel.setAttribute('aria-hidden','true'); }
+// HRAT VSECHNY OBLIBENE: playlist = oblibene (nactou se postupne, az na ne prijde rada)
+function hrajVsechnyOblibene(){
+  if(!oblibene.length){ setStatus('ZADNE OBLIBENE'); return; }
+  closeFavoritesPanel();
+  try{audio.pause();}catch(e){}
+  zrusNacitani();
+  tracks.forEach(function(t){ try{ if(t.revoke!==false&&t.url) URL.revokeObjectURL(t.url); }catch(e){} });
+  var j=maJava();
+  tracks=oblibene.map(function(o){
+    return j?{name:o.n,url:null,revoke:true,src:o.u,zJavy:true}:{name:o.n,url:o.u,revoke:false,src:o.u,zJavy:false};
+  });
+  active=-1;
+  setStatus('OBLIBENE • '+tracks.length+' SKLADEB');
+  loadTrack(0,true);
+}
+
+// tlacitko ZPET na Androidu (Java vola napZpet): nejdriv zavrit panel, pri nahravani ulozit
+window.napZpet=function(){
+  if(favoritesPanel.classList.contains('open')){ closeFavoritesPanel(); return 1; }
+  if(playlistPanel.classList.contains('open')){ closePlaylistPanel(); return 1; }
+  if(settingsPanel.classList.contains('open')){ closeSettingsPanel(); return 1; }
+  if(rec||recUklada){ odejdiDoMenu(); return 1; }
+  return 0;
+};
+
 document.getElementById('btnMyPlaylists').onclick=openPlaylistPanel;
 document.getElementById('navPlaylists').onclick=openPlaylistPanel;
 document.getElementById('navLibrary').onclick=openPlaylistPanel;
@@ -669,7 +1060,13 @@ document.getElementById('btnPause').onclick=pause;
 document.getElementById('btnStop').onclick=stop;
 document.getElementById('btnRew').onclick=function(){seek(-10);};
 document.getElementById('btnFwd').onclick=function(){seek(10);};
-document.getElementById('btnRec').onclick=function(){setStatus('RECORD • PRIPRAVENO PRO BUDOUCI CAPTURE');};
+btnRec.onclick=function(){ if(rec) recKonec('RECORD'); else recStart(); };
+document.getElementById('favToggle').onclick=function(){
+  var t=(active>=0&&tracks[active])?tracks[active]:null;
+  if(t) oblPrepni(t.name,t.src,0);
+};
+document.getElementById('favPlayAll').onclick=hrajVsechnyOblibene;
+document.getElementById('favClose').onclick=closeFavoritesPanel;
 
 document.getElementById('btnYoutube').onclick=function(e){
   e.preventDefault(); e.stopPropagation();
@@ -690,19 +1087,23 @@ document.getElementById('btnYoutube').onclick=function(e){
   return false;
 };
 
-document.getElementById('btnMenu').onclick=function(){location.href='../index.html';};
+document.getElementById('btnMenu').onclick=function(e){ if(e&&e.preventDefault) e.preventDefault(); odejdiDoMenu(); return false; };
 document.getElementById('btnSettingsTop').onclick=openSettingsPanel;
-document.getElementById('navPlayer').onclick=function(){setStatus('PLAYER');};
-document.getElementById('navFavorites').onclick=function(){setStatus('FAVORITES');};
+document.getElementById('navPlayer').onclick=function(){ closePlaylistPanel(); closeSettingsPanel(); closeFavoritesPanel(); setStatus('PLAYER'); };
+document.getElementById('navFavorites').onclick=openFavoritesPanel;
 document.getElementById('navSettings').onclick=openSettingsPanel;
 document.getElementById('panelResetSound').onclick=resetSoundState;
 document.getElementById('panelCloseSettings').onclick=closeSettingsPanel;
 
 audio.onended=function(){
   if(active+1<tracks.length){loadTrack(active+1,true);}
-  else {stage.classList.remove('playing');setStatus('KONEC PLAYLISTU');}
+  else {
+    stage.classList.remove('playing');setStatus('KONEC PLAYLISTU');
+    if(rec) recKonec('konec playlistu');   // B312: mixtape je hotova
+  }
 };
 
+oblNacti();
 updateVisuals();
 renderPlaylist();
 // BUILD2SH1: kdyz se casting zapne az behem prehravani, doplnit audio tap

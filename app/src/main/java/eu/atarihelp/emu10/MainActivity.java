@@ -4796,8 +4796,29 @@ public class MainActivity extends Activity {
             } catch (Throwable t) { return false; }
         }
 
-        /** RENEHO ZADNI VRATKA: odemkne dalsi uroven v poradi. */
+        /**
+         * B312: SERVIS (NapServis) - Reneho ODEMKNOUT DALSI / ZAMKNOUT VSE jen se servisnim
+         * kodem. "OK" = servis otevren na 10 minut, "SPATNE", "POCKEJ:sekund" (po 3 spatnych
+         * pokusech minuta). Napsany kod se nikam nezapisuje - ani do logu.
+         */
+        @JavascriptInterface public String servisKod(String kod) {
+            String r = NapServis.zkus(kod, System.currentTimeMillis());
+            appendNativeLog("B312 SERVIS " + ("OK".equals(r) ? "kod spravny - servis otevren na 10 min"
+                    : "kod odmitnut (" + r + ")"));
+            return r;
+        }
+
+        /** B312: kolik sekund jeste servis bezi (0 = zavreny). */
+        @JavascriptInterface public int servisZbyva() {
+            return (int) NapServis.zbyvaS(System.currentTimeMillis());
+        }
+
+        /** RENEHO ZADNI VRATKA: odemkne dalsi uroven v poradi. B312: jen s otevrenym servisem. */
         @JavascriptInterface public String odemkniDalsi() {
+            if (!NapServis.otevreno(System.currentTimeMillis())) {
+                appendNativeLog("B312 SERVIS_ZAVRENY odemkniDalsi odmitnuto -> " + NapPostup.stav(MainActivity.this));
+                return "ZAMCENO";
+            }
             String co = NapPostup.odemkniDalsi(MainActivity.this);
             appendNativeLog("BUILD2SA40 ODEMKNUTO: " + co + " -> "
                     + NapPostup.stav(MainActivity.this));
@@ -4842,10 +4863,15 @@ public class MainActivity extends Activity {
             return jm;
         }
 
-        /** RENEHO ZADNI VRATKA: vrati vse na zacatek. */
-        @JavascriptInterface public void zamkniVse() {
+        /** RENEHO ZADNI VRATKA: vrati vse na zacatek. B312: jen s otevrenym servisem ("OK" / "ZAMCENO"). */
+        @JavascriptInterface public String zamkniVse() {
+            if (!NapServis.otevreno(System.currentTimeMillis())) {
+                appendNativeLog("B312 SERVIS_ZAVRENY zamkniVse odmitnuto -> " + NapPostup.stav(MainActivity.this));
+                return "ZAMCENO";
+            }
             NapPostup.zamkniVse(MainActivity.this);
             appendNativeLog("BUILD2SA40 ZAMCENO VSE -> " + NapPostup.stav(MainActivity.this));
+            return "OK";
         }
 
         /**
@@ -6360,6 +6386,7 @@ public class MainActivity extends Activity {
         @JavascriptInterface
         public void ps1PickGame() {
             ui.post(() -> {
+                if (konzoleZamcena(NapPravidla.PS1, "vyber hry z telefonu", null)) return;   // B312
                 try {
                     Intent i = new Intent(Intent.ACTION_GET_CONTENT);
                     i.setType("*/*");
@@ -6558,10 +6585,11 @@ public class MainActivity extends Activity {
         return sb.toString();
     }
 
+    // B312: i M4A / AAC / OGG / OPUS / FLAC / WEBM (NapPravidla.jeAudioJmeno) - nahravky
+    // RECORD (Mixtape) a DZUBOXU (DJ_mixy) jsou M4A nebo WebM; drive se M4A z MediaStore
+    // prejmenovalo na audio_ID.mp3 a WebM se v seznamu vubec neobjevilo.
     private boolean napPlayerIsAudioName(String name) {
-        if (name == null) return false;
-        String n = name.toLowerCase(Locale.US);
-        return n.endsWith(".mp3") || n.endsWith(".wav");
+        return NapPravidla.jeAudioJmeno(name);
     }
 
     private boolean napPlayerHasAudioPermission() {
@@ -7779,6 +7807,67 @@ public class MainActivity extends Activity {
         } catch (Throwable t) {
             appendNativeLog("B311 MENU_ZAMKY_CHYBA " + safeMsg(t));
         }
+    }
+
+    // ===== B312: ZAMKY SEGA / PS1 PLATI VSUDE =====
+    // Drive hlidalo zamky jen hlavni menu - hra Segy nebo PS1 spustena z webu atarihelp.eu
+    // (odkaz, stazeni, ahgame://, AHNET.runGameUrl, AHPS1.ps1DownloadAndBoot) se spustila
+    // i u zamcene konzole. Ted ji Java zastavi uz pred stazenim a rekne proc (stejna slova
+    // jako u zamcene karty v menu). Primy skok na stranku emulatoru hlida onPageStarted.
+    private long zamekHlaskaMs = 0L;
+    private String zamekHlaskaCo = "";
+
+    /** true = konzole je zamcena: hra se nespusti a clovek dostane duvod. */
+    private boolean konzoleZamcena(String konzole, String odkud, String co) {
+        final boolean sega, ps1;
+        try {
+            sega = NapPostup.segaOdemcena(this);
+            ps1 = NapPostup.ps1Odemcena(this);
+        } catch (Throwable t) {
+            return false;
+        }
+        if (!NapPravidla.zamceno(konzole, sega, ps1)) return false;
+        appendNativeLog("B312 ZAMEK " + konzole + " - " + odkud + " zastaveno"
+                + (co == null ? "" : " (" + compactUrl(co) + ")") + " | " + NapPostup.stav(this));
+        ukazZamek(konzole, NapPravidla.duvodZamku(konzole, sega,
+                NapPostup.zbyvaRadku(this), NapPostup.zbyvaMinutSegy(this)));
+        return true;
+    }
+
+    // stranku zamcene konzole uz vyridil shouldInterceptRequest (onPageStarted pak nic nedela)
+    private volatile String zamekStrankaUrl = "";
+    private volatile long zamekStrankaMs = 0L;
+
+    /** B312: misto stranky zamcene konzole kratka stranka, ktera hned skoci do hlavniho menu. */
+    private WebResourceResponse zamcenaStrankaOdpoved(String url) {
+        String k = NapPravidla.konzoleStranky(url);
+        if (k == null || !konzoleZamcena(k, "stranka emulatoru", url)) return null;
+        zamekStrankaUrl = url;
+        zamekStrankaMs = System.currentTimeMillis();
+        return htmlResponse("<!doctype html><html><head><meta charset='utf-8'></head><body style='background:#000'>"
+                + "<script>location.replace('file:///android_asset/index.html');</script></body></html>");
+    }
+
+    /** B312: pojistka v onPageStarted - jen kdyz stranku nevyridil shouldInterceptRequest (napr. z historie). */
+    private boolean zamcenaStrankaPojistka(String url) {
+        String k = NapPravidla.konzoleStranky(url);
+        if (k == null) return false;
+        if (url.equals(zamekStrankaUrl) && System.currentTimeMillis() - zamekStrankaMs < 5000L) return false;
+        return konzoleZamcena(k, "stranka emulatoru (pojistka)", url);
+    }
+
+    private void ukazZamek(final String konzole, final String duvod) {
+        Runnable r = () -> {
+            try {
+                long ted = System.currentTimeMillis();
+                // jedno klepnuti na webu muze projit vic cestami (odkaz i stazeni) - hlaska jednou
+                if (konzole.equals(zamekHlaskaCo) && ted - zamekHlaskaMs < 2500L) return;
+                zamekHlaskaCo = konzole;
+                zamekHlaskaMs = ted;
+                android.widget.Toast.makeText(MainActivity.this, duvod, android.widget.Toast.LENGTH_LONG).show();
+            } catch (Throwable ignored) {}
+        };
+        if (isUiThread()) r.run(); else ui.post(r);
     }
 
     private void menuLog() {
@@ -10404,6 +10493,15 @@ public class MainActivity extends Activity {
                 atariZarizeniPodleUrl(url);   // B291: pristroj Atari 130XE (C++) v HELP
                 // B311: hlavni menu (C++) jen nad index.html
                 if (!jeMenuUrl(url)) { menuSkryj("odchod na " + compactUrl(url)); menuSkryteProOptions = false; }
+                // B312: zamcena konzole - stranka emulatoru se neotevre ani primym skokem
+                // (stary alias, odkaz, web) - zpet do hlavniho menu a duvod jako u karty v menu.
+                // Normalne to vyridi uz shouldInterceptRequest; tohle je pojistka (napr. historie).
+                if (zamcenaStrankaPojistka(url)) {
+                    try { v.stopLoading(); } catch (Throwable ignored) {}
+                    ui.post(() -> {
+                        try { if (web != null) web.loadUrl("file:///android_asset/index.html"); } catch (Throwable ignored) {}
+                    });
+                }
             }
 
             @Override
@@ -10453,6 +10551,9 @@ public class MainActivity extends Activity {
                 if (Build.VERSION.SDK_INT >= 21 && request != null && request.getUrl() != null) {
                     String reqUrl = request.getUrl().toString();
                     if (request.isForMainFrame()) {
+                        // B312: zamcena konzole - stranka emulatoru se vubec nenacte (nebezi ani jeji skript)
+                        WebResourceResponse zamek = zamcenaStrankaOdpoved(reqUrl);
+                        if (zamek != null) return zamek;
                         WebResourceResponse bridge = interceptAhGameBridgeNavigation(reqUrl);
                         if (bridge != null) return bridge;
                         WebResourceResponse game = interceptMainFrameGameNavigation(reqUrl);
@@ -10852,6 +10953,7 @@ public class MainActivity extends Activity {
     }
 
     private void downloadAndRunPs1Remote(final String url, final String reason) {
+        if (konzoleZamcena(NapPravidla.PS1, "hra z webu (" + reason + ")", url)) return;   // B312
         appendNativeLog("BUILD2SA5AM PS1_REMOTE_ROUTE reason=" + reason + " url=" + compactUrl(url));
         ui.post(() -> {
             try {
@@ -10991,6 +11093,7 @@ public class MainActivity extends Activity {
 
     private void openSegaRomBytes(byte[] data, String name, String reason) {
         if (data == null || data.length == 0 || web == null) return;
+        if (konzoleZamcena(NapPravidla.SEGA, "hra (" + reason + ")", name)) return;   // B312
         pendingSegaGame = data;
         pendingSegaName = (name == null || name.length() == 0) ? "sega_game.md" : name;
         String cur = web.getUrl();
@@ -11003,6 +11106,7 @@ public class MainActivity extends Activity {
     }
 
     private void downloadAndRunSega(final String url) {
+        if (konzoleZamcena(NapPravidla.SEGA, "hra z webu (downloadSega)", url)) return;   // B312: ani nestahovat
         new Thread(() -> {
             try {
                 if (!markAtariHelpRequestAllowed(url, "downloadSega")) return;
@@ -11020,6 +11124,7 @@ public class MainActivity extends Activity {
     }
 
     private void downloadAndRunSegaArchive(final String url) {
+        if (konzoleZamcena(NapPravidla.SEGA, "hra z webu (downloadSegaArchive)", url)) return;   // B312: ani nestahovat
         new Thread(() -> {
             try {
                 if (!markAtariHelpRequestAllowed(url, "downloadSegaArchive")) return;
@@ -11824,6 +11929,11 @@ public class MainActivity extends Activity {
     // kopirovaly celou hru do filesDir/ps1 na HLAVNIM vlakne (viz ps1HraDoMonitoru).
 
     private void startPs1RemoteDownloadAndBoot(final String rawUrl) {
+        // B312: i AHPS1.ps1DownloadAndBoot (muze zavolat kterakoli stranka, i web)
+        if (konzoleZamcena(NapPravidla.PS1, "hra z webu (ps1DownloadAndBoot)", rawUrl)) {
+            setPs1RemoteStatus("PS1_REMOTE_FAIL zamceno");
+            return;
+        }
         final String url = rawUrl == null ? "" : rawUrl.trim();
         if (!(url.startsWith("http://") || url.startsWith("https://"))) {
             setPs1RemoteStatus("PS1_REMOTE_FAIL bad_url");
@@ -12942,6 +13052,30 @@ public class MainActivity extends Activity {
                         v -> { if (!"1".equals(v)) menuDoPozadi(); });
                 return;
             }
+            // B312: MP3 prehravac a DZUBOX si ZPET vezmou samy, kdyz maji co dodelat: zavrit
+            // otevreny panel, dokoncit a ulozit nahravku RECORD (drive se pri ZPET zahodila).
+            // Stranka vrati 1 = vyrizeno (po ulozeni sama prejde do menu), 0 = zpet jako drive.
+            if (web != null && jeStrankaSeZpet(web.getUrl())) {
+                web.evaluateJavascript("(function(){try{return (window.napZpet&&napZpet())?1:0;}catch(e){return 0;}})()",
+                        v -> {
+                            if ("1".equals(v)) return;
+                            zpetPodleHistorie();
+                        });
+                return;
+            }
+            zpetPodleHistorie();
+        } catch (Throwable t) {
+            try { appendNativeLog("BUILD2SB63 BACK_CHYBA_ZACHYCENA " + safeMsg(t)); } catch (Throwable ignored) {}
+        }
+    }
+
+    /** B312: stranky, ktere si tlacitko ZPET muzou vzit samy (window.napZpet). */
+    private static boolean jeStrankaSeZpet(String url) {
+        return NapPravidla.jeStrankaSeZpet(url);
+    }
+
+    private void zpetPodleHistorie() {
+        try {
             if (web != null && web.canGoBack()) {
                 stopNativeInPlaceHard("backPressedBeforeGoBack");
                 stopPs1SessionHard("backPressedBeforeGoBack");

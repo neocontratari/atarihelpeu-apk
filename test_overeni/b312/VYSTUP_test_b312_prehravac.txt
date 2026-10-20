@@ -1,0 +1,31 @@
+OK     1) seznam hudby v mobilu: 5 skladeb, u kazde hvezdicka ☆ 52 px vedle jmena, nic nepreteka (sirka 360 px): {'t': '☆', 'w': 52, 'pravy': True, 'mw': 226, 'vedle': True}
+OK     1) klepnuti na skladbu: Java ji nacte (1 zadost), hraje, status "PLAY • Ranni_vlna.mp3", v playlistu 1
+OK     1) druha skladba hraje, predchozi blob se uvolnil z pameti (ZRUSENA) - drive zustavaly v pameti vsechny
+OK     1) znovu prvni: nacte se znovu (3. zadost), v playlistu porad 2 (zadny duplikat)
+OK     2) hvezdicka v seznamu hudby: ☆ -> ★, ulozeno (jmeno + adresa), soubor se pritom nenacita: ['☆', '★+', '★+', '☆', '☆']
+OK     2) po znovunacteni stranky (= novy start appky) jsou oblibene porad tam: ['1. ★ Neon_Drive.mp3', '2. ★ Kazeta_C90.mp3'], "NIC NEHRAJE - VYBER SKLADBU" (nic nehraje)
+OK     2) HRAT VSECHNY OBLIBENE: playlist = 2 oblibene, hraje prvni (nacetla se jen ta jedna)
+OK     2) po konci prvni oblibene se nacte a hraje druha
+OK     2) tlacitko v panelu: "☆ ODEBRAT HRAJICI SKLADBU" -> hrajici skladba odebrana z oblibenych
+OK     2) a znovu pridana (★ PRIDAT HRAJICI SKLADBU)
+OK     2) ✕ u oblibene: 1. klepnuti "ODEBRAT?" (nic se nesmaze), 2. klepnuti odebere
+OK     2) oblibena se presunula (stara adresa nejde): najde se v mobilu podle jmena, hraje a oblibena ma novou adresu
+OK     2) oblibena, ktera uz v mobilu neni: "SKLADBA NENI DOSTUPNA • zmizela.mp3"
+OK     2) ZPET na telefonu: otevreny panel zavre (1), jinak necha appku jit zpet (0)
+OK     3) RECORD bez skladeb: "RECORD • NEJDRIV VYBER SKLADBY" a otevre se seznam
+OK     3) RECORD: tlacitko zhava, prehravani se samo rozjede, status "● REC 00:00 • Neon_Drive.mp3"
+OK     3) PAUSE: "PAUSE • RECORD CEKA", pak "❚❚ REC 00:03 • Neon_Drive.mp3" (cas nahravky stoji)
+OK     3) STOP ulozi: souborZacni(Mixtape, NP_VISION_mixtape_20261020_133412.m4a, audio/mp4), 5 kousku, souborDokonci 1x
+OK     3) hlaska: "MIXTAPE ULOZENA 00:04 • Download/AtariHelp/Mixtape/NP_VISION_mixtape_20261020_133412.m4a"
+OK     3) nahravka: mov / opus, delka 4.52 s (hlavicka) / 4.48 s (dekodovano) = 2,5 + 1,5 s hrani, 2 s pauzy NENI v ni; RMS 0.042
+OK     3) VOLUME na 30 % ("VOLUME • 0.3"): nahravka stejne silna (RMS 0.042 / 0.042 = 1.00); <audio>.volume = 1 (hlasitost dela jen graf - drive 2x, 30 % hralo jako 9 %); RECORD znovu = konec, hraje se dal
+OK     3) BALANCE uplne vlevo ("BALANCE • L"): v nahravce levy kanal RMS 0.059, pravy 0.0019 (o vic nez 20 dB min) - nahrava se zvuk az za efekty (EQ, BASS, TREBLE, BALANCE)
+OK     3) RECORD + 2 skladby po 3 s: na konci playlistu se sama ulozi, delka 5.92 s (dekodovano) = obe skladby bez mezery na nacitani
+OK     3) MENU behem nahravani: prehravac pocka, ulozi mixtape (souborDokonci 1) a teprve pak jde do menu
+OK     5) ZPET na telefonu behem nahravani: napZpet = 1, mixtape se ulozi, pak menu
+OK     6) bez M4A: NP_VISION_mixtape_20261020_133438.webm (audio/webm), delka v hlavicce 3.03 s = dekodovano 3.00 s, Chromium ukaze delku 3.033099 (drive Infinity)
+OK     7) chyba zapisu v Jave: "MIXTAPE SE NEULOZILA • CHYBA ZAPISU", souborZrus 1x
+OK     7) po chybe jde nahravat znovu
+OK     7) prohlizec na PC: stazeni NP_VISION_mixtape_20261020_133444.m4a (24702 B, 1.42 s)
+OK     8) zadna chyba JavaScriptu
+VYSLEDEK: 30 kontrol, 0 CHYBA

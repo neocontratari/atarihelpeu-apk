@@ -1,0 +1,19 @@
+OK     1) PBKDF2-HMAC-SHA256 = Python hashlib: 45/45 vektoru (i RFC: password/salt 1, 2, 4096 iteraci, 40 B = 2 bloky, nulove bajty)
+OK     2) normalizace: mala pismena, pomlcky a mezery nevadi
+OK     2) ukazkovy kod sedi (i malymi pismeny, s pomlckou / mezerami), jiny / prazdny / delsi ne
+OK     3) otisk v appce: 8 spatnych kodu neprojde
+   jedno overeni (60000 opakovani) na PC: 98 ms
+OK     4) 3 spatne pokusy -> minuta pauza (SPATNE, SPATNE, POCKEJ:60; za 28 s POCKEJ:32), servis zavreny
+OK     4) skutecny servisni kod (z NAP_SERVIS_KOD, nevypisuje se): v pauze POCKEJ:22, pak OK; servis 10 min (600 s), po 10 min zavreny
+OK     4) skutecny kod i malymi pismeny a s pomlckou uprostred
+OK     4) skutecny kod s jednim jinym znakem (10 variant) neprojde
+OK     4) po startu appky je servis zavreny
+OK     5) stranky emulatoru: emu_sega (i vetve _eu / _usa_stable) = SEGA, emu_ps1 = PS1, ostatni nic (13 adres)
+OK     5) zamceno: SEGA podle Segy, PS1 podle PS1, jina stranka nikdy
+   SEGA JE ZAMČENÁ|Napiš v Atari ještě 45 řádků programu (řádky s číslem, počítají se při RUN nebo LIST).
+   PS1 JE ZAMČENÁ|Hraj na Seze ještě 12 min.
+   PS1 JE ZAMČENÁ|Nejdřív odemkni Segu, pak 30 minut hraní na Seze.
+OK     5) duvod zamku = stejna slova jako zamcena karta v menu (i 1 radek / 3 radky / 45 radku)
+OK     6) seznam hudby: MP3 / WAV / M4A / AAC / OGG / OPUS / FLAC / WEBM ano, jine ne
+OK     6) ZPET si berou samy jen MP3 prehravac a DZUBOX
+VYSLEDEK: 14 kontrol, 0 CHYBA

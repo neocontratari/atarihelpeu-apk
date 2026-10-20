@@ -1,0 +1,3 @@
+B312 - hledani servisniho kodu v repozitari (kod se nevypisuje)
+souboru v gitu s kodem: 0, souboru na disku s kodem: 0, commitu s kodem v historii: 0
+VYSLEDEK: 0 nalezu (ma byt 0)

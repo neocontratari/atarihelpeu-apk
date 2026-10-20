@@ -14,10 +14,14 @@ import android.content.SharedPreferences;
  *
  * Nápověda ke kódu je v úvodním filmu - proto se tam píše celý listing.
  *
- * PRO RENEHO JE TU ZADNI VRATKA: v nabídce OPTIONS je tlačítko
- * ODEMKNOUT DALSI, které postupně odemyká jednu úroveň po druhé,
- * aby šlo testovat bez odehrání celé cesty. A ZAMKNOUT VSE, které
- * to vrátí na začátek, aby se dal vyzkoušet pohled nového hráče.
+ * PRO RENEHO JE TU ZADNI VRATKA: tlačítko ODEMKNOUT DALSI, které postupně
+ * odemyká jednu úroveň po druhé, aby šlo testovat bez odehrání celé cesty.
+ * A ZAMKNOUT VSE, které to vrátí na začátek, aby se dal vyzkoušet pohled
+ * nového hráče. B312: obě jsou v OPTIONS schované pod servisním kódem
+ * (NapServis) a Java je bez otevřeného servisu odmítne.
+ *
+ * B312: zámky platí všude - i pro hry z webu a přímý skok na stránku
+ * emulátoru (MainActivity.konzoleZamcena, NapPravidla).
  *
  * Čas se počítá jen když Sega opravdu běží - ne když je aplikace
  * na pozadí nebo v jiném emulátoru.

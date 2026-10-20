@@ -2856,3 +2856,58 @@
      v assets/design a assets/img.
 
 ===============================================================================
+
+   B312: SERVIS POD KODEM, ZAMKY VSUDE, MP3 RECORD (MIXTAPE) A FAVORITES.
+     Rene k B311: "tlacitka schovat ... pod kod, ktery bude vedet jen ja;
+     samozrejme uzamcit; RECORD a FAVORITES doplnit a dopsat do napovedy;
+     nepouzite obrazky klidne vymaz". Od B312:
+     - SERVIS (NapServis.java): ODEMKNOUT DALSI / ZAMKNOUT VSE jsou v OPTIONS
+       (index.html #stServis) schovane; pole pro kod (#stServisKod) ukaze
+       skryte gesto v index.html. AHINTRO.servisKod overi kod v JAVE:
+       PBKDF2-HMAC-SHA256, 60 000x, 16 B sul, 32 B otisk (vlastni PBKDF2 nad
+       Mac HmacSHA256 - PBKDF2WithHmacSHA256 je az od API 26), porovnani
+       MessageDigest.isEqual, 3 spatne = 60 s pauza, servis 10 min (staticke
+       pole - po restartu appky zavreny). AHINTRO.odemkniDalsi / zamkniVse
+       bez otevreneho servisu vrati "ZAMCENO" (volat je muze kterakoli
+       stranka ve WebView, i web!). REPOZITAR JE VEREJNY: KOD NIKDY DO
+       REPOZITARE, COMMITU, LOGU ANI TESTU. Zmena kodu = nova SUL + OTISK
+       v NapServis (python3: hashlib.pbkdf2_hmac('sha256', KOD.encode(),
+       sul, 60000, 32)), kod Renemu jen soukrome. Test s kodem:
+       NAP_SERVIS_KOD=... bash test_overeni/b312/vse.sh (bod 10 hlida, ze
+       kod v repozitari neni).
+     - ZAMKY VSUDE: MainActivity.konzoleZamcena(SEGA|PS1, odkud, co) =
+       NapPostup + NapPravidla (ciste Java, JVM test) -> Toast s duvodem
+       (stejna slova jako menu) + log "B312 ZAMEK". Brany na zacatku:
+       downloadAndRunSega(+Archive), openSegaRomBytes, downloadAndRunPs1Remote,
+       startPs1RemoteDownloadAndBoot, AHPS1.ps1PickGame. Stranka emulatoru
+       (file:///android_asset/emu_sega*, emu_ps1*): shouldInterceptRequest
+       (hlavni ramec) vrati kratkou stranku -> index.html; onPageStarted je
+       pojistka. Intro (spustSegu / spustPs1) jde do jader primo - NENI
+       zamcene (je to film, ne hra). Kontrola: test_overeni/b312/
+       kontrola_zamku.py - kdyz pridas novou cestu ke hre Segy / PS1,
+       pridej branu i do ni.
+     - MP3 PREHRAVAC (assets/player/index.html): RECORD = MediaRecorder
+       z uzlu predHlasitosti (za EQ / BASS / TREBLE / BALANCE, pred
+       gainNode), recorder sleduje <audio> ('pause' -> pause, 'playing' ->
+       resume), C90 = 90 min, ulozeni pres assets/spolecne/nap_nahravka.js
+       (typ: mp4 AAC > mp4 > webm; WebM dostane Duration do EBML Info;
+       AHSAVE po 384 kB) do Download/AtariHelp/Mixtape. S grafem
+       audio.volume = 1 (Chromium aplikuje element.volume i na
+       MediaElementSource - drive se VOLUME uplatnil 2x).
+       Skladby z Javy (AHPICK.playLocalAudio -> AHLOCAL_AUDIO_BEGIN/PART/END)
+       jdou PO JEDNE pres frontu (probiha / fronta / seznamGen), skladba
+       = {name, url|null, src (adresa v mobilu), zJavy}; po prepnuti se blob
+       uvolni (url = null) a pri dalsim prehrani se nacte znovu.
+       FAVORITES: localStorage nap_player_oblibene_v1 [{n, u, s, t}];
+       kdyz adresa nejde, hleda se v listLocalAudio podle jmena.
+       window.napZpet (prehravac i DZUBOX): Java ho vola na ZPET
+       (NapPravidla.jeStrankaSeZpet); 1 = stranka si to vyridi sama.
+     - NapPravidla.jeAudioJmeno: seznam hudby i m4a/aac/ogg/oga/opus/flac/
+       webm (nahravky). Smazane: assets/design (krome nap_logo_original.png),
+       img/, nap_ui/nap_intro_command_center.png, nap/NapExactImageScreens
+       (mrtva trida). nap/ExternalUrlHelper je taky nepouzity (nechan).
+     POUCKA: Chromium (Playwright) umi MediaRecorder audio/mp4 (Opus) i
+     webm, AAC ne (bez proprietarnich kodeku) - testy proto berou M4A
+     s Opusem; na telefonu muze vzniknout M4A s AAC.
+
+===============================================================================

@@ -1,0 +1,3 @@
+rozhrani: AHATARICPP=AHAtariCpp, AHINTRO=AHIntro, AHNATIVE=AHNative, AHNET=AHNet, AHPICK=AHPick, AHPS1=AHPS1, AHRENDER=AHRENDER, AHSAVE=AHSave, AHSega=AHSega, AHTVWEB=AHTvWeb
+volani mostu z JS: 103 v poradku, 0 chybi
+VYSLEDEK: 103 volani v poradku, 0 CHYBA

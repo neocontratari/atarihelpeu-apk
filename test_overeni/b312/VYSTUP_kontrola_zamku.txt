@@ -1,0 +1,19 @@
+OK     1) downloadAndRunSega (stazeni hry Segy z webu): zamek SEGA se zkontroluje driv nez cokoli dalsiho (brana na znaku 14, prvni akce 124)
+OK     1) downloadAndRunSegaArchive (stazeni ZIP se hrou Segy z webu): zamek SEGA se zkontroluje driv nez cokoli dalsiho (brana na znaku 14, prvni akce 131)
+OK     1) openSegaRomBytes (otevreni ROM Segy (i ZIP ze stazeni hry Atari)): zamek SEGA se zkontroluje driv nez cokoli dalsiho (brana na znaku 83, prvni akce 173)
+OK     1) downloadAndRunPs1Remote (stazeni hry PS1 z webu): zamek PS1 se zkontroluje driv nez cokoli dalsiho (brana na znaku 14, prvni akce 408)
+OK     1) startPs1RemoteDownloadAndBoot (AHPS1.ps1DownloadAndBoot (zavola i web)): zamek PS1 se zkontroluje driv nez cokoli dalsiho (brana na znaku 98, prvni akce 811)
+OK     1) ps1PickGame (AHPS1.ps1PickGame - vyber hry PS1 z telefonu): zamek PS1 se zkontroluje driv nez cokoli dalsiho (brana na znaku 50, prvni akce 342)
+OK     2) loadUrl(SEGA_URL / PS1_URL): 2 mist, vsechna v hlidanych metodach
+OK     3) shouldInterceptRequest: pro hlavni ramec je zamek PRVNI (zamcena stranka emulatoru se vubec nenacte)
+OK     3) zamcenaStrankaOdpoved: misto stranky emulatoru kratka stranka, ktera skoci do hlavniho menu
+OK     3) onPageStarted: pojistka (i stranka z historie) - zastavit a do hlavniho menu; co uz vyridil shouldInterceptRequest, se podruhe nedela
+OK     3) konzoleZamcena: stav z NapPostup, rozhodnuti NapPravidla, duvod cloveku (Toast) a radek B312 ZAMEK do logu
+OK     4) routeGameDownloadUrl (AHNET.runGameUrl, ahgame://) vola jen: downloadAndRun, downloadAndRunPs1Remote, downloadAndRunSega, downloadAndRunSegaArchive
+OK     4) handleMaybeGameUrl (odkaz na webu) vola jen: downloadAndRun, downloadAndRunPs1Remote, downloadAndRunSega, downloadAndRunSegaArchive
+OK     4) DownloadListener (stazeni souboru z webu) vola jen: downloadAndRun, downloadAndRunPs1Remote, downloadAndRunSega, downloadAndRunSegaArchive
+OK     4) stazeni hry Atari / ZIP (downloadAndRun): kdyz je v ZIP hra Segy, jde pres hlidany openSegaRomBytes
+OK     5) AHINTRO.odemkniDalsi: bez otevreneho servisu vrati ZAMCENO a NapPostup.odemkniDalsi se nezavola
+OK     5) AHINTRO.zamkniVse: bez otevreneho servisu vrati ZAMCENO a NapPostup.zamkniVse se nezavola
+OK     5) AHINTRO.servisKod: overi NapServis, do logu jen vysledek (napsany kod ne)
+VYSLEDEK: 18 kontrol, 0 CHYBA
