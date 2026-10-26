@@ -10,6 +10,12 @@ B=$R/test_overeni
 OUT=$B/b314/VYSTUP_regrese.txt
 mkdir -p $PRAC/reg314
 export EGL_PLATFORM=surfaceless
+# Starsi testy (B291-B313) pocitaji s ceskou appkou. V appce rozhoduje o jazyku Java (most AHJAZYK,
+# u Reneho cesky); starsi testy most AHJAZYK nemaji, a tak stranky (nap_jazyk.js) vezmou jazyk
+# prohlizece - Chromium bez LANG hlasi "und" = anglicky. Cesky prohlizec = cesky uzivatel appky.
+# (LC_MESSAGES meni jen jazyk hlasek - Chromium podle nej nastavi navigator.language = cs-CZ;
+# cisla, data a Java tim nejsou dotcene)
+export LC_MESSAGES=cs_CZ.UTF-8
 ok=0; ch=0
 radek() { echo "$1" >> $OUT; }
 vysl() {   # vysl "popis" "vysledek" "vzor pro OK"
@@ -56,7 +62,11 @@ vysl "B312 JVM: NapServis a NapPravidla (cesky beze zmeny)" "$(tail -1 $B/b312/V
 vysl "B312 kazda cesta ke hre Segy / PS1 se pta na zamek" "$(tail -1 $B/b312/VYSTUP_kontrola_zamku.txt)" " 0 CHYB\| 0 chyb\|0 CHYBA"
 vysl "B312 MP3 prehravac (knihovna, FAVORITES, RECORD) se strankou B314" "$(tail -1 $B/b312/VYSTUP_test_b312_prehravac.txt)" " 0 CHYB"
 vysl "B312 DZUBOX RECORD" "$(tail -1 $B/b312/VYSTUP_test_b312_dj.txt)" " 0 CHYB"
-vysl "B312 OPTIONS: servisni kod, ODEMKNOUT DALSI / ZAMKNOUT VSE (s prepinacem jazyka)" "$(tail -1 $B/b312/VYSTUP_test_b312_servis.txt)" " 0 CHYB"
+# krok 9 testu B312 = seznam 8 kroku testu na strance Atari 130XE - v B314 zamerne prazdny
+# (Rene: "nechapu test"; kroky dostava ve zprave) -> jedina povolena CHYBA
+srv9=$(grep "^CHYBA" $B/b312/VYSTUP_test_b312_servis.txt | grep -vc "9) stranka Atari 130XE")
+vysl "B312 OPTIONS: servisni kod, ODEMKNOUT DALSI / ZAMKNOUT VSE (s prepinacem jazyka); krok 9 (kroky testu na strance Atari) v B314 zamerne prazdny" \
+  "$(tail -1 $B/b312/VYSTUP_test_b312_servis.txt), jinych chyb nez krok 9: $srv9" "jinych chyb nez krok 9: 0"
 vysl "B312 navod v Chromiu" "$(tail -1 $B/b312/VYSTUP_test_b312_navod.txt)" " 0 CHYB"
 vysl "B312 nazvy tlacitek v ceskem navodu proti appce" "$(tail -1 $B/b312/VYSTUP_kontrola_navodu.txt)" " 0 CHYBA\|, 0 CHYB"
 vysl "B312 mosty JS -> Java (vcetne AHJAZYK)" "$(tail -1 $B/b312/VYSTUP_kontrola_mostu.txt)" " 0 CHYB\|0 chyb\|: 0"
