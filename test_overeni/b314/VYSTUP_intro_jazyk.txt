@@ -1,0 +1,12 @@
+OK     demo cesky / anglicky (nastavJazyk jako Java introJazyk)
+OK     t= 0.50 pred prvnim titulkem                 rozdil cesky / anglicky: prumer 0.000, jinych bodu 0.00 % (ma byt stejne)
+OK     t= 2.20 titulek 1 (Welcome to the past...)   rozdil cesky / anglicky: prumer 9.122, jinych bodu 1.86 % (ma se lisit)
+OK     t=10.00 titulek 3                            rozdil cesky / anglicky: prumer 22.000, jinych bodu 4.33 % (ma se lisit)
+OK     t=17.60 mezi titulky 4 a 5                   rozdil cesky / anglicky: prumer 0.000, jinych bodu 0.00 % (ma byt stejne)
+OK     t=20.50 titulek 5 (I invented nothing...)    rozdil cesky / anglicky: prumer 15.716, jinych bodu 3.44 % (ma se lisit)
+OK     t=34.00 titulek 8 (One code...)              rozdil cesky / anglicky: prumer 9.321, jinych bodu 2.24 % (ma se lisit)
+OK     t=37.60 po titulcich (defile na CRT)         rozdil cesky / anglicky: prumer 0.000, jinych bodu 0.00 % (ma byt stejne)
+OK     t=43.80 CRT 16-BIT (napis 16-BIT stejny)     rozdil cesky / anglicky: prumer 0.000, jinych bodu 0.00 % (ma byt stejne)
+OK     t=57.00 zaverecne titulky (scena 5: datum, (C)) rozdil cesky / anglicky: prumer 9.682, jinych bodu 2.58 % (ma se lisit)
+OK     zadna chyba GL (0)
+VYSLEDEK: 11 kontrol, 0 CHYB

@@ -1,0 +1,114 @@
+MENU kresba pripravena: ANO (pisma 1, logo ano, mipmapy karet ano)
+GL OpenGL ES 3.2 Mesa 25.2.8-0ubuntu0.24.04.4 | llvmpipe (LLVM 20.1.2, 256 bits) (kontext ES 3)
+MENU pripraveno za 57 ms, karet 7, mipmapy ano
+JAZYK: anglicky (karet 7: ATARI 130XE / EMULATOR · C++ / START)
+snimek poz=0.00 t=3.00: 516.6 ms, jas 36.8, prekresleno karet 4, chyb GL 0 -> PRAC/menu_en/menu_1080x2340_en_p0.00_t3.00.png
+snimek poz=3.00 t=3.00: 217.2 ms, jas 37.1, prekresleno karet 3, chyb GL 0 -> PRAC/menu_en/menu_1080x2340_en_p3.00_t3.00.png
+snimek poz=6.00 t=3.00: 49.4 ms, jas 45.0, prekresleno karet 0, chyb GL 0 -> PRAC/menu_en/menu_1080x2340_en_p6.00_t3.00.png
+umeni: atari=3d:atari, sega=3d:nap16, ps1=3d:nap32, mp3=fx:kazeta, dzubox=fx:dzubox, web=fx:web, help=fx:help
+obrazky karet 800x1072 bodu (karta na obrazovce 821x1094)
+karta atari: 3d:atari
+karta sega: 3d:nap16
+karta ps1: 3d:nap32
+karta mp3: fx:kazeta
+karta dzubox: fx:dzubox
+karta web: fx:web
+karta help: fx:help
+CHYB GL celkem: 0
+MENU kresba pripravena: ANO (pisma 1, logo ano, mipmapy karet ano)
+GL OpenGL ES 3.2 Mesa 25.2.8-0ubuntu0.24.04.4 | llvmpipe (LLVM 20.1.2, 256 bits) (kontext ES 3)
+MENU pripraveno za 51 ms, karet 7, mipmapy ano
+JAZYK: anglicky (karet 7: ATARI 130XE / EMULATOR · C++ / START)
+snimek poz=1.00 t=3.00: 593.2 ms, jas 28.4, prekresleno karet 5, chyb GL 0 -> PRAC/menu_en/menu_1080x2340_zamky_en_p1.00_t3.00.png
+snimek poz=2.00 t=3.00: 88.2 ms, jas 27.8, prekresleno karet 1, chyb GL 0 -> PRAC/menu_en/menu_1080x2340_zamky_en_p2.00_t3.00.png
+umeni: atari=3d:atari, sega=3d:nap16, ps1=3d:nap32, mp3=fx:kazeta, dzubox=fx:dzubox, web=fx:web, help=-
+obrazky karet 800x1072 bodu (karta na obrazovce 821x1094)
+karta atari: 3d:atari
+karta sega: 3d:nap16
+karta ps1: 3d:nap32
+karta mp3: fx:kazeta
+karta dzubox: fx:dzubox
+karta web: fx:web
+CHYB GL celkem: 0
+MENU kresba pripravena: ANO (pisma 1, logo ano, mipmapy karet ano)
+GL OpenGL ES 3.2 Mesa 25.2.8-0ubuntu0.24.04.4 | llvmpipe (LLVM 20.1.2, 256 bits) (kontext ES 3)
+MENU pripraveno za 48 ms, karet 7, mipmapy ano
+JAZYK: anglicky (karet 7: ATARI 130XE / EMULATOR · C++ / START)
+snimek poz=6.00 t=3.00: 424.5 ms, jas 24.8, prekresleno karet 5, chyb GL 0 -> PRAC/menu_en/menu_2340x1080_en_p6.00_t3.00.png
+umeni: atari=-, sega=-, ps1=3d:nap32, mp3=fx:kazeta, dzubox=fx:dzubox, web=fx:web, help=fx:help
+obrazky karet 488x648 bodu (karta na obrazovce 482x643)
+karta ps1: 3d:nap32
+karta mp3: fx:kazeta
+karta dzubox: fx:dzubox
+karta web: fx:web
+karta help: fx:help
+CHYB GL celkem: 0
+MENU kresba pripravena: ANO (pisma 1, logo ano, mipmapy karet ano)
+GL OpenGL ES 3.2 Mesa 25.2.8-0ubuntu0.24.04.4 | llvmpipe (LLVM 20.1.2, 256 bits) (kontext ES 3)
+MENU pripraveno za 55 ms, karet 7, mipmapy ano
+JAZYK: anglicky (karet 7: ATARI 130XE / EMULATOR · C++ / START)
+snimek poz=0.00 t=3.00: 346.5 ms, jas 22.9, prekresleno karet 5, chyb GL 0 -> PRAC/menu_en/menu_1280x720_tv_en_p0.00_t3.00.png
+umeni: atari=3d:atari, sega=3d:nap16, ps1=3d:nap32, mp3=fx:kazeta, dzubox=fx:dzubox, web=-, help=-
+obrazky karet 288x384 bodu (karta na obrazovce 287x382)
+karta atari: 3d:atari
+karta sega: 3d:nap16
+karta ps1: 3d:nap32
+karta mp3: fx:kazeta
+karta dzubox: fx:dzubox
+CHYB GL celkem: 0
+MENU kresba pripravena: ANO (pisma 1, logo ano, mipmapy karet ano)
+GL OpenGL ES 3.2 Mesa 25.2.8-0ubuntu0.24.04.4 | llvmpipe (LLVM 20.1.2, 256 bits) (kontext ES 3)
+MENU pripraveno za 52 ms, karet 7, mipmapy ano
+karta atari   600x800 -> PRAC/karty_cz/karta_atari.jpg
+karta sega    600x800 -> PRAC/karty_cz/karta_sega.jpg
+karta ps1     600x800 -> PRAC/karty_cz/karta_ps1.jpg
+karta mp3     600x800 -> PRAC/karty_cz/karta_mp3.jpg
+karta dzubox  600x800 -> PRAC/karty_cz/karta_dzubox.jpg
+karta web     600x800 -> PRAC/karty_cz/karta_web.jpg
+karta help    600x800 -> PRAC/karty_cz/karta_help.jpg
+umeni: atari=3d:atari, sega=3d:nap16, ps1=3d:nap32, mp3=fx:kazeta, dzubox=fx:dzubox, web=fx:web, help=fx:help
+obrazky karet 600x800 bodu (karta na obrazovce 600x800)
+karta atari: 3d:atari
+karta sega: 3d:nap16
+karta ps1: 3d:nap32
+karta mp3: fx:kazeta
+karta dzubox: fx:dzubox
+karta web: fx:web
+karta help: fx:help
+CHYB GL celkem: 0
+MENU kresba pripravena: ANO (pisma 1, logo ano, mipmapy karet ano)
+GL OpenGL ES 3.2 Mesa 25.2.8-0ubuntu0.24.04.4 | llvmpipe (LLVM 20.1.2, 256 bits) (kontext ES 3)
+MENU pripraveno za 56 ms, karet 7, mipmapy ano
+JAZYK: anglicky (karet 7: ATARI 130XE / EMULATOR · C++ / START)
+karta atari   600x800 -> PRAC/karty_en/karta_atari_en.jpg
+karta sega    600x800 -> PRAC/karty_en/karta_sega_en.jpg
+karta ps1     600x800 -> PRAC/karty_en/karta_ps1_en.jpg
+karta mp3     600x800 -> PRAC/karty_en/karta_mp3_en.jpg
+karta dzubox  600x800 -> PRAC/karty_en/karta_dzubox_en.jpg
+karta web     600x800 -> PRAC/karty_en/karta_web_en.jpg
+karta help    600x800 -> PRAC/karty_en/karta_help_en.jpg
+umeni: atari=3d:atari, sega=3d:nap16, ps1=3d:nap32, mp3=fx:kazeta, dzubox=fx:dzubox, web=fx:web, help=fx:help
+obrazky karet 600x800 bodu (karta na obrazovce 600x800)
+karta atari: 3d:atari
+karta sega: 3d:nap16
+karta ps1: 3d:nap32
+karta mp3: fx:kazeta
+karta dzubox: fx:dzubox
+karta web: fx:web
+karta help: fx:help
+CHYB GL celkem: 0
+OK    karta_atari.jpg z C++ = assets (rozdil 0.00)
+OK    karta_sega.jpg z C++ = assets (rozdil 0.00)
+OK    karta_ps1.jpg z C++ = assets (rozdil 0.00)
+OK    karta_mp3.jpg z C++ = assets (rozdil 0.00)
+OK    karta_dzubox.jpg z C++ = assets (rozdil 0.00)
+OK    karta_web.jpg z C++ = assets (rozdil 0.00)
+OK    karta_help.jpg z C++ = assets (rozdil 0.00)
+OK    karta_help_en.jpg (kniha GUIDE / CONTROLS) z C++ = assets (rozdil 0.00)
+OK    karta_atari anglicky = cesky (obrazek bez textu, rozdil 0.00)
+OK    karta_sega anglicky = cesky (obrazek bez textu, rozdil 0.00)
+OK    karta_ps1 anglicky = cesky (obrazek bez textu, rozdil 0.00)
+OK    karta_mp3 anglicky = cesky (obrazek bez textu, rozdil 0.00)
+OK    karta_dzubox anglicky = cesky (obrazek bez textu, rozdil 0.00)
+OK    karta_web anglicky = cesky (obrazek bez textu, rozdil 0.00)
+VYSLEDEK: obrazky karet 0 CHYBA

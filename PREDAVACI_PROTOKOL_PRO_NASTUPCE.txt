@@ -3037,7 +3037,8 @@
        karta, DJ_mixy ...), log appky, napisy na samotnem Atari (vzdy
        anglicky jako skutecne Atari), DZUBOX (byl anglicky uz drive).
      - TESTY: test_overeni/b314 (JAK_SPUSTIT.txt, vse.sh). Chromium testy
-       stranek porovnavaji cestinu s git HEAD (B313) - po commitu B314 se
-       srovnava s B314.
+       stranek porovnavaji cestinu s B313 = pevny commit 00f0c44
+       (jazyk_harness.B313, prepsat promennou NAP_B313). Pri dalsi verzi
+       s novymi texty: novy test proti B314 (83dc22b), ne prepisovat tyhle.
 
 ===============================================================================

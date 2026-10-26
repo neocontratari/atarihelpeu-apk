@@ -10,7 +10,7 @@
 #     smazani vrati vse, hlaska FOUND n× · m CHAPTER(S)
 #  4) anglicky navod bez zbytku cestiny (texty, atributy, titulek) - krome nazvu slozek v telefonu
 #     (jsou cesky i v anglicke appce) a prepinace JAZYK · LANGUAGE / ČEŠTINA
-#  5) cesky navod: texty jako v B313 (git HEAD) krome zamernych zmen B314 (jazyk, paticka)
+#  5) cesky navod: texty jako v B313 (commit 00f0c44) krome zamernych zmen B314 (jazyk, paticka)
 #  6) 320 px, 360 px a na sirku: nic nepreteka do strany
 #  7) zadna chyba JavaScriptu, zadny chybejici soubor
 #   python3 test_b314_jazyk_navod.py [PRAC]          -> VYSTUP_test_b314_jazyk_navod.txt (+ snimky do PRAC, jen pro me)
@@ -191,7 +191,7 @@ with sync_playwright() as p:
 
     # ---- 5) cesky navod jako v B313 ----
     tmp = tempfile.mkdtemp(prefix='b314_navod_')
-    subprocess.run('git -C "%s" archive HEAD app/src/main/assets/napoveda | tar -x -C "%s"' % (H.KOREN, tmp), shell=True, check=True)
+    subprocess.run('git -C "%s" archive %s app/src/main/assets/napoveda | tar -x -C "%s"' % (H.KOREN, H.B313, tmp), shell=True, check=True)
     sbery = []
     for url in (CZ, 'file://' + os.path.join(tmp, 'app/src/main/assets/napoveda/index.html')):
         c = kontext('cs')

@@ -7,7 +7,7 @@
   - Python server = co dela Java: /status (menu, Atari psani / hrani, Sega, PS1), /vloz (odpovedi
     C++ devVlozNative a Javy), proudy drzi otevrene, /clientlog.
 Kontroly:
-  a) cesky: stranka je stejna jako v B313 (git HEAD) - Java ji v cestine nemeni,
+  a) cesky: stranka je stejna jako v B313 (commit 00f0c44) - Java ji v cestine nemeni,
   b) anglicky: v zadnem stavu (menu, Atari psani, Atari hrani, Sega, PS1, panel OBRAZ a jeho
      prepinace, hlasky vlozeni Ctrl+V) nezustala cestina - texty, atributy, titulek,
   c) anglicke hlasky jsou spravne (napr. PASTED: 3 PROGRAM LINES ..., TYPED: 1 CHARACTER),
@@ -231,7 +231,7 @@ def projdi(b, html, popis_jazyka):
 
 def main():
     # a) cesky = B313
-    stary = subprocess.run(['git', '-C', KOREN, 'show', 'HEAD:app/src/main/java/eu/atarihelp/emu10/MainActivity.java'],
+    stary = subprocess.run(['git', '-C', KOREN, 'show', H.B313 + ':app/src/main/java/eu/atarihelp/emu10/MainActivity.java'],
                            capture_output=True, text=True, check=True).stdout
     CZ0 = stranka_z_javy(stary)
     # B314 zmenil jen napovedu klavesnice: pise ji prelozenou (napTr - cesky bez NapJazyk = beze zmeny)

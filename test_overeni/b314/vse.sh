@@ -72,6 +72,9 @@ print('VYSLEDEK: obrazky karet %d CHYBA' % ch)
 PYEOF
 echo "   $(grep -c '^snimek' VYSTUP_menu_snimky_en.txt) snimku menu anglicky, CHYB GL nenulovych: $(grep 'CHYB GL celkem' VYSTUP_menu_snimky_en.txt | grep -vc 'celkem: 0'); $(tail -1 VYSTUP_menu_snimky_en.txt)"
 
+echo "== 6b) obrazek konzole Sega anglicky: stejna pruhlednost, jine jen popisky dlazdic, data-en-src na strance"
+python3 kontrola_sega_skin.py > /dev/null; tail -1 VYSTUP_kontrola_sega_skin.txt
+
 echo "== 7) SKUTECNY nap_menu_gl.cpp pres JNI (jako z Javy) + menuJazyk tam a zpet (+ ThreadSanitizer)"
 g++ -std=c++17 -O2 -pthread -w $JNI -o $PRAC/test_menu_host_b314 test_menu_host_b314.cpp -l:libEGL.so.1 -l:libGLESv2.so.2 || echo CHYBA_PREKLAD
 PRAC=$PRAC timeout 900 $PRAC/test_menu_host_b314 2>&1 | grep -v "^karta \|^DEMO\|^MENU" | cisty > VYSTUP_test_menu_host_b314.txt; tail -1 VYSTUP_test_menu_host_b314.txt

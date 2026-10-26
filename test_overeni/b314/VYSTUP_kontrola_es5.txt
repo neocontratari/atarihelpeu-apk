@@ -1,0 +1,9 @@
+OK     ES5 nap_jazyk.js
+OK     ES5 en_atari.js
+OK     ES5 en_konzole.js
+OK     ES5 en_menu.js
+OK     ES5 en_mp3.js
+OK     ES5 en_ps1.js
+OK     ES5 en_sega.js
+OK     ES5 en_tv.js
+VYSLEDEK: 8 souboru, 0 CHYBA

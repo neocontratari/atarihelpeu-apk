@@ -66,6 +66,8 @@ Vse najednou: PRAC=... INC=... GLSLANG=... ANDROID_JAR=... bash vse.sh        (v
    g++ -std=c++17 -O2 -I$INC -o menu_snimky_b314 menu_snimky_b314.cpp -l:libEGL.so.1 -l:libGLESv2.so.2
    menu_snimky_b314 VYSTUP 600 800 --en --karty  -> karta_help_en.jpg (= assets/menu/karta_help_en.jpg)
                                                                      -> VYSTUP_menu_snimky_en.txt
+6b) Obrazek Segy anglicky: python3 kontrola_sega_skin.py (stejna pruhlednost jako cesky, jine jen
+   popisky dlazdic, data-en-src na strance)                         -> VYSTUP_kontrola_sega_skin.txt
 7) SKUTECNY nap_menu_gl.cpp pres JNI + menuJazyk tam a zpet: test_menu_host_b314.cpp
    (= ../b313/test_menu_host_b313.cpp + krok 11), prepinace jako v ../b313; ThreadSanitizer +
    python3 tsan_rozbor.py               -> VYSTUP_test_menu_host_b314.txt, VYSTUP_tsan_menu_host_b314.txt

@@ -1,0 +1,5 @@
+OK     rozmer (941, 1672) / (941, 1672), anglicky RGBA
+OK     pruhlednost stejna jako cesky (polopruhlednych bodu 5180)
+OK     jine body jen v pasu popisku: 7266 bodu, y 1594-1618, mimo pas 0
+OK     stranka Segy: <img ... data-en-src="sega_megadrive_screen_en.png">
+VYSLEDEK: 4 kontrol, 0 CHYBA

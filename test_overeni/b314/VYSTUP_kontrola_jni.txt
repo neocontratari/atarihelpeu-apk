@@ -44,3 +44,4 @@ OK     proudStavNative          jint()
 OK     proudZavriNative         void(jint)
        NativeIntroBridge: 17 native metod v Jave, 17 v C++
 VYSLEDEK: 0 nesouhlasi
+       z knihoven videt (-fvisibility=hidden, JNIEXPORT): menu 24 z 24 (menuJazyk 1), intro 17 z 17 (introJazyk 1)

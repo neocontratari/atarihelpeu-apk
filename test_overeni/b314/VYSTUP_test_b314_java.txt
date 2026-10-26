@@ -1,0 +1,11 @@
+OK     cesky Sega 45: Napiš v Atari ještě 45 řádků programu (řádky s číslem, počítají se při RUN nebo LIST).
+OK     anglicky Sega 45: Type 45 more program lines on the Atari (numbered lines – they count on RUN or LIST).
+OK     anglicky Sega 1 (jednotne cislo): Type 1 more program line on the Atari (numbered lines – they count on RUN or LIST).
+OK     PS1 po odemceni Segy: Play the Sega for 12 more min. / Hraj na Seze ještě 12 min.
+OK     PS1 bez Segy anglicky
+OK     hlaska u hry z webu cesky beze zmeny (stara metoda = cesky)
+OK     hlaska u hry z webu anglicky: SEGA IS LOCKED / Type 37 more program lines on the Atari (numbered lines – they count on RUN or LIST).
+OK     PS1 IS LOCKED, neznama konzole = prazdne
+OK     karta HELP anglicky -> napoveda/en.html (i #kapitola), cesky beze zmeny
+OK     ostatni cile beze zmeny (stranky se prekladaji samy), null nespadne
+VYSLEDEK: 10 OK, 0 CHYBA

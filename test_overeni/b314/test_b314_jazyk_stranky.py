@@ -58,7 +58,7 @@ def main():
     vyber = set(sys.argv[1:])
     srv, zaklad = H.server()
     tmp = tempfile.mkdtemp(prefix='b314_str_')
-    subprocess.run('git -C "%s" archive HEAD app/src/main/assets | tar -x -C "%s"' % (H.KOREN, tmp), shell=True, check=True)
+    subprocess.run('git -C "%s" archive %s app/src/main/assets | tar -x -C "%s"' % (H.KOREN, H.B313, tmp), shell=True, check=True)
     srv0, zaklad0 = H.server(os.path.join(tmp, 'app/src/main/assets'))
     with sync_playwright() as p:
         b = p.chromium.launch()

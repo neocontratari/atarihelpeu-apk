@@ -1,0 +1,8 @@
+OK     na vysku 1080x2160: cesky / anglicky jinych bodu 0.147 % (stitky a hlasky)
+OK     na vysku: prepnuti za chodu = zapnuti v anglictine (jinych bodu 0.0000 %)
+OK     na vysku: zpet cesky za chodu = puvodni cesky obraz (jinych bodu 0.0000 %)
+OK     na vysku: obrazovka Atari stejna (0.0000 %), servisni lista prelozena (0.87 % jinych bodu)
+OK     na sirku 2160x1080: cesky / anglicky jinych bodu 0.569 % (stitky a hlasky)
+OK     na sirku: prepnuti za chodu = zapnuti v anglictine (jinych bodu 0.0000 %)
+OK     na sirku: zpet cesky za chodu = puvodni cesky obraz (jinych bodu 0.0000 %)
+VYSLEDEK: 7 kontrol, 0 CHYB

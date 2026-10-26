@@ -39,13 +39,15 @@ na ANG byla apka v angličtině? A naopak?“
   appka by nenašla uložené hry a pozice. Nápisy na samotném Atari (READY, klávesy) jsou anglicky
   vždy, jako na skutečném Atari. Log appky je dál česky (ten je pro mě).
 
-## 3. Opravy navíc
+## 3. Co testy našly v nové části (opraveno ještě před vydáním)
 
-- **Atari na šířku:** popisky tlačítek se po změně jazyka nepřekreslily (obrázky tlačítek se
-  pamatovaly jen podle velikosti) – teď se překreslí.
+- **Atari na šířku:** po přepnutí jazyka za chodu zůstal na tlačítku nápis MEZERA (obrázky tlačítek
+  se pamatovaly jen podle velikosti) – teď se překreslí na SPACE a zpět.
 - **WEB TV:** nápověda kláves s poslední klávesou [..] by v angličtině blikala – teď se píše rovnou
   přeložená. Česky je stránka stejná jako v B313.
-- **CO_JE_V_B313.md, krok 4:** chybělo, že Segu a PS1 musíš nejdřív odemknout (servis) – opraveno.
+- **Obrázek Segy:** anglická verze nejdřív ztratila průhlednost skla obrazovky – teď je průhlednost
+  přesně jako u české.
+- **CO_JE_V_B313.md, krok 4:** chybělo, že Segu a PS1 musíš nejdřív odemknout (servis) – doplněno.
 
 ## Co prosím vyzkoušet
 
@@ -59,3 +61,23 @@ na ANG byla apka v angličtině? A naopak?“
 6. Pošli log z `8765/log`.
 
 ## Ověřeno na PC
+
+- **Hlavní nabídka a OPTIONS** (Chromium, stránka z appky): 9/0 – česky všech 20 stavů stejně jako
+  v B313 (přibyl jen řádek JAZYK · LANGUAGE), anglicky ve 20 stavech ani slovo česky, přepnutí
+  CZ → EN → CZ za chodu vrátí přesně původní texty, karta HELP otevře anglický návod.
+- **Stránky Atari 130XE, Sega, PS1, MP3, DŽUBOX:** 15/0 – česky 64 stavů stránek stejně jako v B313,
+  anglicky bez češtiny (texty, tlačítka, hlášky, okna alert, nápisy kreslené do obrazu), žádná nová
+  chyba JavaScriptu.
+- **HELP:** anglický návod 34/0 (přesměrování podle jazyka appky, hledání, 320 px i na šířku),
+  každý ze 160 názvů tlačítek v anglickém návodu v appce anglicky opravdu je, český návod 165/0.
+- **Stránka WEB TV** (přesně z Javy): 29/0 – česky stejná jako v B313, anglicky bez češtiny
+  ve všech stavech (menu, Atari psaní / hraní, Sega, PS1, panel obrazu, Ctrl+V).
+- **Hlavní menu v C++:** karty a texty 14/0, snímky anglicky bez chyby GL, skutečné menu přes JNI
+  jako z Javy 19/0 (přepnutí tam a zpět, i 4× rychle za sebou), ThreadSanitizer: 0 závodů v našem kódu.
+- **Intro:** 11/0 – bez titulků stejné snímky, s titulky anglicky.
+- **Přístroj Atari:** 7/0 – na výšku i na šířku, přepnutí za chodu = zapnutí v angličtině, zpět česky
+  = přesně původní obraz.
+- **Java:** pravidla zámků a karty HELP 10/0, věty zámků v Javě a v HTML menu stejné 18/0,
+  překlad proti skutečnému Androidu 0 chyb, podpisy JNI 24/24 (menu) a 17/17 (intro).
+- **Skripty jazyka** pro starý WebView (ES5): 8 souborů, 0 chyb. **Obrázek Segy** anglicky 4/0.
+- **CI:** APK sestavené (Build APK – success).

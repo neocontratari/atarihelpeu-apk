@@ -1,0 +1,7 @@
+B314 ThreadSanitizer - test_menu_host_b314 (skutecny nap_menu_gl.cpp: GL vlakno menu, dotyk a klavesy
+z "Javy", proud na TV, snimek pro stary prohlizec, plocha pryc a zpet)
+test sam: VYSLEDEK: 19 OK, 0 CHYBA
+hlaseni celkem: 34
+  uvnitr Mesy (llvmpipe, obe strany v libgallium - na telefonu neni): 34 x data race
+  v NASEM kodu: 0
+VYSLEDEK: 0 zavodu v nasem kodu

@@ -19,6 +19,9 @@ import unicodedata
 ZDE = os.path.dirname(os.path.abspath(__file__))
 KOREN = os.path.normpath(os.path.join(ZDE, '../..'))
 ASSETS = os.path.join(KOREN, 'app/src/main/assets')
+# B313 = verze pred jazykem (commit 00f0c44) - s ni se porovnava cestina ("cesky beze zmeny");
+# pevne, ne HEAD, aby testy sly spustit znovu i po commitu B314 (NAP_B313 = jiny commit)
+B313 = os.environ.get('NAP_B313', '00f0c44')
 
 DIAKRITIKA = re.compile('[ěščřžýáíéůúťďňĚŠČŘŽÝÁÍÉŮÚŤĎŇ]')
 
