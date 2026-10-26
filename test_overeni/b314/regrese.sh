@@ -71,7 +71,10 @@ vysl "B312 navod v Chromiu" "$(tail -1 $B/b312/VYSTUP_test_b312_navod.txt)" " 0 
 vysl "B312 nazvy tlacitek v ceskem navodu proti appce" "$(tail -1 $B/b312/VYSTUP_kontrola_navodu.txt)" " 0 CHYBA\|, 0 CHYB"
 vysl "B312 mosty JS -> Java (vcetne AHJAZYK)" "$(tail -1 $B/b312/VYSTUP_kontrola_mostu.txt)" " 0 CHYB\|0 chyb\|: 0"
 vysl "B312 odkazy na soubory (en.html, jazyk/*.js, obrazky _en)" "$(tail -1 $B/b312/VYSTUP_kontrola_odkazu.txt)" " 0 CHYB\|0 chyb\|: 0"
-vysl "B312 hlavni menu B311 v Chromiu se strankou B314" "$(tail -1 $B/b312/VYSTUP_b311_menu_se_strankou_b312.txt)" "CHYB"
+# A11 testu B311 = 10 kroku testu B311 na strance Atari 130XE - zmenene uz od B312 (stejne v B312)
+m11=$(grep "^CHYBA" $B/b312/VYSTUP_b311_menu_se_strankou_b312.txt | grep -vc "A11) stranka Atari 130XE")
+vysl "B312 hlavni menu B311 v Chromiu se strankou B314 (A11 = kroky testu B311 na strance Atari, zmenene od B312)" \
+  "$(tail -1 $B/b312/VYSTUP_b311_menu_se_strankou_b312.txt), jinych chyb nez A11: $m11" "jinych chyb nez A11: 0"
 vrat test_overeni/b312 test_overeni/b311
 
 # 3) B291: SKUTECNY nap_atari_native.cpp (pristroj, dotyk, kazeta, CSAVE) - pristroj ma v B314 jazyk
