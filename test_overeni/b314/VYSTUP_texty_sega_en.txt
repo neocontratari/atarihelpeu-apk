@@ -1,0 +1,83 @@
+B314 - vsechny anglicke texty stranky sega (emu_sega/index.html), pro kontrolu ocima
+SEGA C++ ONLY READY CATALOG=performance LOW/HIGH, ROM via CARTRIDGE. Without a ROM the black native layer does not start.
+LOG
+CONSOLE
+JOYSTICK
+CATALOG
+SAVES
+GAMES
+MANUALS
+WEB
+MENU
+AUTO COMPAT INFO
+CARTRIDGE SLOT
+CARTRIDGE
+RESET
+START
+SAVE
+LOAD GAME
+A
+B
+C
+DPAD
+SEGA PERFORMANCE
+HIGH QUALITY
+LOW PERFORMANCE
+CATALOG = performance choice, CARTRIDGE = ROM choice
+Drag a button wherever you like.
+IN GROUPS
+DEFAULT
+DONE
+D-PAD AND CONTROLS
+EDIT BUTTON LAYOUT
+CONTROLS: SENSITIVITY AND LOOK
+SWAP D-PAD AND ACTIONS (LEFT-HANDED)
+SAVE GAME POSITION
+LOAD SAVED POSITION
+EXPORT LOG (DIAGNOSTICS)
+CLOSE
+CONTROLS — pro settings
+D-pad sensitivity
+— how far from the centre your finger has to move before a direction switches on.
+Sensitivity: 7 %
+Button transparency
+Transparency: 100 %
+Button size
+— A/B/C, Start.
+Size: 100 %
+D-pad size
+— just the round pad, on its own.
+D-pad size: 100 %
+Vibrate when a button is pressed
+DEFAULT CONTROL SETTINGS
+MY GAMES
+Games downloaded to the phone. Tap a game to start it, the bin deletes it.
+REFRESH THE LIST
+PICK A FILE ON THE PHONE MANUALLY
+DELETE GAME
+What exactly do you want to delete?
+JUST THE GAME (the saved position stays)
+THE GAME AND THE SAVED POSITION
+CANCEL
+SAVED POSITIONS
+Positions saved in games (not the log export - that is in CONTROLS → MANUALS). Tap a game to load its position.
+aria-label=SEGA Mega Drive module
+alt=SEGA Mega Drive
+aria-label=SEGA Mega Drive status canvas
+[titulek] SEGA Mega Drive FINAL USER UI — N&P Vision
+BUILD2RV SEGA CLEAN UI + AUDIO MASTER NOSTARVE CATALOG: - performance choice HIGH / LOW (hold) CARTRIDGE / CART: - choose a ROM in our app - the ROM goes straight to the C++ bridge - the Java/WebView wrapper is off - the C++ CORE DOM path is removed; no black overlay over the skin REGION: - C++ no longer rewrites Europe/PAL ROMs to U/NTSC - the core respects the ROM header PHONE: - landscape clears old WebView layers - returning to portrait ignores a zero rect SOUND: - FM/PSG audio has zeroed buffers and an RR recovery safe-audit governor; the S8 has a no-starve profile; LOW/HIGH do not change the sound.
+BUILD2OU SEGA AUTO COMPAT This main Sega branch uses the stable EU compatibility code from BUILD2OL. USA/World ROM: no patch. Problematic EU ROMs: patched in memory only. The original ROM file is not changed. Sound: 48 kHz playback + hard reset. The 16-BIT PANEL is just info now, it does not switch branches.
+Group: grab any button of a group (actions A/B/C) and the whole group moves. The D-pad and Start always move alone.
+ONE BY ONE
+Sonic the Hedgehog
+512 KB
+saved position
+Columns
+128 KB
+aria-label=Start
+aria-label=Delete
+sonic.bin
+No downloaded game yet. Pick one manually or from the CATALOG.
+80 KB
+aria-label=Load
+No saved position yet. Press SAVE GAME POSITION while playing.

@@ -75,6 +75,7 @@ struct KontextUmeni {
   Prog pUi;                      // ikony a zare (FS_UI)
   NactiSoubor nacti;
   GLuint vboObd = 0;
+  bool en = false;               // B314: obrazky s textem anglicky (kniha HELP)
 
   bool init() {
     ctverec.priprav();

@@ -42,6 +42,7 @@
 #include "nap_atari_fonts.h"
 #include "nap_atari_fonts2.h"
 #include "nap_atari_logo.h"
+#include "nap_atari_jazyk.h"   // B314: hlasky a napisy appky cesky / anglicky
 
 namespace nap {
 namespace dev {
@@ -660,6 +661,7 @@ public:
   float gearCx = 0, gearCy = 0, gearW = 0, gearH = 0;
   Sprite spDpad[2], spNub[2], spBtn[C_N][2], spGear[2];
   int landBuildW = 0, landBuildH = 0, landBuildSize = -1, landBuildDsize = -1, landBuildOp = -1;
+  int landBuildEn = -1;            // B314: jazyk stitku v predkreslenych tlacitkach (MEZERA / SPACE)
 
   Device() { atari.assign((size_t)AW * AH, 0xFF000000u); }
 
@@ -872,7 +874,7 @@ public:
     if (id == ID_JOY || id == ID_FIRE) {
       if (id == ID_JOY) { joyPid = pid; joyU0 = toDuX(x); joyV0 = toDuY(y); joyStick = 0; }
       else { firePid = pid; joyFire = true; }
-      if (!joyNapovezeno) { joyNapovezeno = true; setStatusMessage("JOYSTICK: LEVO = SMER, VPRAVO = FIRE", now, 5000); }
+      if (!joyNapovezeno) { joyNapovezeno = true; setStatusMessage(tx("JOYSTICK: LEVO = SMER, VPRAVO = FIRE", "JOYSTICK: LEFT = DIRECTION, RIGHT = FIRE"), now, 5000); }
       push(Ev::JOY, joyMask());
       return n;
     }
@@ -1054,6 +1056,15 @@ public:
   }
   void mark(const IRect &r) { IRect c = irIsect(r, IRect{0, 0, W, H}); if (!irEmpty(c)) dirty.push_back(c); needPresent = true; }
   void markAll() { mark(IRect{0, 0, W, H}); }
+  // B314: jazyk se zmenil (devCtl "jazyk:en" / "jazyk:cs"). Na sirku jsou stitky tlacitek
+  // v predkreslenych obrazcich (buildSprites) -> rozlozit znovu (vlastni rozlozeni hrace
+  // zustane) a prekreslit vse; napoveda kolecka, pokud se jeste ukazuje, v novem jazyce.
+  void jazykZmenen() {
+    if (W > 1 && H > 1 && !bg.empty()) layout(W, H);
+    static const char *const KOL[2] = {u8"KOLEČKO VPRAVO NAHOŘE = NASTAVENÍ D-PADU", "GEAR AT TOP RIGHT = D-PAD SETTINGS"};
+    if (!std::strcmp(extraMsg, KOL[0]) || !std::strcmp(extraMsg, KOL[1])) std::snprintf(extraMsg, sizeof(extraMsg), "%s", tx(KOL[0], KOL[1]));
+    markAll();
+  }
   // (na sirku prvky pristroje nejsou videt - B297: tam jen obraz a ovladani)
   void markKey(int k) { if (land) return; const KeyDef &d = KEYS[k]; mark(duRect(d.x, d.y, d.w, d.h)); }
   void markCon(int i) { if (land) return; mark(duRect(CONSOLE[i].x, CON_Y, CONSOLE[i].w, CON_H)); }
@@ -1923,8 +1934,9 @@ public:
     }
     float y2 = y1 + lh1 + gap;
     float base2 = baselineIn(f, y2, lh2, fs);
-    float tw2 = textW(f, d.l2, fs, 0);
-    drawText(c, f, X(bx + (SVC_W - tw2) * .5f), Y(base2) + ty + PX(TEXT_DY_SVC), d.l2, L(fs), 0, tc);
+    const char *l2 = stitek(d.l2);   // B314: HRY / MOBIL / CHYBA -> GAMES / PHONE / ERROR
+    float tw2 = textW(f, l2, fs, 0);
+    drawText(c, f, X(bx + (SVC_W - tw2) * .5f), Y(base2) + ty + PX(TEXT_DY_SVC), l2, L(fs), 0, tc);
   }
 
   void drawRainbow(Canvas &c) {
@@ -1990,12 +2002,12 @@ public:
   //  letter-spacing:.03em;color:#c3c9d1} .led2{9px kruh + box-shadow:0 0 7px <barva>}
   // navrh: VYPNUTO #3a3d46 / NAHRAVA — CSAVE #e3453f / PREHRAVA — CLOAD #4f9a3a / ZASTAVENO #5a5f6c
   void legendText(char *buf, size_t n, uint32_t &led) const {
-    if (!power) { std::snprintf(buf, n, "VYPNUTO"); led = 0x3a3d46; return; }
+    if (!power) { std::snprintf(buf, n, "%s", tx("VYPNUTO", "OFF")); led = 0x3a3d46; return; }
     if (extraMsg[0]) { std::snprintf(buf, n, "%s", extraMsg); led = 0x4f9a3a; return; }
-    if (play && rec) { std::snprintf(buf, n, "NAHRAVA \xE2\x80\x94 CSAVE"); led = 0xe3453f; return; }
-    if (play) { std::snprintf(buf, n, "PREHRAVA \xE2\x80\x94 CLOAD"); led = 0x4f9a3a; return; }
-    if (motorOn) { std::snprintf(buf, n, "MOTOR KAZETY BEZI"); led = 0xe3453f; return; }
-    std::snprintf(buf, n, "ZASTAVENO"); led = 0x5a5f6c;
+    if (play && rec) { std::snprintf(buf, n, "%s", tx("NAHRAVA \xE2\x80\x94 CSAVE", "RECORDING \xE2\x80\x94 CSAVE")); led = 0xe3453f; return; }
+    if (play) { std::snprintf(buf, n, "%s", tx("PREHRAVA \xE2\x80\x94 CLOAD", "PLAYING \xE2\x80\x94 CLOAD")); led = 0x4f9a3a; return; }
+    if (motorOn) { std::snprintf(buf, n, "%s", tx("MOTOR KAZETY BEZI", "TAPE MOTOR RUNNING")); led = 0xe3453f; return; }
+    std::snprintf(buf, n, "%s", tx("ZASTAVENO", "STOPPED")); led = 0x5a5f6c;
   }
   void drawLegend(Canvas &c, long long) {
     float topY = Y(DH) + PX(14);
@@ -2116,7 +2128,7 @@ public:
     needPresent = true;
     if (!landNapovezeno) {
       landNapovezeno = true;
-      std::snprintf(extraMsg, sizeof(extraMsg), "%s", "KOLEČKO VPRAVO NAHOŘE = NASTAVENÍ D-PADU");
+      std::snprintf(extraMsg, sizeof(extraMsg), "%s", tx(u8"KOLEČKO VPRAVO NAHOŘE = NASTAVENÍ D-PADU", "GEAR AT TOP RIGHT = D-PAD SETTINGS"));
       extraUntil = (lastNow > 0 ? lastNow : 0) + 6000;
     }
   }
@@ -2218,12 +2230,14 @@ public:
   }
   static const char *ctlLabel(int i) {
     static const char *L[C_N] = {"", "FIRE", "MEZERA", "RETURN", "START", "SELECT", "OPTION"};
-    return L[i];
+    return stitek(L[i]);        // B314: MEZERA -> SPACE
   }
   // predkresleni vsech prvku (pri zmene velikosti displeje / nastaveni)
   void buildSprites() {
-    if (landBuildW == W && landBuildH == H && landBuildSize == ctlSize && landBuildDsize == ctlDpadSize && landBuildOp == ctlOpacity) return;
-    landBuildW = W; landBuildH = H; landBuildSize = ctlSize; landBuildDsize = ctlDpadSize; landBuildOp = ctlOpacity;
+    const int en = atariEn() ? 1 : 0;
+    if (landBuildW == W && landBuildH == H && landBuildSize == ctlSize && landBuildDsize == ctlDpadSize && landBuildOp == ctlOpacity &&
+        landBuildEn == en) return;
+    landBuildW = W; landBuildH = H; landBuildSize = ctlSize; landBuildDsize = ctlDpadSize; landBuildOp = ctlOpacity; landBuildEn = en;
     Font &fb = fBold();
     for (int on = 0; on < 2; on++) {
       renderGlass(spDpad[on], ctlShape(C_DPAD, 0, 0), styleDpad(on != 0));
@@ -2323,7 +2337,7 @@ public:
     const RRect bar = editBarRR();
     const float v = vh(), h = 6.6f * v, y = bar.y0 + (editBarH() - h) * .5f;
     Font &f = fBold(); const float fs = 2.6f * v;
-    const char *t[3] = {editGroups ? "PO JEDNOM" : "PO SKUPINÁCH", "VÝCHOZÍ", "HOTOVO"};
+    const char *t[3] = {editGroups ? tx("PO JEDNOM", "ONE BY ONE") : tx(u8"PO SKUPINÁCH", "IN GROUPS"), tx(u8"VÝCHOZÍ", "DEFAULT"), tx("HOTOVO", "DONE")};
     float x = bar.x1 - 1.6f * v;
     for (int i = 2; i >= 0; i--) {
       const float w = textW(f, t[i], fs, 0) + 4.f * v;
@@ -2356,8 +2370,9 @@ public:
     RRect b[3]; editBarButtons(b);
     Font &fs = fSemi(), &fb = fBold();
     const float tfs = 2.4f * v;
-    const char *hint = editGroups ? "Skupina: chyť tlačítko ve skupině (FIRE/MEZERA/RETURN nebo START/SELECT/OPTION) a jede celá. D-pad vždy zvlášť."
-                                  : "Přetáhni tlačítko, kam chceš.";
+    const char *hint = editGroups ? tx(u8"Skupina: chyť tlačítko ve skupině (FIRE/MEZERA/RETURN nebo START/SELECT/OPTION) a jede celá. D-pad vždy zvlášť.",
+                                       "Group: grab a button of a group (FIRE/SPACE/RETURN or START/SELECT/OPTION) and the whole group moves. The D-pad always moves alone.")
+                                  : tx(u8"Přetáhni tlačítko, kam chceš.", "Drag a button wherever you like.");
     // napoveda: zkratit, aby se vesla pred tlacitka (po celych znacich UTF-8)
     std::string h = hint;
     const float maxW = b[0].x0 - bar.x0 - 3.f * v;
@@ -2367,7 +2382,7 @@ public:
       h.erase(cut);
     }
     drawText(c, fs, bar.x0 + 2.f * v, baselineIn(fs, bar.y0, bh, tfs), h.c_str(), tfs, 0, RGBA{191, 230, 255, 1.f});
-    const char *t[3] = {editGroups ? "PO JEDNOM" : "PO SKUPINÁCH", "VÝCHOZÍ", "HOTOVO"};
+    const char *t[3] = {editGroups ? tx("PO JEDNOM", "ONE BY ONE") : tx(u8"PO SKUPINÁCH", "IN GROUPS"), tx(u8"VÝCHOZÍ", "DEFAULT"), tx("HOTOVO", "DONE")};
     for (int i = 0; i < 3; i++) {
       const bool pr = barPid >= 0 && barBtn == i;
       RGBA bgc = i == 2 ? RGBA{79, 170, 255, 1.f} : (i == 0 && editGroups ? RGBA{110, 190, 255, .85f} : RGBA{255, 255, 255, .12f});

@@ -204,11 +204,15 @@ class UmeniHelp : public Umeni {
               });
     }
     // ---- leva: OBSAH ----
-    pl.text(*k.bold, u8"NÁVOD", 256.f, 112.f, 74.f, inkoust, 0, 0.06f);
+    // B314: kniha anglicky, kdyz je appka anglicky
+    pl.text(*k.bold, k.en ? u8"GUIDE" : u8"NÁVOD", 256.f, 112.f, 74.f, inkoust, 0, 0.06f);
     pl.text(*k.semi, u8"N&P VISION · RETRO UNIVERSE", 256.f, 152.f, 19.f, zlato, 0, 0.22f);
     pl.cara(120.f, 178.f, 392.f, 178.f, 3.f, zlato);
-    const char *kap[8] = {u8"ATARI 130XE", u8"SEGA MEGA DRIVE", u8"PS1 PLAYSTATION", u8"MP3 PŘEHRÁVAČ",
-                          u8"DŽUBOX · DJ MIXER", u8"ATARIHELP.EU", u8"OPTIONS A WEB TV", u8"ČASTÉ OTÁZKY"};
+    const char *kapCz[8] = {u8"ATARI 130XE", u8"SEGA MEGA DRIVE", u8"PS1 PLAYSTATION", u8"MP3 PŘEHRÁVAČ",
+                            u8"DŽUBOX · DJ MIXER", u8"ATARIHELP.EU", u8"OPTIONS A WEB TV", u8"ČASTÉ OTÁZKY"};
+    const char *kapEn[8] = {u8"ATARI 130XE", u8"SEGA MEGA DRIVE", u8"PS1 PLAYSTATION", u8"MP3 PLAYER",
+                            u8"JUKEBOX · DJ MIXER", u8"ATARIHELP.EU", u8"OPTIONS AND WEB TV", u8"FAQ"};
+    const char *const *kap = k.en ? kapEn : kapCz;
     for (int i = 0; i < 8; i++) {
       const float y = 238.f + i * 56.f;
       pl.kruh(78.f, y - 10.f, 15.f, zlato);
@@ -219,7 +223,7 @@ class UmeniHelp : public Umeni {
     pl.text(*k.semi, u8"— 1 —", 256.f, 690.f, 18.f, seda, 0, 0.1f);
     // ---- prava: OVLADANI (kresleny ovladac a radky textu) ----
     const float px0 = 512.f;
-    pl.text(*k.bold, u8"OVLÁDÁNÍ", px0 + 256.f, 100.f, 50.f, inkoust, 0, 0.05f);
+    pl.text(*k.bold, k.en ? u8"CONTROLS" : u8"OVLÁDÁNÍ", px0 + 256.f, 100.f, 50.f, inkoust, 0, 0.05f);
     pl.cara(px0 + 150.f, 124.f, px0 + 362.f, 124.f, 3.f, zlato);
     // ovladac: obrys, krizovy ovladac, tlacitka
     {

@@ -171,6 +171,11 @@ class Demo {
     return pripraveno;
   }
 
+  // B314: jazyk titulku (Java introJazyk): cesky = titulky cesky + anglicky pod nimi (jak to
+  // navrhl Rene), anglicky = jen anglicke titulky a anglicke zaverecne titulky
+  void nastavJazyk(bool en) { en_ = en; }
+  bool jazykEn() const { return en_; }
+
   // Vysadi chybejici texty (nejvys "kusu" naraz). Vraci, kolik jich chybi.
   int pripravTexty(Cil &c, int kusu) {
     if (c.textW != c.w || c.textH != c.h) {
@@ -264,6 +269,7 @@ class Demo {
   Hra16 hra16;
   Hra32 hra32;
   bool hra32ok = false;
+  bool en_ = false;                   // B314: titulky anglicky
   KlipAtari klip;
   GLuint tex16 = 0, tex8 = 0;
   int pos16 = -1, posAtari = -1;
@@ -1230,22 +1236,26 @@ class Demo {
     const float tit = S * (c.tv ? 0.050f : 0.043f);
     if (id >= T_TIT && id < T_TIT + 8) {
       const Titulek &ti = TITULKY[id - T_TIT];
-      od(ti.cz, pSemi, tit, 1, 1, 1, 1);
-      od(ti.en, pMed, tit * 0.80f, 0.93f, 0.82f, 0.56f, 0.95f, 0.f, tit * 0.25f);
+      if (en_) {
+        od(ti.en, pSemi, tit, 1, 1, 1, 1);      // B314: anglicky jen anglicke titulky
+      } else {
+        od(ti.cz, pSemi, tit, 1, 1, 1, 1);
+        od(ti.en, pMed, tit * 0.80f, 0.93f, 0.82f, 0.56f, 0.95f, 0.f, tit * 0.25f);
+      }
       return Sazec::vysazej(o, maxW, 0, tit * 0.30f, 0.85f);
     }
     const float credW = naSirku ? c.w * 0.44f : c.w * 0.86f;
     const float k = S * (naSirku ? 0.040f : 0.036f);
     switch (id) {
-      case T_K1: od(u8"OFICIÁLNÍ VYDÁNÍ APLIKACE EMULÁTORU", pSemi, k * 0.78f, 1, 1, 1, 0.92f, 0.12f);
+      case T_K1: od(en_ ? u8"OFFICIAL RELEASE OF THE EMULATOR APP" : u8"OFICIÁLNÍ VYDÁNÍ APLIKACE EMULÁTORU", pSemi, k * 0.78f, 1, 1, 1, 0.92f, 0.12f);
                  od(u8"ATARI, SEGA MEGA DRIVE, PS1:", pBold, k * 0.98f, 1, 1, 1, 1, 0.08f, k * 0.15f); break;
-      case T_K2: od(u8"20. LISTOPADU 2026", pBold, k * 1.55f, 1, 1, 1, 1, 0.06f); break;
-      case T_K3: od(u8"– exkluzivně na atarihelp.eu", pMed, k * 0.95f, 1, 1, 1, 0.95f, 0.03f); break;
+      case T_K2: od(en_ ? u8"NOVEMBER 20, 2026" : u8"20. LISTOPADU 2026", pBold, k * 1.55f, 1, 1, 1, 1, 0.06f); break;
+      case T_K3: od(en_ ? u8"– exclusively at atarihelp.eu" : u8"– exkluzivně na atarihelp.eu", pMed, k * 0.95f, 1, 1, 1, 0.95f, 0.03f); break;
       case T_K4: od(u8"„It's a small step for a man…", pItal, k * 0.78f, 1, 1, 1, 0.88f);
                  od(u8"And do you have some spare change for parking, Neil?“", pItal, k * 0.78f, 1, 1, 1, 0.88f); break;
       case T_K5: od(u8"Deep gratitude to:", pMed, k * 0.70f, 1, 1, 1, 0.75f, 0.10f);
                  od(u8"MELBOURNE HOUSE & my AI Wingman", pSemi, k * 0.95f, 1, 1, 1, 1, 0.06f, k * 0.1f); break;
-      case T_K6: od(u8"(C) 2026 N&P Studio. Všechna práva vyhrazena.", pMed, k * 0.62f, 1, 1, 1, 0.70f, 0.05f); break;
+      case T_K6: od(en_ ? u8"(C) 2026 N&P Studio. All rights reserved." : u8"(C) 2026 N&P Studio. Všechna práva vyhrazena.", pMed, k * 0.62f, 1, 1, 1, 0.70f, 0.05f); break;
       case T_ATARI: od("ATARI 130XE", pBold, S * 0.070f, 0.98f, 0.84f, 0.50f, 1, 0.12f); break;
       case T_PITT: od("PITT-KITT PLATINUM", pSemi, S * 0.034f, 1, 1, 1, 0.92f, 0.18f); break;
       case T_16: od("16-BIT", pBold, S * 0.070f, 0.98f, 0.84f, 0.50f, 1, 0.12f); break;

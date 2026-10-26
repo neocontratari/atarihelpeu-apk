@@ -1,0 +1,74 @@
+B314 - vsechny anglicke texty stranky atari (emu_atari_cpp/index.html), pro kontrolu ocima
+ATARI 130XE in C++
+The back of the machine: log and tests. The only Atari in the app (the ATARI 130XE card in the main menu); the old JavaScript Atari was removed in B310.
+◀ BACK TO THE ATARI 130XE
+WRITE
+WHAT TO TEST
+For each step tap OK or WRONG. It is written to the log, so you only need to send me the log and do not have to write anything.
+The steps to try in a new version are now sent directly in the message – nothing to mark here.
+OK: 0 Wrong: 0 Left: 0 >>> All marked, send me the log.
+CORE TEST
+Test not started
+RUN THE CORE TEST
+6502 processor
+Memory and banks
+Speed
+Architecture
+CPU: instructions
+CPU: checksum phone
+CPU: checksum computer
+Memory: reads
+Memory: checksum phone
+Memory: checksum computer
+char is signed
+LOG
+This session’s file
+/storage/emulated/0/Download/AtariHelp/EMU10_LOG.txt
+Size
+33.8 kB
+Previous file (after a crash)
+(none)
+Last saved to
+(nothing yet)
+SAVE AND SEND THE LOG
+REFRESH THE LISTING BELOW
+How to send me the log
+1. If the app did NOT crash
+— press
+. The log is saved as a file on the phone and a menu opens right away to choose how to send it (mail, Messenger, anything). Nothing to look for or paste anywhere. To be safe it is also copied to the clipboard.
+2. If the app CRASHED
+— open a file manager and go to the path shown above next to
+Previous file
+. Send me that file.
+3. If
+showed 0 B
+— the log is not being saved to storage and step 2 will not work. You can also see it in the log by the line
+zapis_funguje=false
+. In that case use step 1, it always works.
+This test runs the core on tens of thousands of random states and compares the result with the number computed on the PC. I do this because the PC is x86 and the phone is ARM – and some things behave differently on ARM. If they ever differ, it should show up now, not later as a broken picture.
+B312: MP3 PLAYER – RECORD records your own MIXTAPE (whatever is playing, including EQ / BASS / TREBLE / BALANCE; pauses and loading the next track are not recorded; it ends with RECORD, STOP, the end of the playlist, MENU / BACK, at most 90 minutes) to Download/AtariHelp/Mixtape (M4A; WebM with duration on older WebView). FAVORITES: a star next to a track, the favorites list stays even after the app is closed, PLAY ALL FAVORITES. The VOLUME knob is no longer applied twice (50 % played like 25 %). The music list also shows M4A / OGG / FLAC / WebM. JUKEBOX RECORD: M4A when the WebView supports it; leaving the decks while recording saves the mix first. SEGA / PS1 LOCKS APPLY EVERYWHERE – even a game from the atarihelp.eu website (link, download, Google Drive) is neither downloaded nor started on a locked console, and the app says why. UNLOCK NEXT and LOCK ALL are hidden in OPTIONS behind a service code. Unused images removed (13.8 MB). B311: MAIN MENU = A CAROUSEL OF BIG CARDS IN C++ (the napmenu library, OpenGL ES on its own thread): ATARI 130XE, SEGA MEGA DRIVE, PS1, MP3 PLAYER, JUKEBOX, ATARIHELP.EU and HELP at the end (the full guide napoveda/index.html). The cards are in assets/menu/karty.txt – another machine = an image + one line. Cards with 3D and effects are drawn live by C++, locked SEGA / PS1 are grey with a padlock. The gear = OPTIONS (the WEB TV address stays there). On TV / PC the menu is streamed from C++ (/menu.stream), the PC arrow keys browse. BACK in the menu = the app goes to the background. JUKEBOX RECORD saves the recording to Download/AtariHelp/DJ_mixy (before, it was not saved anywhere). B310: A RADICAL CUT – the old JavaScript Atari (emu_vbxe) has been removed from the app together with the Java that only served it. ATARI 130XE EMULATOR in the menu starts this C++ Atari, HELP in the menu is the guide. All Atari games (NET / GAMES, a game from atarihelp.eu, a pick from the phone on the error page) go here. UNLOCKING THE SEGA (50 typed program lines – a numbered line, counted on RUN or LIST, at least 5 at a time) was counted only by the old Atari – now C++ counts it, including typing on the touch keyboard and on the PC keyboard (not text pasted with Ctrl+V); when it unlocks, the machine shows SEGA UNLOCKED. B309: TV / PC WITHOUT F5 – when the TV showed the phone picture (H.264: the app menu, or a moment while switching games) and then a stream from C++ started (PS1, Sega, demo), the stopped H.264 woke up after it and put a black picture over the new one – hence F5. Now H.264 stops properly, the browser makes sure the C++ stream is on top, and when switching games (the core restarts briefly) it keeps the last picture for 2.5 s instead of flashing back to the phone. PS1: SAVE AND SEND THE LOG (like here in HELP) – the log is saved to Downloads/AtariHelp and a menu opens right away to choose how to send it; in landscape right in the D-PAD panel. INTRO DEMO 59 s: the parade on the CRT lasts 18 s instead of 4 s – Pitt-Kitt 5.6 s (title, chapter, a run with the game sound), 16 bit 6 s and 32 bit 6.25 s, a calmer pace (16 bit slower, 32 bit two overtakes), each sample has its own music; logo from 51 s. B308: PS1 – DOOM WITH CEILINGS. The bug was in our PS1 core (the gpu_neon graphics chip at 2x resolution): Doom draws the floor and ceiling in rows 1 pixel high and the walls in columns 1 pixel wide – at 2x each such row was drawn only partly, so a quarter of the pixels were missing in the ceiling and floor (black stripes, jagged holes) and the walls had cracks. Now they are drawn in full; other games draw bit for bit the same as before. PS1 DIARY IN C++: the core itself records what happens (start, game files from the CUE, BIOS, region, disc ID, picture changes, health every 5-10 s, buttons, keyboard from the TV, core messages, save states, errors) – it is in the PS1 LOG (gear – SAVE LOG) and here in SAVE AND SEND THE LOG. LOADING A GAME: the monitor shows the real state (how many seconds the start has taken) instead of a fixed 10 s, the app no longer copies the game before starting, and the download banner is under the monitor in portrait. TV / PC: COMPUTER KEYBOARD FOR PS1 TOO (arrows/WASD direction, K/space CROSS, L CIRCLE, J SQUARE, I TRIANGLE, Q/E L1/R1, Z/C L2/R2, Enter/P START, Backspace/O SELECT). SAVE GAME can no longer land in the middle of an emulation step (lock) and the memory card is saved even when switching straight to another game. B307: INTRO DEMO – A NEW SCENE WITH YOUR ATARI 130XE. Neon rods shoot out of the keys of your Atari, cross, and our trio materializes from the wires: Atari 130XE, N&P 16 (cartridge) and N&P 32 (CD) with the golden N&P logo. The camera flies to the CRT monitor and it shows a parade at 50 frames/s: your Pitt-Kitt Platinum (footage and sound from the real Atari core in the app), 16 bit (parallax, sprites) and 32 bit (3D night). A SKIP button at the top right (a tap anywhere skips the demo too). The demo sound starts and stops in C++ itself, C++ decides about touches – Java only hands over the surface. B306: SOUND ON TV / PC RIGHT AWAY AND CLOSER TO THE PICTURE – the browser (Chrome, Edge) plays a page’s sound only after a click or a key press in it (and again after refreshing with F5); until the sound plays, a yellow prompt SOUND: CLICK ANYWHERE IN THE PICTURE is shown at the top – one click or key is enough. The sound goes to the TV straight from the core (before, only after the phone speaker queue, ~130 ms later on the S8) and the browser smooths it continuously: for Sega and PS1 the sound lags behind the picture roughly 2-3x less than before. SEGA on TV 60 frames/s even on the S8 (the phone display stays at 30). INTRO DEMO: the sound is played by C++ (OpenSL ES) and on TV / PC the demo is streamed from C++ just like Sega and PS1. B305: SEGA AND PS1 ON TV / PC ENTIRELY IN C++ (like the Atari in B303) – a frame goes to the browser right from the core together with the sound in one stream, Java no longer scales or compresses the picture. SEGA without quality loss (exactly as on the phone, only changes, even when the picture moves), PS1 in the game’s original resolution (JPEG only where something changed; when the picture stands still, it sharpens). Lower latency. The PICTURE panel in the browser: "fill the screen" (as before) or "whole, no cropping" (4:3). B304: A NEW INTRO DEMO following your script (45 s, 5 scenes, subtitles in Czech and English) – entirely in C++: the picture is drawn by OpenGL ES on its own thread (garage, clouds and lightning, the Atari 130XE in 3D, energy into the phone, the golden N&P logo), the sound is computed in C++ and the picture follows it. On TV / PC the demo runs in landscape with sound. A tap or BACK = skip; again: OPTIONS – PLAY INTRO. B303: TV / PC ENTIRELY IN C++ – the Atari picture goes to the browser directly from C++ (every frame, 50 per second, only changed lines) with sound; Java no longer scales or compresses the picture (H.264 / JPEG), hence lower latency. During streaming the app keeps Wi-Fi in low-latency mode. PASTE CODE: in the browser window on the PC Ctrl+V (or drag a TXT file) – numbered lines are added to the BASIC program (without NEW), other text is typed as keys. A program in TXT with Czech characters (e with a caron) no longer falls apart. B302: COMPUTER KEYBOARD – in the browser on the PC (TV / PC streaming) you type straight into the Atari 130XE (all in C++): characters by the Czech keyboard, arrows = cursor, F1/F3/F4 START/SELECT/OPTION, F2 BREAK, F6 HELP, F8 INVERSE, F9 = GAME MODE (WASD/arrows joystick, L FIRE, K/space jump). Keys are not lost even on slow Wi-Fi. B301: TV / PC (the web browser in the app) shows the Atari 130XE from HELP – the picture straight from the core and the sound; before, only this page with tests was there. B300: POKEY – the timer with AUDF=$FF now ticks (before, it stood still). Ghostbusters has music and the "Ghostbusters!" speech from the timer interrupt and without it stayed on the title screen; the deepest tones in games were silent. B299: BASIC/TBXL TXT – a TXT FILE with a program (from the phone) is typed by the app itself into ATARI BASIC or TURBO-BASIC XL (NEW, line by line), then RUN / CSAVE / CLOAD. LOG / ERROR attaches the Atari memory to the log. Turbo-BASIC with a disk in D1: no longer falls apart. NET / GAMES: when atarihelp.eu leads to a local server on the Wi-Fi (OSPanel), the app says so straight away. B298: GAMES ON TAPE (WAV with boot) load by themselves – the Atari powers on with START+OPTION held and presses RETURN after the beep. The sound during CLOAD is like on a real 130XE (no whistling), with a stereo WAV the tape’s audio track plays too. CLOAD works even with a disk in D1:. ATR/DISK with a disk in D1: offers EJECT or SWAP WITHOUT RESTART. Downloading games from the net: the atarihelp.eu certificate chain is completed, older downloads no longer start anything. B297: IN LANDSCAPE (turn the phone) the Atari picture fills the whole display and the controls are like on the Sega – D-pad, FIRE, SPACE, RETURN, START/SELECT/OPTION; the gear at the top right = settings. B296: VBXE is in the C++ core (Wolfenstein 3D, Popeye).
+← Back to the menu
+placeholder=What are you testing now? (e.g. CSAVE after RETURN)
+[titulek] ATARI 130XE — log and tests
+BOTH MATCH — the core behaves the same on the phone as on the computer
+RUN AGAIN
+MATCHES
+12.50 MIPS (7.1x Atari)
+arm64-v8a
+1000000 in 0.08 s
+29C55806
+500000 in 0.04 s
+D3949DC5
+no
+/storage/emulated/0/Download/AtariHelp/EMU10_LOG_1.txt
+SAVED (34567 characters) — choose how to send it
+The core reports an error: x
+TRY AGAIN
+FAILED: disk
+DOES NOT MATCH — the core behaves differently on ARM
+DOES NOT MATCH
+1.00 MIPS (1.0x Atari)
+x86
+1 in 1.00 s
+2 in 1.00 s
+yes

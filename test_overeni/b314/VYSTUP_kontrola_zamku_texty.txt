@@ -1,0 +1,19 @@
+OK     cs sega r=0  m=0  Napiš v Atari ještě 0 řádků programu (řádky s číslem, počítají se při RUN nebo LIST).
+OK     cs sega r=1  m=0  Napiš v Atari ještě 1 řádek programu (řádky s číslem, počítají se při RUN nebo LIST).
+OK     cs sega r=2  m=0  Napiš v Atari ještě 2 řádky programu (řádky s číslem, počítají se při RUN nebo LIST).
+OK     cs sega r=4  m=0  Napiš v Atari ještě 4 řádky programu (řádky s číslem, počítají se při RUN nebo LIST).
+OK     cs sega r=5  m=0  Napiš v Atari ještě 5 řádků programu (řádky s číslem, počítají se při RUN nebo LIST).
+OK     cs sega r=45 m=0  Napiš v Atari ještě 45 řádků programu (řádky s číslem, počítají se při RUN nebo LIST).
+OK     cs ps1  r=0  m=1  Hraj na Seze ještě 1 min.
+OK     cs ps1  r=0  m=30 Hraj na Seze ještě 30 min.
+OK     cs ps1  r=0  m=30 Nejdřív odemkni Segu, pak 30 minut hraní na Seze.
+OK     en sega r=0  m=0  Type 0 more program lines on the Atari (numbered lines – they count on RUN or LIST).
+OK     en sega r=1  m=0  Type 1 more program line on the Atari (numbered lines – they count on RUN or LIST).
+OK     en sega r=2  m=0  Type 2 more program lines on the Atari (numbered lines – they count on RUN or LIST).
+OK     en sega r=4  m=0  Type 4 more program lines on the Atari (numbered lines – they count on RUN or LIST).
+OK     en sega r=5  m=0  Type 5 more program lines on the Atari (numbered lines – they count on RUN or LIST).
+OK     en sega r=45 m=0  Type 45 more program lines on the Atari (numbered lines – they count on RUN or LIST).
+OK     en ps1  r=0  m=1  Play the Sega for 1 more min.
+OK     en ps1  r=0  m=30 Play the Sega for 30 more min.
+OK     en ps1  r=0  m=30 Unlock the Sega first, then play it for 30 minutes.
+VYSLEDEK: 18 vet, 0 nesouhlasi (Java = C++ menu, HTML = zalozni menu)

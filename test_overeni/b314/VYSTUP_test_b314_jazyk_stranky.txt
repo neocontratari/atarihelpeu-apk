@@ -1,0 +1,17 @@
+B314 - stranky appky cesky / anglicky (Chromium, stranky z appky, falesne mosty Javy)
+OK     atari a) cesky: 7 stavu stranky - texty jako v B313 (zamerne zmeneno: SPRAVNE:, SPATNE:, V PORADKU, MP3, MP3 a DZUBOX, OPTIONS:, ZAMKY Z WEBU, DZUBOX:, MENU, Atari, V poradku:, Kroky k vyzkouseni, SPATNE, 1. MP3, 2. MP3, 3. MP3, 4. OPTIONS, 5. ZAMKY, 6. DZUBOX, 7. MP3, 8. MENU, B291)
+OK     atari b) anglicky: 7 stavu stranky bez cestiny (73 ruznych textu)
+OK     atari c) zadna nova chyba JavaScriptu (B313 se stejnymi mosty: 0, B314 cesky 0, anglicky 0)
+OK     sega a) cesky: 16 stavu stranky - texty jako v B313
+OK     sega b) anglicky: 16 stavu stranky bez cestiny (82 ruznych textu)
+OK     sega c) zadna nova chyba JavaScriptu (B313 se stejnymi mosty: 0, B314 cesky 0, anglicky 0)
+OK     ps1 a) cesky: 24 stavu stranky - texty jako v B313
+OK     ps1 b) anglicky: 24 stavu stranky bez cestiny (109 ruznych textu)
+OK     ps1 c) zadna nova chyba JavaScriptu (B313 se stejnymi mosty: 0, B314 cesky 0, anglicky 0)
+OK     mp3 a) cesky: 16 stavu stranky - texty jako v B313
+OK     mp3 b) anglicky: 16 stavu stranky bez cestiny (61 ruznych textu)
+OK     mp3 c) zadna nova chyba JavaScriptu (B313 se stejnymi mosty: 0, B314 cesky 0, anglicky 0)
+OK     dj a) cesky: 1 stavu stranky - texty jako v B313
+OK     dj b) anglicky: 1 stavu stranky bez cestiny (93 ruznych textu)
+OK     dj c) zadna nova chyba JavaScriptu (B313 se stejnymi mosty: 0, B314 cesky 0, anglicky 0)
+VYSLEDEK: 15 kontrol, 0 CHYBA

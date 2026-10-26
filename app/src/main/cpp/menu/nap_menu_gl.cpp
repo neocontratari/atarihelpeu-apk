@@ -29,6 +29,10 @@
 //    zjemneni za pohybu). Drive se v menu porad vsechno hybalo -> "zjemneni 0".
 //  - vykon: perioda displeje ze skutecne obnovovaci frekvence (Java), ne odhad -
 //    odhad u S8 ujel na 6-8 ms a menu si myslelo, ze nestiha (uroven 0 porad)
+//
+//  B314 (Rene: "slo by dat vyber jazyka - Cze a Ang?"): Java menuJazyk - karty
+//  z anglickych sloupcu karty.txt (pouzijJazyk), napisy menu (LOCKED, napoveda na TV)
+//  a obrazky karet s textem (kniha HELP) v anglictine; prepnout jde tam i zpet.
 // ====================================================================
 #include <jni.h>
 #include <android/asset_manager.h>
@@ -110,6 +114,7 @@ napmenu::StavMenu g_efekty;           // spusteni, zamek, kolecko, nastup
 int g_prichodTyp = -1;                // -1 zadny, 1 nastup (karty prileti), 0 rychle prolnuti
 int g_plochaW = 0, g_plochaH = 0;     // plocha, do ktere C++ kresli
 std::string g_kartyLog;               // varovani z karty.txt (Java si vyzvedne)
+std::atomic<bool> g_jazykEn{false};   // B314: menu anglicky (Java menuJazyk)
 
 // ---- vlakno kresleni ----
 std::mutex g_oknoZamek;
@@ -251,7 +256,11 @@ void vlaknoMenu(ANativeWindow *okno) {
       karty = g_karty;
       verzeKaret = g_verzeKaret;
     }
-    if (karty.empty()) karty = napmenu::nactiKarty(napmenu::KARTY_ZALOHA, std::strlen(napmenu::KARTY_ZALOHA));
+    if (karty.empty()) {
+      karty = napmenu::nactiKarty(napmenu::KARTY_ZALOHA, std::strlen(napmenu::KARTY_ZALOHA));
+      napmenu::pouzijJazyk(karty, g_jazykEn.load());
+    }
+    kr->nastavJazyk(g_jazykEn.load());
     kr->nastavKarty(karty);
     for (size_t i = 0; i < karty.size(); i++) kr->nastavZamek((int)i, karty[i].zamceno, karty[i].zamekText);
     kr->nastavUroven(g_uroven.load());
@@ -340,8 +349,10 @@ void vlaknoMenu(ANativeWindow *okno) {
         s.pohyb = g_kar.stav() != napmenu::Karusel::KLID || g_kar.prstDole();
         if (g_verzeKaret != verzeKaret) { kopie = g_karty; verzeKaret = g_verzeKaret; noveKarty = true; }
       }
+      kr->nastavJazyk(g_jazykEn.load());   // B314: zmena jazyka -> napisy a obrazky karet s textem znovu
       if (noveKarty) {
         if ((int)kopie.size() != kr->pocetKaret()) kr->nastavKarty(kopie);
+        else kr->nastavTextyKaret(kopie);  // B314: nazvy / popisy v jinem jazyce (obrazky zustanou)
         for (size_t i = 0; i < kopie.size(); i++) kr->nastavZamek((int)i, kopie[i].zamceno, kopie[i].zamekText);
       }
       kr->nastavUroven(g_uroven.load());
@@ -493,6 +504,7 @@ JNIEXPORT jint JNICALL Java_eu_atarihelp_emu10_NativeMenuBridge_menuNastavAssety
     chyby += d.empty() ? "menu/karty.txt v appce neni - beru karty zabudovane v C++\n" : "menu/karty.txt nema zadnou kartu - beru karty zabudovane v C++\n";
     k = napmenu::nactiKarty(napmenu::KARTY_ZALOHA, std::strlen(napmenu::KARTY_ZALOHA));
   }
+  napmenu::pouzijJazyk(k, g_jazykEn.load());   // B314
   std::lock_guard<std::mutex> z(g_m);
   // zamky, ktere uz Java poslala, zustanou (stejne id)
   for (napmenu::Karta &n : k)
@@ -720,6 +732,15 @@ JNIEXPORT jint JNICALL Java_eu_atarihelp_emu10_NativeMenuBridge_menuGrabFrame(JN
 JNIEXPORT void JNICALL Java_eu_atarihelp_emu10_NativeMenuBridge_menuNastav(JNIEnv *, jclass, jfloat hz, jint tvKvalita) {
   if (hz >= 20.f && hz <= 250.f) g_obnovaHz.store(hz);
   g_tvKvalita.store(std::max(0, std::min(2, (int)tvKvalita)));
+}
+
+/** B314: jazyk menu (1 = anglicky). Karty z anglickych sloupcu karty.txt, napisy, kniha HELP. */
+JNIEXPORT void JNICALL Java_eu_atarihelp_emu10_NativeMenuBridge_menuJazyk(JNIEnv *, jclass, jint en) {
+  const bool e = en != 0;
+  std::lock_guard<std::mutex> z(g_m);
+  g_jazykEn.store(e);
+  napmenu::pouzijJazyk(g_karty, e);
+  g_verzeKaret++;
 }
 
 }  // extern "C"

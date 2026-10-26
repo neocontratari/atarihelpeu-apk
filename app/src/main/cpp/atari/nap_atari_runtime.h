@@ -29,6 +29,7 @@
 #include <string>
 #include <vector>
 #include "nap_atari_machine.h"
+#include "nap_atari_jazyk.h"   // B314: hlasky cesky / anglicky
 
 namespace nap {
 
@@ -657,7 +658,8 @@ struct PsaniProgramu {
     std::snprintf(b, sizeof(b), "B299 TXT PROGRAM %s -> %s: %d radku programu, %d stisku klaves (%s soubor); cekam na READY",
                   nm.c_str(), tb ? "TURBO-BASIC XL" : "ATARI BASIC", radku, klaves, atascii ? "ATASCII" : "textovy");
     log.push_back(b);
-    status = tb ? "NAČÍTÁM TURBO-BASIC, PAK PÍŠU PROGRAM" : "ATARI BASIC - PAK PÍŠU PROGRAM"; statusMs = 6000;
+    status = tb ? tx(u8"NAČÍTÁM TURBO-BASIC, PAK PÍŠU PROGRAM", "LOADING TURBO-BASIC, THEN TYPING THE PROGRAM")
+                : tx(u8"ATARI BASIC - PAK PÍŠU PROGRAM", "ATARI BASIC - THEN TYPING THE PROGRAM"); statusMs = 6000;
   }
 
   // "READY" na radku nad kurzorem textove obrazovky a OS ceka na klavesu
@@ -723,11 +725,12 @@ struct PsaniProgramu {
         stav = PISE; snimkuPsani = 0; klid = 0;
         std::snprintf(b, sizeof(b), "B299 TXT PROGRAM: READY po %d snimcich - pisu %s%d radku", snimku, sNew ? "NEW a " : "(bez NEW) ", radku);
         log.push_back(b);
-        status = "PÍŠU PROGRAM: " + std::to_string(radku) + " ŘÁDKŮ"; statusMs = 60000;
+        status = atariEn() ? "TYPING THE PROGRAM: " + std::to_string(radku) + (radku == 1 ? " LINE" : " LINES")
+                           : u8"PÍŠU PROGRAM: " + std::to_string(radku) + u8" ŘÁDKŮ"; statusMs = 60000;
       } else if (snimku > 50 * 45) {
         stav = CHYBA;
         log.push_back("B299 TXT PROGRAM: Atari do 45 s neukazalo READY - nic se nepise (bezi hra nebo jiny program?)");
-        status = "ATARI NEUKÁZALO READY - NIC NEPÍŠU"; statusMs = 8000;
+        status = tx(u8"ATARI NEUKÁZALO READY - NIC NEPÍŠU", "ATARI DID NOT SHOW READY - NOT TYPING"); statusMs = 8000;
       }
       return;
     }
@@ -754,8 +757,10 @@ struct PsaniProgramu {
                     snimkuPsani / 50.0, radku, vPameti, (int)chyby.size(), ch.c_str(), prazdnych, bezCisla, bc.c_str(),
                     dlouhych, dl.c_str(), znakuNelze);
       log.push_back(b);
-      if (!chyby.empty()) status = "NAPSÁNO, CHYBA V " + std::to_string(chyby.size()) + " ŘÁDCÍCH (LIST)";
-      else status = "HOTOVO " + std::to_string(vPameti) + " ŘÁDKŮ - RUN / CSAVE";
+      if (!chyby.empty()) status = atariEn() ? "TYPED, ERRORS IN " + std::to_string(chyby.size()) + (chyby.size() == 1 ? " LINE (LIST)" : " LINES (LIST)")
+                                             : u8"NAPSÁNO, CHYBA V " + std::to_string(chyby.size()) + u8" ŘÁDCÍCH (LIST)";
+      else status = atariEn() ? "DONE: " + std::to_string(vPameti) + (vPameti == 1 ? " LINE - RUN / CSAVE" : " LINES - RUN / CSAVE")
+                              : u8"HOTOVO " + std::to_string(vPameti) + u8" ŘÁDKŮ - RUN / CSAVE";
       statusMs = 9000;
       stav = HOTOVO;
     }

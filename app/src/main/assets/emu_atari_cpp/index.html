@@ -2,6 +2,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>ATARI 130XE — log a testy</title>
+<!-- B314: jazyk CZ / EN (OPTIONS -> JAZYK · LANGUAGE) -->
+<script src="../spolecne/nap_jazyk.js"></script>
+<script src="../jazyk/en_atari.js"></script>
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 body{margin:0;background:#0b0b0d;color:#dfe3e8;font:15px/1.5 system-ui,sans-serif;padding:16px 14px 40px}
@@ -45,7 +48,7 @@ a{color:#6ea8ff}
      Puvodni platna (plat, kbdplat) a JS smycka emulace jsou pryc - stroj
      krokuje vlastni C++ vlakno, takze tady by se jen pralo dve smycky. -->
 <button id="btnZpet" type="button" style="background:#1e5c33">&#9664; ZPET NA ATARI 130XE</button>
-<div id="stavPristroje" class="hot" style="margin:4px 0 14px">-</div>
+<div id="stavPristroje" class="hot" style="margin:4px 0 14px" data-nepreklad>-</div>
 
 <div class="btny" style="margin-bottom:6px">
   <input id="poznamkaText" type="text" placeholder="Co teď testuješ? (např. CSAVE po RETURN)"
@@ -54,7 +57,7 @@ a{color:#6ea8ff}
 </div>
 
 <h2 style="font-size:16px;margin:22px 0 4px">CO TESTOVAT</h2>
-<p class="pod" style="margin:0 0 12px">U kazdeho kroku klepni V PORADKU nebo SPATNE.
+<p class="pod" id="krokyPopis" style="margin:0 0 12px">U kazdeho kroku klepni V PORADKU nebo SPATNE.
 Zapise se to do logu, takze mi pak staci poslat log a nic nemusis psat.</p>
 <div id="kroky"></div>
 <div id="souhrn" class="hot" style="margin-bottom:22px">Zatim nic odklepnuto.</div>
@@ -91,11 +94,11 @@ Zapise se to do logu, takze mi pak staci poslat log a nic nemusis psat.</p>
 <button id="btnRefresh" type="button" style="background:#2a2d34">OBNOVIT VYPIS NIZE</button>
 <pre id="logbox" style="background:#0f1013;border:1px solid #262931;border-radius:8px;
      padding:10px;font-size:11px;line-height:1.45;overflow-x:auto;white-space:pre-wrap;
-     max-height:340px;overflow-y:auto;color:#b9c0c9">(zatim nic)</pre>
+     max-height:340px;overflow-y:auto;color:#b9c0c9" data-nepreklad>(zatim nic)</pre>
 
 <div class="karta" style="border-color:#3a3f4a">
 <b style="color:#dfe3e8">Jak mi log poslat</b>
-<p class="pozn" style="margin-top:8px">
+<p class="pozn" style="margin-top:8px" data-cs-only>
 <b>1. Kdyz appka NESPADLA</b> &mdash; zmackni <i>ULOZIT LOG A ODESLAT</i>.
 Log se ulozi jako soubor do telefonu a hned se otevre nabidka, cim ho poslat
 (mail, Messenger, cokoli). Nemusis nic hledat ani nikam vkladat.
@@ -106,9 +109,20 @@ ktera je vypsana vys u polozky <i>Soubor z minula</i>. Ten soubor mi posli.<br><
 neuklada a bod 2 nefunguje. Poznas to i v logu podle radku
 <code>zapis_funguje=false</code>. V tom pripade pouzij bod 1, ten funguje vzdy.
 </p>
+<p class="pozn" style="margin-top:8px" data-en-only>
+<b>1. If the app did NOT crash</b> &mdash; press <i>SAVE AND SEND THE LOG</i>.
+The log is saved as a file on the phone and a menu opens right away to choose how to send it
+(mail, Messenger, anything). Nothing to look for or paste anywhere.
+To be safe it is also copied to the clipboard.<br><br>
+<b>2. If the app CRASHED</b> &mdash; open a file manager and go to the path
+shown above next to <i>Previous file</i>. Send me that file.<br><br>
+<b>3. If <i>This session&rsquo;s file</i> showed 0 B</b> &mdash; the log is not being saved
+to storage and step 2 will not work. You can also see it in the log by the line
+<code>zapis_funguje=false</code>. In that case use step 1, it always works.
+</p>
 </div>
 
-<p class="pozn">
+<p class="pozn" data-cs-only>
 Tenhle test pousti jadro na desetitisicich nahodnych stavu a porovnava vysledek
 s cislem, ktere vyslo na pocitaci. Delam to proto, ze pocitac je x86 a telefon
 ARM - a na ARM se nektere veci chovaji jinak. Kdyz se to rozejde, ma se to
@@ -219,6 +233,116 @@ B297: NA SIRKU (otoc telefon) obraz Atari pres cely displej a ovladani jako
 u Segy - D-pad, FIRE, MEZERA, RETURN, START/SELECT/OPTION; kolecko vpravo
 nahore = nastaveni. B296: v C++ jadre je VBXE (Wolfenstein 3D, Popeye).
 </p>
+<p class="pozn" data-en-only>
+This test runs the core on tens of thousands of random states and compares the result
+with the number computed on the PC. I do this because the PC is x86 and the phone is
+ARM &ndash; and some things behave differently on ARM. If they ever differ, it should show up
+now, not later as a broken picture.<br><br>
+B312: MP3 PLAYER &ndash; RECORD records your own MIXTAPE (whatever is playing, including EQ / BASS / TREBLE /
+BALANCE; pauses and loading the next track are not recorded; it ends with RECORD, STOP, the end of the playlist,
+MENU / BACK, at most 90 minutes) to Download/AtariHelp/Mixtape (M4A; WebM with duration on older WebView).
+FAVORITES: a star next to a track, the favorites list stays even after the app is closed,
+PLAY ALL FAVORITES. The VOLUME knob is no longer applied twice (50 % played like 25 %).
+The music list also shows M4A / OGG / FLAC / WebM. JUKEBOX RECORD: M4A when the WebView supports it; leaving
+the decks while recording saves the mix first. SEGA / PS1 LOCKS APPLY EVERYWHERE &ndash; even a game from the
+atarihelp.eu website (link, download, Google Drive) is neither downloaded nor started on a locked console, and
+the app says why. UNLOCK NEXT and LOCK ALL are hidden in OPTIONS behind a service code.
+Unused images removed (13.8 MB).
+B311: MAIN MENU = A CAROUSEL OF BIG CARDS IN C++ (the napmenu library, OpenGL ES on its own
+thread): ATARI 130XE, SEGA MEGA DRIVE, PS1, MP3 PLAYER, JUKEBOX, ATARIHELP.EU and HELP at the end
+(the full guide napoveda/index.html). The cards are in assets/menu/karty.txt &ndash; another machine = an image
++ one line. Cards with 3D and effects are drawn live by C++, locked SEGA / PS1 are grey with a padlock.
+The gear = OPTIONS (the WEB TV address stays there). On TV / PC the menu is streamed from C++
+(/menu.stream), the PC arrow keys browse. BACK in the menu = the app goes to the background. JUKEBOX RECORD
+saves the recording to Download/AtariHelp/DJ_mixy (before, it was not saved anywhere).
+B310: A RADICAL CUT &ndash; the old JavaScript Atari (emu_vbxe) has been removed from the app together with the
+Java that only served it. ATARI 130XE EMULATOR in the menu starts this C++ Atari, HELP in the menu
+is the guide. All Atari games (NET / GAMES, a game from atarihelp.eu, a pick from the phone on the error
+page) go here. UNLOCKING THE SEGA (50 typed program lines &ndash; a numbered line, counted
+on RUN or LIST, at least 5 at a time) was counted only by the old Atari &ndash; now C++ counts it, including typing
+on the touch keyboard and on the PC keyboard (not text pasted with Ctrl+V); when it unlocks, the machine
+shows SEGA UNLOCKED.
+B309: TV / PC WITHOUT F5 &ndash; when the TV showed the phone picture (H.264: the app menu, or a moment
+while switching games) and then a stream from C++ started (PS1, Sega, demo), the stopped H.264 woke up
+after it and put a black picture over the new one &ndash; hence F5. Now H.264 stops properly,
+the browser makes sure the C++ stream is on top, and when switching games (the core restarts briefly)
+it keeps the last picture for 2.5 s instead of flashing back to the phone. PS1: SAVE AND SEND THE LOG
+(like here in HELP) &ndash; the log is saved to Downloads/AtariHelp and a menu opens right away to choose how to
+send it; in landscape right in the D-PAD panel. INTRO DEMO 59 s: the parade on the CRT lasts 18 s instead of 4 s &ndash;
+Pitt-Kitt 5.6 s (title, chapter, a run with the game sound), 16 bit 6 s and 32 bit 6.25 s,
+a calmer pace (16 bit slower, 32 bit two overtakes), each sample has its own music;
+logo from 51 s.
+B308: PS1 &ndash; DOOM WITH CEILINGS. The bug was in our PS1 core (the gpu_neon graphics chip
+at 2x resolution): Doom draws the floor and ceiling in rows 1 pixel high and the walls in
+columns 1 pixel wide &ndash; at 2x each such row was drawn only partly, so a quarter of the
+pixels were missing in the ceiling and floor (black stripes, jagged holes) and the walls had
+cracks. Now they are drawn in full; other games draw bit for bit the same as before. PS1 DIARY IN C++: the core
+itself records what happens (start, game files from the CUE, BIOS, region, disc ID, picture changes, health every
+5-10 s, buttons, keyboard from the TV, core messages, save states, errors) &ndash; it is in the PS1
+LOG (gear &ndash; SAVE LOG) and here in SAVE AND SEND THE LOG. LOADING A GAME: the monitor
+shows the real state (how many seconds the start has taken) instead of a fixed 10 s, the app no longer copies
+the game before starting, and the download banner is under the monitor in portrait. TV / PC: COMPUTER
+KEYBOARD FOR PS1 TOO (arrows/WASD direction, K/space CROSS, L CIRCLE, J SQUARE,
+I TRIANGLE, Q/E L1/R1, Z/C L2/R2, Enter/P START, Backspace/O SELECT). SAVE GAME
+can no longer land in the middle of an emulation step (lock) and the memory card is saved even when
+switching straight to another game.
+B307: INTRO DEMO &ndash; A NEW SCENE WITH YOUR ATARI 130XE. Neon rods shoot out of the keys of your
+Atari, cross, and our trio materializes from the wires: Atari 130XE,
+N&amp;P 16 (cartridge) and N&amp;P 32 (CD) with the golden N&amp;P logo. The camera flies to the CRT
+monitor and it shows a parade at 50 frames/s: your Pitt-Kitt Platinum (footage and sound
+from the real Atari core in the app), 16 bit (parallax, sprites) and 32 bit (3D night).
+A SKIP button at the top right (a tap anywhere skips the demo too). The demo sound
+starts and stops in C++ itself, C++ decides about touches &ndash; Java only hands over the surface.
+B306: SOUND ON TV / PC RIGHT AWAY AND CLOSER TO THE PICTURE &ndash; the browser (Chrome, Edge) plays a page&rsquo;s
+sound only after a click or a key press in it (and again after refreshing with F5); until the
+sound plays, a yellow prompt SOUND: CLICK ANYWHERE IN THE PICTURE is shown at the top &ndash; one
+click or key is enough. The sound goes to the TV straight from the core (before, only after the
+phone speaker queue, ~130 ms later on the S8) and the browser smooths it continuously:
+for Sega and PS1 the sound lags behind the picture roughly 2-3x less than before. SEGA on TV
+60 frames/s even on the S8 (the phone display stays at 30). INTRO DEMO: the sound is played by C++
+(OpenSL ES) and on TV / PC the demo is streamed from C++ just like Sega and PS1.
+B305: SEGA AND PS1 ON TV / PC ENTIRELY IN C++ (like the Atari in B303) &ndash; a frame goes to the
+browser right from the core together with the sound in one stream, Java no longer scales
+or compresses the picture. SEGA without quality loss (exactly as on the phone, only changes,
+even when the picture moves), PS1 in the game&rsquo;s original resolution (JPEG only where something
+changed; when the picture stands still, it sharpens). Lower latency. The PICTURE panel in the browser:
+&quot;fill the screen&quot; (as before) or &quot;whole, no cropping&quot; (4:3).
+B304: A NEW INTRO DEMO following your script (45 s, 5 scenes, subtitles in Czech and
+English) &ndash; entirely in C++: the picture is drawn by OpenGL ES on its own thread (garage,
+clouds and lightning, the Atari 130XE in 3D, energy into the phone, the golden N&amp;P logo),
+the sound is computed in C++ and the picture follows it. On TV / PC the demo runs in
+landscape with sound. A tap or BACK = skip; again: OPTIONS &ndash; PLAY INTRO.
+B303: TV / PC ENTIRELY IN C++ &ndash; the Atari picture goes to the browser directly from C++ (every
+frame, 50 per second, only changed lines) with sound; Java no longer scales
+or compresses the picture (H.264 / JPEG), hence lower latency. During
+streaming the app keeps Wi-Fi in low-latency mode. PASTE CODE: in the browser
+window on the PC Ctrl+V (or drag a TXT file) &ndash; numbered lines are
+added to the BASIC program (without NEW), other text is typed as keys.
+A program in TXT with Czech characters (e with a caron) no longer falls apart.
+B302: COMPUTER KEYBOARD &ndash; in the browser on the PC (TV / PC streaming) you type
+straight into the Atari 130XE (all in C++): characters by the Czech keyboard, arrows = cursor,
+F1/F3/F4 START/SELECT/OPTION, F2 BREAK, F6 HELP, F8 INVERSE, F9 = GAME MODE
+(WASD/arrows joystick, L FIRE, K/space jump). Keys are not lost even on slow Wi-Fi.
+B301: TV / PC (the web browser in the app) shows the Atari 130XE from HELP &ndash; the picture
+straight from the core and the sound; before, only this page with tests was there.
+B300: POKEY &ndash; the timer with AUDF=$FF now ticks (before, it stood still). Ghostbusters has
+music and the &quot;Ghostbusters!&quot; speech from the timer interrupt and without it stayed on the title screen;
+the deepest tones in games were silent.
+B299: BASIC/TBXL TXT &ndash; a TXT FILE with a program (from the phone) is typed by the app itself
+into ATARI BASIC or TURBO-BASIC XL (NEW, line by line), then RUN / CSAVE /
+CLOAD. LOG / ERROR attaches the Atari memory to the log. Turbo-BASIC with a disk in D1:
+no longer falls apart. NET / GAMES: when atarihelp.eu leads to a local server on the Wi-Fi
+(OSPanel), the app says so straight away.
+B298: GAMES ON TAPE (WAV with boot) load by themselves &ndash; the Atari powers on with
+START+OPTION held and presses RETURN after the beep. The sound during CLOAD is like on a
+real 130XE (no whistling), with a stereo WAV the tape&rsquo;s audio track plays too.
+CLOAD works even with a disk in D1:. ATR/DISK with a disk in D1: offers EJECT
+or SWAP WITHOUT RESTART. Downloading games from the net: the atarihelp.eu certificate
+chain is completed, older downloads no longer start anything.
+B297: IN LANDSCAPE (turn the phone) the Atari picture fills the whole display and the controls are like
+on the Sega &ndash; D-pad, FIRE, SPACE, RETURN, START/SELECT/OPTION; the gear at the top
+right = settings. B296: VBXE is in the C++ core (Wolfenstein 3D, Popeye).
+</p>
 
 <p><a href="../index.html">&larr; Zpet do nabidky</a></p>
 
@@ -233,36 +357,20 @@ try{ if(window.AHATARICPP && !AHATARICPP.jeNactene()){
   $('btn').disabled=true;
 } }catch(e){}
 function set(id,t,cls){var e=$(id); if(!e)return; e.textContent=t; if(cls)e.className='v '+cls;}
-var KROKY=[
- // B312: MP3 RECORD (mixtape) a FAVORITES, servis pod kodem, zamky i pro hry z webu
- {n:1,co:'MP3 PREHRAVAC: LIBRARY - klepni na skladbu, pak STOP a RECORD. Po chvili PAUSE, za chvili PLAY, pak STOP',
-  ok:'Prehravani se samo rozjede, RECORD jemne cervene sviti, dole bezi ● REC 00:12 • skladba (pri PAUSE ❚❚ REC a cas stoji). Po STOP: UKLADAM MIXTAPE ... a MIXTAPE ULOZENA s cestou. V LIBRARY je NP_VISION_mixtape_....m4a, jde prehrat a pauza v ni neni.',
-  ne:'MIXTAPE SE NEULOZILA, soubor neni nebo nejde prehrat - posli LOG (radky B312 RECORD a B311 SOUBOR).'},
- {n:2,co:'MP3: hvezdicka ☆ u 2-3 skladeb v LIBRARY, pak FAVORITES - HRAT VSECHNY OBLIBENE. Zavri appku uplne a otevri znovu - FAVORITES',
-  ok:'Hvezdicky se zmeni na ★, FAVORITES ukaze oblibene i po novem spusteni appky, skladby hraji jedna po druhe. ✕ (2x) skladbu z oblibenych odebere.',
-  ne:'Oblibene zmizi, nehraji nebo hraje jina skladba - napis co a posli LOG.'},
- {n:3,co:'MP3 a DZUBOX: behem RECORD zmackni ZPET na telefonu (jindy MENU / BACK)',
-  ok:'Nahravka se nejdriv ulozi (MIXTAPE ULOZENA / SAVED), teprve pak je menu. Otevreny panel (playlist, FAVORITES) ZPET jen zavre.',
-  ne:'Appka odejde bez ulozeni nebo spadne - napis co.'},
- {n:4,co:'OPTIONS: ODEMKNOUT DALSI a ZAMKNOUT VSE nejsou videt. Otevri SERVIS (jak, vis z me zpravy), zkus spatny kod a pak svuj',
-  ok:'Bez kodu tlacitka nikde nejsou. Spatny kod: Spatny kod. (po 3 spatnych minuta pauza). Spravny: SERVIS OTEVREN NA 10 MINUT a pod nadpisem SERVIS jsou ODEMKNOUT DALSI a ZAMKNOUT VSE.',
-  ne:'Tlacitka jsou videt bez kodu, nebo spravny kod nejde - napis co.'},
- {n:5,co:'ZAMKY Z WEBU: SERVIS - ZAMKNOUT VSE. Pak ATARIHELP.EU a klepni na hru pro Segu a na hru pro PS1',
-  ok:'Hra se nestahne ani nespusti, dole se ukaze SEGA JE ZAMCENA / PS1 JE ZAMCENA s tim, kolik jeste chybi. Hra pro Atari jde normalne. Pak SERVIS - ODEMKNOUT DALSI (2x) a ty same hry z webu se spusti.',
-  ne:'Hra se u zamcene konzole spusti, nebo po odemceni nejde - napis kterou a posli LOG (radky B312 ZAMEK).'},
- {n:6,co:'DZUBOX: RECORD, zahraj neco (pady, deck), RECORD znovu; soubor zkus pustit i v jinem prehravaci',
-  ok:'SAVED a cesta, v Download/AtariHelp/DJ_mixy je NP_VISION_mix_....m4a (na starsim telefonu .webm), jiny prehravac ukaze delku a jde posouvat.',
-  ne:'SAVE FAILED nebo soubor nejde prehrat - posli LOG (radky B311 SOUBOR).'},
- {n:7,co:'MP3: nahraj neco s EQ / BASS a stazenym VOLUME, pak nahravku pust',
-  ok:'Nahravka zni s ekvalizerem a basy, ale neni tissi kvuli VOLUME. Samotne VOLUME na pulce hraje o pulku tiseji (drive skoro na ctvrtinu).',
-  ne:'Nahravka je potichu nebo bez ekvalizeru - napis co.'},
- {n:8,co:'MENU, Atari 130XE (TEST JADRA nize), Sega, PS1, HELP, WEB TV',
-  ok:'Bezi UPLNE STEJNE jako v B311 (Procesor i Pamet = SEDI 29C55806 / D3949DC5).',
-  ne:'Jakakoli zmena proti B311 - napis co.'}
-];
+// B314: kroky k vyzkouseni nove verze dostava Rene primo ve zprave (B313: "nechapu test
+// atari 130xe") - seznam je prazdny; kdyz se nekdy vrati, staci ho tu vyplnit (n, co, ok, ne)
+var KROKY=[];
 var vysledky={};
 function vykresliKroky(){
   var h='';
+  if(!KROKY.length){
+    // B314: zadne kroky - jen vysvetleni (cesky / anglicky), nic se neodklepava
+    document.getElementById('kroky').innerHTML='<p class="pod" data-cs-only>Kroky k vyzkouseni nove verze ted posilam primo ve zprave - tady nic odklepavat nemusis.</p>'
+      +'<p class="pod" data-en-only>The steps to try in a new version are now sent directly in the message &ndash; nothing to mark here.</p>';
+    var pp=document.getElementById('krokyPopis'); if(pp) pp.style.display='none';
+    var so=document.getElementById('souhrn'); if(so) so.style.display='none';
+    return;
+  }
   for(var i=0;i<KROKY.length;i++){
     var k=KROKY[i], st=vysledky[k.n];
     h+='<div class="krok'+(st===true?' hotovo-ok':(st===false?' hotovo-spatne':''))+'" id="krok'+k.n+'">'

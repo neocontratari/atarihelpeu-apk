@@ -4391,13 +4391,17 @@ public class MainActivity extends Activity {
                 + "  if(!(window.napVAtariCpp||window.napVPs1)||klavLeti||klavFronta.length) return;"
                 + "  for(var k in drzim){ posli('Zije','',true,false,0); break; }"
                 + "}catch(e){} },800);"
+                // B314: napoveda se cte zpet (porovnani) - anglicky ji stranka rovnou pise prelozenou
+                // (NapJazyk z napTvJazykStranka), jinak by ji prekladac a porovnani prepisovaly porad dokola
+                // a [posledni klavesa] by blikala. Cesky (bez NapJazyk) beze zmeny.
+                + "function napTr(s){ try{ return (window.NapJazyk&&NapJazyk.en())?NapJazyk.tr(s):s; }catch(e){ return s; } }"
                 + "var kn=document.createElement('div');"
                 + "kn.style.cssText='position:fixed;right:10px;bottom:8px;padding:4px 7px;"
                 + "background:rgba(0,0,0,.6);border-radius:4px;font:13px monospace;color:#9fdcff;z-index:99999';"
                 + "kn.style.display='none';"
                 + "window.napKlavesnicePopis=function(zap){"
                 // jen pri zmene (B311: i zmena textu - z menu rovnou do Atari je "zap" porad)
-                + "  var tx=zap?napPopisKlaves():'';"
+                + "  var tx=zap?napTr(napPopisKlaves()):'';"
                 // (text muze mit na konci jeste [posledni akce] - ten se neprepisuje, jinak by blikal)
                 + "  if(kn.style.display===(zap?'':'none')&&(!zap||kn.textContent.indexOf(tx)===0)) return;"
                 + "  kn.style.display=zap?'':'none';"
@@ -4420,14 +4424,41 @@ public class MainActivity extends Activity {
                 + "    ? 'HRANI - WASD pohyb, K skok, L vystrel   (F9 = psani)'"
                 + "    : 'PSANI - F9 hrani, F2 BREAK, F1/F3/F4 START/SELECT/OPTION'; }"
                 + "setInterval(function(){ if(kn.style.display==='none') return;"
-                + "  var t=napPopisKlaves();"
-                + "  if(window.napPosledni) t+='   ['+window.napPosledni+']';"
+                + "  var t=napTr(napPopisKlaves());"
+                + "  if(window.napPosledni) t+='   ['+napTr(window.napPosledni)+']';"
                 + "  if(kn.textContent!==t) kn.textContent=t; },700);"
                 + "document.body.appendChild(kn);"
                 + "})();</script></body></html>";
+        body = napTvJazykStranka(body);   // B314: anglicky - prekladac a slovnik primo do stranky
         byte[] b = body.getBytes("UTF-8");
         napTvWebHeader(out, "200 OK", "text/html; charset=utf-8", b.length, false);
         out.write(b);
+    }
+
+    // B314: stranka WEB TV v jazyce appky. Cesky beze zmeny; anglicky Java vlozi za <title>
+    // prekladac stranek (assets/spolecne/nap_jazyk.js) a slovnik TV (assets/jazyk/en_tv.js) -
+    // prohlizec na TV / PC je tak dostane bez dalsiho dotazu na telefon.
+    private volatile String napTvJazykSkript = null;
+
+    private String napTvJazykStranka(String body) {
+        if (!NapJazyk.en(this)) return body;
+        try {
+            String js = napTvJazykSkript;
+            if (js == null) {
+                byte[] a = atariCppAsset("spolecne/nap_jazyk.js"), c = atariCppAsset("jazyk/en_tv.js");
+                if (a == null || c == null) return body;
+                js = new String(a, "UTF-8") + "\n" + new String(c, "UTF-8");
+                napTvJazykSkript = js;
+            }
+            final int i = body.indexOf("</title>");
+            if (i < 0) return body;
+            final String vlozit = "<script>window.NAP_JAZYK='en';</script><script>"
+                    + js.replace("</script", "<\\/script") + "</script>";
+            return body.substring(0, i + 8) + vlozit + body.substring(i + 8);
+        } catch (Throwable t) {
+            appendNativeLog("B314 TV_JAZYK_CHYBA " + safeMsg(t));
+            return body;
+        }
     }
 
     private void napTvWebWriteFrame(OutputStream out) throws IOException {
@@ -4574,6 +4605,54 @@ public class MainActivity extends Activity {
      * B310: Atari 130XE v C++ je teď jediné Atari (tlačítko ATARI 130XE EMULATOR);
      * puvodni Atari v JavaScriptu (emu_vbxe) je smazane.
      */
+
+    // ===== B314: JAZYK CZ / EN =====
+    // Rene: "slo by dat vyber jazyka - volbu Cze a Ang? ... po volbe na ang by byla apka
+    // v anglictine? a naopak?" Volba v OPTIONS (JAZYK · LANGUAGE), jinak podle telefonu
+    // (NapJazyk). Stranky: assets/spolecne/nap_jazyk.js + slovniky assets/jazyk/en_*.js,
+    // C++: menu (karty.txt ma anglicke sloupce), Atari (hlasky na pristroji), intro.
+
+    /** Text podle jazyka appky. */
+    String tx(String cs, String en) {
+        return NapJazyk.t(this, cs, en);
+    }
+
+    /** Jazyk do C++ knihoven (menu, Atari, intro) - pri startu a po zmene v OPTIONS. */
+    private void jazykDoKnihoven(String proc) {
+        final boolean en = NapJazyk.en(this);
+        final StringBuilder sb = new StringBuilder("B314 JAZYK_DO_KNIHOVEN (" + proc + ") " + (en ? "en" : "cs") + ":");
+        try { sb.append(" menu=").append(NativeMenuBridge.jazykSafe(en) ? "ok" : "neni"); } catch (Throwable t) { sb.append(" menu=chyba"); }
+        try { sb.append(" intro=").append(NativeIntroBridge.jazykSafe(en) ? "ok" : "neni"); } catch (Throwable t) { sb.append(" intro=chyba"); }
+        // Atari: knihovnu nenacitat kvuli jazyku - dostane ho pri zapnuti pristroje (atariZarizeniZapni)
+        if (atariZarizeni != null) {
+            try { sb.append(" atari=").append(atariJazyk()); } catch (Throwable t) { sb.append(" atari=chyba"); }
+        } else sb.append(" atari=pri zapnuti");
+        appendNativeLog(sb.toString());
+    }
+
+    /** B314: jazyk hlasek na pristroji Atari (C++). */
+    private String atariJazyk() {
+        return NativeAtariCoreBridge.devCtlSafe(NapJazyk.en(this) ? "jazyk:en" : "jazyk:cs");
+    }
+
+    /** B314: most pro stranky - AHJAZYK.kod() a volba v OPTIONS AHJAZYK.nastav('en'). */
+    public class AHJazyk {
+        @JavascriptInterface public String kod() {
+            return NapJazyk.kod(MainActivity.this);
+        }
+        @JavascriptInterface public String nastav(String novy) {
+            final String k = novy == null ? "" : novy.trim().toLowerCase(java.util.Locale.ROOT);
+            if (!NapJazyk.CS.equals(k) && !NapJazyk.EN.equals(k)) return NapJazyk.kod(MainActivity.this);
+            final boolean zmena = NapJazyk.nastav(MainActivity.this, k);
+            appendNativeLog("B314 JAZYK_ZMENA -> " + k + (zmena ? "" : " (beze zmeny)") + " (OPTIONS)");
+            if (zmena) ui.post(() -> {
+                jazykDoKnihoven("OPTIONS");
+                menuZamky();          // duvody zamku Sega / PS1 v novem jazyce
+            });
+            return k;
+        }
+    }
+
     /** BUILD2SA21: rozhrani pro uvodni intro. */
     public class AHIntro {
         @JavascriptInterface public void hotovo() {
@@ -4886,12 +4965,14 @@ public class MainActivity extends Activity {
                 if (!NapAktualizace.smiInstalovat(MainActivity.this)) {
                     try {
                         new android.app.AlertDialog.Builder(MainActivity.this)
-                            .setTitle("Povoleni instalace")
-                            .setMessage("Telefon zatim nedovoluje instalovat z teto aplikace."
-                                    + "\n\nOtevru nastaveni, kde se to zapina.")
-                            .setPositiveButton("OTEVRIT", (d,w) ->
+                            .setTitle(tx("Povoleni instalace", "Install permission"))
+                            .setMessage(tx("Telefon zatim nedovoluje instalovat z teto aplikace."
+                                    + "\n\nOtevru nastaveni, kde se to zapina.",
+                                    "The phone does not allow installing from this app yet."
+                                    + "\n\nI will open the settings where you can turn it on."))
+                            .setPositiveButton(tx("OTEVRIT", "OPEN"), (d,w) ->
                                     NapAktualizace.otevriPovoleni(MainActivity.this))
-                            .setNegativeButton("TED NE", null).show();
+                            .setNegativeButton(tx("TED NE", "NOT NOW"), null).show();
                     } catch (Throwable ignored) {}
                     appendNativeLog("BUILD2SA42 AKTUALIZACE chybi povoleni");
                     return;
@@ -5474,7 +5555,7 @@ public class MainActivity extends Activity {
 
                 // 2) schranka jako pojistka, 3) hned nabidnout odeslani (B309: spolecne s PS1)
                 final File odeslat = cil;
-                napNabidniOdeslaniLogu(odeslat, t, "EMU10 log", "Log z EMU10");
+                napNabidniOdeslaniLogu(odeslat, t, "EMU10 log", tx("Log z EMU10", "Log from EMU10"));
 
                 appendNativeLog("BUILD2SA15 ATARI_CPP_LOG_ULOZEN znaku=" + t.length()
                         + " soubor=" + (odeslat == null ? ("SELHAL:" + chybaZapisu) : odeslat.getAbsolutePath()));
@@ -5516,9 +5597,9 @@ public class MainActivity extends Activity {
                 i.putExtra(android.content.Intent.EXTRA_STREAM,
                         android.net.Uri.fromFile(odeslat));
                 i.putExtra(android.content.Intent.EXTRA_TEXT,
-                        popis + ", soubor: " + odeslat.getAbsolutePath());
+                        popis + tx(", soubor: ", ", file: ") + odeslat.getAbsolutePath());
                 i.addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION);
-                startActivity(android.content.Intent.createChooser(i, "Poslat log"));
+                startActivity(android.content.Intent.createChooser(i, tx("Poslat log", "Send the log")));
             } catch (Throwable e) {
                 appendNativeLog("BUILD2SA15 LOG_ODESLANI SELHALO duvod=" + e.getMessage());
             }
@@ -6398,7 +6479,7 @@ public class MainActivity extends Activity {
                     kam = "FALLBACK_APP_DIR:";
                 } catch (Throwable e2) { f = null; kam = "CHYBA:" + e2.getMessage(); }
             }
-            napNabidniOdeslaniLogu(f, vse, "AtariHelp PS1 log", "Log PS1 z AtariHelp");
+            napNabidniOdeslaniLogu(f, vse, "AtariHelp PS1 log", tx("Log PS1 z AtariHelp", "PS1 log from AtariHelp"));
             appendNativeLog("B309 PS1_LOG_ODESLAT znaku=" + vse.length() + " " + kam + (f != null ? f.getAbsolutePath() : ""));
             return kam + (f != null ? f.getAbsolutePath() : "");
         }
@@ -6442,7 +6523,7 @@ public class MainActivity extends Activity {
                     Intent i = new Intent(Intent.ACTION_GET_CONTENT);
                     i.setType("*/*");
                     i.addCategory(Intent.CATEGORY_OPENABLE);
-                    startActivityForResult(Intent.createChooser(i, "PS1: vyber .bin / .iso / .img hry"), PICK_PS1_GAME);
+                    startActivityForResult(Intent.createChooser(i, tx("PS1: vyber .bin / .iso / .img hry", "PS1: choose the game .bin / .iso / .img")), PICK_PS1_GAME);
                 } catch (Throwable t) { ps1LastBootResult = "PS1_PICK_FAIL " + t.getMessage(); }
             });
         }
@@ -7382,12 +7463,13 @@ public class MainActivity extends Activity {
             long sec = Math.max(1L, (waitMs + 999L) / 1000L);
             String html = "<!doctype html><html><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'>"
                     + "<style>body{background:#fff;color:#111;font-family:sans-serif;padding:22px;line-height:1.45}h1{font-size:22px}.btn{display:block;margin:10px 0;padding:12px 14px;border:1px solid #111;border-radius:6px;background:#111;color:#fff;text-decoration:none;text-align:center;font-weight:700}.alt{background:#fff;color:#111}.warn{padding:10px;border-left:4px solid #b80;background:#fff7e6}code{word-break:break-all}</style></head>"
-                    + "<body><h1>AtariHelp ochranna brzda</h1>"
-                    + "<div class='warn'>Aplikace ted neposila dalsi pozadavky na web, aby nezhorsila IP ban / rate limit.</div>"
+                    + "<body><h1>" + tx("AtariHelp ochranna brzda", "AtariHelp safety brake") + "</h1>"
+                    + "<div class='warn'>" + tx("Aplikace ted neposila dalsi pozadavky na web, aby nezhorsila IP ban / rate limit.",
+                            "The app is not sending more requests to the website now, so as not to make an IP ban / rate limit worse.") + "</div>"
                     + "<p><b>URL:</b> <code>" + escapeHtml(url) + "</code></p>"
-                    + "<p><b>Duvod:</b> <code>" + escapeHtml(reason) + "</code></p>"
-                    + "<p>Zkusit znovu nejdrive za " + sec + " s.</p>"
-                    + "<a class='btn alt' href='#' onclick='try{AHPICK.pickGame();}catch(e){}return false;'>Vybrat ZIP z telefonu</a>"
+                    + "<p><b>" + tx("Duvod:", "Reason:") + "</b> <code>" + escapeHtml(reason) + "</code></p>"
+                    + "<p>" + tx("Zkusit znovu nejdrive za " + sec + " s.", "Try again in " + sec + " s at the earliest.") + "</p>"
+                    + "<a class='btn alt' href='#' onclick='try{AHPICK.pickGame();}catch(e){}return false;'>" + tx("Vybrat ZIP z telefonu", "Pick a ZIP from the phone") + "</a>"
                     + "</body></html>";
             try { web.loadDataWithBaseURL("about:blank", html, "text/html", "UTF-8", null); } catch (Throwable ignored) {}
         };
@@ -7576,7 +7658,7 @@ public class MainActivity extends Activity {
         });
         return htmlResponse("<!doctype html><html><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'>"
                 + "<style>body{font-family:sans-serif;background:#fff;color:#111;padding:24px;line-height:1.4}code{word-break:break-all}</style></head>"
-                + "<body><h1>Spoustim hru...</h1><p><code>" + escapeHtml(url) + "</code></p></body></html>");
+                + "<body><h1>" + tx("Spoustim hru...", "Starting the game...") + "</h1><p><code>" + escapeHtml(url) + "</code></p></body></html>");
     }
 
     private void showAtariHelpProviderBridge(final String url, final String reason, final String detail) {
@@ -7585,14 +7667,15 @@ public class MainActivity extends Activity {
             applyWebViewVisualMode(url, "providerBridge");
             String html = "<!doctype html><html><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'>"
                     + "<style>body{background:#fff;color:#111;font-family:sans-serif;padding:22px;line-height:1.45}h1{font-size:22px;margin:0 0 12px}.box{padding:12px;border-left:4px solid #111;background:#f3f3f3;margin:12px 0}.warn{border-left-color:#b80;background:#fff7e6}.btn{display:block;margin:10px 0;padding:12px 14px;border:1px solid #111;border-radius:6px;background:#111;color:#fff;text-decoration:none;text-align:center;font-weight:700}.alt{background:#fff;color:#111}input{box-sizing:border-box;width:100%;padding:12px;border:1px solid #777;border-radius:6px;font:16px sans-serif}code{word-break:break-all}</style></head>"
-                    + "<body><h1>AtariHelp lokalni bridge</h1>"
-                    + "<div class='box warn'>Provider blokuje nebo zavira spojeni na AtariHelp/WEDOS. Appka zkusi relay a necha aktivni herni bridge.</div>"
+                    + "<body><h1>" + tx("AtariHelp lokalni bridge", "AtariHelp local bridge") + "</h1>"
+                    + "<div class='box warn'>" + tx("Provider blokuje nebo zavira spojeni na AtariHelp/WEDOS. Appka zkusi relay a necha aktivni herni bridge.",
+                            "The provider blocks or closes the connection to AtariHelp/WEDOS. The app tries a relay and keeps the game bridge active.") + "</div>"
                     + "<p><b>URL:</b> <code>" + escapeHtml(url) + "</code></p>"
-                    + "<p><b>Duvod:</b> <code>" + escapeHtml(reason) + " / " + escapeHtml(detail) + "</code></p>"
-                    + "<a class='btn' href='#' onclick='try{AHNET.openGames();}catch(e){}return false;'>Zkusit znovu pres relay</a>"
-                    + "<a class='btn alt' href='#' onclick='try{AHPICK.pickGame();}catch(e){}return false;'>Vybrat hru z telefonu</a>"
-                    + "<div class='box'><b>Primy neblokovany odkaz</b><br><input id='u' placeholder='https://mirror.example/hra.zip'>"
-                    + "<a class='btn' href='#' onclick='var u=document.getElementById(\"u\").value;if(u){try{AHNET.runGameUrl(u);}catch(e){location.href=u;}}return false;'>Spustit z odkazu</a></div>"
+                    + "<p><b>" + tx("Duvod:", "Reason:") + "</b> <code>" + escapeHtml(reason) + " / " + escapeHtml(detail) + "</code></p>"
+                    + "<a class='btn' href='#' onclick='try{AHNET.openGames();}catch(e){}return false;'>" + tx("Zkusit znovu pres relay", "Try again via a relay") + "</a>"
+                    + "<a class='btn alt' href='#' onclick='try{AHPICK.pickGame();}catch(e){}return false;'>" + tx("Vybrat hru z telefonu", "Pick a game from the phone") + "</a>"
+                    + "<div class='box'><b>" + tx("Primy neblokovany odkaz", "A direct unblocked link") + "</b><br><input id='u' placeholder='https://mirror.example/hra.zip'>"
+                    + "<a class='btn' href='#' onclick='var u=document.getElementById(\"u\").value;if(u){try{AHNET.runGameUrl(u);}catch(e){location.href=u;}}return false;'>" + tx("Spustit z odkazu", "Start from the link") + "</a></div>"
                     + "</body></html>";
             try { web.loadDataWithBaseURL("file:///android_asset/atarihelp_bridge.html", html, "text/html", "UTF-8", null); } catch (Throwable ignored) {}
             appendNativeLog("BUILD2SA5AA ATARIHELP_PROVIDER_BRIDGE reason=" + reason + " detail=" + detail + " url=" + compactUrl(url));
@@ -7740,6 +7823,7 @@ public class MainActivity extends Activity {
         }
         try {
             NativeIntroBridge.introNastavAssety(getAssets());
+            NativeIntroBridge.jazykSafe(NapJazyk.en(this));   // B314: titulky v jazyce appky (pred startem dema)
             // B307: C++ rovnou pusti i zvuk (OpenSL ES) - zadny Java AudioTrack
             final int st = NativeIntroBridge.introStart();
             NapDemoView v = new NapDemoView(this, this::demoKonec);
@@ -7851,10 +7935,10 @@ public class MainActivity extends Activity {
             final boolean sega = NapPostup.segaOdemcena(this), ps1 = NapPostup.ps1Odemcena(this);
             final int radku = Math.max(0, NapPostup.zbyvaRadku(this));
             final int minut = Math.max(0, NapPostup.zbyvaMinutSegy(this));
-            NativeMenuBridge.zamekSafe("sega", !sega, "Napiš v Atari ještě " + radku + " " + radkuSlovo(radku)
-                    + " programu (řádky s číslem, počítají se při RUN nebo LIST).");
-            NativeMenuBridge.zamekSafe("ps1", !ps1, sega ? ("Hraj na Seze ještě " + minut + " min.")
-                    : "Nejdřív odemkni Segu, pak 30 minut hraní na Seze.");
+            // B314: cesky / anglicky (stejna slova jako hlaska u zamcene konzole z webu)
+            final boolean en = NapJazyk.en(this);
+            NativeMenuBridge.zamekSafe("sega", !sega, NapPravidla.duvodKarty(NapPravidla.SEGA, sega, radku, minut, en));
+            NativeMenuBridge.zamekSafe("ps1", !ps1, NapPravidla.duvodKarty(NapPravidla.PS1, sega, radku, minut, en));
         } catch (Throwable t) {
             appendNativeLog("B311 MENU_ZAMKY_CHYBA " + safeMsg(t));
         }
@@ -7881,7 +7965,7 @@ public class MainActivity extends Activity {
         appendNativeLog("B312 ZAMEK " + konzole + " - " + odkud + " zastaveno"
                 + (co == null ? "" : " (" + compactUrl(co) + ")") + " | " + NapPostup.stav(this));
         ukazZamek(konzole, NapPravidla.duvodZamku(konzole, sega,
-                NapPostup.zbyvaRadku(this), NapPostup.zbyvaMinutSegy(this)));
+                NapPostup.zbyvaRadku(this), NapPostup.zbyvaMinutSegy(this), NapJazyk.en(this)));
         return true;
     }
 
@@ -8093,7 +8177,8 @@ public class MainActivity extends Activity {
                 else if (!openExternalBrowserUrl(cil)) web.loadUrl(cil);
                 return;
             }
-            final String url = "file:///android_asset/" + cil;
+            // B314: HELP anglicky = napoveda/en.html (NapPravidla.cilPodleJazyka)
+            final String url = "file:///android_asset/" + NapPravidla.cilPodleJazyka(cil, NapJazyk.en(this));
             applyWebViewVisualMode(url, "menuKarta");
             web.loadUrl(url);
         } catch (Throwable t) {
@@ -8149,6 +8234,7 @@ public class MainActivity extends Activity {
             atariZarizeniSkryte = false;
             atariCppNaObrazovce = true;
             v.requestFocus();
+            try { atariJazyk(); } catch (Throwable ignored) {}   // B314: hlasky na pristroji CZ / EN
             NativeAtariCoreBridge.devStartSafe(true);
             atariCppOvladaniNacti();                       // B297: D-pad / tlacitka na sirku podle uzivatele
             atariNativeAudioActive = true;
@@ -8224,8 +8310,8 @@ public class MainActivity extends Activity {
                 new Thread(() -> {
                     String r = ulozitAtariPcmWav(pcm, jmeno);
                     NativeAtariCoreBridge.devStatusSafe(r.startsWith("/")
-                            ? "CSAVE ULOZENO: Atari_emu/" + jmeno
-                            : "CSAVE WAV SE NEULOZIL: " + r, 7000);
+                            ? tx("CSAVE ULOZENO: Atari_emu/", "CSAVE SAVED: Atari_emu/") + jmeno
+                            : tx("CSAVE WAV SE NEULOZIL: ", "CSAVE WAV NOT SAVED: ") + r, 7000);
                 }, "b291-csave-wav").start();
             }
         } catch (Throwable t) {
@@ -8245,7 +8331,7 @@ public class MainActivity extends Activity {
         StringBuilder log = new StringBuilder();
         boolean otevreno = NapPostup.pripocitejDavky(this, p, log);
         for (String r : log.toString().split("\n")) if (r.length() > 0) appendNativeLog(r);
-        if (otevreno) NativeAtariCoreBridge.devStatusSafe("SEGA ODEMČENA! JE V MENU", 8000);
+        if (otevreno) NativeAtariCoreBridge.devStatusSafe(tx("SEGA ODEMČENA! JE V MENU", "SEGA UNLOCKED! IT IS IN THE MENU"), 8000);
     }
 
     /** Stejny zapis WAV jako BUILD2SB81 (16-bit PCM mono 44100 Hz) - vraci cestu nebo popis chyby. */
@@ -8293,7 +8379,7 @@ public class MainActivity extends Activity {
                     Intent i = new Intent(Intent.ACTION_GET_CONTENT);
                     i.addCategory(Intent.CATEGORY_OPENABLE);
                     i.setType("*/*");
-                    startActivityForResult(Intent.createChooser(i, "XEX / ZIP pro Atari 130XE (C++)"), PICK_ATARI_CPP_XEX);
+                    startActivityForResult(Intent.createChooser(i, tx("XEX / ZIP pro Atari 130XE (C++)", "XEX / ZIP for the Atari 130XE (C++)")), PICK_ATARI_CPP_XEX);
                     break;
                 }
                 case 3: { // ATR / DISK - B295: disketova mechanika D1: v C++
@@ -8333,7 +8419,7 @@ public class MainActivity extends Activity {
                     break;
                 case 11:  // B297: uprava rozlozeni HOTOVO -> ulozit
                     atariCppOvladaniUloz(NativeAtariCoreBridge.devCtlSafe("get"));
-                    NativeAtariCoreBridge.devStatusSafe("ROZLOŽENÍ ULOŽENO", 2500);
+                    NativeAtariCoreBridge.devStatusSafe(tx("ROZLOŽENÍ ULOŽENO", "LAYOUT SAVED"), 2500);
                     break;
                 default:
                     break;
@@ -8381,19 +8467,19 @@ public class MainActivity extends Activity {
     /** Ozubene kolecko na sirku - stejne polozky jako Sega "D-PAD A OVLADANI". */
     private void atariCppOvladaniMenu() {
         final String[] polozky = {
-                "UPRAVIT ROZLOŽENÍ TLAČÍTEK",
-                "OVLÁDÁNÍ: CITLIVOST A VZHLED",
-                "PROHODIT D-PAD A AKCE (LEVÁK)",
-                "VÝCHOZÍ ROZLOŽENÍ TLAČÍTEK",
+                tx("UPRAVIT ROZLOŽENÍ TLAČÍTEK", "EDIT BUTTON LAYOUT"),
+                tx("OVLÁDÁNÍ: CITLIVOST A VZHLED", "CONTROLS: SENSITIVITY AND LOOK"),
+                tx("PROHODIT D-PAD A AKCE (LEVÁK)", "SWAP D-PAD AND ACTIONS (LEFT-HANDED)"),
+                tx("VÝCHOZÍ ROZLOŽENÍ TLAČÍTEK", "DEFAULT BUTTON LAYOUT"),
                 "RESET ATARI",
-                "XEX / MOBIL - spustit hru z telefonu",
-                "ATR / DISK - disketa do D1: (vysunout, vyměnit)",
-                "NET / HRY",
-                "KAZETA (WAV) - vložit kazetu, hry z kazety",
-                "NÁPOVĚDA K OVLÁDÁNÍ"
+                tx("XEX / MOBIL - spustit hru z telefonu", "XEX / PHONE - start a game from the phone"),
+                tx("ATR / DISK - disketa do D1: (vysunout, vyměnit)", "ATR / DISK - disk in D1: (eject, swap)"),
+                tx("NET / HRY", "NET / GAMES"),
+                tx("KAZETA (WAV) - vložit kazetu, hry z kazety", "TAPE (WAV) - insert a tape, games on tape"),
+                tx("NÁPOVĚDA K OVLÁDÁNÍ", "CONTROLS HELP")
         };
         new android.app.AlertDialog.Builder(this)
-                .setTitle("D-PAD A OVLÁDÁNÍ")
+                .setTitle(tx("D-PAD A OVLÁDÁNÍ", "D-PAD AND CONTROLS"))
                 .setItems(polozky, (dlg, w) -> {
                     switch (w) {
                         case 0:
@@ -8404,11 +8490,11 @@ public class MainActivity extends Activity {
                             break;
                         case 2:
                             atariCppOvladaniUloz(NativeAtariCoreBridge.devCtlSafe("mirror"));
-                            NativeAtariCoreBridge.devStatusSafe("D-PAD A AKCE PROHOZENY (LEVÁK) - ULOŽENO", 3000);
+                            NativeAtariCoreBridge.devStatusSafe(tx("D-PAD A AKCE PROHOZENY (LEVÁK) - ULOŽENO", "D-PAD AND ACTIONS SWAPPED (LEFT-HANDED) - SAVED"), 3000);
                             break;
                         case 3:
                             atariCppOvladaniUloz(NativeAtariCoreBridge.devCtlSafe("reset"));
-                            NativeAtariCoreBridge.devStatusSafe("ROZLOŽENÍ VRÁCENO NA VÝCHOZÍ", 3000);
+                            NativeAtariCoreBridge.devStatusSafe(tx("ROZLOŽENÍ VRÁCENO NA VÝCHOZÍ", "LAYOUT RESET TO DEFAULT"), 3000);
                             break;
                         case 4:
                             NativeAtariCoreBridge.devCtlSafe("atari_reset");   // jako tlacitko RESET na pristroji
@@ -8430,7 +8516,7 @@ public class MainActivity extends Activity {
                             break;
                     }
                 })
-                .setNegativeButton("ZAVŘÍT", null)
+                .setNegativeButton(tx("ZAVŘÍT", "CLOSE"), null)
                 .show();
     }
 
@@ -8450,12 +8536,14 @@ public class MainActivity extends Activity {
         final boolean[] vibrace = {!"0".equals(h.get("hap"))};
         final String[] klice = {"sens", "op", "size", "dsize"};
         final String[] popisy = {
-                "Citlivost D-padu — jak daleko od středu musí prst dojet, než se směr sepne.",
-                "Průhlednost tlačítek",
-                "Velikost tlačítek — FIRE, MEZERA, RETURN, START, SELECT, OPTION.",
-                "Velikost D-padu — jen kulatý ovladač, samostatně."
+                tx("Citlivost D-padu — jak daleko od středu musí prst dojet, než se směr sepne.",
+                   "D-pad sensitivity — how far from the center your finger has to move before a direction switches on."),
+                tx("Průhlednost tlačítek", "Button transparency"),
+                tx("Velikost tlačítek — FIRE, MEZERA, RETURN, START, SELECT, OPTION.", "Button size — FIRE, SPACE, RETURN, START, SELECT, OPTION."),
+                tx("Velikost D-padu — jen kulatý ovladač, samostatně.", "D-pad size — just the round pad, on its own.")
         };
-        final String[] jednotky = {"Citlivost: ", "Průhlednost: ", "Velikost: ", "Velikost D-padu: "};
+        final String[] jednotky = {tx("Citlivost: ", "Sensitivity: "), tx("Průhlednost: ", "Transparency: "),
+                tx("Velikost: ", "Size: "), tx("Velikost D-padu: ", "D-pad size: ")};
         final int[] min = {4, 25, 70, 70}, max = {30, 100, 150, 150}, krok = {1, 5, 5, 5};
         final float dp = getResources().getDisplayMetrics().density;
         android.widget.LinearLayout box = new android.widget.LinearLayout(this);
@@ -8494,7 +8582,7 @@ public class MainActivity extends Activity {
             });
         }
         final android.widget.CheckBox cb = new android.widget.CheckBox(this);
-        cb.setText("Vibrace při stisku tlačítka");
+        cb.setText(tx("Vibrace při stisku tlačítka", "Vibrate when a button is pressed"));
         cb.setChecked(vibrace[0]);
         cb.setPadding(0, (int) (12 * dp), 0, 0);
         cb.setOnCheckedChangeListener((b, zap) -> {
@@ -8505,13 +8593,13 @@ public class MainActivity extends Activity {
         android.widget.ScrollView sv = new android.widget.ScrollView(this);
         sv.addView(box);
         new android.app.AlertDialog.Builder(this)
-                .setTitle("OVLÁDÁNÍ — profi nastavení")
+                .setTitle(tx("OVLÁDÁNÍ — profi nastavení", "CONTROLS — pro settings"))
                 .setView(sv)
-                .setNeutralButton("VÝCHOZÍ NASTAVENÍ", (dlg, w) -> {
+                .setNeutralButton(tx("VÝCHOZÍ NASTAVENÍ", "DEFAULT SETTINGS"), (dlg, w) -> {
                     atariCppOvladaniUloz(NativeAtariCoreBridge.devCtlSafe("set:sens=7;op=100;size=100;dsize=100;hap=1"));
-                    NativeAtariCoreBridge.devStatusSafe("OVLÁDÁNÍ VRÁCENO NA VÝCHOZÍ", 3000);
+                    NativeAtariCoreBridge.devStatusSafe(tx("OVLÁDÁNÍ VRÁCENO NA VÝCHOZÍ", "CONTROLS RESET TO DEFAULT"), 3000);
                 })
-                .setPositiveButton("ZAVŘÍT", null)
+                .setPositiveButton(tx("ZAVŘÍT", "CLOSE"), null)
                 .setOnDismissListener(d -> atariCppOvladaniUloz(NativeAtariCoreBridge.devCtlSafe("get")))
                 .show();
     }
@@ -8542,12 +8630,12 @@ public class MainActivity extends Activity {
             polozky.add(f.getName() + String.format(Locale.US, "  (%.0f s)", sek));
         }
         final int jiny = polozky.size();
-        polozky.add("JINY WAV Z TELEFONU...");
+        polozky.add(tx("JINY WAV Z TELEFONU...", "ANOTHER WAV FROM THE PHONE..."));
         final int vyjmout = polozky.size();
-        polozky.add("VYJMOUT KAZETU");
+        polozky.add(tx("VYJMOUT KAZETU", "REMOVE THE TAPE"));
         appendNativeLog("B292 KAZETA EJECT - nabidka: " + wavy.size() + " WAV v Download/AtariHelp/Atari_emu");
         new android.app.AlertDialog.Builder(this)
-                .setTitle("KAZETA → Atari 130XE (CLOAD, hry se nahrají samy)")
+                .setTitle(tx("KAZETA → Atari 130XE (CLOAD, hry se nahrají samy)", "TAPE → Atari 130XE (CLOAD, games load by themselves)"))
                 .setItems(polozky.toArray(new String[0]), (dlg, kt) -> {
                     if (kt == jiny) {
                         Intent i = new Intent(Intent.ACTION_GET_CONTENT);
@@ -8555,13 +8643,13 @@ public class MainActivity extends Activity {
                         i.setType("*/*");
                         i.putExtra(Intent.EXTRA_MIME_TYPES, new String[]{"audio/wav", "audio/x-wav", "audio/wave", "audio/*", "application/octet-stream"});
                         try {
-                            startActivityForResult(Intent.createChooser(i, "WAV kazeta pro Atari 130XE (C++)"), PICK_ATARI_CPP_WAV);
+                            startActivityForResult(Intent.createChooser(i, tx("WAV kazeta pro Atari 130XE (C++)", "WAV tape for the Atari 130XE (C++)")), PICK_ATARI_CPP_WAV);
                         } catch (Throwable t) {
                             appendNativeLog("B292 KAZETA vyber souboru nejde otevrit " + safeMsg(t));
                         }
                     } else if (kt == vyjmout) {
                         NativeAtariCoreBridge.devEjectTapeSafe();
-                        NativeAtariCoreBridge.devStatusSafe("KAZETA VYJMUTA", 4000);
+                        NativeAtariCoreBridge.devStatusSafe(tx("KAZETA VYJMUTA", "TAPE REMOVED"), 4000);
                     } else if (kt >= 0 && kt < wavy.size()) {
                         final File f = wavy.get(kt);
                         new Thread(() -> {
@@ -8570,19 +8658,19 @@ public class MainActivity extends Activity {
                                 atariCppVlozKazetu(d, f.getName());
                             } catch (Throwable t) {
                                 appendNativeLog("B292 KAZETA_CHYBA cteni " + f.getName() + ": " + safeMsg(t));
-                                NativeAtariCoreBridge.devStatusSafe("KAZETU NELZE PRECIST: " + f.getName(), 6000);
+                                NativeAtariCoreBridge.devStatusSafe(tx("KAZETU NELZE PRECIST: ", "CANNOT READ THE TAPE: ") + f.getName(), 6000);
                             }
                         }, "b292-kazeta").start();
                     }
                 })
-                .setNegativeButton("ZAVRIT", null)
+                .setNegativeButton(tx("ZAVRIT", "CLOSE"), null)
                 .show();
     }
 
     /** B292: WAV -> magnetofon v C++ (vola se mimo UI vlakno). */
     private void atariCppVlozKazetu(byte[] wav, String jmeno) {
         if (wav == null || wav.length == 0) {
-            NativeAtariCoreBridge.devStatusSafe("KAZETA JE PRAZDNA", 5000);
+            NativeAtariCoreBridge.devStatusSafe(tx("KAZETA JE PRAZDNA", "THE TAPE IS EMPTY"), 5000);
             return;
         }
         String r = NativeAtariCoreBridge.devLoadTapeSafe(wav, jmeno);
@@ -8612,12 +8700,12 @@ public class MainActivity extends Activity {
             return;
         }
         final String[] polozky = {
-                "VYSUNOUT DISKETU - Atari se zapne znovu s BASICem",
-                "VYMĚNIT DISKETU BEZ RESTARTU (hra chce další disketu / druhou stranu)",
-                "VLOŽIT JINOU DISKETU A NABOOTOVAT"
+                tx("VYSUNOUT DISKETU - Atari se zapne znovu s BASICem", "EJECT THE DISK - the Atari restarts with BASIC"),
+                tx("VYMĚNIT DISKETU BEZ RESTARTU (hra chce další disketu / druhou stranu)", "SWAP THE DISK WITHOUT RESTART (the game wants the next disk / the other side)"),
+                tx("VLOŽIT JINOU DISKETU A NABOOTOVAT", "INSERT ANOTHER DISK AND BOOT")
         };
         new android.app.AlertDialog.Builder(this)
-                .setTitle("MECHANIKA D1: " + d1)
+                .setTitle(tx("MECHANIKA D1: ", "DRIVE D1: ") + d1)
                 .setItems(polozky, (dlg, w) -> {
                     if (w == 0) {
                         NativeAtariCoreBridge.devCtlSafe("disk_eject");
@@ -8626,7 +8714,7 @@ public class MainActivity extends Activity {
                         atariCppVyberAtr(w == 1);
                     }
                 })
-                .setNegativeButton("ZRUŠIT", null)
+                .setNegativeButton(tx("ZRUŠIT", "CANCEL"), null)
                 .show();
     }
 
@@ -8635,14 +8723,14 @@ public class MainActivity extends Activity {
         Intent i = new Intent(Intent.ACTION_GET_CONTENT);
         i.addCategory(Intent.CATEGORY_OPENABLE);
         i.setType("*/*");
-        startActivityForResult(Intent.createChooser(i, vymena ? "Vyměnit disketu v D1: (ATR, bez restartu)"
-                : "ATR disketa (nebo ZIP) pro Atari 130XE (C++)"), PICK_ATARI_CPP_XEX);
+        startActivityForResult(Intent.createChooser(i, vymena ? tx("Vyměnit disketu v D1: (ATR, bez restartu)", "Swap the disk in D1: (ATR, no restart)")
+                : tx("ATR disketa (nebo ZIP) pro Atari 130XE (C++)", "ATR disk (or ZIP) for the Atari 130XE (C++)")), PICK_ATARI_CPP_XEX);
     }
 
     /** XEX (i uvnitr ZIP) -> C++ zavadec. ATR zatim neumime - poctive to rekne. */
     private void atariCppSpustProgram(byte[] data, String name, String odkud) {
         if (data == null || data.length == 0) {
-            NativeAtariCoreBridge.devStatusSafe("SOUBOR JE PRAZDNY", 5000);
+            NativeAtariCoreBridge.devStatusSafe(tx("SOUBOR JE PRAZDNY", "THE FILE IS EMPTY"), 5000);
             appendNativeLog("B291 " + odkud + " prazdna data");
             return;
         }
@@ -8662,7 +8750,7 @@ public class MainActivity extends Activity {
         atariCppAtrVymena = false;
         boolean ok = NativeAtariCoreBridge.devLoadXexSafe(d, n);
         appendNativeLog("B291 " + odkud + " " + n + " bajtu=" + d.length + (ok ? " -> zavadim v C++" : " -> NENI XEX (chybi $FFFF) - nic se nespousti"));
-        if (!ok) NativeAtariCoreBridge.devStatusSafe("NENI XEX: " + n, 6000);
+        if (!ok) NativeAtariCoreBridge.devStatusSafe(tx("NENI XEX: ", "NOT A XEX: ") + n, 6000);
     }
 
     // ===================================================================
@@ -8677,9 +8765,9 @@ public class MainActivity extends Activity {
 
     private void atariCppTxtMenu() {
         final String[] polozky = {
-                "TXT SOUBOR → ATARI BASIC\n(appka program sama napíše, pak RUN / CSAVE)",
-                "TXT SOUBOR → TURBO-BASIC XL\n(nejdřív se nahraje Turbo-BASIC, pak program)",
-                "NAPSAT / VLOŽIT TEXT RUČNĚ"
+                tx("TXT SOUBOR → ATARI BASIC\n(appka program sama napíše, pak RUN / CSAVE)", "TXT FILE → ATARI BASIC\n(the app types the program itself, then RUN / CSAVE)"),
+                tx("TXT SOUBOR → TURBO-BASIC XL\n(nejdřív se nahraje Turbo-BASIC, pak program)", "TXT FILE → TURBO-BASIC XL\n(Turbo-BASIC loads first, then the program)"),
+                tx("NAPSAT / VLOŽIT TEXT RUČNĚ", "TYPE / PASTE TEXT MANUALLY")
         };
         new android.app.AlertDialog.Builder(this)
                 .setTitle("BASIC / TBXL TXT → Atari 130XE")
@@ -8690,26 +8778,26 @@ public class MainActivity extends Activity {
                         Intent i = new Intent(Intent.ACTION_GET_CONTENT);
                         i.addCategory(Intent.CATEGORY_OPENABLE);
                         i.setType("*/*");
-                        startActivityForResult(Intent.createChooser(i, w == 1 ? "TXT program pro TURBO-BASIC XL"
-                                : "TXT program pro ATARI BASIC"), PICK_ATARI_CPP_TXT);
+                        startActivityForResult(Intent.createChooser(i, w == 1 ? tx("TXT program pro TURBO-BASIC XL", "TXT program for TURBO-BASIC XL")
+                                : tx("TXT program pro ATARI BASIC", "TXT program for ATARI BASIC")), PICK_ATARI_CPP_TXT);
                     } catch (Throwable t) {
                         appendNativeLog("B299 TXT_SOUBOR vyber nejde otevrit: " + safeMsg(t));
                     }
                 })
-                .setNegativeButton("ZAVŘÍT", null)
+                .setNegativeButton(tx("ZAVŘÍT", "CLOSE"), null)
                 .show();
     }
 
     /** B299: obsah TXT souboru -> C++ ho napise do ATARI BASICu / Turbo-BASICu XL. */
     private void atariCppTxtProgram(byte[] data, String jmeno, int rezim) {
         if (data == null || data.length == 0) {
-            NativeAtariCoreBridge.devStatusSafe("SOUBOR JE PRÁZDNÝ", 5000);
+            NativeAtariCoreBridge.devStatusSafe(tx("SOUBOR JE PRÁZDNÝ", "THE FILE IS EMPTY"), 5000);
             appendNativeLog("B299 TXT_SOUBOR " + jmeno + " je prazdny");
             return;
         }
         // ulozeny (tokenizovany) program .BAS neni text - ten patri na kazetu / disketu
         if (data.length >= 14 && data[0] == 0 && data[1] == 0) {
-            NativeAtariCoreBridge.devStatusSafe("TO NENÍ TEXT - ULOŽENÝ PROGRAM (.BAS)", 7000);
+            NativeAtariCoreBridge.devStatusSafe(tx("TO NENÍ TEXT - ULOŽENÝ PROGRAM (.BAS)", "NOT TEXT - A SAVED PROGRAM (.BAS)"), 7000);
             appendNativeLog("B299 TXT_SOUBOR " + jmeno + " neni text, ale ulozeny program BASICu (SAVE/.BAS, hlavicka 00 00) - nic se nepise");
             return;
         }
@@ -8717,7 +8805,7 @@ public class MainActivity extends Activity {
             byte[] tb = atariCppAsset("emu_atari_cpp/turbo_basic_xl.xex");
             boolean ok = NativeAtariCoreBridge.devLoadXexSafe(tb, "turbo_basic_xl.xex");
             appendNativeLog("B299 TXT_SOUBOR -> nejdriv TURBO-BASIC XL: " + (ok ? "zavadim" : "NEJDE ZAVEST"));
-            if (!ok) { NativeAtariCoreBridge.devStatusSafe("TURBO-BASIC NEJDE ZAVÉST", 6000); return; }
+            if (!ok) { NativeAtariCoreBridge.devStatusSafe(tx("TURBO-BASIC NEJDE ZAVÉST", "TURBO-BASIC CANNOT BE LOADED"), 6000); return; }
         }
         String r = NativeAtariCoreBridge.devProgramSafe(data, jmeno, rezim);
         appendNativeLog("B299 TXT_SOUBOR " + jmeno + " bajtu=" + data.length + " -> " + r);
@@ -8753,22 +8841,23 @@ public class MainActivity extends Activity {
         et.setTypeface(android.graphics.Typeface.MONOSPACE);
         new android.app.AlertDialog.Builder(this)
                 .setTitle("BASIC / TBXL TXT → Atari 130XE")
-                .setMessage("Text se do Atari napise jeho vlastni klavesnici (klavesa po klavese, jako bys to psal ty).")
+                .setMessage(tx("Text se do Atari napise jeho vlastni klavesnici (klavesa po klavese, jako bys to psal ty).",
+                               "The text is typed into the Atari with its own keyboard (key by key, as if you typed it)."))
                 .setView(et)
-                .setPositiveButton("VLOZIT + RUN", (dlg, w) -> atariCppNapis(et.getText().toString(), true))
-                .setNeutralButton("VLOZIT", (dlg, w) -> atariCppNapis(et.getText().toString(), false))
-                .setNegativeButton("ZAVRIT", null)
+                .setPositiveButton(tx("VLOZIT + RUN", "PASTE + RUN"), (dlg, w) -> atariCppNapis(et.getText().toString(), true))
+                .setNeutralButton(tx("VLOZIT", "PASTE"), (dlg, w) -> atariCppNapis(et.getText().toString(), false))
+                .setNegativeButton(tx("ZAVRIT", "CLOSE"), null)
                 .show();
     }
 
     private void atariCppNapis(String text, boolean run) {
         if (text == null || text.trim().isEmpty()) return;
         int n = NativeAtariCoreBridge.devTypeTextSafe(text, run);
-        NativeAtariCoreBridge.devStatusSafe("PISU DO ATARI: " + n + " KLAVES" + (run ? " + RUN" : ""), 5000);
+        NativeAtariCoreBridge.devStatusSafe(tx("PISU DO ATARI: " + n + " KLAVES", "TYPING INTO THE ATARI: " + n + " KEYS") + (run ? " + RUN" : ""), 5000);
     }
 
     private void atariCppHelpDialog() {
-        String t =
+        String t = NapJazyk.en(this) ? ATARI_HELP_EN :
                 "POWER (zeleny vypinac vlevo u obrazovky) - vypne / zapne Atari. Zapnuti = studeny start (pamet se vymaze).\n\n"
               + "RESET - jako na skutecnem Atari: program v pameti zustane.\n\n"
               + "HELP, START, SELECT, OPTION - konzolova tlacitka, drzi se po dobu stisku.\n\n"
@@ -8819,11 +8908,56 @@ public class MainActivity extends Activity {
         android.widget.ScrollView sv = new android.widget.ScrollView(this);
         sv.addView(tv);
         new android.app.AlertDialog.Builder(this)
-                .setTitle("ATARI 130XE (C++) - ovladani")
+                .setTitle(tx("ATARI 130XE (C++) - ovladani", "ATARI 130XE (C++) - controls"))
                 .setView(sv)
-                .setPositiveButton("ZAVRIT", null)
+                .setPositiveButton(tx("ZAVRIT", "CLOSE"), null)
                 .show();
     }
+
+    // B314: napoveda k ovladani Atari anglicky (stejny obsah jako cesky text vyse)
+    private static final String ATARI_HELP_EN =
+            "POWER (the green switch on the left by the screen) - switches the Atari off / on. Switching on = cold start (memory is cleared).\n\n"
+          + "RESET - like on a real Atari: the program in memory stays.\n\n"
+          + "HELP, START, SELECT, OPTION - console buttons, held for as long as you press them.\n\n"
+          + "IN LANDSCAPE (turn the phone): the Atari picture fills the display, the D-pad is bottom left (joystick, the dot "
+          + "follows your thumb, diagonals too), FIRE, SPACE and RETURN on the right, START / SELECT / OPTION top left. "
+          + "The gear at the top right = D-PAD AND CONTROLS: edit the button layout (drag with a finger, "
+          + "IN GROUPS, DEFAULT, DONE), sensitivity, transparency, button and D-pad size, vibration, "
+          + "swap for left-handers, RESET, games. The app remembers your settings.\n\n"
+          + "IN PORTRAIT - JOYSTICK 1 = THE ATARI SCREEN: put a finger on the LEFT half of the screen and move it "
+          + "(up / down / sideways, diagonals too) - the joystick points that way for as long as you hold the finger. "
+          + "The RIGHT half of the screen = FIRE (held while the finger is down). Both thumbs work at once.\n\n"
+          + "Game controller (Bluetooth / USB): d-pad or stick = joystick, A/B = FIRE, X = SPACE key, "
+          + "Y = RETURN, START/SELECT = console, L2/R2 = OPTION.\n\n"
+          + "VBXE - the core has the VBXE graphics card (FX 1.26 at $D640), VBXE games (Wolfenstein 3D, Popeye ...) "
+          + "find it by themselves. Wolfenstein 3D: walk with the joystick, FIRE = shoot, SPACE = open doors.\n\n"
+          + "SHIFT and CONTROL - a tap = locked (gold), another tap = unlocked.\n\n"
+          + "Tape deck: REC and PLAY stay down, STOP releases them. EJECT opens the door and offers tapes (WAVs saved by CSAVE "
+          + "or any WAV from the phone) - once you pick one, the tape goes in and the door closes. REW = tape to the start, "
+          + "FWD = tape 10 s further. The small button next to the counter resets it.\n\n"
+          + "CSAVE: type CSAVE, RETURN, after the beep RETURN again. When recording ends, the WAV is saved by itself to "
+          + "Download/AtariHelp/Atari_emu/csave_<date>_<time>.wav (the SIO DATA OUT line is recorded - exactly the signal "
+          + "for a real tape recorder).\n\n"
+          + "CLOAD: EJECT and pick a tape (PLAY is pressed by itself). Type CLOAD and RETURN - the Atari beeps and waits "
+          + "(like on a real Atari: 'press PLAY and a key') - press RETURN once more. The motor starts, "
+          + "the Atari measures the tape speed and loads the program, then READY and LIST. During loading you hear what "
+          + "a real Atari plays: the POKEY buzz after each record (POKE 65,0 = silent); with a stereo WAV "
+          + "also the tape's audio track (music / voice), like from a real tape recorder.\n\n"
+          + "GAMES ON TAPE (boot, not BASIC): the app recognises it from the tape - the Atari powers on with START+OPTION held "
+          + "(like on a real 130XE), presses RETURN after the beep and the game loads. Manually: hold START and OPTION "
+          + "and flip POWER. In landscape the tape choice is in the gear (TAPE).\n\n"
+          + "XEX / PHONE - starts a XEX or ZIP from the phone. TURBO / BASIC - Turbo-BASIC XL 1.5. "
+          + "NET / GAMES - games from atarihelp.eu (they start here in C++).\n\n"
+          + "BASIC/TBXL TXT - a TXT FILE with a program (from the phone): the app switches on ATARI BASIC or loads "
+          + "TURBO-BASIC XL and types the program itself on the Atari keyboard (NEW, line by line). Then RUN, CSAVE, CLOAD. "
+          + "It types only numbered lines, lowercase letters in strings and REMs stay, commands in capitals. Lines with a "
+          + "syntax error and skipped lines are in the log. Or TYPE / PASTE TEXT manually.\n\n"
+          + "LOG / ERROR - log and tests (back with BACK TO THE ATARI 130XE or the back arrow).\n\n"
+          + "ATR / DISK - a disk (ATR, also inside a ZIP) into drive D1: and boot from the disk (OPTION held = BASIC off). "
+          + "The disk stays in the drive even after switching POWER off/on (like a real drive - that is why the game "
+          + "loads again). When there is a disk in D1:, ATR / DISK offers: EJECT (the Atari restarts with BASIC), "
+          + "SWAP WITHOUT RESTART (the game wants the next disk / the other side) or another disk and boot.\n\n"
+          + "MENU - back to the main menu.";
 
     // BUILD2SK31: sdilena obranna JS-cistici funkce - volana z KAZDEHO mista, kde
     // se PS1 jadro zastavuje (hlavni odchod ze stranky, mazani cache behem hry,
@@ -10157,7 +10291,7 @@ public class MainActivity extends Activity {
         handleAhGameBridgeUrl(url);
         return htmlResponse("<!doctype html><html><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'>"
                 + "<style>body{font-family:sans-serif;background:#fff;color:#111;padding:24px;line-height:1.4}</style></head>"
-                + "<body><h1>Spoustim hru...</h1></body></html>");
+                + "<body><h1>" + tx("Spoustim hru...", "Starting the game...") + "</h1></body></html>");
     }
 
     private void showAtariNetGamesBridge() {
@@ -10495,6 +10629,9 @@ public class MainActivity extends Activity {
         } catch (Throwable t) {
             appendNativeLog("VERZE APKY = nezjistena: " + safeMsg(t));
         }
+        // B314: jazyk appky (OPTIONS -> JAZYK · LANGUAGE, jinak podle telefonu)
+        appendNativeLog("B314 JAZYK_PRI_STARTU " + NapJazyk.popis(this));
+        jazykDoKnihoven("start");
         // BUILD2SK99: rekni PS1 nativnimu kodu, kam ma zapisovat pohotovostni
         // diagnostiku (napr. gpu-gles/EGL inicializace) - primo do STEJNEHO
         // souboru, co uz napTvWebLogFileInit prave zalozil. Musi byt AZ PO
@@ -10534,6 +10671,7 @@ public class MainActivity extends Activity {
         web.addJavascriptInterface(new AHTvWeb(), "AHTVWEB"); // BUILD2SA13C: browser-based TV cast fallback
         web.addJavascriptInterface(new AHAtariCpp(), "AHATARICPP"); // BUILD2SA14: jadro Atari v C++ (obrazovka HELP)
         web.addJavascriptInterface(new AHIntro(), "AHINTRO");       // BUILD2SA21: uvodni intro
+        web.addJavascriptInterface(new AHJazyk(), "AHJAZYK");       // B314: jazyk CZ / EN
         web.setWebChromeClient(new WebChromeClient() {
             // BUILD2SH2: zachyt JS console (jen nase SH2 stream diagnostika) do
             // nativniho logu, aby slo poslat log pri ladeni zvuku na projektor.
@@ -10557,7 +10695,7 @@ public class MainActivity extends Activity {
                 i.setType("*/*");
                 // B310: obecny vyber souboru pro stranky (PS1, Sega, DJ, Player) - napis "XEX / ATR / ZIP"
                 // byl ze stareho Atari v JavaScriptu (smazane)
-                startActivityForResult(Intent.createChooser(i, "Vyber soubor"), PICK_FILE);
+                startActivityForResult(Intent.createChooser(i, tx("Vyber soubor", "Choose a file")), PICK_FILE);
                 return true;
             }
         });
@@ -10871,7 +11009,7 @@ public class MainActivity extends Activity {
             i.putExtra("android.content.extra.SHOW_ADVANCED", true);
             i.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true);
             i.putExtra(Intent.EXTRA_LOCAL_ONLY, true);
-            startActivityForResult(Intent.createChooser(i, "MP3 PRIDAT - vyber pisnicku nebo vice pisnicek"), PICK_BRIDGE);
+            startActivityForResult(Intent.createChooser(i, tx("MP3 PRIDAT - vyber pisnicku nebo vice pisnicek", "ADD MP3 - choose one or more songs")), PICK_BRIDGE);
         } else {
             // B310: "audio" / "text" / "game" (kazeta, TXT a hra pro stare Atari v JavaScriptu)
             // smazane se starym emulatorem - zbyl jen Player (mp3)
@@ -10891,7 +11029,7 @@ public class MainActivity extends Activity {
             Intent i = new Intent(Intent.ACTION_GET_CONTENT);
             i.addCategory(Intent.CATEGORY_OPENABLE);
             i.setType("*/*");
-            startActivityForResult(Intent.createChooser(i, "XEX / ATR / ZIP pro Atari 130XE"), PICK_ATARI_CPP_XEX);
+            startActivityForResult(Intent.createChooser(i, tx("XEX / ATR / ZIP pro Atari 130XE", "XEX / ATR / ZIP for the Atari 130XE")), PICK_ATARI_CPP_XEX);
             appendNativeLog("B310 VYBER_HRY_Z_TELEFONU -> Atari 130XE (C++)");
         } catch (Throwable t) {
             appendNativeLog("B310 VYBER_HRY_Z_TELEFONU_CHYBA " + safeMsg(t));
@@ -12748,12 +12886,17 @@ public class MainActivity extends Activity {
                         // ukazovala pres AHJAVA_ERROR, je smazane)
                         String mistni = AtarihelpTls.mistniServer(10 * 60 * 1000L);
                         String zprava = mistni != null
-                                ? "Hra se nestáhla: na této Wi-Fi vede atarihelp.eu na MÍSTNÍ server (" + mistni
-                                  + "), ne na skutečný web. Zkus mobilní data, nebo vypni OSPanel / oprav DNS v routeru."
-                                : "Hra se nestáhla z atarihelp.eu: " + safeMsg(ex) + ". Zkus to znovu nebo přes mobilní data.";
+                                ? tx("Hra se nestáhla: na této Wi-Fi vede atarihelp.eu na MÍSTNÍ server (" + mistni
+                                  + "), ne na skutečný web. Zkus mobilní data, nebo vypni OSPanel / oprav DNS v routeru.",
+                                     "The game did not download: on this Wi-Fi atarihelp.eu leads to a LOCAL server ("
+                                  + mistni.replace("certifikát ", "certificate ").replace(" od ", " issued by ")
+                                  + "), not the real website. Try mobile data, or turn off OSPanel / fix the DNS in the router.")
+                                : tx("Hra se nestáhla z atarihelp.eu: " + safeMsg(ex) + ". Zkus to znovu nebo přes mobilní data.",
+                                     "The game did not download from atarihelp.eu: " + safeMsg(ex) + ". Try again or use mobile data.");
                         appendNativeLog("B299 NET_HRY " + (mistni != null ? "MISTNI SERVER misto atarihelp.eu (" + mistni + ")" : "stazeni selhalo"));
                         android.widget.Toast.makeText(MainActivity.this, zprava, android.widget.Toast.LENGTH_LONG).show();
-                        NativeAtariCoreBridge.devStatusSafe(mistni != null ? "WI-FI: ATARIHELP.EU = MÍSTNÍ SERVER" : "HRA SE NESTÁHLA (SÍŤ)", 8000);
+                        NativeAtariCoreBridge.devStatusSafe(mistni != null ? tx("WI-FI: ATARIHELP.EU = MÍSTNÍ SERVER", "WI-FI: ATARIHELP.EU = LOCAL SERVER")
+                                : tx("HRA SE NESTÁHLA (SÍŤ)", "GAME NOT DOWNLOADED (NETWORK)"), 8000);
                     } catch (Exception ignored) {}
                 });
             }
@@ -12909,7 +13052,7 @@ public class MainActivity extends Activity {
                     atariCppVlozKazetu(d, nm);
                 } catch (Throwable t) {
                     appendNativeLog("B292 KAZETA_CHYBA cteni " + nm + ": " + safeMsg(t));
-                    NativeAtariCoreBridge.devStatusSafe("KAZETU NELZE PRECIST: " + nm, 6000);
+                    NativeAtariCoreBridge.devStatusSafe(tx("KAZETU NELZE PRECIST: ", "CANNOT READ THE TAPE: ") + nm, 6000);
                 }
             }, "b292-kazeta-wav").start();
             return;
@@ -12928,7 +13071,7 @@ public class MainActivity extends Activity {
                     ui.post(() -> atariCppTxtProgram(d, nm, rezim));
                 } catch (Throwable t) {
                     appendNativeLog("B299 TXT_SOUBOR_CHYBA cteni " + nm + ": " + safeMsg(t));
-                    NativeAtariCoreBridge.devStatusSafe("SOUBOR NELZE PŘEČÍST", 5000);
+                    NativeAtariCoreBridge.devStatusSafe(tx("SOUBOR NELZE PŘEČÍST", "CANNOT READ THE FILE"), 5000);
                 }
             }, "b299-txt-program").start();
             return;
@@ -12955,7 +13098,7 @@ public class MainActivity extends Activity {
                     });
                 } catch (Throwable t) {
                     appendNativeLog("B291 XEX_MOBIL_CHYBA " + safeMsg(t));
-                    NativeAtariCoreBridge.devStatusSafe("SOUBOR NELZE PRECIST", 5000);
+                    NativeAtariCoreBridge.devStatusSafe(tx("SOUBOR NELZE PRECIST", "CANNOT READ THE FILE"), 5000);
                 }
             }, "b291-xex-mobil").start();
             return;

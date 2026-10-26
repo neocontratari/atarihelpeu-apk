@@ -1,10 +1,10 @@
-# N&P VISION – KARTY HLAVNÍHO MENU (B311)
+# N&P VISION – KARTY HLAVNÍHO MENU (B311, B314 česky + anglicky)
 #
 # Každý řádek = jedna velká karta v menu. Pořadí řádků = pořadí karet zleva doprava.
 # Novou mašinu nebo sekci přidáš tak, že dáš obrázek do assets/menu/ a připíšeš řádek.
 # Menu (posouvání, tečky, dotyk) se přizpůsobí samo, v kódu se nic nemění.
 #
-#  id | NÁZEV | podtitul | popis | obrázek | cíl | barva | zámek | efekt | tlačítko
+#  id | NÁZEV | podtitul | popis | obrázek | cíl | barva | zámek | efekt | tlačítko | NAME | subtitle | description | button
 #
 #  id        krátké jméno bez mezer (log, zámky)
 #  NÁZEV     velký nápis na kartě
@@ -19,10 +19,14 @@
 #            fx:dzubox, fx:web, fx:help); prázdné = jen obrázek
 #  tlačítko  text tlačítka pod kartami (prázdné = OTEVŘÍT)
 #
-atari  | ATARI 130XE     | EMULÁTOR · C++        | Atari 130XE s grafikou VBXE, celé v C++. Klávesnice, joystick, kazety, diskety a hry z atarihelp.eu.    | menu/karta_atari.jpg  | emu_atari_cpp/index.html | #F2B640 |      | 3d:atari  | SPUSTIT
-sega   | SEGA MEGA DRIVE | 16-BIT KONZOLE        | 16bitové hry Mega Drive s ovladačem na displeji.                                                        | menu/karta_sega.jpg   | emu_sega/index.html      | #3FA9FF | sega | 3d:nap16  | SPUSTIT
-ps1    | PS1             | PLAYSTATION · 32-BIT  | 32bitové hry PlayStation s ovladačem na displeji.                                                       | menu/karta_ps1.jpg    | emu_ps1/index.html       | #B26BFF | ps1  | 3d:nap32  | SPUSTIT
-mp3    | MP3 PŘEHRÁVAČ   | RETRO CASSETTE PLAYER | Retro kazeťák pro MP3 a WAV z telefonu: ekvalizér, basy, výšky a playlisty.                             | menu/karta_mp3.jpg    | player/index.html        | #FFB347 |      | fx:kazeta | PŘEHRÁT
-dzubox | DŽUBOX          | PRO DJ MIXER          | Dva decky, crossfader, ekvalizéry a samply KICK a BASS. Ať to má pořádné basy a tancuje to!             | menu/karta_dzubox.jpg | dj/index.html            | #FF4FD8 |      | fx:dzubox | ROZJET
-web    | ATARIHELP.EU    | OFICIÁLNÍ WEB         | Web atarihelp.eu: hry pro Atari, Segu i PS1, návody a novinky. Hra z webu se spustí rovnou v emulátoru. | menu/karta_web.jpg    | https://atarihelp.eu/    | #4FE0C0 |      | fx:web    | OTEVŘÍT WEB
-help   | HELP            | NÁVOD A ČASTÉ OTÁZKY  | Úplný návod: všechny sekce, ovládání, TV a PC, odemykání, nastavení a časté otázky.                     | menu/karta_help.jpg   | napoveda/index.html      | #F2D27A |      | fx:help   | OTEVŘÍT NÁVOD
+#  B314 – ANGLICKY (OPTIONS → JAZYK · LANGUAGE → ENGLISH): poslední 4 sloupce
+#  NAME, subtitle, description, button = totéž anglicky. Prázdný anglický sloupec = český text
+#  (tlačítko: OPEN).
+#
+atari  | ATARI 130XE     | EMULÁTOR · C++        | Atari 130XE s grafikou VBXE, celé v C++. Klávesnice, joystick, kazety, diskety a hry z atarihelp.eu.    | menu/karta_atari.jpg  | emu_atari_cpp/index.html | #F2B640 |      | 3d:atari  | SPUSTIT       | ATARI 130XE     | EMULATOR · C++        | Atari 130XE with VBXE graphics, all in C++. Keyboard, joystick, tapes, disks and games from atarihelp.eu.             | START
+sega   | SEGA MEGA DRIVE | 16-BIT KONZOLE        | 16bitové hry Mega Drive s ovladačem na displeji.                                                        | menu/karta_sega.jpg   | emu_sega/index.html      | #3FA9FF | sega | 3d:nap16  | SPUSTIT       | SEGA MEGA DRIVE | 16-BIT CONSOLE        | 16-bit Mega Drive games with an on-screen controller.                                                                 | START
+ps1    | PS1             | PLAYSTATION · 32-BIT  | 32bitové hry PlayStation s ovladačem na displeji.                                                       | menu/karta_ps1.jpg    | emu_ps1/index.html       | #B26BFF | ps1  | 3d:nap32  | SPUSTIT       | PS1             | PLAYSTATION · 32-BIT  | 32-bit PlayStation games with an on-screen controller.                                                                | START
+mp3    | MP3 PŘEHRÁVAČ   | RETRO CASSETTE PLAYER | Retro kazeťák pro MP3 a WAV z telefonu: ekvalizér, basy, výšky a playlisty.                             | menu/karta_mp3.jpg    | player/index.html        | #FFB347 |      | fx:kazeta | PŘEHRÁT       | MP3 PLAYER      | RETRO CASSETTE PLAYER | A retro cassette player for MP3 and WAV from your phone: equalizer, bass, treble and playlists.                       | PLAY
+dzubox | DŽUBOX          | PRO DJ MIXER          | Dva decky, crossfader, ekvalizéry a samply KICK a BASS. Ať to má pořádné basy a tancuje to!             | menu/karta_dzubox.jpg | dj/index.html            | #FF4FD8 |      | fx:dzubox | ROZJET        | JUKEBOX         | PRO DJ MIXER          | Two decks, a crossfader, equalizers and KICK and BASS samples. Big bass that gets everyone dancing!                   | LET'S GO
+web    | ATARIHELP.EU    | OFICIÁLNÍ WEB         | Web atarihelp.eu: hry pro Atari, Segu i PS1, návody a novinky. Hra z webu se spustí rovnou v emulátoru. | menu/karta_web.jpg    | https://atarihelp.eu/    | #4FE0C0 |      | fx:web    | OTEVŘÍT WEB   | ATARIHELP.EU    | OFFICIAL WEBSITE      | The atarihelp.eu website: games for Atari, Sega and PS1, guides and news. A game from the web starts right in the emulator. | OPEN WEBSITE
+help   | HELP            | NÁVOD A ČASTÉ OTÁZKY  | Úplný návod: všechny sekce, ovládání, TV a PC, odemykání, nastavení a časté otázky.                     | menu/karta_help.jpg   | napoveda/index.html      | #F2D27A |      | fx:help   | OTEVŘÍT NÁVOD | HELP            | GUIDE AND FAQ         | The complete guide: all sections, controls, TV and PC, unlocking, settings and FAQ.                                   | OPEN GUIDE

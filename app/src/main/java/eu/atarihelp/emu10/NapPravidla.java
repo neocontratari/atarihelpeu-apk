@@ -49,15 +49,31 @@ final class NapPravidla {
 
     /** Proc je zamceno - stejna slova jako u zamcene karty v hlavnim menu. */
     static String duvodZamku(String konzole, boolean segaOtevrena, int zbyvaRadku, int zbyvaMinut) {
+        return duvodZamku(konzole, segaOtevrena, zbyvaRadku, zbyvaMinut, false);
+    }
+
+    /** B314: totez cesky / anglicky (hlaska, kdyz se zamcena konzole spousti z webu). */
+    static String duvodZamku(String konzole, boolean segaOtevrena, int zbyvaRadku, int zbyvaMinut, boolean en) {
+        String d = duvodKarty(konzole, segaOtevrena, zbyvaRadku, zbyvaMinut, en);
+        if (SEGA.equals(konzole)) return (en ? "SEGA IS LOCKED\n" : "SEGA JE ZAMČENÁ\n") + d;
+        if (PS1.equals(konzole)) return (en ? "PS1 IS LOCKED\n" : "PS1 JE ZAMČENÁ\n") + d;
+        return "";
+    }
+
+    /** B314: duvod pod zamcenou kartou v hlavnim menu (bez nadpisu), cesky / anglicky. */
+    static String duvodKarty(String konzole, boolean segaOtevrena, int zbyvaRadku, int zbyvaMinut, boolean en) {
         if (SEGA.equals(konzole)) {
             int r = Math.max(0, zbyvaRadku);
-            return "SEGA JE ZAMČENÁ\nNapiš v Atari ještě " + r + " " + radkuSlovo(r)
-                    + " programu (řádky s číslem, počítají se při RUN nebo LIST).";
+            return en ? "Type " + r + " more program " + (r == 1 ? "line" : "lines")
+                            + " on the Atari (numbered lines – they count on RUN or LIST)."
+                      : "Napiš v Atari ještě " + r + " " + radkuSlovo(r)
+                            + " programu (řádky s číslem, počítají se při RUN nebo LIST).";
         }
         if (PS1.equals(konzole)) {
-            return "PS1 JE ZAMČENÁ\n" + (segaOtevrena
-                    ? "Hraj na Seze ještě " + Math.max(0, zbyvaMinut) + " min."
-                    : "Nejdřív odemkni Segu, pak 30 minut hraní na Seze.");
+            int m = Math.max(0, zbyvaMinut);
+            if (segaOtevrena) return en ? "Play the Sega for " + m + " more min." : "Hraj na Seze ještě " + m + " min.";
+            return en ? "Unlock the Sega first, then play it for 30 minutes."
+                      : "Nejdřív odemkni Segu, pak 30 minut hraní na Seze.";
         }
         return "";
     }
@@ -75,5 +91,20 @@ final class NapPravidla {
     static boolean jeStrankaSeZpet(String url) {
         if (url == null) return false;
         return url.startsWith(ASSET + "player/") || url.startsWith(ASSET + "dj/");
+    }
+
+    private static final String NAVOD_CZ = "napoveda/index.html";
+    private static final String NAVOD_EN = "napoveda/en.html";
+
+    /**
+     * B314: cil karty menu podle jazyka appky. Karta HELP vede na cesky navod
+     * (napoveda/index.html, i s #kapitolou); kdyz appka mluvi anglicky, rovnou na anglicky
+     * (napoveda/en.html) - cesky by se tam stejne presmeroval, takhle bez mezikroku.
+     * Ostatni cile beze zmeny (stranky se prekladaji samy - nap_jazyk.js).
+     */
+    static String cilPodleJazyka(String cil, boolean en) {
+        if (!en || cil == null) return cil;
+        if (cil.startsWith(NAVOD_CZ)) return NAVOD_EN + cil.substring(NAVOD_CZ.length());
+        return cil;
     }
 }

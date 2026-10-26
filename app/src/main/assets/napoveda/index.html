@@ -14,7 +14,15 @@
   sekce, uprav i tenhle soubor.
   Odkazy uvnitr navodu (obsah, ZPET NA OBSAH) jen posunou stranku - netvori
   historii, takze tlacitko ZPET na telefonu vrati rovnou do menu.
+  B314: anglicky navod je en.html (stejne kapitoly). Kdyz appka mluvi anglicky (OPTIONS ->
+  JAZYK · LANGUAGE, Java AHJAZYK.kod()), skript nize hned prejde na en.html (location.replace =
+  bez historie). Kdyz se tady neco zmeni, uprav i en.html.
 -->
+<script>
+(function(){var k='';try{if(window.AHJAZYK&&typeof AHJAZYK.kod==='function')k=String(AHJAZYK.kod());}catch(e){}
+if(k!=='en'&&k!=='cs'){var q=/[?&]lang=(cs|en)\b/.exec(location.search||'');if(q)k=q[1];}
+if(k==='en')location.replace('en.html'+(location.search||'')+(location.hash||''));})();
+</script>
 <style>
 @font-face{font-family:"NapChakra";src:url(../pisma/chakra_semibold.woff2) format("woff2");font-weight:600;font-style:normal;font-display:swap;}
 @font-face{font-family:"NapChakra";src:url(../pisma/chakra_bold.woff2) format("woff2");font-weight:700;font-style:normal;font-display:swap;}
@@ -271,6 +279,7 @@ body.hleda .rychle,body.hleda #obsahStitek,body.hleda #obsah{display:none;}
       <li>Když v telefonu chybí Sonic the Hedgehog (Sega) nebo BIOS pro PlayStation, appka se nejdřív zeptá, jestli je má stáhnout z atarihelp.eu: <span class="t">STAHNOUT</span> / <span class="nw"><span class="t">TED NE</span>.</span> Bez nich appka funguje dál.</li>
       <li>Pak se přehraje úvodní film. Přeskočíš ho tlačítkem <span class="t">SKIP ›</span> nebo tlačítkem ZPĚT na telefonu. Znovu ho pustíš v <a href="#options" data-skok="options">OPTIONS</a> → <span class="nw"><span class="t">PUSTIT INTRO</span>.</span></li>
       <li>Nakonec naskočí hlavní menu – karty přiletí na své místo.</li>
+      <li>Appka mluví jazykem telefonu (česky nebo anglicky). Přepneš ho kdykoli: <a href="#options" data-skok="options">OPTIONS</a> → <span class="nw"><span class="t">JAZYK · LANGUAGE</span>.</span></li>
     </ul>
   </div>
 
@@ -607,6 +616,10 @@ body.hleda .rychle,body.hleda #obsahStitek,body.hleda #obsah{display:none;}
   </header>
   <p class="uvod">Otevře se kolečkem <span class="t">&#9881;</span> vpravo nahoře v hlavním menu. Zavřeš ho tlačítkem <span class="nw"><span class="t">ZAVŘÍT</span>,</span> klepnutím vedle panelu nebo tlačítkem ZPĚT.</p>
   <div class="blok">
+    <h3>Jazyk</h3>
+    <p><span class="t">JAZYK · LANGUAGE</span> – <span class="t">ČEŠTINA</span> / <span class="nw"><span class="t">ENGLISH</span>.</span> Celá appka se přepne hned: menu, OPTIONS, emulátory, hlášky, tenhle návod i stránka WEB TV v prohlížeči (tam ji obnov). Dokud nevybereš, řídí se appka jazykem telefonu (čeština nebo slovenština = česky, jinak anglicky).</p>
+  </div>
+  <div class="blok">
     <h3>Tlačítka</h3>
     <dl class="tab">
       <dt>SPUSTIT WEB TV</dt><dd>Obraz a zvuk appky do prohlížeče na televizi nebo počítači. Hned pod tlačítkem se ukáže adresa pro prohlížeč a tlačítko se přepne na <span class="t">WEB TV BĚŽÍ</span>. Adresa tam zůstane, dokud OPTIONS nezavřeš – viz <a href="#tv" data-skok="tv">WEB TV a PC</a>.</dd>
@@ -717,7 +730,7 @@ body.hleda .rychle,body.hleda #obsahStitek,body.hleda #obsah{display:none;}
       <dt>PS1_LOG.txt</dt><dd>Log PS1 (a PS1_LOG_predchozi.txt z minula).</dd>
     </dl>
   </div>
-  <p class="pozor"><b>POZOR</b> Postup odemykání (zámky Segy a PS1) a nastavení appky jsou uložené v appce – po odinstalování se smažou. Hry, pozice, paměťová karta a kazety v Download/AtariHelp zůstanou.</p>
+  <p class="pozor"><b>POZOR</b> Postup odemykání (zámky Segy a PS1), nastavení appky a zvolený jazyk jsou uložené v appce – po odinstalování se smažou. Hry, pozice, paměťová karta a kazety v Download/AtariHelp zůstanou.</p>
   <nav class="kap-paticka"><a class="tl tl2" href="#obsah" data-skok="obsah">&#9650; OBSAH</a><a class="tl" href="../index.html">&#9664; ZPĚT DO MENU</a></nav>
 </section>
 
@@ -761,20 +774,21 @@ body.hleda .rychle,body.hleda #obsahStitek,body.hleda #obsah{display:none;}
   <details><summary>Obraz na TV se trhá nebo zvuk praská.</summary><div><p>V <a href="#options" data-skok="options">OPTIONS</a> přepni <span class="t">RUČNĚ</span> a zkus nižší <span class="t">KVALITA OBRAZU (WEB TV)</span> a pro zvuk <span class="t">LOW</span> (nejjistější). Pomůže i telefon blíž k routeru.</p></div></details>
   <details><summary>PS1 hra nejde spustit.</summary><div><p>Zkontroluj formát: .bin, .cue, .iso, .img, .pbp, .chd nebo .zip (.7z appka neumí). PS1 potřebuje BIOS – appka ho stáhne sama, nebo <a href="#options" data-skok="options">OPTIONS</a> → <span class="nw"><span class="t">STÁHNOUT HRY A BIOS</span>.</span> Když to pořád nejde, pošli log (<a href="#log" data-skok="log">Log a chyby</a>).</p></div></details>
   <details><summary>Kde najdu svoje hry, pozice a kazety?</summary><div><p>Ve složce <span class="cesta">Download/AtariHelp</span> – přehled je v kapitole <a href="#soubory" data-skok="soubory">Soubory v telefonu</a>.</p></div></details>
-  <details><summary>Přijdu o něco, když appku odinstaluju?</summary><div><p>Hry, uložené pozice, paměťová karta PS1 a kazety Atari zůstanou v Download/AtariHelp. Smaže se postup odemykání (Sega a PS1 budou zase zamčené) a nastavení appky.</p></div></details>
+  <details><summary>Přijdu o něco, když appku odinstaluju?</summary><div><p>Hry, uložené pozice, paměťová karta PS1 a kazety Atari zůstanou v Download/AtariHelp. Smaže se postup odemykání (Sega a PS1 budou zase zamčené), nastavení appky a zvolený jazyk.</p></div></details>
   <details><summary>Přehrávač nenajde moje písničky.</summary><div><p>Když se appka zeptá na přístup k hudbě, povol ho (když jsi to odmítl, povol ho v nastavení telefonu u aplikace). Pak <span class="nw"><span class="t">OBNOVIT SEZNAM V MOBILU</span>,</span> nebo vyber soubory sám přes <span class="nw"><span class="t">VYBRAT SYSTEMOVE</span>.</span> Přehrávač hraje MP3 a WAV.</p></div></details>
   <details><summary>Jak dostanu do Atari program z počítače?</summary><div><p>Zapni WEB TV, na PC otevři adresu, spusť Atari 130XE a dej <kbd>Ctrl</kbd> + <kbd>V</kbd> (nebo přetáhni TXT soubor do prohlížeče). V telefonu jde totéž přes <span class="nw"><span class="t">BASIC/TBXL TXT</span>.</span></p></div></details>
   <details><summary>Hra z NET / HRY se nestáhne.</summary><div><p>Zkontroluj internet a zkus to za chvíli znovu. Hru můžeš spustit i ze souboru v telefonu přes <span class="nw"><span class="t">XEX / MOBIL</span>.</span></p></div></details>
   <details><summary>Ovladač na displeji mi nesedí.</summary><div><p>Na šířku kolečko <span class="t">&#9881;</span> → <span class="nw"><span class="t">D-PAD A OVLÁDÁNÍ</span>:</span> tlačítka přetáhneš, kam chceš, nastavíš citlivost, velikost i průhlednost a pro leváky je prohodíš. Funguje to u Atari, Segy i PS1.</p></div></details>
   <details><summary>Jak aktualizuju appku?</summary><div><p><a href="#options" data-skok="options">OPTIONS</a> → <span class="nw"><span class="t">AKTUALIZOVAT APLIKACI</span>.</span> Telefon se ještě zeptá, jestli instalaci povolíš.</p></div></details>
   <details><summary>Chci znovu vidět úvodní film.</summary><div><p><a href="#options" data-skok="options">OPTIONS</a> → <span class="nw"><span class="t">PUSTIT INTRO</span>.</span> Přeskočíš ho tlačítkem <span class="t">SKIP ›</span> nebo ZPĚT.</p></div></details>
+  <details><summary>Jak přepnu appku do angličtiny?</summary><div><p><a href="#options" data-skok="options">OPTIONS</a> → <span class="t">JAZYK · LANGUAGE</span> → <span class="nw"><span class="t">ENGLISH</span>.</span> Celá appka se přepne hned, i tenhle návod.</p></div></details>
   <nav class="kap-paticka"><a class="tl tl2" href="#obsah" data-skok="obsah">&#9650; OBSAH</a><a class="tl" href="../index.html">&#9664; ZPĚT DO MENU</a></nav>
 </section>
 
 <footer class="zapati">
   N&amp;P VISION · RETRO UNIVERSE
   <span class="podpis">René Frank</span>
-  ATARIHELP.EU · B311
+  ATARIHELP.EU · B314
 </footer>
 </main>
 

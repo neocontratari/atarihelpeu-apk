@@ -1,0 +1,905 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#060403">
+<title>N&amp;P VISION — Guide</title>
+<!--
+  B314: ANGLICKY NAVOD (cesky je index.html, obsah a kapitoly stejne). Rene: "slo by dat vyber
+  jazyka - volbu Cze a Ang? ... po volbe na ang byla apka v anglictine a naopak".
+  Nazvy tlacitek jsou presne ty anglicke, ktere clovek v appce uvidi (kontrola_navodu_en.py).
+  Kdyz se zmeni index.html (cesky navod), uprav i tenhle soubor.
+  Jazyk: OPTIONS -> JAZYK · LANGUAGE (Java AHJAZYK.kod()); kdyz appka mluvi cesky, skript
+  nize hned prejde na index.html (location.replace = bez historie, ZPET vrati do menu).
+-->
+<script>
+(function(){var k='';try{if(window.AHJAZYK&&typeof AHJAZYK.kod==='function')k=String(AHJAZYK.kod());}catch(e){}
+if(k!=='en'&&k!=='cs'){var q=/[?&]lang=(cs|en)\b/.exec(location.search||'');if(q)k=q[1];}
+if(k==='cs')location.replace('index.html'+(location.search||'')+(location.hash||''));})();
+</script>
+<style>
+@font-face{font-family:"NapChakra";src:url(../pisma/chakra_semibold.woff2) format("woff2");font-weight:600;font-style:normal;font-display:swap;}
+@font-face{font-family:"NapChakra";src:url(../pisma/chakra_bold.woff2) format("woff2");font-weight:700;font-style:normal;font-display:swap;}
+@font-face{font-family:"NapChakra";src:url(../pisma/chakra_bolditalic.woff2) format("woff2");font-weight:700;font-style:italic;font-display:swap;}
+:root{
+  --pozadi:#060403;
+  --panel:rgba(24,15,6,.80);
+  --panel2:rgba(36,23,9,.88);
+  --zlata:#f2c35b; --zlata2:#ffe08a; --zlata3:#b9862a;
+  --text:#efe5cf; --text2:#d3bf95; --tlum:#9d8a66;
+  --cara:rgba(255,195,64,.20); --cara2:rgba(255,195,64,.48);
+  --a:#f2c35b;
+  --nadpis:"NapChakra","Chakra Petch","Segoe UI",Roboto,Arial,sans-serif;
+  --telo:Roboto,"Segoe UI",system-ui,-apple-system,Arial,sans-serif;
+  --mono:"Roboto Mono","Droid Sans Mono",Consolas,"Courier New",monospace;
+  --lista:58px;
+}
+*{box-sizing:border-box;}
+html{background:var(--pozadi);-webkit-text-size-adjust:100%;text-size-adjust:100%;scroll-padding-top:calc(var(--lista) + 12px);}
+body{margin:0;min-height:100vh;color:var(--text);font:400 15.5px/1.62 var(--telo);-webkit-tap-highlight-color:transparent;overflow-x:hidden;}
+body:before{content:"";position:fixed;top:0;right:0;bottom:0;left:0;z-index:-1;pointer-events:none;
+  background:
+    radial-gradient(1100px 620px at 50% -160px,rgba(160,98,22,.40),transparent 70%),
+    radial-gradient(640px 520px at 108% 36%,rgba(120,64,200,.13),transparent 70%),
+    radial-gradient(640px 520px at -12% 72%,rgba(30,120,210,.10),transparent 70%),
+    var(--pozadi);}
+a{color:var(--zlata2);}
+b,strong{color:#fff3d6;font-weight:600;}
+p{margin:.55em 0;}
+ul,ol{margin:.5em 0;padding-left:1.25em;}
+li{margin:.32em 0;}
+li::marker{color:var(--zlata);}
+h1,h2,h3,h4{font-family:var(--nadpis);font-weight:700;margin:0;line-height:1.15;}
+
+/* ---------- horni lista ---------- */
+.lista{position:sticky;top:0;z-index:30;display:flex;align-items:center;gap:11px;min-height:var(--lista);
+  padding:calc(8px + env(safe-area-inset-top)) max(14px,env(safe-area-inset-right)) 8px max(14px,env(safe-area-inset-left));
+  background:rgba(7,5,3,.90);border-bottom:1px solid var(--cara);
+  -webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);}
+.minca{flex:0 0 auto;width:36px;height:36px;border-radius:50%;
+  background:url(../design/nap_logo_original.png) 48.2% 45.8%/120% 120% no-repeat;
+  box-shadow:0 0 0 1.5px rgba(255,205,90,.75),0 0 16px rgba(255,170,40,.38);}
+.lista .jmeno{flex:1;min-width:0;}
+.lista .jmeno b{display:block;font:700 17px/1 var(--nadpis);letter-spacing:.2em;color:var(--zlata2);}
+.lista .jmeno small{display:block;margin-top:3px;font:600 9.5px/1.2 var(--nadpis);letter-spacing:.3em;color:var(--tlum);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+
+/* ---------- tlacitka ---------- */
+.tl{display:inline-flex;align-items:center;justify-content:center;gap:.4em;min-height:40px;padding:.55em 1.15em;border:0;border-radius:999px;cursor:pointer;
+  font:700 13px/1 var(--nadpis);letter-spacing:.12em;text-decoration:none;white-space:nowrap;color:#1d1003;
+  background:linear-gradient(180deg,#ffe6a0 0%,#e3ae48 55%,#b97d22 100%);
+  box-shadow:0 2px 0 rgba(0,0,0,.55),inset 0 1px 0 rgba(255,255,255,.55),0 0 16px rgba(255,170,40,.22);}
+.tl:active{transform:translateY(1px);filter:brightness(1.06);}
+.tl.tl2{color:var(--zlata2);background:rgba(40,25,8,.85);box-shadow:inset 0 0 0 1px var(--cara2);}
+
+/* ---------- obsah stranky ---------- */
+.obal{max-width:860px;margin:0 auto;padding:0 max(16px,env(safe-area-inset-right)) calc(36px + env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-left));}
+.hrdina{text-align:center;padding:26px 0 6px;}
+.nadtitul{font:600 11px/1.3 var(--nadpis);letter-spacing:.42em;color:var(--text2);padding-left:.42em;}
+.hrdina h1{margin:10px 0 4px;font-size:clamp(30px,9vw,48px);letter-spacing:.06em;
+  background:linear-gradient(100deg,#b9741b 0%,#ffe9a8 22%,#f2c25a 45%,#fff6d0 52%,#d6912a 70%,#ffe39a 100%);background-size:220% 100%;
+  -webkit-background-clip:text;background-clip:text;color:transparent;animation:lesk 7s ease-in-out infinite;
+  filter:drop-shadow(0 2px 3px rgba(0,0,0,.85));}
+@keyframes lesk{0%,100%{background-position:0% 50%}50%{background-position:100% 50%}}
+.perex{max-width:620px;margin:8px auto 0;color:var(--text2);font-size:16px;}
+.perex b{color:#fff0cc;}
+
+/* hledani */
+.hledat{position:relative;max-width:560px;margin:18px auto 4px;}
+.hledat input{width:100%;height:48px;padding:0 48px 0 46px;border-radius:14px;border:1px solid var(--cara2);outline:none;
+  background:rgba(14,9,4,.92);color:var(--text);font:500 16px var(--telo);
+  box-shadow:inset 0 1px 0 rgba(255,214,130,.08),0 0 0 0 rgba(255,190,60,0);transition:box-shadow .2s,border-color .2s;-webkit-appearance:none;appearance:none;}
+.hledat input::placeholder{color:var(--tlum);}
+.hledat input:focus{border-color:var(--zlata);box-shadow:0 0 0 3px rgba(255,190,60,.18);}
+.hledat input::-webkit-search-cancel-button{display:none;}
+.hledat svg{position:absolute;left:15px;top:14px;width:20px;height:20px;stroke:var(--zlata);fill:none;stroke-width:2;stroke-linecap:round;}
+.hledat button{position:absolute;right:6px;top:6px;width:36px;height:36px;border:0;border-radius:10px;cursor:pointer;display:none;
+  background:rgba(255,195,64,.12);color:var(--zlata2);font:700 16px/1 var(--telo);}
+.hledat.ma button{display:block;}
+.hledat-info{max-width:560px;margin:8px auto 0;text-align:center;color:var(--text2);font:600 13px/1.4 var(--nadpis);letter-spacing:.06em;}
+mark{background:rgba(255,200,70,.32);color:#fff8e6;border-radius:3px;padding:0 1px;box-shadow:0 0 0 1px rgba(255,200,70,.45);}
+
+/* nadpis bloku obsahu */
+.stitek-sekce{display:flex;align-items:center;gap:10px;margin:30px 0 12px;font:700 12px/1 var(--nadpis);letter-spacing:.32em;color:var(--zlata);}
+.stitek-sekce:after{content:"";flex:1;height:1px;background:linear-gradient(90deg,var(--cara2),transparent);}
+
+/* rychly start */
+.rychle{margin-top:22px;padding:16px 16px 10px;border-radius:18px;border:1px solid var(--cara2);
+  background:linear-gradient(160deg,rgba(60,38,10,.85),rgba(20,12,5,.9) 60%);box-shadow:0 10px 30px rgba(0,0,0,.45),inset 0 1px 0 rgba(255,214,130,.12);}
+.rychle h2{font-size:15px;letter-spacing:.28em;color:var(--zlata2);margin:0 0 6px;}
+.kroky{list-style:none;padding:0;margin:8px 0;counter-reset:krok;}
+.kroky>li{position:relative;padding:3px 0 3px 40px;margin:.55em 0;counter-increment:krok;}
+.kroky>li:before{content:counter(krok);position:absolute;left:0;top:1px;width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+  font:700 14px/1 var(--nadpis);color:#1d1003;background:linear-gradient(180deg,#ffe6a0,#d39a3a);box-shadow:0 0 12px rgba(255,170,40,.3);}
+
+/* obsah (dlazdice) */
+.obsah{display:grid;grid-template-columns:repeat(auto-fill,minmax(158px,1fr));gap:10px;}
+.dlazdice{position:relative;display:flex;align-items:center;gap:11px;min-height:74px;padding:8px 10px 8px 8px;border-radius:14px;text-decoration:none;color:var(--text);
+  background:var(--panel);border:1px solid var(--cara);box-shadow:inset 0 1px 0 rgba(255,214,130,.06);overflow:hidden;}
+.dlazdice:after{content:"";position:absolute;left:0;top:10px;bottom:10px;width:3px;border-radius:0 3px 3px 0;background:var(--a);box-shadow:0 0 10px var(--a);}
+.dlazdice:active{background:var(--panel2);}
+.dlazdice .nahled{flex:0 0 auto;width:44px;height:58px;border-radius:8px;overflow:hidden;display:flex;align-items:center;justify-content:center;
+  background:radial-gradient(circle at 50% 35%,rgba(255,200,90,.18),rgba(0,0,0,.4));box-shadow:0 0 0 1px rgba(255,205,110,.35);}
+.dlazdice .nahled img{width:100%;height:100%;object-fit:cover;display:block;}
+.dlazdice .nahled svg{width:26px;height:26px;stroke:var(--a);fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;}
+.dlazdice .txt{min-width:0;}
+.dlazdice .c{display:block;font:600 10px/1 var(--nadpis);letter-spacing:.2em;color:var(--tlum);}
+.dlazdice b{display:block;margin-top:4px;font:700 14px/1.15 var(--nadpis);letter-spacing:.04em;color:#fff1cf;}
+.dlazdice small{display:block;margin-top:3px;font:600 10px/1.25 var(--nadpis);letter-spacing:.1em;color:var(--text2);}
+
+/* ---------- kapitoly ---------- */
+.kap{margin-top:34px;padding:18px 16px 14px;border-radius:20px;background:var(--panel);border:1px solid var(--cara);
+  box-shadow:0 14px 36px rgba(0,0,0,.42),inset 0 1px 0 rgba(255,214,130,.07);position:relative;overflow:hidden;
+  scroll-margin-top:calc(var(--lista) + 12px);}
+.kap:before{content:"";position:absolute;left:0;right:0;top:0;height:3px;background:linear-gradient(90deg,transparent,var(--a),transparent);opacity:.9;}
+.kap-hlava{display:flex;align-items:center;gap:14px;margin-bottom:10px;}
+.kap-obr{flex:0 0 auto;width:66px;height:88px;border-radius:10px;object-fit:cover;box-shadow:0 0 0 1.5px var(--a),0 6px 18px rgba(0,0,0,.6);}
+.kap-ikona{flex:0 0 auto;width:66px;height:66px;border-radius:16px;display:flex;align-items:center;justify-content:center;
+  background:radial-gradient(circle at 50% 30%,rgba(255,200,90,.16),rgba(0,0,0,.45));box-shadow:0 0 0 1.5px var(--a),0 6px 18px rgba(0,0,0,.6);}
+.kap-ikona svg{width:34px;height:34px;stroke:var(--a);fill:none;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round;}
+.kap-cislo{font:600 11px/1 var(--nadpis);letter-spacing:.28em;color:var(--tlum);}
+.kap h2{margin-top:5px;font-size:clamp(21px,6.2vw,28px);letter-spacing:.04em;color:#fff3d4;text-shadow:0 0 18px rgba(255,180,60,.18);}
+.kap-pod{margin:4px 0 0;font:600 11.5px/1.3 var(--nadpis);letter-spacing:.2em;color:var(--a);}
+.uvod{font-size:16px;color:#f4ead6;}
+.blok{margin-top:16px;padding-top:12px;border-top:1px solid var(--cara);}
+.blok h3{font-size:15.5px;letter-spacing:.08em;color:var(--zlata2);margin-bottom:4px;text-transform:uppercase;}
+.blok h4{font-size:13.5px;letter-spacing:.06em;color:var(--text2);margin:12px 0 2px;text-transform:uppercase;}
+
+/* nazev tlacitka v appce */
+.t{display:inline-block;max-width:100%;padding:.08em .5em .1em;margin:.05em 0;border-radius:6px;white-space:normal;
+  font:600 .82em/1.35 var(--nadpis);letter-spacing:.05em;color:#ffe9b0;background:rgba(255,190,60,.10);box-shadow:inset 0 0 0 1px rgba(255,195,64,.45);}
+kbd{display:inline-block;min-width:1.7em;padding:.05em .45em .12em;margin:.05em 0;border-radius:6px;text-align:center;white-space:nowrap;
+  font:700 .8em/1.35 var(--mono);color:#e9f6ff;background:linear-gradient(180deg,#2a3440,#151b22);box-shadow:inset 0 -2px 0 rgba(0,0,0,.6),0 0 0 1px rgba(150,200,255,.35);}
+.nw{white-space:nowrap;}
+.cesta{display:inline;padding:.08em .4em;border-radius:6px;font:500 .86em/1.5 var(--mono);color:#cfe9ff;background:rgba(80,140,200,.12);box-shadow:inset 0 0 0 1px rgba(120,180,240,.28);word-break:break-all;}
+
+/* tabulka "tlacitko - co dela" */
+dl.tab{display:grid;grid-template-columns:minmax(118px,32%) 1fr;margin:10px 0 4px;border-radius:12px;overflow:hidden;border:1px solid var(--cara);}
+dl.tab dt,dl.tab dd{margin:0;padding:9px 11px;border-top:1px solid var(--cara);}
+dl.tab dt:first-of-type,dl.tab dt:first-of-type+dd{border-top:0;}
+dl.tab dt{background:rgba(255,190,60,.06);font:600 13px/1.4 var(--nadpis);letter-spacing:.04em;color:#ffe5a6;}
+dl.tab dd{background:rgba(0,0,0,.16);}
+@media (max-width:360px){dl.tab{grid-template-columns:1fr;}dl.tab dd{border-top:0;padding-top:0;}}
+
+/* rameecky TIP / POZOR */
+.tip,.pozor{margin:12px 0 4px;padding:10px 12px 10px 14px;border-radius:12px;position:relative;}
+.tip{background:rgba(255,190,60,.08);box-shadow:inset 3px 0 0 var(--zlata);}
+.pozor{background:rgba(255,110,60,.09);box-shadow:inset 3px 0 0 #ff8a50;}
+.tip>b:first-child,.pozor>b:first-child{font:700 11.5px/1 var(--nadpis);letter-spacing:.2em;margin-right:6px;}
+.tip>b:first-child{color:var(--zlata);}
+.pozor>b:first-child{color:#ffa070;}
+
+/* klavesy PC */
+.klavesy{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:10px;margin:10px 0;}
+.klavesy>div{padding:10px 12px;border-radius:12px;background:rgba(10,18,26,.55);box-shadow:inset 0 0 0 1px rgba(120,180,240,.22);}
+.klavesy h4{margin:0 0 6px;color:#bfe3ff;}
+.klavesy p{margin:.3em 0;font-size:14.5px;}
+
+/* casté otazky */
+details{margin:8px 0;border-radius:12px;background:rgba(0,0,0,.18);border:1px solid var(--cara);}
+details>summary{list-style:none;cursor:pointer;padding:12px 40px 12px 14px;position:relative;font:600 15px/1.35 var(--nadpis);letter-spacing:.02em;color:#ffeac0;}
+details>summary::-webkit-details-marker{display:none;}
+details>summary:after{content:"";position:absolute;right:16px;top:50%;width:9px;height:9px;margin-top:-7px;border-right:2px solid var(--zlata);border-bottom:2px solid var(--zlata);transform:rotate(45deg);transition:transform .2s;}
+details[open]>summary:after{transform:rotate(225deg);margin-top:-2px;}
+details>div{padding:0 14px 10px;}
+
+/* paticka kapitoly */
+.kap-paticka{display:flex;flex-wrap:wrap;gap:10px;justify-content:flex-end;margin-top:18px;padding-top:14px;border-top:1px solid var(--cara);}
+
+/* plovouci "nahoru" */
+#nahoru{position:fixed;right:max(12px,env(safe-area-inset-right));bottom:calc(14px + env(safe-area-inset-bottom));z-index:25;width:46px;height:46px;border-radius:50%;border:0;cursor:pointer;
+  color:#1d1003;font:700 18px/1 var(--nadpis);background:linear-gradient(180deg,#ffe6a0,#c98a2a);box-shadow:0 6px 18px rgba(0,0,0,.6),0 0 18px rgba(255,170,40,.35);
+  opacity:0;transform:translateY(16px) scale(.9);pointer-events:none;transition:opacity .2s,transform .2s;}
+#nahoru.ukaz{opacity:.94;transform:none;pointer-events:auto;}
+
+.zapati{margin:40px 0 10px;text-align:center;color:var(--tlum);font:600 11px/1.6 var(--nadpis);letter-spacing:.24em;}
+.zapati .podpis{display:block;margin:8px 0;font:700 italic 20px/1 var(--nadpis);letter-spacing:.04em;color:#e3b862;}
+
+/* hledani: schovat to, co nesedi */
+body.hleda .rychle,body.hleda #obsahStitek,body.hleda #obsah{display:none;}
+.skryto{display:none!important;}
+
+@media (min-width:700px){
+  body{font-size:16px;}
+  .kap{padding:24px 26px 18px;}
+  .kap-obr{width:78px;height:104px;}
+}
+@media (prefers-reduced-motion:reduce){
+  .hrdina h1{animation:none;}
+  html{scroll-behavior:auto;}
+}
+</style>
+</head>
+<body>
+
+<div class="lista">
+  <div class="minca" role="img" aria-label="N&amp;P"></div>
+  <div class="jmeno"><b>GUIDE</b><small>N&amp;P VISION</small></div>
+  <a class="tl" id="listaMenu" href="../index.html" aria-label="Back to the main menu">&#9664; MENU</a>
+</div>
+
+<main class="obal">
+
+<header class="hrdina" id="nahore">
+  <div class="nadtitul">N&amp;P VISION · RETRO UNIVERSE</div>
+  <h1>THE COMPLETE GUIDE</h1>
+  <p class="perex">One app, the whole retro world: <b>Atari 130XE</b>, <b>Sega Mega Drive</b>, <b>PlayStation</b>, a cassette deck for MP3s and a DJ console. Everything is here – from the first start to playing on a TV.</p>
+  <div class="hledat" id="hledatObal">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5l5 5"/></svg>
+    <input id="hledat" type="search" placeholder="Search the guide…" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="Search the guide">
+    <button id="hledatZrus" type="button" aria-label="Clear the search">&#10005;</button>
+  </div>
+  <p class="hledat-info" id="hledatInfo" hidden></p>
+</header>
+
+<section class="rychle" aria-label="Quick start">
+  <h2>QUICK START</h2>
+  <ol class="kroky">
+    <li>In the main menu, drag the cards left and right. Tap <span class="nw"><span class="t">ATARI 130XE</span>.</span></li>
+    <li>At the very bottom of the machine tap <span class="t">NET / GAMES</span> and pick a game – it downloads and runs right away.</li>
+    <li>Type at least 50 program lines on the Atari (and <span class="nw"><kbd>RUN</kbd>)</span> – <span class="nw"><span class="t">SEGA MEGA DRIVE</span></span> unlocks.</li>
+    <li>Play the Sega for 30 minutes – <span class="nw"><span class="t">PS1</span></span> unlocks.</li>
+    <li>Want it on a big screen? The gear <span class="t">&#9881;</span> in the menu → <span class="nw"><span class="t">START WEB TV</span>.</span></li>
+  </ol>
+</section>
+
+<div class="stitek-sekce" id="obsahStitek">CONTENTS</div>
+<nav class="obsah" id="obsah" aria-label="Contents of the guide">
+  <a class="dlazdice" href="#menu" style="--a:#f2c35b"><span class="nahled"><svg viewBox="0 0 24 24"><rect x="7" y="4" width="10" height="16" rx="2"/><path d="M3.5 7.5v9M20.5 7.5v9"/></svg></span><span class="txt"><span class="c">01</span><b>MAIN MENU</b><small>CARDS AND CONTROLS</small></span></a>
+  <a class="dlazdice" href="#atari" style="--a:#F2B640"><span class="nahled"><img src="../menu/karta_atari.jpg" alt=""></span><span class="txt"><span class="c">02</span><b>ATARI 130XE</b><small>EMULATOR · C++</small></span></a>
+  <a class="dlazdice" href="#sega" style="--a:#3FA9FF"><span class="nahled"><img src="../menu/karta_sega.jpg" alt=""></span><span class="txt"><span class="c">03</span><b>SEGA MEGA DRIVE</b><small>16-BIT CONSOLE</small></span></a>
+  <a class="dlazdice" href="#ps1" style="--a:#B26BFF"><span class="nahled"><img src="../menu/karta_ps1.jpg" alt=""></span><span class="txt"><span class="c">04</span><b>PS1</b><small>PLAYSTATION · 32-BIT</small></span></a>
+  <a class="dlazdice" href="#mp3" style="--a:#FFB347"><span class="nahled"><img src="../menu/karta_mp3.jpg" alt=""></span><span class="txt"><span class="c">05</span><b>MP3 PLAYER</b><small>RETRO CASSETTE PLAYER</small></span></a>
+  <a class="dlazdice" href="#dzubox" style="--a:#FF4FD8"><span class="nahled"><img src="../menu/karta_dzubox.jpg" alt=""></span><span class="txt"><span class="c">06</span><b>JUKEBOX</b><small>PRO DJ MIXER</small></span></a>
+  <a class="dlazdice" href="#web" style="--a:#4FE0C0"><span class="nahled"><img src="../menu/karta_web.jpg" alt=""></span><span class="txt"><span class="c">07</span><b>ATARIHELP.EU</b><small>OFFICIAL WEBSITE</small></span></a>
+  <a class="dlazdice" href="#options" style="--a:#f2c35b"><span class="nahled"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.2"/><circle cx="12" cy="12" r="6.6"/><path d="M12 2.6v2.8M12 18.6v2.8M2.6 12h2.8M18.6 12h2.8M5.4 5.4l2 2M16.6 16.6l2 2M5.4 18.6l2-2M16.6 7.4l2-2"/></svg></span><span class="txt"><span class="c">08</span><b>OPTIONS</b><small>APP SETTINGS</small></span></a>
+  <a class="dlazdice" href="#tv" style="--a:#64dfff"><span class="nahled"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="12" rx="2"/><path d="M8.5 20.5h7M12 17v3.5"/></svg></span><span class="txt"><span class="c">09</span><b>WEB TV AND PC</b><small>PICTURE IN A BROWSER</small></span></a>
+  <a class="dlazdice" href="#odemykani" style="--a:#ffb35a"><span class="nahled"><svg viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 7.6-1.7"/><path d="M12 15v2.4"/></svg></span><span class="txt"><span class="c">10</span><b>UNLOCKING</b><small>SEGA AND PS1</small></span></a>
+  <a class="dlazdice" href="#soubory" style="--a:#8fd0ff"><span class="nahled"><svg viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg></span><span class="txt"><span class="c">11</span><b>FILES</b><small>WHAT IS WHERE ON THE PHONE</small></span></a>
+  <a class="dlazdice" href="#log" style="--a:#ff9a5a"><span class="nahled"><svg viewBox="0 0 24 24"><path d="M6 3h9l4 4v14H6z"/><path d="M15 3v4h4M9 12h7M9 16h5"/></svg></span><span class="txt"><span class="c">12</span><b>LOG AND ERRORS</b><small>WHEN SOMETHING FAILS</small></span></a>
+  <a class="dlazdice" href="#otazky" style="--a:#f2d27a"><span class="nahled"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.4a2.5 2.5 0 1 1 3.4 2.4c-.7.3-1 .8-1 1.5v.6"/><path d="M12 17.1v.1"/></svg></span><span class="txt"><span class="c">13</span><b>FAQ</b><small>QUICK ANSWERS</small></span></a>
+</nav>
+
+<!-- ======================================================= 01 MENU -->
+<section class="kap" id="menu" style="--a:#f2c35b">
+  <header class="kap-hlava">
+    <div class="kap-ikona"><svg viewBox="0 0 24 24"><rect x="7" y="4" width="10" height="16" rx="2"/><path d="M3.5 7.5v9M20.5 7.5v9"/></svg></div>
+    <div><div class="kap-cislo">CHAPTER 01</div><h2>MAIN MENU</h2><p class="kap-pod">CARDS AND CONTROLS</p></div>
+  </header>
+  <p class="uvod">The main menu is a row of big cards – one card, one world. The order: <span class="t">ATARI 130XE</span> <span class="t">SEGA MEGA DRIVE</span> <span class="t">PS1</span> <span class="t">MP3 PLAYER</span> <span class="t">JUKEBOX</span> <span class="t">ATARIHELP.EU</span> <span class="nw"><span class="t">HELP</span>.</span> The menu is drawn by pure C++ straight on the graphics chip, so it runs smoothly with no delay.</p>
+
+  <div class="blok">
+    <h3>The first start</h3>
+    <ul>
+      <li>When Sonic the Hedgehog (Sega) or the PlayStation BIOS is missing on the phone, the app first asks whether to download them from atarihelp.eu: <span class="t">DOWNLOAD</span> / <span class="nw"><span class="t">NOT NOW</span>.</span> The app works without them too.</li>
+      <li>Then the intro film plays. Skip it with the <span class="t">SKIP ›</span> button or the phone's BACK button. Play it again in <a href="#options" data-skok="options">OPTIONS</a> → <span class="nw"><span class="t">PLAY INTRO</span>.</span></li>
+      <li>Finally the main menu appears – the cards fly into place.</li>
+      <li>The app speaks the language of the phone (Czech or English). You can switch it any time: <a href="#options" data-skok="options">OPTIONS</a> → <span class="nw"><span class="t">JAZYK · LANGUAGE</span>.</span></li>
+    </ul>
+  </div>
+
+  <div class="blok">
+    <h3>Browsing and opening</h3>
+    <dl class="tab">
+      <dt>Drag</dt><dd>The cards follow your finger smoothly left and right. Let go – the card glides to the middle.</dd>
+      <dt>Flick</dt><dd>A quick flick skips several cards at once. A finger on the moving cards stops them.</dd>
+      <dt>Tap the middle</dt><dd>Opens the middle card (the card lights up and the app switches).</dd>
+      <dt>Button under the card</dt><dd><span class="nw"><span class="t">START</span>,</span> <span class="nw"><span class="t">PLAY</span>,</span> <span class="nw"><span class="t">LET'S GO</span>,</span> <span class="nw"><span class="t">OPEN WEBSITE</span>,</span> <span class="t">OPEN GUIDE</span> – opens the middle card.</dd>
+      <dt>Card next to it</dt><dd>Tap it and it slides to the middle.</dd>
+      <dt>Dots</dt><dd>Tap a dot to jump straight to that card.</dd>
+      <dt>Gear &#9881;</dt><dd>Top right – opens <a href="#options" data-skok="options">OPTIONS</a>.</dd>
+    </dl>
+  </div>
+
+  <div class="blok">
+    <h3>Keyboard, controller, remote control</h3>
+    <ul>
+      <li><kbd>&#8592;</kbd> <kbd>&#8594;</kbd> (also <kbd>L1</kbd> / <kbd>R1</kbd> on a controller) – browse the cards.</li>
+      <li><span class="nw"><kbd>Enter</kbd>,</span> <span class="nw"><kbd>OK</kbd>,</span> <kbd>A</kbd> or the space bar – opens the middle card.</li>
+      <li><kbd>Home</kbd> / <kbd>End</kbd> – the first / last card.</li>
+      <li>On a TV or PC via WEB TV you browse with the arrow keys (or <kbd>A</kbd> / <span class="nw"><kbd>D</kbd>)</span> and open with <kbd>Enter</kbd> – see <a href="#tv" data-skok="tv">WEB TV and PC</a>.</li>
+    </ul>
+  </div>
+
+  <div class="blok">
+    <h3>Locked cards</h3>
+    <p>The <span class="t">SEGA MEGA DRIVE</span> and <span class="t">PS1</span> cards unlock step by step. A locked card is grey with a padlock and the word <span class="nw"><span class="t">LOCKED</span>.</span> When you tap it, it shakes and the text under the cards shows what is still missing (for example how many program lines to type). How: <a href="#odemykani" data-skok="odemykani">Unlocking</a>.</p>
+  </div>
+
+  <div class="blok">
+    <h3>Back to the menu</h3>
+    <ul>
+      <li>Every section has a <span class="t">MENU</span> button (in PS1 <span class="nw"><span class="t">BACK</span>,</span> on the DJ console <span class="nw"><span class="t">MENU / &#9211;</span>).</span></li>
+      <li>Or the phone's BACK button.</li>
+      <li>The BACK button in the main menu itself sends the app to the background – when you come back, the menu is waiting for you.</li>
+    </ul>
+  </div>
+  <nav class="kap-paticka"><a class="tl tl2" href="#obsah" data-skok="obsah">&#9650; CONTENTS</a><a class="tl" href="../index.html">&#9664; BACK TO THE MENU</a></nav>
+</section>
+
+<!-- ======================================================= 02 ATARI -->
+<section class="kap" id="atari" style="--a:#F2B640">
+  <header class="kap-hlava">
+    <img class="kap-obr" src="../menu/karta_atari.jpg" alt="" loading="lazy">
+    <div><div class="kap-cislo">CHAPTER 02</div><h2>ATARI 130XE</h2><p class="kap-pod">EMULATOR · C++</p></div>
+  </header>
+  <p class="uvod">An Atari 130XE with 128 kB of memory and the VBXE graphics card, written entirely in C++. The whole machine is on the display: the screen, the console buttons, the keyboard, the tape deck and, at the very bottom, the service buttons.</p>
+
+  <div class="blok">
+    <h3>Power and console</h3>
+    <dl class="tab">
+      <dt>POWER</dt><dd>The green switch on the left by the screen – switches the Atari off / on. Switching on is a cold start: the memory is cleared.</dd>
+      <dt>RESET</dt><dd>Like on a real Atari – the program in memory stays.</dd>
+      <dt>HELP, START, SELECT, OPTION</dt><dd>Console buttons above the keyboard, held for as long as your finger is on them. (HELP here is the Atari's HELP key.)</dd>
+      <dt>SHIFT, CONTROL</dt><dd>A tap = locked (gold), another tap = unlocked.</dd>
+    </dl>
+  </div>
+
+  <div class="blok">
+    <h3>Joystick</h3>
+    <h4>In portrait – the joystick is the Atari screen</h4>
+    <ul>
+      <li>Put a finger on the <b>left half</b> of the screen and move it (up, down, sideways, diagonals too) – the joystick points that way for as long as you hold the finger.</li>
+      <li>The <b>right half</b> of the screen = <span class="t">FIRE</span> (held while the finger is down). Both thumbs work at once.</li>
+    </ul>
+    <h4>In landscape – turn the phone</h4>
+    <ul>
+      <li>The Atari picture fills the whole display. The D-pad is bottom left (the dot follows your thumb, diagonals too), <span class="nw"><span class="t">FIRE</span>,</span> <span class="t">SPACE</span> and <span class="nw"><span class="t">RETURN</span></span> on the right, <span class="t">START</span> / <span class="t">SELECT</span> / <span class="nw"><span class="t">OPTION</span></span> top left.</li>
+      <li>The gear <span class="t">&#9881;</span> at the top right = <span class="nw"><span class="t">D-PAD AND CONTROLS</span>:</span> <span class="t">EDIT BUTTON LAYOUT</span> (drag with a finger, <span class="nw"><span class="t">IN GROUPS</span>,</span> <span class="nw"><span class="t">DEFAULT</span>,</span> <span class="nw"><span class="t">DONE</span>),</span> <span class="t">CONTROLS: SENSITIVITY AND LOOK</span> (sensitivity, transparency, button and D-pad size, vibration), <span class="nw"><span class="t">SWAP D-PAD AND ACTIONS (LEFT-HANDED)</span>,</span> <span class="nw"><span class="t">DEFAULT BUTTON LAYOUT</span>,</span> <span class="nw"><span class="t">RESET ATARI</span>,</span> games, disk, tape and help. The app remembers your settings.</li>
+    </ul>
+    <h4>Game controller (Bluetooth / USB)</h4>
+    <p>D-pad or stick = joystick, <kbd>A</kbd> / <kbd>B</kbd> = FIRE, <kbd>X</kbd> = SPACE, <kbd>Y</kbd> = RETURN, <kbd>START</kbd> / <kbd>SELECT</kbd> = console, <kbd>L2</kbd> / <kbd>R2</kbd> = OPTION.</p>
+  </div>
+
+  <div class="blok">
+    <h3>Service buttons (at the very bottom)</h3>
+    <dl class="tab">
+      <dt>NET / GAMES</dt><dd>Games from atarihelp.eu – Galactic Chase, Moon Patrol, Pac-Man, Donkey Kong, River Raid, Bruce Lee, Montezuma's Revenge, René's Pitt-Kitt and more. Tap a game, it downloads and starts. The <span class="t">WEB</span> button opens the games website.</dd>
+      <dt>XEX / PHONE</dt><dd>Starts a game from the phone – a XEX file (also packed in a ZIP).</dd>
+      <dt>ATR / DISK</dt><dd>An ATR disk (also in a ZIP) into drive D1: and boot from the disk (<span class="t">OPTION</span> held = BASIC off). The disk stays in the drive even after switching off and on – like a real drive. When there is a disk in D1:, it offers <span class="t">EJECT THE DISK</span> (the Atari restarts with BASIC), <span class="t">SWAP THE DISK WITHOUT RESTART</span> (the game wants the next disk or the other side) and <span class="t">INSERT ANOTHER DISK AND BOOT</span>.</dd>
+      <dt>TURBO / BASIC</dt><dd>Loads Turbo-BASIC XL 1.5.</dd>
+      <dt>BASIC/TBXL TXT</dt><dd>A program from a text file: <span class="t">TXT FILE → ATARI BASIC</span> or <span class="t">TXT FILE → TURBO-BASIC XL</span> – the app types the program itself on the Atari keyboard, line by line (then RUN, CSAVE…). Or <span class="t">TYPE / PASTE TEXT MANUALLY</span> and <span class="t">PASTE</span> / <span class="nw"><span class="t">PASTE + RUN</span>.</span></dd>
+      <dt>LOG / ERROR</dt><dd>Log and tests – see <a href="#log" data-skok="log">Log and errors</a>.</dd>
+      <dt>HELP</dt><dd>A short controls help right in the Atari.</dd>
+      <dt>MENU</dt><dd>Back to the main menu.</dd>
+    </dl>
+  </div>
+
+  <div class="blok">
+    <h3>Tape deck</h3>
+    <ul>
+      <li><span class="t">REC</span> and <span class="t">PLAY</span> stay down, <span class="t">STOP</span> releases them. <span class="t">REW</span> = tape to the start, <span class="t">FWD</span> = 10 s further. The small button next to the counter resets it.</li>
+      <li><span class="t">EJECT</span> opens the door and offers tapes – CSAVE recordings or any WAV from the phone. Once you pick one, the tape goes in and the door closes.</li>
+    </ul>
+    <h4>Saving a program to tape (CSAVE)</h4>
+    <ol class="kroky">
+      <li>Type <kbd>CSAVE</kbd> and <span class="nw"><kbd>RETURN</kbd>.</span></li>
+      <li>After the beep, <span class="nw"><kbd>RETURN</kbd></span> again.</li>
+      <li>After recording, the WAV is saved by itself to <span class="cesta">Download/AtariHelp/Atari_emu/csave_&lt;date&gt;_&lt;time&gt;.wav</span> – it is the exact signal for a real tape recorder.</li>
+    </ol>
+    <h4>Loading a program from tape (CLOAD)</h4>
+    <ol class="kroky">
+      <li><span class="t">EJECT</span> and pick a tape (PLAY is pressed by itself).</li>
+      <li>Type <kbd>CLOAD</kbd> and <kbd>RETURN</kbd> – the Atari beeps and waits.</li>
+      <li>Press <span class="nw"><kbd>RETURN</kbd></span> once more. The motor starts, the program loads, then <kbd>READY</kbd> and you can <kbd>LIST</kbd> or <span class="nw"><kbd>RUN</kbd>.</span></li>
+    </ol>
+    <p>While loading you hear what a real Atari plays (<kbd>POKE 65,0</kbd> = silent). With a stereo WAV also the tape's audio track.</p>
+    <p class="tip"><b>GAMES ON TAPE</b> The app recognises a tape that starts by itself (boot): the Atari powers on with START + OPTION held, presses RETURN after the beep and the game loads. Manually: hold START and OPTION and flip POWER. In landscape you find the tapes in the gear <span class="t">&#9881;</span> → <span class="nw"><span class="t">TAPE (WAV)</span>.</span></p>
+  </div>
+
+  <div class="blok">
+    <h3>VBXE graphics</h3>
+    <p>The VBXE graphics card is built into the Atari – VBXE games (Wolfenstein 3D, Popeye…) find it by themselves. Wolfenstein 3D: walk with the joystick, FIRE = shoot, SPACE = open doors.</p>
+  </div>
+
+  <div class="blok">
+    <h3>Typing programs</h3>
+    <p>Type on the machine's keyboard or on a computer keyboard via <a href="#tv" data-skok="tv">WEB TV</a>. Every 50 lines you type yourself unlock the Sega – see <a href="#odemykani" data-skok="odemykani">Unlocking</a>.</p>
+  </div>
+  <nav class="kap-paticka"><a class="tl tl2" href="#obsah" data-skok="obsah">&#9650; CONTENTS</a><a class="tl" href="../index.html">&#9664; BACK TO THE MENU</a></nav>
+</section>
+
+<!-- ======================================================= 03 SEGA -->
+<section class="kap" id="sega" style="--a:#3FA9FF">
+  <header class="kap-hlava">
+    <img class="kap-obr" src="../menu/karta_sega.jpg" alt="" loading="lazy">
+    <div><div class="kap-cislo">CHAPTER 03</div><h2>SEGA MEGA DRIVE</h2><p class="kap-pod">16-BIT CONSOLE</p></div>
+  </header>
+  <p class="uvod">16-bit Mega Drive games with an on-screen controller. The card unlocks once you type 50 program lines on the Atari – <a href="#odemykani" data-skok="odemykani">Unlocking</a>.</p>
+
+  <div class="blok">
+    <h3>In portrait – the console</h3>
+    <dl class="tab">
+      <dt>CATALOG</dt><dd>A tap = the game catalog on atarihelp.eu: tap a game, it downloads and plays. Then the app asks “Save … to the phone?” – <span class="t">SAVE</span> adds it to MY GAMES. Hold (0.7 s) = performance <span class="t">HIGH QUALITY</span> / <span class="nw"><span class="t">LOW PERFORMANCE</span>.</span></dd>
+      <dt>GAMES</dt><dd><span class="t">MY GAMES</span> – games saved on the phone. Tap a game to start it, the bin deletes it (<span class="t">JUST THE GAME (the saved position stays)</span> or <span class="nw"><span class="t">THE GAME AND THE SAVED POSITION</span>).</span> <span class="nw"><span class="t">PICK A FILE ON THE PHONE MANUALLY</span>,</span> <span class="nw"><span class="t">REFRESH THE LIST</span>.</span></dd>
+      <dt>CARTRIDGE</dt><dd>The slot on the console – choose a ROM from the phone (.gen, .bin, .md, .smd, .zip).</dd>
+      <dt>SAVES</dt><dd><span class="t">SAVED POSITIONS</span> – games with a saved position. Tap one to load the position.</dd>
+      <dt>MANUALS</dt><dd>Technical information about the emulator.</dd>
+      <dt>WEB</dt><dd>Opens atarihelp.eu.</dd>
+      <dt>MENU</dt><dd>Back to the main menu.</dd>
+    </dl>
+    <p>The controller on the console picture: D-pad, <span class="t">A</span> <span class="t">B</span> <span class="t">C</span> and <span class="nw"><span class="t">START</span>.</span></p>
+  </div>
+
+  <div class="blok">
+    <h3>In landscape – playing</h3>
+    <ul>
+      <li>D-pad on the left (the dot follows your thumb, diagonals too), <span class="t">A</span> <span class="t">B</span> <span class="t">C</span> on the right, <span class="t">START</span> at the bottom in the middle.</li>
+      <li><span class="t">SAVE</span> (green, left of START) saves the game position, <span class="t">LOAD GAME</span> (gold, on the right) loads it – exactly where you left off. Each game has its own position.</li>
+      <li>The gear <span class="t">&#9881;</span> = <span class="nw"><span class="t">D-PAD AND CONTROLS</span>:</span> <span class="nw"><span class="t">EDIT BUTTON LAYOUT</span>,</span> <span class="t">CONTROLS: SENSITIVITY AND LOOK</span> (sensitivity, transparency, size, vibration), <span class="nw"><span class="t">SWAP D-PAD AND ACTIONS (LEFT-HANDED)</span>,</span> <span class="nw"><span class="t">SAVE GAME POSITION</span>,</span> <span class="nw"><span class="t">LOAD SAVED POSITION</span>,</span> <span class="nw"><span class="t">EXPORT LOG (DIAGNOSTICS)</span>.</span></li>
+    </ul>
+    <p class="tip"><b>TIP</b> On a TV / PC you play with the keyboard: <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> move, <kbd>K</kbd> = A, <kbd>L</kbd> = B, <kbd>O</kbd> = C, <kbd>P</kbd> = START.</p>
+  </div>
+  <nav class="kap-paticka"><a class="tl tl2" href="#obsah" data-skok="obsah">&#9650; CONTENTS</a><a class="tl" href="../index.html">&#9664; BACK TO THE MENU</a></nav>
+</section>
+
+<!-- ======================================================= 04 PS1 -->
+<section class="kap" id="ps1" style="--a:#B26BFF">
+  <header class="kap-hlava">
+    <img class="kap-obr" src="../menu/karta_ps1.jpg" alt="" loading="lazy">
+    <div><div class="kap-cislo">CHAPTER 04</div><h2>PS1</h2><p class="kap-pod">PLAYSTATION · 32-BIT</p></div>
+  </header>
+  <p class="uvod">32-bit PlayStation games with an on-screen controller. The card unlocks after 30 minutes of playing the Sega – <a href="#odemykani" data-skok="odemykani">Unlocking</a>.</p>
+
+  <div class="blok">
+    <h3>Buttons</h3>
+    <dl class="tab">
+      <dt>LOAD GAME</dt><dd>Opens the PS1 page on atarihelp.eu with Google Drive links. Tap a game – the first time it downloads and unpacks, next time it starts straight from the phone.</dd>
+      <dt>CD ISO</dt><dd>The library <span class="t">CHOOSE A GAME (CD/ISO)</span> – games on the phone, <span class="nw"><span class="t">PICK A FILE ON THE PHONE MANUALLY</span>,</span> deleting games.</dd>
+      <dt>SAVE GAME</dt><dd>Saves the exact game position.</dd>
+      <dt>MEMORY CARD</dt><dd><span class="t">MEMORY CARD</span> – the state of the memory card. Games save to it by themselves (like to a real card).</dd>
+      <dt>BACK</dt><dd>Back to the main menu.</dd>
+    </dl>
+    <p>Controller: D-pad, <span class="t">&#9651;</span> <span class="t">&#9675;</span> <span class="t">&#10005;</span> <span class="nw"><span class="t">&#9633;</span>,</span> <span class="t">L1</span> <span class="t">L2</span> <span class="t">R1</span> <span class="nw"><span class="t">R2</span>,</span> <span class="nw"><span class="t">SELECT</span>,</span> <span class="t">START</span> and <span class="nw"><span class="t">RESET</span>.</span></p>
+  </div>
+
+  <div class="blok">
+    <h3>Gear &#9881; – D-PAD AND CONTROLS</h3>
+    <p><span class="nw"><span class="t">EDIT BUTTON LAYOUT</span>,</span> <span class="nw"><span class="t">CONTROLS: SENSITIVITY AND LOOK</span>,</span> <span class="nw"><span class="t">SWAP D-PAD AND ACTIONS (LEFT-HANDED)</span>,</span> <span class="t">LOAD QUICK POSITION</span> (loads the position from SAVE GAME – exactly where you left off), <span class="t">SAVE AND SEND THE LOG</span> and <span class="nw"><span class="t">MORE (BIOS, CD, LOG...)</span>.</span></p>
+  </div>
+
+  <div class="blok">
+    <h3>Games and BIOS</h3>
+    <ul>
+      <li>Game formats: <b>.bin .cue .iso .img .pbp .chd</b> and <b>.zip</b>. The app cannot open <b>.7z</b>.</li>
+      <li>PS1 needs a BIOS (the file <span class="cesta">scph….bin</span>). When it is missing, the app takes it from the <span class="cesta">Download/AtariHelp</span> folder (also from the BIOS or PS1_BIOS subfolder, or from a ZIP with “bios” in its name), otherwise it downloads it from atarihelp.eu. Manually: <a href="#options" data-skok="options">OPTIONS</a> → <span class="nw"><span class="t">DOWNLOAD GAMES AND BIOS</span>.</span></li>
+    </ul>
+    <p class="tip"><b>TIP</b> On a TV / PC: arrows or <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> direction, <kbd>K</kbd> or space = &#10005;, <kbd>L</kbd> = &#9675;, <kbd>J</kbd> = &#9633;, <kbd>I</kbd> = &#9651;, <kbd>Q</kbd> / <kbd>E</kbd> = L1 / R1, <kbd>Z</kbd> / <kbd>C</kbd> = L2 / R2, <kbd>Enter</kbd> or <kbd>P</kbd> = START, <kbd>Backspace</kbd> or <kbd>O</kbd> = SELECT.</p>
+  </div>
+  <nav class="kap-paticka"><a class="tl tl2" href="#obsah" data-skok="obsah">&#9650; CONTENTS</a><a class="tl" href="../index.html">&#9664; BACK TO THE MENU</a></nav>
+</section>
+
+<!-- ======================================================= 05 MP3 -->
+<section class="kap" id="mp3" style="--a:#FFB347">
+  <header class="kap-hlava">
+    <img class="kap-obr" src="../menu/karta_mp3.jpg" alt="" loading="lazy">
+    <div><div class="kap-cislo">CHAPTER 05</div><h2>MP3 PLAYER</h2><p class="kap-pod">RETRO CASSETTE PLAYER</p></div>
+  </header>
+  <p class="uvod">A retro cassette deck for music from your phone – MP3, WAV, M4A, OGG and more. Equalizer, bass, treble, playlists, favorite tracks and recording your own mixtape.</p>
+
+  <div class="blok">
+    <h3>Playing</h3>
+    <dl class="tab">
+      <dt>PLAY</dt><dd>Plays a track. When the list is empty, the playlist and the music picker open.</dd>
+      <dt>PAUSE / STOP</dt><dd>Pauses / stops.</dd>
+      <dt>REWIND / FAST FWD</dt><dd>10 seconds back / forward.</dd>
+      <dt>RECORD</dt><dd>Records your own mixtape – see below.</dd>
+    </dl>
+    <p>When a track ends, the next one plays.</p>
+  </div>
+
+  <div class="blok">
+    <h3>Playlist</h3>
+    <p><span class="nw"><span class="t">MY PLAYLISTS</span>,</span> <span class="nw"><span class="t">PLAYLISTS</span>,</span> <span class="t">LIBRARY</span> or the track strip open the panel with the music list on the phone <span class="nw"><span class="t">PHONE - LOCAL MUSIC (MP3, WAV, M4A, OGG...)</span>:</span></p>
+    <ul>
+      <li>Tapping a track plays it (and adds it to the playlist). The star <b>☆</b> next to it adds it to the favorites.</li>
+      <li><span class="t">REFRESH THE PHONE LIST</span> – finds the music on the phone (Downloads, Music, Documents…), including recordings from <span class="t">RECORD</span> and from the JUKEBOX.</li>
+      <li><span class="t">PICK WITH THE SYSTEM</span> – you pick the files yourself.</li>
+      <li><span class="nw"><span class="t">CLEAR THE PLAYLIST</span>,</span> <span class="nw"><span class="t">CLOSE</span>.</span> The phone's BACK button closes an open panel too.</li>
+    </ul>
+  </div>
+
+  <div class="blok">
+    <h3>FAVORITES – favorite tracks</h3>
+    <ul>
+      <li>The star <b>☆</b> next to a track (in the playlist and in the phone's music list) adds it to the favorites – it turns into <b>★</b>. Another tap removes it again.</li>
+      <li><span class="t">FAVORITES</span> at the bottom opens the favorites: tapping a track plays it, <b>✕</b> removes it (first it asks <span class="nw"><span class="t">REMOVE?</span>,</span> tap again).</li>
+      <li><span class="t">★ ADD THE PLAYING TRACK</span> / <span class="t">☆ REMOVE THE PLAYING TRACK</span> – the track playing right now into the favorites / out.</li>
+      <li><span class="t">▶ PLAY ALL FAVORITES</span> – a playlist of the favorites, playing one after another.</li>
+      <li>The app remembers the favorites even after it is closed. When you move a file on the phone, it finds it by name; when it is no longer on the phone, it says <span class="nw"><span class="t">TRACK NOT AVAILABLE</span>.</span></li>
+      <li>It works with tracks from the phone – not with a file picked in a browser on the computer.</li>
+    </ul>
+  </div>
+
+  <div class="blok">
+    <h3>RECORD – your own mixtape</h3>
+    <ul>
+      <li><span class="t">RECORD</span> records whatever the player plays – including the <span class="nw"><span class="t">EQ</span>,</span> <span class="nw"><span class="t">BASS</span>,</span> <span class="t">TREBLE</span> and <span class="nw"><span class="t">BALANCE</span></span> settings. The <span class="t">VOLUME</span> knob does not make the recording quieter.</li>
+      <li>When nothing is playing, playback starts by itself – like on a tape deck. The button glows softly red and the time <span class="nw"><span class="t">● REC</span></span> runs at the bottom.</li>
+      <li><span class="t">PAUSE</span> pauses recording <span class="nw">(<span class="t">❚❚ REC</span>),</span> <span class="t">PLAY</span> continues. Neither the pause nor loading the next track is recorded – the tracks follow each other directly in the recording.</li>
+      <li>Ending and saving: <span class="t">RECORD</span> again, <span class="nw"><span class="t">STOP</span>,</span> the end of the playlist, <span class="t">MENU</span> or the phone's BACK button (the app saves first, then it leaves). At most 90 minutes – like a C90 cassette.</li>
+      <li>The recording is saved to <span class="cesta">Download/AtariHelp/Mixtape</span> as <span class="cesta">NP_VISION_mixtape_&lt;date&gt;_&lt;time&gt;.m4a</span> (on an older phone <span class="cesta">.webm</span>) and <span class="nw"><span class="t">MIXTAPE SAVED</span></span> appears at the bottom. It is in the phone's music list right away.</li>
+    </ul>
+    <p class="tip"><b>A MIXTAPE FROM THE FAVORITES</b> <span class="t">FAVORITES</span> → <span class="nw"><span class="t">▶ PLAY ALL FAVORITES</span>,</span> then <span class="t">STOP</span> and <span class="nw"><span class="t">RECORD</span>.</span> The whole playlist is recorded and saved by itself at the end.</p>
+  </div>
+
+  <div class="blok">
+    <h3>Sound</h3>
+    <ul>
+      <li><span class="t">EQ 60/250/1K/4K/16K</span> – five bands ±12 dB, drag up / down with a finger.</li>
+      <li><span class="t">BALANCE</span> – drag sideways. <span class="t">BASS / TREBLE / VOLUME</span> – bass and treble ±12 dB, volume.</li>
+      <li><span class="t">SETTINGS</span> → <span class="t">RESET SOUND TO DEFAULT</span> returns the sound to its default state.</li>
+    </ul>
+  </div>
+
+  <div class="blok">
+    <h3>More</h3>
+    <ul>
+      <li><span class="t">YOUTUBE</span> – opens YouTube right in the app.</li>
+      <li><span class="t">MENU</span> – back to the main menu.</li>
+      <li>While <a href="#tv" data-skok="tv">WEB TV</a> is running, the music plays on the TV / computer too.</li>
+    </ul>
+  </div>
+  <nav class="kap-paticka"><a class="tl tl2" href="#obsah" data-skok="obsah">&#9650; CONTENTS</a><a class="tl" href="../index.html">&#9664; BACK TO THE MENU</a></nav>
+</section>
+
+<!-- ======================================================= 06 DZUBOX -->
+<section class="kap" id="dzubox" style="--a:#FF4FD8">
+  <header class="kap-hlava">
+    <img class="kap-obr" src="../menu/karta_dzubox.jpg" alt="" loading="lazy">
+    <div><div class="kap-cislo">CHAPTER 06</div><h2>JUKEBOX</h2><p class="kap-pod">PRO DJ MIXER</p></div>
+  </header>
+  <p class="uvod">Two decks, a crossfader, equalizers and samples. Big bass that gets everyone dancing! A short help is right on the console too, under the <span class="nw"><span class="t">HELP</span></span> button.</p>
+
+  <div class="blok">
+    <h3>Loading tracks</h3>
+    <p><span class="t">USB 1 &#9662;</span> (deck A) and <span class="t">USB 2 &#9662;</span> (deck B) – or <span class="nw"><span class="t">PLAYLIST</span>,</span> <span class="nw"><span class="t">BROWSE</span>,</span> <span class="t">LIBRARY</span> – open the deck's playlist: <span class="t">+ ADD</span> adds tracks from the phone, <span class="t">&#9671; LOAD</span> loads the selected one into the deck.</p>
+  </div>
+
+  <div class="blok">
+    <h3>Deck</h3>
+    <dl class="tab">
+      <dt>CUE</dt><dd>Jumps to the start and plays.</dd>
+      <dt>&#9654; PLAY / &#10074;&#10074;</dt><dd>Play / pause.</dd>
+      <dt>STUTTER</dt><dd>A stutter 0.15 s back.</dd>
+      <dt>&#9664;&#9664; / &#9654;&#9654;</dt><dd>5 seconds back / forward.</dd>
+      <dt>SYNC</dt><dd>Matches the tempo to the other deck.</dd>
+      <dt>TAP</dt><dd>Tap out the tempo (BPM) – at least 2 taps.</dd>
+      <dt>KEY LOCK</dt><dd>The tempo changes, the key stays.</dd>
+      <dt>TEMPO, GAIN</dt><dd>Tempo ±8 %, deck volume.</dd>
+      <dt>EQ</dt><dd>10 bands (31 Hz – 16 kHz) under the faders.</dd>
+      <dt>HOT CUE</dt><dd>Pads: the 1st tap saves a point, the next tap jumps to it, holding deletes it.</dd>
+    </dl>
+  </div>
+
+  <div class="blok">
+    <h3>Mixing and samples</h3>
+    <ul>
+      <li><span class="t">CROSSFADE</span> – smoothly from deck A to B. <span class="t">◄ HARD A</span> / <span class="t">HARD B ►</span> – instantly just one deck. <span class="t">⇄ SYNC BPM</span> matches the tempos.</li>
+      <li><span class="nw"><span class="t">MASTER</span>:</span> <span class="nw"><span class="t">BAL</span>,</span> <span class="nw"><span class="t">BASS</span>,</span> <span class="nw"><span class="t">TREB</span>;</span> <span class="t">MASTER LIMITER ON</span> protects against clipping.</li>
+      <li>Sampler: <span class="t">KICK</span> <span class="t">SNARE</span> <span class="t">HAT</span> <span class="t">CLAP</span> <span class="t">BASS</span> <span class="t">SYNTH</span> <span class="t">VOCAL</span> <span class="nw"><span class="t">FX</span>.</span></li>
+      <li><span class="t">RECORD</span> records the whole mix, a second tap saves the recording to <span class="cesta">Download/AtariHelp/DJ_mixy</span> (M4A, WebM on an older phone). When you leave the console while recording (<span class="t">MENU / &#9211;</span> or the phone's BACK button), the mix is saved first.</li>
+      <li><span class="t">EFFECTS</span> at the top hides / shows the EQ rows, <span class="t">SETTINGS</span> shows the assistant, <span class="t">MENU / &#9211;</span> = back to the app.</li>
+    </ul>
+  </div>
+  <nav class="kap-paticka"><a class="tl tl2" href="#obsah" data-skok="obsah">&#9650; CONTENTS</a><a class="tl" href="../index.html">&#9664; BACK TO THE MENU</a></nav>
+</section>
+
+<!-- ======================================================= 07 WEB -->
+<section class="kap" id="web" style="--a:#4FE0C0">
+  <header class="kap-hlava">
+    <img class="kap-obr" src="../menu/karta_web.jpg" alt="" loading="lazy">
+    <div><div class="kap-cislo">CHAPTER 07</div><h2>ATARIHELP.EU</h2><p class="kap-pod">OFFICIAL WEBSITE</p></div>
+  </header>
+  <p class="uvod">The <span class="t">ATARIHELP.EU</span> card opens the atarihelp.eu website right in the app: games, guides and news.</p>
+  <div class="blok">
+    <h3>Games from the web</h3>
+    <ul>
+      <li>Just tap a game – the app downloads it and starts it in the right emulator: an Atari game (XEX, ATR, ZIP) in the <a href="#atari" data-skok="atari">Atari 130XE</a>, a Sega game in the <a href="#sega" data-skok="sega">Sega Mega Drive</a>, a PlayStation game (also a Google Drive link) in the <a href="#ps1" data-skok="ps1">PS1</a>.</li>
+      <li>A Sega or PS1 game starts only when that console is already unlocked – the locks apply to games from the web too. Otherwise the app downloads nothing and says how much is still missing (<span class="t">SEGA IS LOCKED</span> / <span class="nw"><span class="t">PS1 IS LOCKED</span>)</span> – see <a href="#odemykani" data-skok="odemykani">Unlocking</a>.</li>
+      <li>Back to the menu with the phone's BACK button.</li>
+    </ul>
+  </div>
+  <nav class="kap-paticka"><a class="tl tl2" href="#obsah" data-skok="obsah">&#9650; CONTENTS</a><a class="tl" href="../index.html">&#9664; BACK TO THE MENU</a></nav>
+</section>
+
+<!-- ======================================================= 08 OPTIONS -->
+<section class="kap" id="options" style="--a:#f2c35b">
+  <header class="kap-hlava">
+    <div class="kap-ikona"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.2"/><circle cx="12" cy="12" r="6.6"/><path d="M12 2.6v2.8M12 18.6v2.8M2.6 12h2.8M18.6 12h2.8M5.4 5.4l2 2M16.6 16.6l2 2M5.4 18.6l2-2M16.6 7.4l2-2"/></svg></div>
+    <div><div class="kap-cislo">CHAPTER 08</div><h2>OPTIONS</h2><p class="kap-pod">APP SETTINGS</p></div>
+  </header>
+  <p class="uvod">Opens with the gear <span class="t">&#9881;</span> at the top right of the main menu. Close it with <span class="nw"><span class="t">CLOSE</span>,</span> a tap next to the panel or the BACK button.</p>
+  <div class="blok">
+    <h3>Language</h3>
+    <p><span class="t">JAZYK · LANGUAGE</span> – <span class="t">ČEŠTINA</span> / <span class="nw"><span class="t">ENGLISH</span>.</span> The whole app switches right away: the menu, OPTIONS, the emulators, messages, this guide and the WEB TV page in the browser (reload it there). Until you choose, the app follows the phone's language (Czech or Slovak = Czech, anything else = English).</p>
+  </div>
+  <div class="blok">
+    <h3>Buttons</h3>
+    <dl class="tab">
+      <dt>START WEB TV</dt><dd>The app's picture and sound to a browser on a TV or computer. The address for the browser appears right under the button and the button changes to <span class="t">WEB TV IS RUNNING</span>. The address stays there until you close OPTIONS – see <a href="#tv" data-skok="tv">WEB TV and PC</a>.</dd>
+      <dt>PLAY INTRO</dt><dd>The intro film again.</dd>
+      <dt>DOWNLOAD GAMES AND BIOS</dt><dd>Downloads Sonic the Hedgehog (Sega, about 0.5 MB) and the PlayStation BIOS (about 1 MB) from atarihelp.eu. The app asks first. The files stay on the phone and work without the internet too.</dd>
+      <dt>UPDATE THE APP</dt><dd>Checks atarihelp.eu for a new version and offers <span class="t">UPDATE</span> / <span class="nw"><span class="t">NOT NOW</span>.</span> It downloads straight into the installation – no file stays on the phone. The first time, the phone asks whether you allow installing from the app.</dd>
+      <dt>TV TEST</dt><dd><span class="t">BOTH</span> / <span class="t">SOUND ONLY</span> / <span class="t">PICTURE ONLY</span> – a streaming test for the TV when something stutters. Normally leave <span class="nw"><span class="t">BOTH</span>.</span></dd>
+    </dl>
+  </div>
+  <div class="blok">
+    <h3>Settings</h3>
+    <ul>
+      <li><span class="t">AUTOMATIC</span> – the app sets everything itself to suit the phone (recommended).</li>
+      <li><span class="t">MANUAL</span> – <span class="nw"><span class="t">PICTURE QUALITY (WEB TV)</span>:</span> <span class="t">LOW</span> / <span class="t">MED</span> / <span class="nw"><span class="t">HIGH</span>;</span> it also sets the size of the main menu on the TV / PC: 854×480 / 1024×576 / 1280×720 (the sharpest). <span class="nw"><span class="t">SOUND (LATENCY)</span>:</span> <span class="t">LOW</span> = the most reliable but the highest latency, <span class="t">MED</span> = middle ground, <span class="t">HIGH</span> = the lowest latency, may crackle. The sound setting applies the next time a game starts.</li>
+    </ul>
+  </div>
+  <nav class="kap-paticka"><a class="tl tl2" href="#obsah" data-skok="obsah">&#9650; CONTENTS</a><a class="tl" href="../index.html">&#9664; BACK TO THE MENU</a></nav>
+</section>
+
+<!-- ======================================================= 09 WEB TV -->
+<section class="kap" id="tv" style="--a:#64dfff">
+  <header class="kap-hlava">
+    <div class="kap-ikona"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="12" rx="2"/><path d="M8.5 20.5h7M12 17v3.5"/></svg></div>
+    <div><div class="kap-cislo">CHAPTER 09</div><h2>WEB TV AND PC</h2><p class="kap-pod">PICTURE AND SOUND IN A BROWSER</p></div>
+  </header>
+  <p class="uvod">The app can send both picture and sound to an ordinary browser on a TV or computer – no cable and nothing to install. On a PC you can then play and type with the keyboard.</p>
+  <div class="blok">
+    <h3>How to switch it on</h3>
+    <ol class="kroky">
+      <li>The phone and the TV / PC must be on the <b>same <span class="nw">Wi-Fi</span></b>.</li>
+      <li>In the main menu, the gear <span class="t">&#9881;</span> → <span class="nw"><span class="t">START WEB TV</span>.</span> An address appears under the button, for example <span class="cesta">http://192.168.1.23:8765/</span> – the numbers depend on your network. You can find the address again any time: <span class="t">&#9881;</span> → under <span class="nw"><span class="t">WEB TV IS RUNNING</span>.</span></li>
+      <li>On the TV or PC open a browser (Chrome, Edge, Firefox…) and type that address exactly, including the number after the colon.</li>
+      <li><b>Sound:</b> the browser plays sound only after a click or a key press – click anywhere in the picture (again after reloading the page).</li>
+    </ol>
+    <p>WEB TV runs until you close the app. While streaming, the phone keeps the <span class="nw">Wi-Fi</span> in low-latency mode.</p>
+  </div>
+  <div class="blok">
+    <h3>In the browser</h3>
+    <ul>
+      <li>Full screen on a PC: the <span class="nw"><kbd>F11</kbd></span> key.</li>
+      <li>Move the mouse (or touch the picture) – the <span class="nw"><span class="t">PICTURE</span></span> panel appears at the bottom right: brightness, contrast, saturation, <span class="nw"><span class="t">ORIGINAL SETTINGS</span>,</span> <span class="t">PICTURE: fill the screen</span> and picture tuning. The browser remembers the settings.</li>
+      <li>At the bottom right there is always a hint which keys work right now.</li>
+    </ul>
+  </div>
+  <div class="blok">
+    <h3>Computer keyboard</h3>
+    <div class="klavesy">
+      <div><h4>MAIN MENU</h4><p><kbd>&#8592;</kbd> <kbd>&#8594;</kbd> or <kbd>A</kbd> <kbd>D</kbd> browse, <kbd>Enter</kbd> / space opens a card, <kbd>Home</kbd> / <kbd>End</kbd> first / last.</p></div>
+      <div><h4>ATARI – TYPING</h4><p>Type normally (a Czech keyboard works too). <kbd>F1</kbd> START, <kbd>F3</kbd> SELECT, <kbd>F4</kbd> OPTION, <kbd>F2</kbd> BREAK, <kbd>F6</kbd> HELP, <kbd>F8</kbd> INVERSE, <kbd>Ctrl</kbd> + key = CONTROL. <kbd>F9</kbd> switches to game mode.</p></div>
+      <div><h4>ATARI – GAME MODE (F9)</h4><p><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> / arrows = joystick, <kbd>L</kbd> = FIRE, <kbd>K</kbd> / space = jump, <kbd>F1</kbd> START. <kbd>F9</kbd> back to typing.</p></div>
+      <div><h4>SEGA</h4><p><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> move, <kbd>K</kbd> = A, <kbd>L</kbd> = B, <kbd>O</kbd> = C, <kbd>P</kbd> = START.</p></div>
+      <div><h4>PS1</h4><p>Arrows / <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><span class="nw"><kbd>D</kbd>,</span> <kbd>K</kbd> / space &#10005;, <kbd>L</kbd> &#9675;, <kbd>J</kbd> &#9633;, <kbd>I</kbd> &#9651;, <kbd>Q</kbd> / <kbd>E</kbd> L1 / R1, <kbd>Z</kbd> / <kbd>C</kbd> L2 / R2, <kbd>Enter</kbd> / <kbd>P</kbd> START, <kbd>Backspace</kbd> / <kbd>O</kbd> SELECT.</p></div>
+    </div>
+    <p class="tip"><b>A PROGRAM FROM THE PC INTO THE ATARI</b> When the Atari 130XE is on the TV: <kbd>Ctrl</kbd> + <kbd>V</kbd> pastes text from the clipboard, or drag a TXT file into the browser window – the app types it into the Atari (512 kB at most).</p>
+  </div>
+  <nav class="kap-paticka"><a class="tl tl2" href="#obsah" data-skok="obsah">&#9650; CONTENTS</a><a class="tl" href="../index.html">&#9664; BACK TO THE MENU</a></nav>
+</section>
+
+<!-- ======================================================= 10 ODEMYKANI -->
+<section class="kap" id="odemykani" style="--a:#ffb35a">
+  <header class="kap-hlava">
+    <div class="kap-ikona"><svg viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 7.6-1.7"/><path d="M12 15v2.4"/></svg></div>
+    <div><div class="kap-cislo">CHAPTER 10</div><h2>UNLOCKING</h2><p class="kap-pod">SEGA AND PS1</p></div>
+  </header>
+  <p class="uvod">From the start the Atari 130XE, the MP3 player, the JUKEBOX, ATARIHELP.EU and HELP are open. The Sega and the PlayStation unlock step by step – like a retro gamer's journey from 8-bit onwards.</p>
+  <div class="blok">
+    <h3>SEGA MEGA DRIVE – type 50 lines on the Atari</h3>
+    <ul>
+      <li><b>Program lines</b> count – numbered lines, for example <span class="nw"><kbd>10 PRINT "HELLO"</kbd>.</span></li>
+      <li>They are counted when you <kbd>RUN</kbd> or <span class="nw"><kbd>LIST</kbd>.</span></li>
+      <li><b>At least 5 lines</b> must be added at a time – a shorter batch does not count. It does not have to be one program: ten programs of five lines each will do.</li>
+      <li>Only what you type yourself counts – on the machine's keyboard or on a computer keyboard via WEB TV. Pasted text (<kbd>Ctrl</kbd> + <span class="nw"><kbd>V</kbd>,</span> a dragged file, <span class="nw"><span class="t">BASIC/TBXL TXT</span>)</span> does not count.</li>
+      <li>When it is done, the Atari shows <span class="nw"><span class="t">SEGA UNLOCKED! IT IS IN THE MENU</span>.</span></li>
+    </ul>
+  </div>
+  <div class="blok">
+    <h3>PS1 – play the Sega for 30 minutes</h3>
+    <ul>
+      <li>Only the time when a game is really running on the Sega counts – not the app in the background or another emulator.</li>
+      <li>The minutes add up, you do not have to play in one go.</li>
+    </ul>
+  </div>
+  <div class="blok">
+    <h3>The locks apply everywhere</h3>
+    <p>A locked console is not opened even by a game from the atarihelp.eu website (a link, a downloaded file, a Google Drive link) – the app does not download it, does not start it and says why, for example <span class="nw"><span class="t">SEGA IS LOCKED</span>:</span> “Type 37 more program lines on the Atari…” Likewise the emulator page does not open any other way – the app returns to the main menu.</p>
+  </div>
+  <p class="tip"><b>HOW MUCH MORE?</b> Tap the locked card in the menu – the text under the cards shows how many lines or minutes are still missing.</p>
+  <nav class="kap-paticka"><a class="tl tl2" href="#obsah" data-skok="obsah">&#9650; CONTENTS</a><a class="tl" href="../index.html">&#9664; BACK TO THE MENU</a></nav>
+</section>
+
+<!-- ======================================================= 11 SOUBORY -->
+<section class="kap" id="soubory" style="--a:#8fd0ff">
+  <header class="kap-hlava">
+    <div class="kap-ikona"><svg viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg></div>
+    <div><div class="kap-cislo">CHAPTER 11</div><h2>FILES ON THE PHONE</h2><p class="kap-pod">WHAT YOU FIND WHERE</p></div>
+  </header>
+  <p class="uvod">The app saves everything important to the <span class="cesta">Download/AtariHelp</span> folder (“Downloads” in the file manager). This folder stays even when you uninstall the app. The folder names are Czech – here is what they hold.</p>
+  <div class="blok">
+    <dl class="tab">
+      <dt>Atari_emu</dt><dd>Atari tapes – CSAVE recordings (<span class="cesta">csave_&lt;date&gt;_&lt;time&gt;.wav</span>). EJECT offers them first.</dd>
+      <dt>Sega_hry</dt><dd>Sega games in MY GAMES.</dd>
+      <dt>Sega_ulozene_pozice</dt><dd>Sega saved positions – one for each game.</dd>
+      <dt>PS1</dt><dd>PS1 games downloaded via LOAD GAME.</dd>
+      <dt>PS1_pametova_karta</dt><dd>The PS1 memory card – saved games. Like a real card: it survives even uninstalling the app.</dd>
+      <dt>emu/sega, emu/ps1</dt><dd>Sonic the Hedgehog and the PlayStation BIOS (from OPTIONS → DOWNLOAD GAMES AND BIOS).</dd>
+      <dt>DJ_mixy</dt><dd>Mix recordings from the JUKEBOX (RECORD).</dd>
+      <dt>Mixtape</dt><dd>Recordings from the MP3 player (RECORD) – <span class="cesta">NP_VISION_mixtape_&lt;date&gt;_&lt;time&gt;.m4a</span>.</dd>
+      <dt>PS1_LOG.txt</dt><dd>The PS1 log (and PS1_LOG_predchozi.txt from the previous run).</dd>
+    </dl>
+  </div>
+  <p class="pozor"><b>NOTE</b> The unlocking progress (the Sega and PS1 locks), the app settings and the chosen language are stored in the app – uninstalling deletes them. Games, positions, the memory card and tapes in Download/AtariHelp stay.</p>
+  <nav class="kap-paticka"><a class="tl tl2" href="#obsah" data-skok="obsah">&#9650; CONTENTS</a><a class="tl" href="../index.html">&#9664; BACK TO THE MENU</a></nav>
+</section>
+
+<!-- ======================================================= 12 LOG -->
+<section class="kap" id="log" style="--a:#ff9a5a">
+  <header class="kap-hlava">
+    <div class="kap-ikona"><svg viewBox="0 0 24 24"><path d="M6 3h9l4 4v14H6z"/><path d="M15 3v4h4M9 12h7M9 16h5"/></svg></div>
+    <div><div class="kap-cislo">CHAPTER 12</div><h2>LOG AND ERROR REPORTS</h2><p class="kap-pod">WHEN SOMETHING FAILS</p></div>
+  </header>
+  <p class="uvod">The app writes down what it does (the log). When something fails, send the log – it is the fastest way to find the bug.</p>
+  <div class="blok">
+    <h3>Atari 130XE</h3>
+    <ol class="kroky">
+      <li>On the machine tap <span class="nw"><span class="t">LOG / ERROR</span>.</span></li>
+      <li>Press <span class="t">SAVE AND SEND THE LOG</span> – the log is saved as a file and a menu opens right away to choose how to send it (mail, Messenger…). To be safe it is also on the clipboard.</li>
+      <li>Back to the Atari: <span class="t">BACK TO THE ATARI 130XE</span> or BACK.</li>
+    </ol>
+    <p class="tip"><b>WHEN THE APP CRASHED</b> On the LOG / ERROR page, next to <b>Previous file (after a crash)</b> there is the path to the log of the previous run – send that file.</p>
+  </div>
+  <div class="blok">
+    <h3>PS1 and Sega</h3>
+    <ul>
+      <li><b>PS1:</b> the gear <span class="t">&#9881;</span> → <span class="t">SAVE AND SEND THE LOG</span> – the log is saved to <span class="cesta">Download/AtariHelp</span> and a menu opens right away to choose how to send it.</li>
+      <li><b>Sega:</b> in landscape the gear <span class="t">&#9881;</span> → <span class="t">EXPORT LOG (DIAGNOSTICS)</span> – the log is saved to <span class="cesta">Download/AtariHelp</span>.</li>
+    </ul>
+  </div>
+  <nav class="kap-paticka"><a class="tl tl2" href="#obsah" data-skok="obsah">&#9650; CONTENTS</a><a class="tl" href="../index.html">&#9664; BACK TO THE MENU</a></nav>
+</section>
+
+<!-- ======================================================= 13 OTAZKY -->
+<section class="kap" id="otazky" style="--a:#f2d27a">
+  <header class="kap-hlava">
+    <div class="kap-ikona"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.4a2.5 2.5 0 1 1 3.4 2.4c-.7.3-1 .8-1 1.5v.6"/><path d="M12 17.1v.1"/></svg></div>
+    <div><div class="kap-cislo">CHAPTER 13</div><h2>FAQ</h2><p class="kap-pod">QUICK ANSWERS</p></div>
+  </header>
+  <details><summary>The SEGA or PS1 card is locked. What now?</summary><div><p>The Sega unlocks after 50 typed program lines on the Atari, the PS1 after 30 minutes of playing the Sega. Tap the locked card to see how much is still missing. In detail: <a href="#odemykani" data-skok="odemykani">Unlocking</a>.</p></div></details>
+  <details><summary>A game from the web did not start, the app says the Sega / PS1 is locked.</summary><div><p>The locks apply to games from atarihelp.eu too. Once you unlock the console, the same game from the web starts. In detail: <a href="#odemykani" data-skok="odemykani">Unlocking</a>.</p></div></details>
+  <details><summary>How do I record my own mixtape?</summary><div><p>In the MP3 player play some tracks (for example <span class="t">▶ PLAY ALL FAVORITES</span>) and press <span class="nw"><span class="t">RECORD</span>.</span> The recording is saved to <span class="cesta">Download/AtariHelp/Mixtape</span>. In detail: <a href="#mp3" data-skok="mp3">MP3 player</a>.</p></div></details>
+  <details><summary>There is no sound on the TV.</summary><div><p>Click anywhere in the picture in the browser (or press a key). Browsers play sound only after a click – and again after reloading the page.</p></div></details>
+  <details><summary>The WEB TV address does not open in the browser.</summary><div><p>The phone and the TV / PC must be on the same <span class="nw">Wi-Fi</span>. Type the address exactly, including the number after the colon (for example <span class="cesta">:8765</span>). Some networks (especially guest <span class="nw">Wi-Fi</span>) do not let devices talk to each other – try your home network.</p></div></details>
+  <details><summary>The picture on the TV stutters or the sound crackles.</summary><div><p>In <a href="#options" data-skok="options">OPTIONS</a> switch to <span class="t">MANUAL</span> and try a lower <span class="t">PICTURE QUALITY (WEB TV)</span> and <span class="t">LOW</span> for the sound (the most reliable). Moving the phone closer to the router helps too.</p></div></details>
+  <details><summary>A PS1 game does not start.</summary><div><p>Check the format: .bin, .cue, .iso, .img, .pbp, .chd or .zip (the app cannot open .7z). PS1 needs a BIOS – the app downloads it by itself, or <a href="#options" data-skok="options">OPTIONS</a> → <span class="nw"><span class="t">DOWNLOAD GAMES AND BIOS</span>.</span> If it still does not work, send the log (<a href="#log" data-skok="log">Log and errors</a>).</p></div></details>
+  <details><summary>Where do I find my games, positions and tapes?</summary><div><p>In the <span class="cesta">Download/AtariHelp</span> folder – the overview is in the chapter <a href="#soubory" data-skok="soubory">Files on the phone</a>.</p></div></details>
+  <details><summary>Do I lose anything when I uninstall the app?</summary><div><p>Games, saved positions, the PS1 memory card and Atari tapes stay in Download/AtariHelp. The unlocking progress (the Sega and PS1 will be locked again), the app settings and the chosen language are deleted.</p></div></details>
+  <details><summary>The player does not find my songs.</summary><div><p>When the app asks for access to music, allow it (if you refused, allow it in the phone's settings for the app). Then <span class="nw"><span class="t">REFRESH THE PHONE LIST</span>,</span> or pick the files yourself via <span class="nw"><span class="t">PICK WITH THE SYSTEM</span>.</span> The player plays MP3 and WAV.</p></div></details>
+  <details><summary>How do I get a program from the computer into the Atari?</summary><div><p>Switch on WEB TV, open the address on the PC, start the Atari 130XE and press <kbd>Ctrl</kbd> + <kbd>V</kbd> (or drag a TXT file into the browser). On the phone the same works via <span class="nw"><span class="t">BASIC/TBXL TXT</span>.</span></p></div></details>
+  <details><summary>A game from NET / GAMES does not download.</summary><div><p>Check the internet and try again in a moment. You can also start a game from a file on the phone via <span class="nw"><span class="t">XEX / PHONE</span>.</span></p></div></details>
+  <details><summary>The on-screen controller does not suit me.</summary><div><p>In landscape the gear <span class="t">&#9881;</span> → <span class="nw"><span class="t">D-PAD AND CONTROLS</span>:</span> drag the buttons wherever you like, set the sensitivity, size and transparency, and swap them for left-handers. It works for the Atari, Sega and PS1.</p></div></details>
+  <details><summary>How do I update the app?</summary><div><p><a href="#options" data-skok="options">OPTIONS</a> → <span class="nw"><span class="t">UPDATE THE APP</span>.</span> The phone will still ask whether you allow the installation.</p></div></details>
+  <details><summary>I want to see the intro film again.</summary><div><p><a href="#options" data-skok="options">OPTIONS</a> → <span class="nw"><span class="t">PLAY INTRO</span>.</span> Skip it with the <span class="t">SKIP ›</span> button or BACK.</p></div></details>
+  <details><summary>How do I switch the app to Czech?</summary><div><p><a href="#options" data-skok="options">OPTIONS</a> → <span class="t">JAZYK · LANGUAGE</span> → <span class="nw"><span class="t">ČEŠTINA</span>.</span> The whole app switches right away.</p></div></details>
+  <nav class="kap-paticka"><a class="tl tl2" href="#obsah" data-skok="obsah">&#9650; CONTENTS</a><a class="tl" href="../index.html">&#9664; BACK TO THE MENU</a></nav>
+</section>
+
+<footer class="zapati">
+  N&amp;P VISION · RETRO UNIVERSE
+  <span class="podpis">René Frank</span>
+  ATARIHELP.EU · B314
+</footer>
+</main>
+
+<button id="nahoru" type="button" aria-label="Back up to the contents">&#9650;</button>
+
+<script>
+(function(){'use strict';
+function $(id){return document.getElementById(id);}
+
+// ---------- posun na kapitolu (bez zapisu do historie: ZPET na telefonu = rovnou menu) ----------
+var lista=document.querySelector('.lista');
+function skocNa(id){
+  var cil=$(id); if(!cil) return;
+  // kapitola schovana hledanim -> nejdriv hledani zrusit
+  if(cil.classList.contains('skryto')||(cil.closest&&cil.closest('.skryto'))) zrusHledani();
+  var y=cil.getBoundingClientRect().top+window.pageYOffset-((lista?lista.offsetHeight:58)+10);
+  try{window.scrollTo({top:Math.max(0,y),behavior:'smooth'});}catch(e){window.scrollTo(0,Math.max(0,y));}
+}
+document.addEventListener('click',function(e){
+  var a=e.target; while(a&&a.tagName!=='A') a=a.parentElement;
+  if(!a) return;
+  var h=a.getAttribute('href')||'';
+  if(h.charAt(0)!=='#') return;          // odkaz ven (MENU) - normalne
+  e.preventDefault();
+  skocNa(h.slice(1));
+},false);
+
+// ---------- plovouci "nahoru" ----------
+var nahoru=$('nahoru'), obsah=$('obsah');
+nahoru.addEventListener('click',function(){ skocNa(document.body.classList.contains('hleda')?'nahore':'obsah'); });
+var tik=false;
+function hlidejScroll(){
+  tik=false;
+  var hranice=obsah&&!document.body.classList.contains('hleda')?obsah.getBoundingClientRect().bottom:200;
+  nahoru.classList.toggle('ukaz',hranice<0);
+}
+window.addEventListener('scroll',function(){ if(!tik){tik=true;requestAnimationFrame(hlidejScroll);} },{passive:true});
+
+// ---------- hledani (bez ohledu na diakritiku a velikost pismen) ----------
+function bez(s){ return String(s).normalize?String(s).normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase():String(s).toLowerCase(); }
+var vstup=$('hledat'), obalH=$('hledatObal'), info=$('hledatInfo'), kapitoly=[].slice.call(document.querySelectorAll('.kap'));
+var otevrenoHledanim=[];
+
+function odznac(){
+  var m=[].slice.call(document.querySelectorAll('main mark'));
+  m.forEach(function(x){ var p=x.parentNode; if(!p) return; p.replaceChild(document.createTextNode(x.textContent),x); p.normalize(); });
+}
+// oznaci vsechny vyskyty q (uz bez diakritiky) v textovych uzlech prvku el; vrati pocet
+function oznac(el,q){
+  var n=0, uzly=[], w=document.createTreeWalker(el,NodeFilter.SHOW_TEXT,null,false), u;
+  while((u=w.nextNode())){ if(u.nodeValue&&u.nodeValue.trim()) uzly.push(u); }
+  uzly.forEach(function(uzel){
+    var src=uzel.nodeValue, norm='', mapa=[];
+    for(var i=0;i<src.length;i++){ var c=bez(src.charAt(i)); for(var j=0;j<c.length;j++){ norm+=c.charAt(j); mapa.push(i); } }
+    var kde=[], od=0, k;
+    while((k=norm.indexOf(q,od))>=0){ kde.push([mapa[k],mapa[k+q.length-1]+1]); od=k+q.length; }
+    for(var x=kde.length-1;x>=0;x--){
+      var zac=kde[x][0], kon=kde[x][1];
+      var stred=uzel.splitText(zac); stred.splitText(kon-zac);
+      var mk=document.createElement('mark'); mk.textContent=stred.nodeValue;
+      stred.parentNode.replaceChild(mk,stred);
+      n++;
+    }
+  });
+  return n;
+}
+function zrusHledani(){
+  vstup.value=''; obalH.classList.remove('ma'); proved('');
+}
+function proved(dotaz){
+  odznac();
+  otevrenoHledanim.forEach(function(d){ d.open=false; }); otevrenoHledanim=[];
+  [].slice.call(document.querySelectorAll('.skryto')).forEach(function(x){ x.classList.remove('skryto'); });
+  var q=bez(dotaz).replace(/\s+/g,' ').trim();
+  if(q.length<2){ document.body.classList.remove('hleda'); info.hidden=true; hlidejScroll(); return; }
+  // anglicke mnozne cislo: "tapes" najde i "tape", "boxes" i "box", "batteries" i "battery"
+  if(q.length>=6&&/ies$/.test(q)) q=q.slice(0,-3);
+  else if(q.length>=5&&/(x|ch|sh|ss)es$/.test(q)) q=q.slice(0,-2);
+  else if(q.length>=4&&/[^su]s$/.test(q)) q=q.slice(0,-1);
+  document.body.classList.add('hleda');
+  var celkem=0, kapNalez=0;
+  kapitoly.forEach(function(kap){
+    var hlava=kap.querySelector('.kap-hlava');
+    var celaKap=bez(hlava?hlava.textContent:'').indexOf(q)>=0;
+    var casti=[].slice.call(kap.querySelectorAll('.uvod,.blok,details,.tip,.pozor')).filter(function(c){
+      // jen nejvyssi casti (tip uvnitr bloku hleda blok)
+      var p=c.parentElement; while(p&&p!==kap){ if(p.matches&&p.matches('.uvod,.blok,details,.tip,.pozor')) return false; p=p.parentElement; }
+      return true;
+    });
+    var nasel=0, nejaka=false;
+    if(hlava) nasel+=oznac(hlava,q);
+    casti.forEach(function(c){
+      var sedi=bez(c.textContent).indexOf(q)>=0;
+      if(sedi){
+        nejaka=true; nasel+=oznac(c,q);
+        if(c.tagName==='DETAILS'&&!c.open){ c.open=true; otevrenoHledanim.push(c); }
+      } else if(!celaKap) c.classList.add('skryto');
+    });
+    if(!celaKap&&!nejaka) kap.classList.add('skryto');
+    else { kapNalez++; celkem+=nasel; }
+  });
+  info.hidden=false;
+  info.textContent=celkem>0?('FOUND '+celkem+'× · '+kapNalez+' '+(kapNalez===1?'CHAPTER':'CHAPTERS')):'NOTHING FOUND – TRY ANOTHER WORD';
+  hlidejScroll();
+}
+var casovac=0;
+vstup.addEventListener('input',function(){
+  obalH.classList.toggle('ma',vstup.value.length>0);
+  clearTimeout(casovac); casovac=setTimeout(function(){ proved(vstup.value); },140);
+});
+vstup.addEventListener('keydown',function(e){ if(e.key==='Enter'){ e.preventDefault(); vstup.blur(); } else if(e.key==='Escape'){ zrusHledani(); } });
+$('hledatZrus').addEventListener('click',function(){ zrusHledani(); vstup.focus(); });
+
+// odkaz z menu na konkretni kapitolu (napoveda/en.html#tv) - bez zapisu do historie
+if(location.hash&&location.hash.length>1){ var id=location.hash.slice(1); setTimeout(function(){ skocNa(id); },60); }
+})();
+</script>
+</body>
+</html>

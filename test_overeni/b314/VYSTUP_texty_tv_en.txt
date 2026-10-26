@@ -1,0 +1,55 @@
+B314 - vsechny anglicke texty stranky WEB TV (z MainActivity.java + nap_jazyk.js + en_tv.js), pro kontrolu ocima
+AtariHelp TV WEB CAST [SK60] MJPEG 3:14:25 PM 0fps AUDIO ON
+AUDIO ON
+SOUND: CLICK ANYWHERE IN THE PICTURE
+the browser plays sound only after a click or a key press (again after reloading the page)
+PICTURE
+brightness
+contrast
+saturation
+ORIGINAL SETTINGS
+PICTURE: fill the screen
+PICTURE TUNING: on
+LOW
+MED
+HIGH
+⛶ FULL
+MENU - arrows / A D browse, Enter opens, Home / End
+alt=AtariHelp TV
+[titulek] AtariHelp TV
+AtariHelp TV WEB CAST [SK60] MJPEG 3:14:28 PM 0fps AUDIO ON
+ATARI - type normally; F1 START, F3 SELECT, F4 OPTION, F2 BREAK, F6 HELP, F8 INVERSE (F9 = game mode)
+AtariHelp TV WEB CAST [SK60] MJPEG 3:14:31 PM 0fps AUDIO ON
+ATARI GAME MODE - WASD/arrows direction, L = FIRE, K/space jump, F1 START (F9 = typing)
+AtariHelp TV WEB CAST [SK60] MJPEG 3:14:33 PM 0fps AUDIO ON
+SEGA - WASD move, K = A, L = B, O = C, P = START
+AtariHelp TV WEB CAST [SK60] MJPEG 3:14:36 PM 0fps AUDIO ON
+PS1 - arrows/WASD direction, K/space CROSS, L CIRCLE, J SQUARE, I TRIANGLE, Q/E L1/R1, Z/C L2/R2, Enter/P START, Backspace/O SELECT
+AtariHelp TV WEB CAST [SK60] MJPEG 3:14:39 PM 0fps AUDIO ON
+AtariHelp TV WEB CAST [SK60] MJPEG 3:14:40 PM 0fps AUDIO ON
+PICTURE: whole, no cropping
+PICTURE TUNING: off
+⛶ EXIT
+AtariHelp TV WEB CAST [SK60] MJPEG 3:14:50 PM 0fps AUDIO ON
+ATARI - type normally; F1 START, F3 SELECT, F4 OPTION, F2 BREAK, F6 HELP, F8 INVERSE (F9 = game mode) [PASTE: NO RESPONSE]
+PASTE: NO RESPONSE
+AtariHelp TV WEB CAST [SK60] MJPEG 3:15:13 PM 0fps AUDIO ON
+PS1 - arrows/WASD direction, K/space CROSS, L CIRCLE, J SQUARE, I TRIANGLE, Q/E L1/R1, Z/C L2/R2, Enter/P START, Backspace/O SELECT [UP]
+[vlozeni] PASTED: 3 PROGRAM LINES (NO NEW) - TYPING
+[vlozeni] PASTED: 1 PROGRAM LINE (NO NEW) - TYPING WHEN READY (45 S AT MOST) (SKIPPED 2 WITHOUT A NUMBER)
+[vlozeni] TYPED: 1 CHARACTER
+[vlozeni] TYPED: 12 CHARACTERS (2 NOT ON THE ATARI)
+[vlozeni] PASTE: THE ATARI IS OFF
+[vlozeni] PASTE: THE APP IS TYPING ANOTHER PROGRAM - WAIT
+[vlozeni] PASTE: NOT TEXT (LOAD XEX / ATR / BAS IN THE APP)
+[vlozeni] PASTE: THE ATARI 130XE IS NOT ON SCREEN
+[vlozeni] PASTE: THE LIBRARY IS NOT LOADED
+[vlozeni] PASTE: EMPTY
+[vlozeni] PASTE: NO RESPONSE
+[vlozeni] ATARI GAME MODE - WASD/arrows direction, L = FIRE, K/space jump, F1 START   (F9 = typing)   [JUMP]
+[vlozeni] ATARI GAME MODE - WASD/arrows direction, L = FIRE, K/space jump, F1 START   (F9 = typing)   [FIRE]
+[vlozeni] ATARI GAME MODE - WASD/arrows direction, L = FIRE, K/space jump, F1 START   (F9 = typing)   [DIRECTION:KeyW]
+[vlozeni] ATARI - type normally; F1 START, F3 SELECT, F4 OPTION, F2 BREAK, F6 HELP, F8 INVERSE   (F9 = game mode)   [UNKNOWN:F12]
+[vlozeni] PS1 - arrows/WASD direction, K/space CROSS, L CIRCLE, J SQUARE, I TRIANGLE, Q/E L1/R1, Z/C L2/R2, Enter/P START, Backspace/O SELECT   [CROSS]
+[vlozeni] PS1 - arrows/WASD direction, K/space CROSS, L CIRCLE, J SQUARE, I TRIANGLE, Q/E L1/R1, Z/C L2/R2, Enter/P START, Backspace/O SELECT   [TRIANGLE]
+[vlozeni] PS1 - arrows/WASD direction, K/space CROSS, L CIRCLE, J SQUARE, I TRIANGLE, Q/E L1/R1, Z/C L2/R2, Enter/P START, Backspace/O SELECT   [UP]

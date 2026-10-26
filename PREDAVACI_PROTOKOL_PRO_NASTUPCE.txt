@@ -2974,3 +2974,70 @@
        podle jazyka telefonu).
 
 ===============================================================================
+
+   B314: JAZYK CZ / EN V CELE APPCE.
+     Rene: "slo by dat vyber jazyka - volbu Cze a Ang? ... po volbe na ang
+     byla apka v anglictine? a naopak?"
+     - VOLBA: OPTIONS -> JAZYK · LANGUAGE (index.html #stJazCs / #stJazEn).
+       NapJazyk.java: SharedPreferences "nap_jazyk"/"jazyk"; dokud nikdo
+       nevolil, Locale telefonu (cs / sk = cs, jinak en). Most AHJAZYK
+       (kod(), nastav(k)) - nastav ulozi, zaloguje "B314 JAZYK_ZMENA" a na
+       vlakne UI jazykDoKnihoven("OPTIONS") + menuZamky() (duvody zamku
+       v novem jazyce). Java texty: tx(cs, en) / NapJazyk.t(c, cs, en).
+     - STRANKY (WebView): stranky zustavaji uvnitr CESKE; preklad dela
+       assets/spolecne/nap_jazyk.js (ES5) podle slovniku assets/jazyk/
+       en_<stranka>.js (NapJazyk.slovnik({cesky: anglicky}), NapJazyk.vzory
+       ([[RegExp, text|fn]])). Hleda presny text, pak se slitymi mezerami,
+       pak bez symbolu na okrajich (▶, •, :, …); MutationObserver hlida
+       zmeny, alert / confirm / prompt a canvas fillText se prekladaji,
+       data-nepreklad = nesahat, data-cs-only / data-en-only = dve verze
+       bloku (CSS podle tridy html.nap-jazyk-en), data-en-src = obrazek
+       s textem (Sega skin). Zdroj jazyka: AHJAZYK -> ?lang= -> window.
+       NAP_JAZYK (stranka TV) -> localStorage napJazyk -> navigator.
+       language. NOVY TEXT NA STRANCE = pridat ho do slovniku, jinak
+       zustane cesky (test_overeni/b314 test_b314_jazyk_stranky.py to
+       najde: diakritika + wordfreq ceska slova bez hacku).
+     - MENU C++: karty.txt ma 14 sloupcu (11-14 anglicky: NAME | subtitle |
+       description | button; prazdny = cesky, tlacitko OPEN). Karta.cz[4]
+       / en[4], napmenu::pouzijJazyk. JNI menuJazyk (24. native metoda):
+       g_jazykEn + pouzijJazyk(g_karty) + g_verzeKaret++; vlakno pak
+       Kresba::nastavJazyk (napisy LOCKED, napoveda TV, umeni s textem -
+       kniha HELP GUIDE / CONTROLS) a nastavTextyKaret (texty bez noveho
+       nacitani obrazku). Java menuKarta dostava anglicky nazev, CIL JE
+       STEJNY. Karta HELP: Java NapPravidla.cilPodleJazyka ->
+       napoveda/en.html; zalozni karusel cilEn() + OBRAZKY_EN
+       (menu/karta_help_en.jpg z menu_snimky_b314 --en --karty 600 800).
+     - NAVOD: napoveda/en.html = anglicky preklad index.html (stejne id
+       kapitol, stejne obrazky, nazvy tlacitek PRESNE z anglicke appky -
+       kontrola_navodu_en.py). Oba soubory maji na zacatku <head> skript:
+       AHJAZYK.kod() (nebo ?lang=) en -> index.html se location.replace na
+       en.html (a naopak), bez historie. Zmena v jednom navodu = zmenit
+       i druhy.
+     - INTRO: NativeIntroBridge.introJazyk -> g_jazykEn -> Demo::
+       nastavJazyk pred init (novy Demo pri kazdem spusteni; Java jeste
+       jazykSafe v demoSpust). Anglicky: jen anglicke titulky + anglicke
+       zaverecne titulky (scena 5 = 51 s + POSUN5, titulky ~53-57 s).
+       Cesky beze zmeny (cesky + anglicky pod tim, jak to Rene navrhl).
+     - ATARI: nap_atari_jazyk.h (atariJazykEn atomic, tx, stitek HRY/MOBIL/
+       CHYBA/MEZERA -> GAMES/PHONE/ERROR/SPACE, chybaKazety, radkuText).
+       Java posle devCtl "jazyk:en|cs" pri zapnuti pristroje (pred
+       devStart) a po zmene v OPTIONS, kdyz pristroj bezi. Handler vola
+       Device::jazykZmenen = layout(W, H) znovu + markAll - na sirku jsou
+       stitky v predkreslenych tlacitkach (buildSprites; klic cache ma
+       i landBuildEn). Odpovedi vlozeni z PC (VLOZENO / NAPSANO ...) jsou
+       z C++ porad cesky - prelozi je en_tv.js na strance TV (testy B303
+       cekaji cestinu).
+     - STRANKA WEB TV: Java ji sklada (napTvWebWriteHtml); anglicky
+       napTvJazykStranka vlozi za </title> window.NAP_JAZYK='en' +
+       nap_jazyk.js + en_tv.js. Napoveda klavesnice se cte zpet
+       (kn.textContent) -> pise se rovnou prelozena (napTr), jinak by ji
+       prekladac a porovnani prepisovaly dokola a [posledni klavesa]
+       blikala. Cesky je stranka beze zmeny (napTr bez NapJazyk = text).
+     - CO ZUSTAVA CESKY: nazvy slozek v telefonu (Sega_hry, PS1_pametova_
+       karta, DJ_mixy ...), log appky, napisy na samotnem Atari (vzdy
+       anglicky jako skutecne Atari), DZUBOX (byl anglicky uz drive).
+     - TESTY: test_overeni/b314 (JAK_SPUSTIT.txt, vse.sh). Chromium testy
+       stranek porovnavaji cestinu s git HEAD (B313) - po commitu B314 se
+       srovnava s B314.
+
+===============================================================================

@@ -66,6 +66,7 @@ public final class NativeMenuBridge {
     private static native String menuLog();
     private static native int menuGrabFrame(int[] ven);
     private static native void menuNastav(float hz, int tvKvalita);       // B313
+    private static native void menuJazyk(int en);                         // B314
     // TV / PC proudem z C++ (stejne jako NativeIntroBridge)
     private static native int proudOtevriNative();
     private static native int proudDalsiNative(int id, byte[] out, int cekejMs, int zapisMs);
@@ -150,6 +151,14 @@ public final class NativeMenuBridge {
     public static void nastavSafe(float hz, int tvKvalita) {
         if (!nactena) return;
         try { menuNastav(hz, tvKvalita); } catch (Throwable ignored) {}
+    }
+    /**
+     * B314: jazyk menu - karty z anglickych sloupcu karty.txt, nápisy (ZAMČENO / LOCKED,
+     * nápověda na TV, obrázek HELP). Platí i pro karty načtené před tím. false = knihovna chybí.
+     */
+    public static boolean jazykSafe(boolean en) {
+        if (!nactena) return false;
+        try { menuJazyk(en ? 1 : 0); return true; } catch (Throwable t) { return false; }
     }
     /** Snimek pro stare prohlizece bez ReadableStream: (sirka<<16)|vyska, zaporne = male pole, 0 = nic. */
     public static int grabFrameSafe(int[] ven) {

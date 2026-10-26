@@ -102,7 +102,10 @@ stránka): volba v OPTIONS, poprvé podle jazyka telefonu.
 2. OPTIONS → KVALITA OBRAZU (WEB TV) = HIGH, SPUSTIT WEB TV, otevři adresu na PC / TV. Menu nech chvíli
    stát – do 1 s se musí doostřit (zlaté nápisy, popis pod kartou). Pak listuj šipkami.
 3. Z menu na TV otevři ATARI 130XE – TV se musí přepnout na Atari do 1 s.
-4. Na telefonu přejeď na kartu SEGA MEGA DRIVE (cartridge, kontrolky) a PS1 (disk, víko, roztočení).
+4. Nejdřív Segu a PS1 odemkni (po kroku 1 jsou zamčené a zamčená karta je šedá, bez animace):
+   OPTIONS → 5× rychle klepni na nadpis OPTIONS → servisní kód → 2× ODEMKNOUT DALŠÍ (Sega, pak PS1).
+   Pak na telefonu přejeď na kartu SEGA MEGA DRIVE (cartridge, kontrolky) a PS1 (disk, víko, roztočení).
+   *(B314: krok opraven – v B313 tu odemčení chybělo.)*
 5. OPTIONS → PUSTIT INTRO – kolem 30. s konzole.
 6. Pošli log z `8765/log`.
 

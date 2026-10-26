@@ -1,0 +1,88 @@
+B314 - JAZYK CZ / EN V CELE APPCE
+=================================
+
+Rene: "slo by dat vyber jazyka - volbu Cze a Ang? Myslim tim, ze by po volbe na ang byla apka
+v anglictine? a naopak?"
+
+Volba: OPTIONS -> JAZYK · LANGUAGE (CESTINA / ENGLISH). Dokud nikdo nevolil, plati jazyk telefonu
+(cs / sk = cesky, jinak anglicky). Prepne se hned, i za chodu.
+
+Kod v appce:
+  NapJazyk.java                jazyk appky (SharedPreferences nap_jazyk, poprve podle telefonu),
+                               NapJazyk.t(c, "cesky", "English")
+  MainActivity.java            most AHJAZYK (kod, nastav), tx() u dialogu a hlasek, jazykDoKnihoven
+                               (menu, intro, Atari pri zapnuti), karta HELP anglicky -> napoveda/en.html,
+                               stranka WEB TV anglicky (napTvJazykStranka: prekladac + slovnik za </title>,
+                               napoveda klavesnice pres napTr), anglicka napoveda Atari (ATARI_HELP_EN)
+  NapPravidla.java             duvodZamku / duvodKarty cesky / anglicky, cilPodleJazyka (HELP)
+  NapStahovaniSeSouhlasem.java, NapAktualizace.java   dialogy stahovani a aktualizace anglicky
+  NativeMenuBridge.java        menuJazyk (24. native metoda), NativeIntroBridge.java introJazyk
+  assets/spolecne/nap_jazyk.js prekladac stranek (ES5): slovniky assets/jazyk/en_*.js, vzory, hlidani
+                               zmen (MutationObserver), alert / confirm / prompt, canvas, data-cs-only /
+                               data-en-only, data-en-src (obrazek s textem), prepnuti za chodu
+  assets/jazyk/en_menu.js, en_atari.js, en_konzole.js, en_sega.js, en_ps1.js, en_mp3.js, en_tv.js
+  assets/index.html            prepinac JAZYK · LANGUAGE, zalozni karusel z anglickych sloupcu karty.txt,
+                               zamky, obrazek karty HELP anglicky (karta_help_en.jpg)
+  assets/napoveda/en.html      anglicky navod (stejne kapitoly jako index.html, nazvy tlacitek anglicky);
+                               index.html <-> en.html se presmeruji podle AHJAZYK.kod()
+  assets/menu/karty.txt        sloupce 11-14 anglicky (NAME | subtitle | description | button)
+  assets/emu_sega/sega_megadrive_screen_en.png   obrazek konzole s anglickymi napisy (sega_skin_en.py)
+  cpp/menu/nap_menu_karty.h    Karta.cz[4] / en[4], pouzijJazyk; nap_menu_gl.cpp menuJazyk;
+                               nap_menu_kresba.h napisy LOCKED / hint na TV; nap_menu_umeni_help.h kniha
+                               GUIDE / CONTROLS
+  cpp/intro/nap_demo.h         titulky jen anglicky, zaverecne titulky anglicky; nap_intro_gl.cpp introJazyk
+  cpp/atari/nap_atari_jazyk.h  tx(), stitek(), chybaKazety(), radkuText(); nap_atari_device.h /
+                               nap_atari_runtime.h / nap_atari_native.cpp hlasky a stitky,
+                               devCtl "jazyk:en|cs" -> Device::jazykZmenen (na sirku znovu predkreslit
+                               tlacitka - stitek MEZERA / SPACE)
+
+Spoustet z adresare test_overeni/b314 (nebo odkudkoli: bash test_overeni/b314/vse.sh).
+Potreba: g++, JAVA_HOME = JDK, hlavicky EGL / GLES2 / KHR + stb_image_write.h v $INC (jako ../b311),
+knihovny Mesa (libEGL, libGLESv2), zlib, Python 3 + numpy + Pillow + wordfreq (ceska slova bez
+diakritiky), Chromium + Playwright pro Python, Node.js (acorn se doinstaluje do PRAC), android.jar
+API 34 ($ANDROID_JAR), glslangValidator ($GLSLANG) a ffmpeg / ffprobe pro regresi.
+Vse najednou: PRAC=... INC=... GLSLANG=... ANDROID_JAR=... bash vse.sh        (vystupy VYSTUP_* sem)
+
+1) Hlavni nabidka a OPTIONS (index.html) v Chromiu: python3 test_b314_jazyk_menu.py
+   cesky = B313 (jen radek JAZYK · LANGUAGE navic), anglicky bez cestiny ve 20 stavech (karusel, zamky,
+   OPTIONS, WEB TV, servis, TV pokus), prepnuti CZ -> EN -> CZ za chodu, karta HELP (obrazek, en.html)
+                                                                     -> VYSTUP_test_b314_jazyk_menu.txt
+2) Stranky appky (Atari 130XE, Sega, PS1, MP3, DZUBOX): python3 test_b314_jazyk_stranky.py [jmeno]
+   (konfigurace stranek a kroku: stranky_b314.py; spolecne veci: jazyk_harness.py - server, falesne
+   mosty Javy, sber textu vcetne alert / canvas, hledani ceskych slov)
+   a) cesky texty jako B313, b) anglicky bez cestiny, c) zadna nova chyba JS
+                                    -> VYSTUP_test_b314_jazyk_stranky.txt, VYSTUP_texty_<stranka>_en.txt
+3) Navod: python3 test_b314_jazyk_navod.py PRAC   (presmerovani, en.html, hledani, cesky = B313 + jazyk,
+   320 / 360 px / na sirku)                                          -> VYSTUP_test_b314_jazyk_navod.txt
+   python3 kontrola_navodu_en.py  (kazdy nazev tlacitka v en.html je v appce anglicky, stejna stavba
+   jako index.html, presmerovani)                                    -> VYSTUP_kontrola_navodu_en.txt
+   cesky navod: ../b311/kontrola_navodu.py                           -> VYSTUP_kontrola_navodu_cz.txt
+4) Stranka WEB TV: python3 test_b314_jazyk_tv.py  (stranka z MainActivity.java, anglicky presne jak ji
+   sklada Java, server v Pythonu jako Java: menu, Atari psani / hrani, Sega, PS1, panel OBRAZ,
+   vlozeni Ctrl+V, posledni klavesa za napovedou)                     -> VYSTUP_test_b314_jazyk_tv.txt
+5) C++ bez GPU: g++ -std=c++17 -O2 -o test_jazyk_cpp test_jazyk_cpp.cpp && ./test_jazyk_cpp
+                                                                     -> VYSTUP_test_jazyk_cpp.txt
+6) Menu anglicky pres Mesa: menu_snimky_b314.cpp (= ../b311/menu_snimky.cpp + --en)
+   g++ -std=c++17 -O2 -I$INC -o menu_snimky_b314 menu_snimky_b314.cpp -l:libEGL.so.1 -l:libGLESv2.so.2
+   menu_snimky_b314 VYSTUP 600 800 --en --karty  -> karta_help_en.jpg (= assets/menu/karta_help_en.jpg)
+                                                                     -> VYSTUP_menu_snimky_en.txt
+7) SKUTECNY nap_menu_gl.cpp pres JNI + menuJazyk tam a zpet: test_menu_host_b314.cpp
+   (= ../b313/test_menu_host_b313.cpp + krok 11), prepinace jako v ../b313; ThreadSanitizer +
+   python3 tsan_rozbor.py               -> VYSTUP_test_menu_host_b314.txt, VYSTUP_tsan_menu_host_b314.txt
+8) Intro cesky / anglicky: intro_jazyk.cpp (Mesa; bez textu stejne, s titulky jine)
+   g++ -std=c++17 -O2 -I$INC -o intro_jazyk intro_jazyk.cpp -l:libEGL.so.1 -l:libGLESv2.so.2 -lz
+                                                                     -> VYSTUP_intro_jazyk.txt
+9) Pristroj Atari cesky / anglicky: atari_jazyk.cpp (na vysku i na sirku, prepnuti za chodu = zapnuti
+   v anglictine, zpet cesky = puvodni obraz)                          -> VYSTUP_atari_jazyk.txt
+10) JVM: TestB314Java.java (NapPravidla) + kontrola_zamku_texty.py (vety zamku Java = HTML menu)
+                                     -> VYSTUP_test_b314_java.txt, VYSTUP_kontrola_zamku_texty.txt
+11) ES5 (stare WebView): acorn ecmaVersion 5 na nap_jazyk.js a jazyk/*.js -> VYSTUP_kontrola_es5.txt
+12) Java proti android.jar, podpisy JNI (kontrola_jni.py: menu 24, intro 17) a export z knihoven
+                                               -> VYSTUP_javac_android.txt, VYSTUP_kontrola_jni.txt
+13) Regrese (regrese.sh): ../b313/vse.sh (vcetne jeho regrese B305 / B306 / B309 / B307 / B311 / B302 /
+    B303), ../b312/vse.sh, ../b291 test_b291_jni_host (skutecny nap_atari_native.cpp) na kodu B314;
+    vysledky sem jako VYSTUP_regrese_*.txt, puvodni VYSTUP_* starsich verzi se vrati z gitu
+                                                                     -> VYSTUP_regrese.txt
+
+Pomocne: sega_skin_en.py (obrazek konzole Sega s anglickymi napisy - OpenCV inpaint + Liberation Sans
+Bold), stranky_b314.py, jazyk_harness.py.

@@ -1028,7 +1028,7 @@ static void emuVlaknoMain() {
               g_stroj->tape.pos = 0; g_stroj->tape.rxPhase = 0; g_stroj->tape.play = true;
               g_kazBoot.start(*g_stroj);
               devLog("B298 POWER se START (+OPTION) a kazetou " + g_stroj->tape.name + " - boot z kazety (pasek pretocen na zacatek, po pipnuti RETURN)");
-              g_statusText = "BOOT Z KAZETY - RETURN STISKNU SÁM"; g_statusMs = 8000;
+              g_statusText = nap::tx(u8"BOOT Z KAZETY - RETURN STISKNU SÁM", "BOOT FROM TAPE - I WILL PRESS RETURN"); g_statusMs = 8000;
             } else if (g_stroj && g_stroj->disk.mounted) {
               // B295: s disketou v D1: se startuje jako s hrou - OPTION drzene (BASIC vypnuty)
               g_consolDrzetDo[2] = g_snimkuCelkem.load() + 150;
@@ -1036,7 +1036,7 @@ static void emuVlaknoMain() {
               // B298: at je videt, proc se zase nahrava hra (Rene: "W3D nepomuze ani vypnout a zapnout")
               {   // nazev zkratit, at se zprava vejde na radek pod pristrojem
                 std::string jm = g_stroj->disk.name; if (jm.size() > 18) jm = jm.substr(0, 16) + "..";
-                g_statusText = "V D1: JE " + jm + " - VYSUNOUT: ATR/DISK"; g_statusMs = 7000;
+                g_statusText = nap::atariEn() ? "IN D1: " + jm + " - EJECT: ATR/DISK" : "V D1: JE " + jm + " - VYSUNOUT: ATR/DISK"; g_statusMs = 7000;
               }
             } else if (drzene != 7) {
               devLog(std::string("B298 POWER s drzenym") + ((drzene & 1) ? "" : " START") + ((drzene & 2) ? "" : " SELECT") + ((drzene & 4) ? "" : " OPTION"));
@@ -1199,7 +1199,7 @@ static void emuVlaknoMain() {
       for (float &v : pasek) v *= 0.8f;
       g_rec.snimek(*g_stroj, pasek.data(), 882);
       g_xex.poSnimku(*g_stroj);
-      if (g_kazBoot.poSnimku(*g_stroj)) { g_statusText = "NAHRÁVÁ SE Z KAZETY..."; g_statusMs = 15000; }
+      if (g_kazBoot.poSnimku(*g_stroj)) { g_statusText = nap::tx(u8"NAHRÁVÁ SE Z KAZETY...", "LOADING FROM TAPE..."); g_statusMs = 15000; }
       g_psani.poSnimku(*g_stroj);
       if (!g_psani.status.empty()) { g_statusText = g_psani.status; g_statusMs = g_psani.statusMs; g_psani.status.clear(); }
       // B296: VBXE - do logu, kdyz ho program najde / zapne XDL / zmeni rezim
@@ -1240,7 +1240,9 @@ static void emuVlaknoMain() {
             else
               snprintf(b, sizeof(b), "B295 KAZETA motor ZAPNUT - v magnetofonu neni kazeta (CSAVE nahrava do WAV, CLOAD nema co cist - EJECT a vyber kazetu)");
             devLog(b);
-            g_statusText = t.loaded ? (t.play ? "MOTOR BEZI - CTU PASKU" : "MOTOR BEZI - ZMACKNI PLAY!") : "MOTOR BEZI";
+            g_statusText = t.loaded ? (t.play ? nap::tx("MOTOR BEZI - CTU PASKU", "MOTOR RUNNING - READING THE TAPE")
+                                              : nap::tx("MOTOR BEZI - ZMACKNI PLAY!", "MOTOR RUNNING - PRESS PLAY!"))
+                                    : nap::tx("MOTOR BEZI", "MOTOR RUNNING");
             g_statusMs = t.loaded && !t.play ? 30000 : 6000;
           } else {
             if (t.loaded) {
@@ -1536,6 +1538,18 @@ extern "C" JNIEXPORT jstring JNICALL
 Java_eu_atarihelp_emu10_NativeAtariCoreBridge_devCtlNative(JNIEnv *env, jclass, jstring jcmd) {
   std::string cmd;
   if (jcmd) { const char *c = env->GetStringUTFChars(jcmd, nullptr); if (c) { cmd = c; env->ReleaseStringUTFChars(jcmd, c); } }
+  // B314: "jazyk:en" / "jazyk:cs" - hlasky a napisy appky na pristroji (OPTIONS -> JAZYK)
+  if (cmd == "jazyk:en" || cmd == "jazyk:cs") {
+    const bool en = cmd == "jazyk:en";
+    const bool zmena = nap::atariJazykEn().exchange(en) != en;
+    if (zmena) {
+      devLog(std::string("B314 JAZYK pristroje: ") + (en ? "anglicky" : "cesky"));
+      std::lock_guard<std::mutex> dl(g_mDev);
+      devGet().jazykZmenen();      // znovu rozlozit (stitky D-padu na sirku) a prekreslit vse
+      pokeRender();
+    }
+    return env->NewStringUTF(en ? "en" : "cs");
+  }
   // B310: "postup" = hotove davky napsanych radku programu pro postup hrace ("12,7",
   // "" = zadna) - vyzvedne je Java (NapPostup) a tim se smazou. Bez logu (vola se casto).
   if (cmd == "postup") {
@@ -1576,7 +1590,7 @@ Java_eu_atarihelp_emu10_NativeAtariCoreBridge_devCtlNative(JNIEnv *env, jclass, 
       nap::dev::Device &dv = devGet();
       if (!dv.power) { dv.power = true; dv.powerAt = nap_ted_ms(); }
       dv.atariValid = false; dv.markScreen(); dv.markLegend();
-      dv.setStatusMessage("DISKETA VYSUNUTA - D1: PRÁZDNÁ", nap_ted_ms(), 4000);
+      dv.setStatusMessage(nap::tx(u8"DISKETA VYSUNUTA - D1: PRÁZDNÁ", "DISK EJECTED - D1: EMPTY"), nap_ted_ms(), 4000);
     } else if (cmd == "atr_vymena") devLog("B298 DISKETA: dalsi ATR se jen vymeni v D1: (bez restartu, napr. druha strana hry)");
     pokeRender();
     return env->NewStringUTF(out.c_str());
@@ -2009,7 +2023,7 @@ Java_eu_atarihelp_emu10_NativeAtariCoreBridge_devLoadXexNative(JNIEnv *env, jcla
     nap::dev::Device &d = devGet();
     if (!d.power) { d.power = true; d.powerAt = nap_ted_ms(); }
     d.atariValid = false; d.markScreen(); d.markLegend();
-    d.setStatusMessage(("SPOUSTIM " + nm).c_str(), nap_ted_ms(), 4000);
+    d.setStatusMessage((nap::tx("SPOUSTIM ", "STARTING ") + nm).c_str(), nap_ted_ms(), 4000);
   }
   pokeRender();
   return ok ? JNI_TRUE : JNI_FALSE;
@@ -2036,7 +2050,7 @@ Java_eu_atarihelp_emu10_NativeAtariCoreBridge_devLoadTapeNative(JNIEnv *env, jcl
     snprintf(b, sizeof(b), "CHYBA %s: %s", nm.c_str(), err.c_str());
     devLog(std::string("B292 KAZETA ") + b);
     std::lock_guard<std::mutex> dl(g_mDev);
-    devGet().setStatusMessage(("KAZETA NEJDE NACIST: " + err).c_str(), nap_ted_ms(), 7000);
+    devGet().setStatusMessage((nap::tx("KAZETA NEJDE NACIST: ", "CANNOT LOAD THE TAPE: ") + nap::chybaKazety(err)).c_str(), nap_ted_ms(), 7000);
     pokeRender();
     return env->NewStringUTF(b);
   }
@@ -2077,14 +2091,14 @@ Java_eu_atarihelp_emu10_NativeAtariCoreBridge_devLoadTapeNative(JNIEnv *env, jcl
   if (druh == nap::TapeImage::BOOT) {
     if (odpojenaDisketa) devLog("B298 DISKETA vyjmuta z D1: (bootuje kazeta)");
     devLog("B298 KAZETA S BOOTEM - studeny start s drzenym START+OPTION (jako pri zapnuti na skutecnem 130XE), po pipnuti RETURN sam");
-    stav = "HRA Z KAZETY - NAHRAJE SE SAMA";
+    stav = nap::tx("HRA Z KAZETY - NAHRAJE SE SAMA", "GAME FROM TAPE - IT LOADS BY ITSELF");
   } else if (druh == nap::TapeImage::TEXT) {
     devLog("B298 KAZETA s vypisem BASICu (text) - napis ENTER \"C:\", RETURN, po pipnuti RETURN");
-    stav = "NAPIŠ ENTER \"C:\" A 2x RETURN";
+    stav = nap::tx(u8"NAPIŠ ENTER \"C:\" A 2x RETURN", "TYPE ENTER \"C:\" AND RETURN 2x");
   } else {
     devLog("B295 KAZETA PLAY zmacknuto automaticky - ted napis CLOAD, RETURN, a po pipnuti jeste jednou RETURN");
-    stav = druh == nap::TapeImage::BASIC ? "NAPIŠ CLOAD + RETURN, PO PÍPNUTÍ RETURN"
-                                         : "NAPIŠ CLOAD, HRA: START+OPTION+POWER";
+    stav = druh == nap::TapeImage::BASIC ? nap::tx(u8"NAPIŠ CLOAD + RETURN, PO PÍPNUTÍ RETURN", "TYPE CLOAD + RETURN, AFTER THE BEEP RETURN")
+                                         : nap::tx(u8"NAPIŠ CLOAD, HRA: START+OPTION+POWER", "TYPE CLOAD; GAME: START+OPTION+POWER");
   }
   {
     std::lock_guard<std::mutex> dl(g_mDev);
@@ -2120,7 +2134,7 @@ Java_eu_atarihelp_emu10_NativeAtariCoreBridge_devLoadAtrNative(JNIEnv *env, jcla
     snprintf(b, sizeof(b), "CHYBA %s neni platny ATR (chybi hlavicka $96 $02 nebo je prazdny)", nm.c_str());
     devLog(std::string("B295 DISKETA ") + b);
     std::lock_guard<std::mutex> dl(g_mDev);
-    devGet().setStatusMessage(("NENI ATR: " + nm).c_str(), nap_ted_ms(), 6000);
+    devGet().setStatusMessage((nap::tx("NENI ATR: ", "NOT AN ATR: ") + nm).c_str(), nap_ted_ms(), 6000);
     pokeRender();
     return env->NewStringUTF(b);
   }
@@ -2140,7 +2154,7 @@ Java_eu_atarihelp_emu10_NativeAtariCoreBridge_devLoadAtrNative(JNIEnv *env, jcla
     devLog(std::string("B298 DISKETA ") + b);
     {
       std::lock_guard<std::mutex> dl(g_mDev);
-      devGet().setStatusMessage(("V D1: JE " + (nm.size() > 26 ? nm.substr(0, 24) + ".." : nm)).c_str(), nap_ted_ms(), 5000);
+      devGet().setStatusMessage((nap::tx("V D1: JE ", "IN D1: ") + (nm.size() > 26 ? nm.substr(0, 24) + ".." : nm)).c_str(), nap_ted_ms(), 5000);
     }
     pokeRender();
     return env->NewStringUTF(b);
@@ -2166,7 +2180,7 @@ Java_eu_atarihelp_emu10_NativeAtariCoreBridge_devLoadAtrNative(JNIEnv *env, jcla
     nap::dev::Device &dv = devGet();
     if (!dv.power) { dv.power = true; dv.powerAt = nap_ted_ms(); }
     dv.atariValid = false; dv.markScreen(); dv.markLegend();
-    dv.setStatusMessage(("DISKETA D1: " + nm).c_str(), nap_ted_ms(), 5000);
+    dv.setStatusMessage((nap::tx("DISKETA D1: ", "DISK D1: ") + nm).c_str(), nap_ted_ms(), 5000);
   }
   pokeRender();
   return env->NewStringUTF(b);

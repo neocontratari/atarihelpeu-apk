@@ -4,6 +4,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no, viewport-fit=cover">
 <title>SEGA Mega Drive FINAL USER UI — N&P Vision</title>
+<!-- B314: jazyk CZ / EN (OPTIONS -> JAZYK · LANGUAGE) -->
+<script src="../spolecne/nap_jazyk.js"></script>
+<script src="../jazyk/en_konzole.js"></script>
+<script src="../jazyk/en_sega.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
 :root{
@@ -242,7 +246,7 @@ body.tvCastActive .segaRychlyPruh{animation-play-state:paused!important;}
 </head>
 <body>
 <main id="stage" class="stage" aria-label="SEGA Mega Drive module">
-  <img class="skin" src="sega_megadrive_screen.png" alt="SEGA Mega Drive">
+  <img class="skin" src="sega_megadrive_screen.png" data-en-src="sega_megadrive_screen_en.png" alt="SEGA Mega Drive">
   <div id="monitorBlank" aria-hidden="true"></div>
   <canvas id="mdVideo" width="320" height="224" aria-label="SEGA Mega Drive status canvas"></canvas>
   <!-- BUILD2RV: old Java/WebView Sega iframe removed from DOM; Sega runtime is C++ native only. -->

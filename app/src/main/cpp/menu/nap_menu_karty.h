@@ -25,6 +25,9 @@
 //   efekt     zivy obrazek v C++ (3d:atari, 3d:nap16, 3d:nap32, fx:kazeta,
 //             fx:dzubox, fx:web, fx:help); prazdne = jen obrazek
 //   tlacitko  text tlacitka pod kartami (prazdne = OTEVRIT)
+//  B314 - anglicky (volba jazyka v OPTIONS): 4 sloupce navic na konci radku
+//     | NAME | subtitle | description | button
+//   prazdny anglicky sloupec = cesky text (tlacitko: OPEN)
 //  Prazdne radky a radky zacinajici # se preskoci. Chybejici pole na konci
 //  radku = prazdna.
 //
@@ -39,7 +42,9 @@
 namespace napmenu {
 
 struct Karta {
-  std::string id, nazev, podtitul, popis, obrazek, cil, zamekKlic, efekt, tlacitko;
+  std::string id, nazev, podtitul, popis, obrazek, cil, zamekKlic, efekt, tlacitko;   // zobrazene (podle jazyka)
+  // B314: texty v obou jazycich - 0 nazev, 1 podtitul, 2 popis, 3 tlacitko (pouzijJazyk)
+  std::string cz[4], en[4];
   uint32_t barva = 0xF2B640;          // 0xRRGGBB
   // stav (nastavuje Java pres JNI)
   bool zamceno = false;
@@ -118,7 +123,7 @@ inline std::vector<Karta> nactiKarty(const char *text, size_t n, std::string *ch
       if (b == std::string::npos) break;
       a = b + 1;
     }
-    while (pole.size() < 10) pole.push_back("");
+    while (pole.size() < 14) pole.push_back("");
     Karta k;
     k.id = pole[0];
     k.nazev = pole[1];
@@ -130,6 +135,7 @@ inline std::vector<Karta> nactiKarty(const char *text, size_t n, std::string *ch
     k.zamekKlic = pole[7];
     k.efekt = pole[8];
     k.tlacitko = pole[9];
+    for (int j = 0; j < 4; j++) k.en[j] = pole[(size_t)(10 + j)];   // B314: anglicke sloupce
     if (k.id.empty()) {
       if (chyby) *chyby += "radek " + std::to_string(cisloRadku) + ": chybi id - preskakuji\n";
       continue;
@@ -139,6 +145,7 @@ inline std::vector<Karta> nactiKarty(const char *text, size_t n, std::string *ch
       *chyby += "radek " + std::to_string(cisloRadku) + " (" + k.id + "): spatna barva '" + pole[6] + "'\n";
     if (k.nazev.empty()) k.nazev = velka(k.id);
     if (k.tlacitko.empty()) k.tlacitko = "OTEVŘÍT";
+    k.cz[0] = k.nazev; k.cz[1] = k.podtitul; k.cz[2] = k.popis; k.cz[3] = k.tlacitko;
     // stejne id dvakrat - druhe dostane priponu (zamky a log se nesmi plest)
     for (const Karta &o : v)
       if (o.id == k.id) {
@@ -151,16 +158,36 @@ inline std::vector<Karta> nactiKarty(const char *text, size_t n, std::string *ch
   return v;
 }
 
+// B314: zobrazene texty karty podle jazyka (anglicky sloupec prazdny = cesky text,
+// tlacitko OPEN). Ceske texty zustanou v k.cz, takze jde prepinat tam i zpet.
+inline void pouzijJazyk(Karta &k, bool en) {
+  std::string *cil[4] = {&k.nazev, &k.podtitul, &k.popis, &k.tlacitko};
+  for (int j = 0; j < 4; j++) {
+    if (!en) *cil[j] = k.cz[j];
+    else if (!k.en[j].empty()) *cil[j] = k.en[j];
+    else *cil[j] = (j == 3) ? std::string("OPEN") : k.cz[j];
+  }
+}
+inline void pouzijJazyk(std::vector<Karta> &v, bool en) {
+  for (Karta &k : v) pouzijJazyk(k, en);
+}
+
 // Kdyby soubor v appce chybel nebo byl prazdny: menu musi fungovat vzdycky.
 // (Stejny obsah jako assets/menu/karty.txt v B311.)
 static const char *KARTY_ZALOHA =
     "atari | ATARI 130XE | EMULÁTOR · C++ | Atari 130XE s grafikou VBXE, celé v C++. | menu/karta_atari.jpg | "
-    "emu_atari_cpp/index.html | #F2B640 | | 3d:atari | SPUSTIT\n"
-    "sega | SEGA MEGA DRIVE | 16-BIT KONZOLE | 16bitové hry. | menu/karta_sega.jpg | emu_sega/index.html | #3FA9FF | sega | 3d:nap16 | SPUSTIT\n"
-    "ps1 | PS1 | PLAYSTATION · 32-BIT | 32bitové hry. | menu/karta_ps1.jpg | emu_ps1/index.html | #B26BFF | ps1 | 3d:nap32 | SPUSTIT\n"
-    "mp3 | MP3 PŘEHRÁVAČ | RETRO CASSETTE PLAYER | Hudba z telefonu. | menu/karta_mp3.jpg | player/index.html | #FFB347 | | fx:kazeta | PŘEHRÁT\n"
-    "dzubox | DŽUBOX | PRO DJ MIXER | DJ mixer. | menu/karta_dzubox.jpg | dj/index.html | #FF4FD8 | | fx:dzubox | ROZJET\n"
-    "web | ATARIHELP.EU | OFICIÁLNÍ WEB | Web atarihelp.eu. | menu/karta_web.jpg | https://atarihelp.eu/ | #4FE0C0 | | fx:web | OTEVŘÍT\n"
-    "help | HELP | NÁVOD A OTÁZKY | Úplný návod. | menu/karta_help.jpg | napoveda/index.html | #F2D27A | | fx:help | OTEVŘÍT\n";
+    "emu_atari_cpp/index.html | #F2B640 | | 3d:atari | SPUSTIT | ATARI 130XE | EMULATOR · C++ | Atari 130XE with VBXE graphics, all in C++. | START\n"
+    "sega | SEGA MEGA DRIVE | 16-BIT KONZOLE | 16bitové hry. | menu/karta_sega.jpg | emu_sega/index.html | #3FA9FF | sega | 3d:nap16 | SPUSTIT"
+    " | SEGA MEGA DRIVE | 16-BIT CONSOLE | 16-bit games. | START\n"
+    "ps1 | PS1 | PLAYSTATION · 32-BIT | 32bitové hry. | menu/karta_ps1.jpg | emu_ps1/index.html | #B26BFF | ps1 | 3d:nap32 | SPUSTIT"
+    " | PS1 | PLAYSTATION · 32-BIT | 32-bit games. | START\n"
+    "mp3 | MP3 PŘEHRÁVAČ | RETRO CASSETTE PLAYER | Hudba z telefonu. | menu/karta_mp3.jpg | player/index.html | #FFB347 | | fx:kazeta | PŘEHRÁT"
+    " | MP3 PLAYER | RETRO CASSETTE PLAYER | Music from your phone. | PLAY\n"
+    "dzubox | DŽUBOX | PRO DJ MIXER | DJ mixer. | menu/karta_dzubox.jpg | dj/index.html | #FF4FD8 | | fx:dzubox | ROZJET"
+    " | JUKEBOX | PRO DJ MIXER | DJ mixer. | LET'S GO\n"
+    "web | ATARIHELP.EU | OFICIÁLNÍ WEB | Web atarihelp.eu. | menu/karta_web.jpg | https://atarihelp.eu/ | #4FE0C0 | | fx:web | OTEVŘÍT"
+    " | ATARIHELP.EU | OFFICIAL WEBSITE | The atarihelp.eu website. | OPEN\n"
+    "help | HELP | NÁVOD A OTÁZKY | Úplný návod. | menu/karta_help.jpg | napoveda/index.html | #F2D27A | | fx:help | OTEVŘÍT"
+    " | HELP | GUIDE AND FAQ | The complete guide. | OPEN\n";
 
 }  // namespace napmenu

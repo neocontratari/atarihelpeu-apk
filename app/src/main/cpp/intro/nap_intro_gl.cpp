@@ -91,6 +91,7 @@ std::atomic<long long> g_startNs{0};        // B307: kdy zacal beh (dotyk hned p
 std::atomic<int> g_plochaW{0}, g_plochaH{0};   // B307: velikost plochy, do ktere C++ kresli (pro dotyk)
 std::atomic<bool> g_klipObraz{false};       // B307: zabery z Pitt-Kitt nacteny (obraz)
 std::atomic<bool> g_klipZvuk{false};        // B307: zvuk hry primichany do stopy
+std::atomic<bool> g_jazykEn{false};         // B314: titulky anglicky (Java introJazyk)
 
 // ---- zvuk ----
 std::unique_ptr<napdemo::zv::Stopa> g_stopa;
@@ -254,6 +255,7 @@ void vlaknoDema(ANativeWindow *okno) {
 
   {
     std::unique_ptr<napdemo::Demo> demo(new napdemo::Demo());
+    demo->nastavJazyk(g_jazykEn.load());     // B314
     int lw = 0, lh = 0;
     std::vector<unsigned char> logo = nactiLogo(lw, lh);
     const long long t0 = tedNs();
@@ -632,6 +634,11 @@ JNIEXPORT jlong JNICALL Java_eu_atarihelp_emu10_NativeIntroBridge_introSnimku(JN
 
 JNIEXPORT jint JNICALL Java_eu_atarihelp_emu10_NativeIntroBridge_introCasMs(JNIEnv *, jclass) {
   return (jint)g_casMs.load();
+}
+
+/** B314: jazyk titulku (1 = anglicky: jen anglicke titulky; 0 = cesky + anglicky pod nimi). */
+JNIEXPORT void JNICALL Java_eu_atarihelp_emu10_NativeIntroBridge_introJazyk(JNIEnv *, jclass, jint en) {
+  g_jazykEn.store(en != 0);
 }
 
 /** Kratka zprava do logu appky: GPU, priprava, rychlost kresleni, zvuk. */

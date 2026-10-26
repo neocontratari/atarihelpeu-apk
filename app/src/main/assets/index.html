@@ -10,6 +10,9 @@
 // at pod C++ menu nic neproblikne. Kdyz C++ menu nejde (nebo na PC), je videt HTML.
 (function(){try{if(window.AHINTRO&&AHINTRO.menuBude&&AHINTRO.menuBude())document.documentElement.className+=' nativni';}catch(e){}})();
 </script>
+<!-- B314: jazyk CZ / EN (OPTIONS -> JAZYK · LANGUAGE, jinak podle telefonu) -->
+<script src="spolecne/nap_jazyk.js"></script>
+<script src="jazyk/en_menu.js"></script>
 <style>
 /* B311: pismo Chakra Petch primo v appce (stejne jako C++ menu; licence OFL v pisma/OFL.txt) */
 @font-face{font-family:"Chakra Petch";src:url(pisma/chakra_semibold.woff2) format("woff2");font-weight:400 600;font-style:normal;font-display:swap;}
@@ -123,6 +126,12 @@ body{background:radial-gradient(120% 70% at 50% 40%,#1c1006 0%,#0a0603 45%,#0302
 <div id="settingsPanel" aria-hidden="true">
   <div class="list">
     <div class="stlabel" id="stTitul">OPTIONS</div>
+    <!-- B314: jazyk - nazvy jazyku vzdy ve svem jazyce (neprekladaji se) -->
+    <div class="stlabel2" data-nepreklad>JAZYK · LANGUAGE</div>
+    <div class="qrow" id="stJazyk" data-nepreklad>
+      <button id="stJazCs" type="button" data-jazyk="cs">ČEŠTINA</button>
+      <button id="stJazEn" type="button" data-jazyk="en">ENGLISH</button>
+    </div>
     <button id="stStartTv" type="button">SPUSTIT WEB TV</button>
     <div id="stTvAdresa"><small>NA TV NEBO PC OTEVŘI V PROHLÍŽEČI</small><b></b><small>stejná Wi-Fi · zvuk pustíš kliknutím do obrazu</small></div>
     <button id="stIntro" type="button">PUSTIT INTRO</button>
@@ -180,6 +189,9 @@ function $(id){return document.getElementById(id);}
 function log(t){try{console.log('[NAP MENU '+BUILD+'] '+t);}catch(e){}}
 function toast(t,ms){var el=$('toast');if(!el)return;el.textContent=t;el.classList.add('show');clearTimeout(window.__napToast);window.__napToast=setTimeout(function(){el.classList.remove('show');},ms||2200);}
 function toastBezi(){var el=$('toast');return !!(el&&el.classList.contains('show'));}
+// B314: cesky / anglicky (assets/spolecne/nap_jazyk.js); bez nej vzdy cesky
+function EN(){ try{ return !!(window.NapJazyk&&NapJazyk.en()); }catch(e){ return false; } }
+function J(cs,en){ return EN()?en:cs; }
 
 // ================= C++ menu nad strankou =================
 // Java: napMenuNativni(true) = C++ menu je videt (HTML karusel schovat), false = C++ menu
@@ -198,15 +210,23 @@ function nactiText(){
        if(x.status===200||x.status===0) return x.responseText||''; }catch(e){ log('KARTY_XHR '+e); }
   return '';
 }
+// B314: obrazek karty s ceskym textem (kniha NAVOD) ma anglickou verzi; navod anglicky = napoveda/en.html
+// (stejne jako Java NapPravidla.cilPodleJazyka - cesky navod by se tam stejne presmeroval)
+var OBRAZKY_EN={'menu/karta_help.jpg':'menu/karta_help_en.jpg'};
+function cilEn(c){ return String(c||'').replace(/^napoveda\/index\.html/,'napoveda/en.html'); }
 function rozeber(t){
   var v=[], ids={};
   (t||'').replace(/^﻿/,'').split(/\r?\n/).forEach(function(r){
     r=r.trim(); if(!r||r.charAt(0)==='#') return;
     var p=r.split('|').map(function(x){return x.trim();});
-    while(p.length<10) p.push('');
+    while(p.length<14) p.push('');
     if(!p[0]) return;
     if(ids[p[0]]) p[0]+='_'+v.length; ids[p[0]]=1;
-    v.push({id:p[0],nazev:p[1]||p[0].toUpperCase(),podtitul:p[2],popis:p[3],obrazek:p[4],cil:p[5],barva:p[6]||'#F2B640',zamek:p[7],efekt:p[8],tlacitko:p[9]||'OTEVŘÍT'});
+    var k={id:p[0],nazev:p[1]||p[0].toUpperCase(),podtitul:p[2],popis:p[3],obrazek:p[4],cil:p[5],barva:p[6]||'#F2B640',zamek:p[7],efekt:p[8],tlacitko:p[9]||'OTEVŘÍT'};
+    // B314: anglicke sloupce 11-14 (NAME | subtitle | description | button); prazdne = cesky text
+    if(EN()){ k.nazev=p[10]||k.nazev; k.podtitul=p[11]||k.podtitul; k.popis=p[12]||k.popis; k.tlacitko=p[13]||'OPEN';
+              k.obrazek=OBRAZKY_EN[k.obrazek]||k.obrazek; k.cil=cilEn(k.cil); }
+    v.push(k);
   });
   return v;
 }
@@ -216,9 +236,13 @@ function postup(){
   return st;
 }
 function radku(n){ return n===1?'řádek':(n>=2&&n<=4?'řádky':'řádků'); }
+// stejna slova jako Java (NapPravidla.duvodKarty) - cesky / anglicky
 function zamekKarty(k,st){
-  if(k.zamek==='sega'&&!st.sega) return 'Napiš v Atari ještě '+(st.zbyvaRadku||0)+' '+radku(st.zbyvaRadku||0)+' programu (řádky s číslem, počítají se při RUN nebo LIST).';
-  if(k.zamek==='ps1'&&!st.ps1) return st.sega?('Hraj na Seze ještě '+(st.zbyvaMinut||0)+' min.'):'Nejdřív odemkni Segu, pak 30 minut hraní na Seze.';
+  var r=st.zbyvaRadku||0, m=st.zbyvaMinut||0;
+  if(k.zamek==='sega'&&!st.sega) return J('Napiš v Atari ještě '+r+' '+radku(r)+' programu (řádky s číslem, počítají se při RUN nebo LIST).',
+                                          'Type '+r+' more program '+(r===1?'line':'lines')+' on the Atari (numbered lines \u2013 they count on RUN or LIST).');
+  if(k.zamek==='ps1'&&!st.ps1) return st.sega?J('Hraj na Seze ještě '+m+' min.','Play the Sega for '+m+' more min.')
+                                             :J('Nejdřív odemkni Segu, pak 30 minut hraní na Seze.','Unlock the Sega first, then play it for 30 minutes.');
   return '';
 }
 var kar=$('karusel'), tecky=$('tecky');
@@ -232,7 +256,7 @@ function postav(){
     var d=document.createElement('div');
     d.className='karta'+(k.duvod?' zamcena':'');
     d.setAttribute('data-i',i);
-    d.innerHTML='<div class="vnitrek"><img alt="" loading="lazy"><div class="zamek"><span>&#128274;</span><b>ZAMČENO</b></div>'
+    d.innerHTML='<div class="vnitrek"><img alt="" loading="lazy"><div class="zamek"><span>&#128274;</span><b>'+J('ZAMČENO','LOCKED')+'</b></div>'
       +'<div class="stitek"><b></b><i></i></div></div>';
     d.querySelector('img').src=k.obrazek;
     d.querySelector('.stitek b').textContent=k.nazev;
@@ -276,15 +300,15 @@ function ukazVybranou(i){
   vybrana=i;
   var k=karty[i]; if(!k) return;
   var p=$('popis'), b=$('spustit');
-  p.textContent=k.duvod?('ZAMČENO · '+k.duvod):k.popis;
+  p.textContent=k.duvod?(J('ZAMČENO','LOCKED')+' · '+k.duvod):k.popis;
   p.className=k.duvod?'zamceno':'';
-  b.innerHTML=(k.duvod?'&#128274; ZAMČENO':'&#9654; '+k.tlacitko.replace(/[<>&]/g,''));
+  b.innerHTML=(k.duvod?'&#128274; '+J('ZAMČENO','LOCKED'):'&#9654; '+k.tlacitko.replace(/[<>&]/g,''));
   b.className=k.duvod?'zamceno':'';
   for(var t=0;t<tecky.children.length;t++) tecky.children[t].className=t===i?'on':'';
 }
 function spust(i){
   var k=karty[i]; if(!k) return;
-  if(k.duvod){ toast('ZAMČENO\n'+k.duvod,3200); return; }
+  if(k.duvod){ toast(J('ZAMČENO','LOCKED')+'\n'+k.duvod,3200); return; }
   if(!k.cil){ toast(k.nazev,1200); return; }
   log('SPUSTIT '+k.id+' -> '+k.cil);
   if(k.cil.indexOf('akce:')===0){ if(k.cil==='akce:nastaveni') openSettings(); return; }
@@ -460,7 +484,30 @@ stTvP.addEventListener('click',function(e){
   stTvP.textContent='TV POKUS: '+jm;
   log('TV_POKUS '+jm);
 },true);
-log('ready: karusel karet (B311), OPTIONS, C++ menu '+(document.documentElement.className.indexOf('nativni')>=0?'ANO':'ne'));
+// B314: JAZYK · LANGUAGE - Java ulozi volbu (NapJazyk) a prepne C++ menu, Atari a intro;
+// stranka se prelozi hned (bez nacteni znovu), karusel v HTML se postavi znovu
+function jazykUkaz(){
+  var k=window.NapJazyk?NapJazyk.kod():'cs';
+  $('stJazCs').classList.toggle('active',k==='cs');
+  $('stJazEn').classList.toggle('active',k==='en');
+}
+['stJazCs','stJazEn'].forEach(function(id){
+  var b=$(id); if(!b) return;
+  b.addEventListener('click',function(e){
+    e.preventDefault();e.stopPropagation();
+    var k=b.getAttribute('data-jazyk'), r=k;
+    try{ if(window.AHJAZYK&&AHJAZYK.nastav) r=String(AHJAZYK.nastav(k)); }catch(err){ log('JAZYK_ERR '+err); }
+    if(r!=='en'&&r!=='cs') r=k;
+    try{ localStorage.setItem('napJazyk',r); }catch(err){}
+    if(window.NapJazyk) NapJazyk.nastav(r);
+    jazykUkaz();
+    log('JAZYK '+r);
+    toast(r==='en'?'LANGUAGE: ENGLISH':'JAZYK: ČEŠTINA',1600);
+  },true);
+});
+if(window.NapJazyk) NapJazyk.priZmene(function(){ postav(); ukazVybranou(vybrana); try{ servisUkaz(); }catch(e){} });
+jazykUkaz();
+log('ready: karusel karet (B311), OPTIONS, C++ menu '+(document.documentElement.className.indexOf('nativni')>=0?'ANO':'ne')+', jazyk '+(window.NapJazyk?NapJazyk.kod():'cs'));
 })();
 </script>
 

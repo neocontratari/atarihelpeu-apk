@@ -72,6 +72,8 @@ public final class NativeIntroBridge {
     public static native int introGrabFrame(int[] ven);
     /** Kratka zprava do logu: GPU, priprava, rychlost kresleni, zvuk. */
     public static native String introInfo();
+    /** B314: 1 = anglicke titulky, 0 = ceske (+ anglicke pod nimi). */
+    private static native void introJazyk(int en);
     // B306: TV / PC proudem z C++ (stejne jako NativeSegaCoreBridge / NativePs1CoreBridge)
     private static native int proudOtevriNative();
     private static native int proudDalsiNative(int id, byte[] out, int cekejMs, int zapisMs);
@@ -139,5 +141,13 @@ public final class NativeIntroBridge {
     public static void stopSafe() {
         if (!nactena) return;
         try { introStop(); } catch (Throwable ignored) {}
+    }
+    /**
+     * B314: jazyk titulku intra - cesky: titulky cesky + anglicky pod nimi (jak to Rene
+     * navrhl), anglicky: jen anglicke titulky a anglicke zaverecne titulky. false = knihovna chybi.
+     */
+    public static boolean jazykSafe(boolean en) {
+        if (!nactena) return false;
+        try { introJazyk(en ? 1 : 0); return true; } catch (Throwable t) { return false; }
     }
 }

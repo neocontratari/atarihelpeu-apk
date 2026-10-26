@@ -1,0 +1,731 @@
+B314 - vsechny texty anglickeho navodu (napoveda/en.html), pro kontrolu ocima
+GUIDE
+N&P VISION
+◀ MENU
+N&P VISION · RETRO UNIVERSE
+THE COMPLETE GUIDE
+One app, the whole retro world:
+Atari 130XE
+Sega Mega Drive
+PlayStation
+, a cassette deck for MP3s and a DJ console. Everything is here – from the first start to playing on a TV.
+FOUND 2× · 1 CHAPTER
+QUICK START
+In the main menu, drag the cards left and right. Tap
+ATARI 130XE
+At the very bottom of the machine tap
+NET / GAMES
+and pick a game – it downloads and runs right away.
+Type at least 50 program lines on the Atari (and
+RUN
+SEGA MEGA DRIVE
+unlocks.
+Play the Sega for 30 minutes –
+PS1
+Want it on a big screen? The gear
+in the menu →
+START WEB TV
+CONTENTS
+MAIN MENU
+CARDS AND CONTROLS
+EMULATOR · C++
+16-BIT CONSOLE
+PLAYSTATION · 32-BIT
+MP3 PLAYER
+RETRO CASSETTE PLAYER
+JUKEBOX
+PRO DJ MIXER
+ATARIHELP.EU
+OFFICIAL WEBSITE
+OPTIONS
+APP SETTINGS
+WEB TV AND PC
+PICTURE IN A BROWSER
+UNLOCKING
+SEGA AND PS1
+FILES
+WHAT IS WHERE ON THE PHONE
+LOG AND ERRORS
+WHEN SOMETHING FAILS
+FAQ
+QUICK ANSWERS
+CHAPTER 01
+The main menu is a row of big cards – one card, one world. The order:
+HELP
+The menu is drawn by pure C++ straight on the graphics chip, so it runs smoothly with no delay.
+The first start
+When Sonic the Hedgehog (Sega) or the PlayStation BIOS is missing on the phone, the app first asks whether to download them from atarihelp.eu:
+DOWNLOAD
+NOT NOW
+The app works without them too.
+Then the intro film plays. Skip it with the
+SKIP ›
+button or the phone's BACK button. Play it again in
+PLAY INTRO
+Finally the main menu appears – the cards fly into place.
+The app speaks the language of the phone (Czech or English). You can switch it any time:
+JAZYK · LANGUAGE
+Browsing and opening
+Drag
+The cards follow your finger smoothly left and right. Let go – the card glides to the middle.
+Flick
+A quick flick skips several cards at once. A finger on the moving cards stops them.
+Tap the middle
+Opens the middle card (the card lights up and the app switches).
+Button under the card
+START
+PLAY
+LET'S GO
+OPEN WEBSITE
+OPEN GUIDE
+– opens the middle card.
+Card next to it
+Tap it and it slides to the middle.
+Dots
+Tap a dot to jump straight to that card.
+Gear ⚙
+Top right – opens
+Keyboard, controller, remote control
+(also
+L1
+R1
+on a controller) – browse the cards.
+Enter
+OK
+A
+or the space bar – opens the middle card.
+Home
+End
+– the first / last card.
+On a TV or PC via WEB TV you browse with the arrow keys (or
+D
+and open with
+– see
+WEB TV and PC
+Locked cards
+The
+and
+cards unlock step by step. A locked card is grey with a padlock and the word
+LOCKED
+When you tap it, it shakes and the text under the cards shows what is still missing (for example how many program lines to type). How:
+Unlocking
+Back to the menu
+Every section has a
+MENU
+button (in PS1
+BACK
+on the DJ console
+MENU / ⏻
+Or the phone's BACK button.
+The BACK button in the main menu itself sends the app to the background – when you come back, the menu is waiting for you.
+▲ CONTENTS
+◀ BACK TO THE MENU
+CHAPTER 02
+An Atari 130XE with 128 kB of memory and the VBXE graphics card, written entirely in C++. The whole machine is on the display: the screen, the console buttons, the keyboard, the tape deck and, at the very bottom, the service buttons.
+Power and console
+POWER
+The green switch on the left by the screen – switches the Atari off / on. Switching on is a cold start: the memory is cleared.
+RESET
+Like on a real Atari – the program in memory stays.
+HELP, START, SELECT, OPTION
+Console buttons above the keyboard, held for as long as your finger is on them. (HELP here is the Atari's HELP key.)
+SHIFT, CONTROL
+A tap = locked (gold), another tap = unlocked.
+Joystick
+In portrait – the joystick is the Atari screen
+Put a finger on the
+left half
+of the screen and move it (up, down, sideways, diagonals too) – the joystick points that way for as long as you hold the finger.
+right half
+of the screen =
+FIRE
+(held while the finger is down). Both thumbs work at once.
+In landscape – turn the phone
+The Atari picture fills the whole display. The D-pad is bottom left (the dot follows your thumb, diagonals too),
+SPACE
+RETURN
+on the right,
+SELECT
+OPTION
+top left.
+The gear
+at the top right =
+D-PAD AND CONTROLS
+EDIT BUTTON LAYOUT
+(drag with a finger,
+IN GROUPS
+DEFAULT
+DONE
+CONTROLS: SENSITIVITY AND LOOK
+(sensitivity, transparency, button and D-pad size, vibration),
+SWAP D-PAD AND ACTIONS (LEFT-HANDED)
+DEFAULT BUTTON LAYOUT
+RESET ATARI
+games, disk, tape and help. The app remembers your settings.
+Game controller (Bluetooth / USB)
+D-pad or stick = joystick,
+B
+= FIRE,
+X
+= SPACE,
+Y
+= RETURN,
+= console,
+L2
+R2
+= OPTION.
+Service buttons (at the very bottom)
+Games from atarihelp.eu – Galactic Chase, Moon Patrol, Pac-Man, Donkey Kong, River Raid, Bruce Lee, Montezuma's Revenge, René's Pitt-Kitt and more. Tap a game, it downloads and starts. The
+WEB
+button opens the games website.
+XEX / PHONE
+Starts a game from the phone – a XEX file (also packed in a ZIP).
+ATR / DISK
+An ATR disk (also in a ZIP) into drive D1: and boot from the disk (
+held = BASIC off). The disk stays in the drive even after switching off and on – like a real drive. When there is a disk in D1:, it offers
+EJECT THE DISK
+(the Atari restarts with BASIC),
+SWAP THE DISK WITHOUT RESTART
+(the game wants the next disk or the other side) and
+INSERT ANOTHER DISK AND BOOT
+TURBO / BASIC
+Loads Turbo-BASIC XL 1.5.
+BASIC/TBXL TXT
+A program from a text file:
+TXT FILE → ATARI BASIC
+or
+TXT FILE → TURBO-BASIC XL
+– the app types the program itself on the Atari keyboard, line by line (then RUN, CSAVE…). Or
+TYPE / PASTE TEXT MANUALLY
+PASTE
+PASTE + RUN
+LOG / ERROR
+Log and tests – see
+Log and errors
+A short controls help right in the Atari.
+Back to the main menu.
+Tape deck
+REC
+stay down,
+STOP
+releases them.
+REW
+= tape to the start,
+FWD
+= 10 s further. The small button next to the counter resets it.
+EJECT
+opens the door and offers tapes – CSAVE recordings or any WAV from the phone. Once you pick one, the tape goes in and the door closes.
+Saving a program to tape (CSAVE)
+Type
+CSAVE
+After the beep,
+again.
+After recording, the WAV is saved by itself to
+Download/AtariHelp/Atari_emu/csave_<date>_<time>.wav
+– it is the exact signal for a real tape recorder.
+Loading a program from tape (CLOAD)
+and pick a tape (PLAY is pressed by itself).
+CLOAD
+– the Atari beeps and waits.
+Press
+once more. The motor starts, the program loads, then
+READY
+and you can
+LIST
+While loading you hear what a real Atari plays (
+POKE 65,0
+= silent). With a stereo WAV also the tape's audio track.
+GAMES ON TAPE
+The app recognises a tape that starts by itself (boot): the Atari powers on with START + OPTION held, presses RETURN after the beep and the game loads. Manually: hold START and OPTION and flip POWER. In landscape you find the tapes in the gear
+TAPE (WAV)
+VBXE graphics
+The VBXE graphics card is built into the Atari – VBXE games (Wolfenstein 3D, Popeye…) find it by themselves. Wolfenstein 3D: walk with the joystick, FIRE = shoot, SPACE = open doors.
+Typing programs
+Type on the machine's keyboard or on a computer keyboard via
+WEB TV
+. Every 50 lines you type yourself unlock the Sega – see
+CHAPTER 03
+16-bit Mega Drive games with an on-screen controller. The card unlocks once you type 50 program lines on the Atari –
+In portrait – the console
+CATALOG
+A tap = the game catalog on atarihelp.eu: tap a game, it downloads and plays. Then the app asks “Save … to the phone?” –
+SAVE
+adds it to MY GAMES. Hold (0.7 s) = performance
+HIGH QUALITY
+LOW PERFORMANCE
+GAMES
+MY GAMES
+– games saved on the phone. Tap a game to start it, the bin deletes it (
+JUST THE GAME (the saved position stays)
+THE GAME AND THE SAVED POSITION
+PICK A FILE ON THE PHONE MANUALLY
+REFRESH THE LIST
+CARTRIDGE
+The slot on the console – choose a ROM from the phone (.gen, .bin, .md, .smd, .zip).
+SAVES
+SAVED POSITIONS
+– games with a saved position. Tap one to load the position.
+MANUALS
+Technical information about the emulator.
+Opens atarihelp.eu.
+The controller on the console picture: D-pad,
+C
+In landscape – playing
+D-pad on the left (the dot follows your thumb, diagonals too),
+at the bottom in the middle.
+(green, left of START) saves the game position,
+LOAD GAME
+(gold, on the right) loads it – exactly where you left off. Each game has its own position.
+(sensitivity, transparency, size, vibration),
+SAVE GAME POSITION
+LOAD SAVED POSITION
+EXPORT LOG (DIAGNOSTICS)
+TIP
+On a TV / PC you play with the keyboard:
+W
+S
+move,
+K
+= A,
+L
+= B,
+O
+= C,
+P
+= START.
+CHAPTER 04
+32-bit PlayStation games with an on-screen controller. The card unlocks after 30 minutes of playing the Sega –
+Buttons
+Opens the PS1 page on atarihelp.eu with Google Drive links. Tap a game – the first time it downloads and unpacks, next time it starts straight from the phone.
+CD ISO
+The library
+CHOOSE A GAME (CD/ISO)
+– games on the phone,
+deleting games.
+SAVE GAME
+Saves the exact game position.
+MEMORY CARD
+– the state of the memory card. Games save to it by themselves (like to a real card).
+Controller: D-pad,
+Gear ⚙ – D-PAD AND CONTROLS
+LOAD QUICK POSITION
+(loads the position from SAVE GAME – exactly where you left off),
+SAVE AND SEND THE LOG
+MORE (BIOS, CD, LOG...)
+Games and BIOS
+Game formats:
+.bin .cue .iso .img .pbp .chd
+.zip
+. The app cannot open
+.7z
+PS1 needs a BIOS (the file
+scph….bin
+). When it is missing, the app takes it from the
+Download/AtariHelp
+folder (also from the BIOS or PS1_BIOS subfolder, or from a ZIP with “bios” in its name), otherwise it downloads it from atarihelp.eu. Manually:
+DOWNLOAD GAMES AND BIOS
+On a TV / PC: arrows or
+direction,
+or space = ✕,
+J
+I
+Q
+E
+= L1 / R1,
+Z
+= L2 / R2,
+= START,
+Backspace
+= SELECT.
+CHAPTER 05
+A retro cassette deck for music from your phone – MP3, WAV, M4A, OGG and more. Equalizer, bass, treble, playlists, favorite tracks and recording your own mixtape.
+Playing
+Plays a track. When the list is empty, the playlist and the music picker open.
+PAUSE / STOP
+Pauses / stops.
+REWIND / FAST FWD
+10 seconds back / forward.
+RECORD
+Records your own mixtape – see below.
+When a track ends, the next one plays.
+Playlist
+MY PLAYLISTS
+PLAYLISTS
+LIBRARY
+or the track strip open the panel with the music list on the phone
+PHONE - LOCAL MUSIC (MP3, WAV, M4A, OGG...)
+Tapping a track plays it (and adds it to the playlist). The star
+next to it adds it to the favorites.
+REFRESH THE PHONE LIST
+– finds the music on the phone (Downloads, Music, Documents…), including recordings from
+and from the JUKEBOX.
+PICK WITH THE SYSTEM
+– you pick the files yourself.
+CLEAR THE PLAYLIST
+CLOSE
+The phone's BACK button closes an open panel too.
+FAVORITES – favorite tracks
+The star
+next to a track (in the playlist and in the phone's music list) adds it to the favorites – it turns into
+. Another tap removes it again.
+FAVORITES
+at the bottom opens the favorites: tapping a track plays it,
+removes it (first it asks
+REMOVE?
+tap again).
+★ ADD THE PLAYING TRACK
+☆ REMOVE THE PLAYING TRACK
+– the track playing right now into the favorites / out.
+▶ PLAY ALL FAVORITES
+– a playlist of the favorites, playing one after another.
+The app remembers the favorites even after it is closed. When you move a file on the phone, it finds it by name; when it is no longer on the phone, it says
+TRACK NOT AVAILABLE
+It works with tracks from the phone – not with a file picked in a browser on the computer.
+RECORD – your own mixtape
+records whatever the player plays – including the
+EQ
+BASS
+TREBLE
+BALANCE
+settings. The
+VOLUME
+knob does not make the recording quieter.
+When nothing is playing, playback starts by itself – like on a tape deck. The button glows softly red and the time
+● REC
+runs at the bottom.
+PAUSE
+pauses recording
+❚❚ REC
+continues. Neither the pause nor loading the next track is recorded – the tracks follow each other directly in the recording.
+Ending and saving:
+again,
+the end of the playlist,
+or the phone's BACK button (the app saves first, then it leaves). At most 90 minutes – like a C90 cassette.
+The recording is saved to
+Download/AtariHelp/Mixtape
+as
+NP_VISION_mixtape_<date>_<time>.m4a
+(on an older phone
+.webm
+) and
+MIXTAPE SAVED
+appears at the bottom. It is in the phone's music list right away.
+A MIXTAPE FROM THE FAVORITES
+then
+The whole playlist is recorded and saved by itself at the end.
+Sound
+EQ 60/250/1K/4K/16K
+– five bands ±12 dB, drag up / down with a finger.
+– drag sideways.
+BASS / TREBLE / VOLUME
+– bass and treble ±12 dB, volume.
+SETTINGS
+RESET SOUND TO DEFAULT
+returns the sound to its default state.
+More
+YOUTUBE
+– opens YouTube right in the app.
+– back to the main menu.
+While
+is running, the music plays on the TV / computer too.
+CHAPTER 06
+Two decks, a crossfader, equalizers and samples. Big bass that gets everyone dancing! A short help is right on the console too, under the
+button.
+Loading tracks
+USB 1 ▾
+(deck A) and
+USB 2 ▾
+(deck B) – or
+PLAYLIST
+BROWSE
+– open the deck's playlist:
++ ADD
+adds tracks from the phone,
+◇ LOAD
+loads the selected one into the deck.
+Deck
+CUE
+Jumps to the start and plays.
+▶ PLAY / ❚❚
+Play / pause.
+STUTTER
+A stutter 0.15 s back.
+5 seconds back / forward.
+SYNC
+Matches the tempo to the other deck.
+TAP
+Tap out the tempo (BPM) – at least 2 taps.
+KEY LOCK
+The tempo changes, the key stays.
+TEMPO, GAIN
+Tempo ±8 %, deck volume.
+10 bands (31 Hz – 16 kHz) under the faders.
+HOT CUE
+Pads: the 1st tap saves a point, the next tap jumps to it, holding deletes it.
+Mixing and samples
+CROSSFADE
+– smoothly from deck A to B.
+◄ HARD A
+HARD B ►
+– instantly just one deck.
+⇄ SYNC BPM
+matches the tempos.
+MASTER
+BAL
+TREB
+MASTER LIMITER ON
+protects against clipping.
+Sampler:
+KICK
+SNARE
+HAT
+CLAP
+SYNTH
+VOCAL
+FX
+records the whole mix, a second tap saves the recording to
+Download/AtariHelp/DJ_mixy
+(M4A, WebM on an older phone). When you leave the console while recording (
+or the phone's BACK button), the mix is saved first.
+EFFECTS
+at the top hides / shows the EQ rows,
+shows the assistant,
+= back to the app.
+CHAPTER 07
+card opens the atarihelp.eu website right in the app: games, guides and news.
+Games from the web
+Just tap a game – the app downloads it and starts it in the right emulator: an Atari game (XEX, ATR, ZIP) in the
+, a Sega game in the
+, a PlayStation game (also a Google Drive link) in the
+A Sega or PS1 game starts only when that console is already unlocked – the locks apply to games from the web too. Otherwise the app downloads nothing and says how much is still missing (
+SEGA IS LOCKED
+PS1 IS LOCKED
+Back to the menu with the phone's BACK button.
+CHAPTER 08
+Opens with the gear
+at the top right of the main menu. Close it with
+a tap next to the panel or the BACK button.
+Language
+ČEŠTINA
+ENGLISH
+The whole app switches right away: the menu, OPTIONS, the emulators, messages, this guide and the WEB TV page in the browser (reload it there). Until you choose, the app follows the phone's language (Czech or Slovak = Czech, anything else = English).
+The app's picture and sound to a browser on a TV or computer. The address for the browser appears right under the button and the button changes to
+WEB TV IS RUNNING
+. The address stays there until you close OPTIONS – see
+The intro film again.
+Downloads Sonic the Hedgehog (Sega, about 0.5 MB) and the PlayStation BIOS (about 1 MB) from atarihelp.eu. The app asks first. The files stay on the phone and work without the internet too.
+UPDATE THE APP
+Checks atarihelp.eu for a new version and offers
+UPDATE
+It downloads straight into the installation – no file stays on the phone. The first time, the phone asks whether you allow installing from the app.
+TV TEST
+BOTH
+SOUND ONLY
+PICTURE ONLY
+– a streaming test for the TV when something stutters. Normally leave
+Settings
+AUTOMATIC
+– the app sets everything itself to suit the phone (recommended).
+MANUAL
+PICTURE QUALITY (WEB TV)
+LOW
+MED
+HIGH
+it also sets the size of the main menu on the TV / PC: 854×480 / 1024×576 / 1280×720 (the sharpest).
+SOUND (LATENCY)
+= the most reliable but the highest latency,
+= middle ground,
+= the lowest latency, may crackle. The sound setting applies the next time a game starts.
+CHAPTER 09
+PICTURE AND SOUND IN A BROWSER
+The app can send both picture and sound to an ordinary browser on a TV or computer – no cable and nothing to install. On a PC you can then play and type with the keyboard.
+How to switch it on
+The phone and the TV / PC must be on the
+same
+Wi-Fi
+In the main menu, the gear
+An address appears under the button, for example
+http://192.168.1.23:8765/
+– the numbers depend on your network. You can find the address again any time:
+→ under
+On the TV or PC open a browser (Chrome, Edge, Firefox…) and type that address exactly, including the number after the colon.
+Sound:
+the browser plays sound only after a click or a key press – click anywhere in the picture (again after reloading the page).
+WEB TV runs until you close the app. While streaming, the phone keeps the
+in low-latency mode.
+In the browser
+Full screen on a PC: the
+F11
+key.
+Move the mouse (or touch the picture) – the
+PICTURE
+panel appears at the bottom right: brightness, contrast, saturation,
+ORIGINAL SETTINGS
+PICTURE: fill the screen
+and picture tuning. The browser remembers the settings.
+At the bottom right there is always a hint which keys work right now.
+Computer keyboard
+browse,
+/ space opens a card,
+first / last.
+ATARI – TYPING
+Type normally (a Czech keyboard works too).
+F1
+START,
+F3
+SELECT,
+F4
+OPTION,
+F2
+BREAK,
+F6
+HELP,
+F8
+INVERSE,
+Ctrl
++ key = CONTROL.
+F9
+switches to game mode.
+ATARI – GAME MODE (F9)
+/ arrows = joystick,
+/ space = jump,
+START.
+back to typing.
+SEGA
+Arrows /
+/ space ✕,
+L1 / R1,
+L2 / R2,
+SELECT.
+A PROGRAM FROM THE PC INTO THE ATARI
+When the Atari 130XE is on the TV:
+V
+pastes text from the clipboard, or drag a TXT file into the browser window – the app types it into the Atari (512 kB at most).
+CHAPTER 10
+From the start the Atari 130XE, the MP3 player, the JUKEBOX, ATARIHELP.EU and HELP are open. The Sega and the PlayStation unlock step by step – like a retro gamer's journey from 8-bit onwards.
+SEGA MEGA DRIVE – type 50 lines on the Atari
+Program lines
+count – numbered lines, for example
+10 PRINT "HELLO"
+They are counted when you
+At least 5 lines
+must be added at a time – a shorter batch does not count. It does not have to be one program: ten programs of five lines each will do.
+Only what you type yourself counts – on the machine's keyboard or on a computer keyboard via WEB TV. Pasted text (
+a dragged file,
+does not count.
+When it is done, the Atari shows
+SEGA UNLOCKED! IT IS IN THE MENU
+PS1 – play the Sega for 30 minutes
+Only the time when a game is really running on the Sega counts – not the app in the background or another emulator.
+The minutes add up, you do not have to play in one go.
+The locks apply everywhere
+A locked console is not opened even by a game from the atarihelp.eu website (a link, a downloaded file, a Google Drive link) – the app does not download it, does not start it and says why, for example
+“Type 37 more program lines on the Atari…” Likewise the emulator page does not open any other way – the app returns to the main menu.
+HOW MUCH MORE?
+Tap the locked card in the menu – the text under the cards shows how many lines or minutes are still missing.
+CHAPTER 11
+FILES ON THE PHONE
+WHAT YOU FIND WHERE
+The app saves everything important to the
+folder (“Downloads” in the file manager). This folder stays even when you uninstall the app. The folder names are Czech – here is what they hold.
+Atari_emu
+Atari tapes – CSAVE recordings (
+csave_<date>_<time>.wav
+). EJECT offers them first.
+Sega_hry
+Sega games in MY GAMES.
+Sega_ulozene_pozice
+Sega saved positions – one for each game.
+PS1 games downloaded via LOAD GAME.
+PS1_pametova_karta
+The PS1 memory card – saved games. Like a real card: it survives even uninstalling the app.
+emu/sega, emu/ps1
+Sonic the Hedgehog and the PlayStation BIOS (from OPTIONS → DOWNLOAD GAMES AND BIOS).
+DJ_mixy
+Mix recordings from the JUKEBOX (RECORD).
+Mixtape
+Recordings from the MP3 player (RECORD) –
+PS1_LOG.txt
+The PS1 log (and PS1_LOG_predchozi.txt from the previous run).
+NOTE
+The unlocking progress (the Sega and PS1 locks), the app settings and the chosen language are stored in the app – uninstalling deletes them. Games, positions, the memory card and tapes in Download/AtariHelp stay.
+CHAPTER 12
+LOG AND ERROR REPORTS
+The app writes down what it does (the log). When something fails, send the log – it is the fastest way to find the bug.
+On the machine tap
+– the log is saved as a file and a menu opens right away to choose how to send it (mail, Messenger…). To be safe it is also on the clipboard.
+Back to the Atari:
+BACK TO THE ATARI 130XE
+or BACK.
+WHEN THE APP CRASHED
+On the LOG / ERROR page, next to
+Previous file (after a crash)
+there is the path to the log of the previous run – send that file.
+PS1 and Sega
+PS1:
+the gear
+– the log is saved to
+and a menu opens right away to choose how to send it.
+Sega:
+in landscape the gear
+CHAPTER 13
+The SEGA or PS1 card is locked. What now?
+The Sega unlocks after 50 typed program lines on the Atari, the PS1 after 30 minutes of playing the Sega. Tap the locked card to see how much is still missing. In detail:
+A game from the web did not start, the app says the Sega / PS1 is locked.
+The locks apply to games from atarihelp.eu too. Once you unlock the console, the same game from the web starts. In detail:
+How do I record my own mixtape?
+In the MP3 player play some tracks (for example
+) and press
+. In detail:
+MP3 player
+There is no sound on the TV.
+Click anywhere in the picture in the browser (or press a key). Browsers play sound only after a click – and again after reloading the page.
+The WEB TV address does not open in the browser.
+The phone and the TV / PC must be on the same
+. Type the address exactly, including the number after the colon (for example
+). Some networks (especially guest
+) do not let devices talk to each other – try your home network.
+The picture on the TV stutters or the sound crackles.
+In
+switch to
+and try a lower
+for the sound (the most reliable). Moving the phone closer to the router helps too.
+A PS1 game does not start.
+Check the format: .bin, .cue, .iso, .img, .pbp, .chd or .zip (the app cannot open .7z). PS1 needs a BIOS – the app downloads it by itself, or
+If it still does not work, send the log (
+Where do I find my games, positions and tapes?
+In the
+folder – the overview is in the chapter
+Files on the phone
+Do I lose anything when I uninstall the app?
+Games, saved positions, the PS1 memory card and Atari tapes stay in Download/AtariHelp. The unlocking progress (the Sega and PS1 will be locked again), the app settings and the chosen language are deleted.
+The player does not find my songs.
+When the app asks for access to music, allow it (if you refused, allow it in the phone's settings for the app). Then
+or pick the files yourself via
+The player plays MP3 and WAV.
+How do I get a program from the computer into the Atari?
+Switch on WEB TV, open the address on the PC, start the Atari 130XE and press
+(or drag a TXT file into the browser). On the phone the same works via
+A game from NET / GAMES does not download.
+Check the internet and try again in a moment. You can also start a game from a file on the phone via
+The on-screen controller does not suit me.
+In landscape the gear
+drag the buttons wherever you like, set the sensitivity, size and transparency, and swap them for left-handers. It works for the Atari, Sega and PS1.
+How do I update the app?
+The phone will still ask whether you allow the installation.
+I want to see the intro film again.
+Skip it with the
+button or BACK.
+How do I switch the app to Czech?
+The whole app switches right away.
+René Frank
+ATARIHELP.EU · B314
+aria-label=N&P
+aria-label=Back to the main menu
+placeholder=Search the guide…
+aria-label=Search the guide
+aria-label=Clear the search
+aria-label=Quick start
+aria-label=Contents of the guide
+aria-label=Back up to the contents
+[titulek] N&P VISION — Guide

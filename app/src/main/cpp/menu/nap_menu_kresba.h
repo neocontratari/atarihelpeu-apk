@@ -153,6 +153,37 @@ class Kresba {
   int pocetKaret() const { return (int)karty_.size(); }
   const Karta &karta(int i) const { return karty_[(size_t)i]; }
 
+  // B314: jen jine texty karet (jazyk) - obrazky a zive umeni zustanou
+  void nastavTextyKaret(const std::vector<Karta> &karty) {
+    bool zmena = false;
+    for (size_t i = 0; i < karty.size() && i < karty_.size(); i++) {
+      Karta &k = karty_[i];
+      const Karta &n = karty[i];
+      if (k.nazev != n.nazev || k.podtitul != n.podtitul || k.popis != n.popis || k.tlacitko != n.tlacitko) {
+        k.nazev = n.nazev; k.podtitul = n.podtitul; k.popis = n.popis; k.tlacitko = n.tlacitko;
+        for (int j = 0; j < 4; j++) { k.cz[j] = n.cz[j]; k.en[j] = n.en[j]; }
+        zmena = true;
+      }
+    }
+    if (zmena) verze_++;
+  }
+
+  // B314: jazyk napisu menu (ZAMCENO / LOCKED, napoveda na TV) a obrazku karet s textem
+  // (kniha HELP). Umeni se pri zmene vyrobi znovu (prvni kresleni karty), texty taky.
+  void nastavJazyk(bool en) {
+    if (en == en_) return;
+    en_ = en;
+    k_.en = en;
+    for (auto &sl : sloty_) {
+      uvolniSlot(sl);
+      sl.umeni.reset();
+      sl.pokus = false;
+      sl.tKresleno = -1;
+    }
+    verze_++;
+  }
+  bool jazykEn() const { return en_; }
+
   void nastavZamek(int i, bool zamceno, const std::string &text) {
     if (i < 0 || i >= (int)karty_.size()) return;
     Karta &k = karty_[(size_t)i];
@@ -333,6 +364,7 @@ class Kresba {
   int prekresleno_ = 0;
   bool jenObrazek_ = false;         // export: obrazek karty bez nazvu
   bool nahled_ = false;             // B313: export - animace karet v konecnem stavu
+  bool en_ = false;                 // B314: napisy menu anglicky
   unsigned snimekCislo_ = 0;
   int kolo_ = 0;                    // ktera vedlejsi karta je na rade
   std::string log_;
@@ -539,7 +571,7 @@ class Kresba {
     sl.nazev = text1(pBold_, kar.nazev, W * 0.118f, 0.015f, W * 0.86f, W * 0.012f);
     if (!kar.podtitul.empty()) sl.podtitul = text1(pSemi_, kar.podtitul, W * 0.040f, 0.16f, W * 0.86f, W * 0.008f);
     // zamcena karta: v karte jen zamek a ZAMCENO (proc - to je pod kartami, at neni textu moc)
-    if (kar.zamceno) sl.zamekNapis = text1(pBold_, u8"ZAMČENO", W * 0.085f, 0.10f, W * 0.8f, W * 0.010f);
+    if (kar.zamceno) sl.zamekNapis = text1(pBold_, en_ ? std::string("LOCKED") : std::string(u8"ZAMČENO"), W * 0.085f, 0.10f, W * 0.8f, W * 0.010f);
     sl.textW = umW_;
     sl.textVerze = verze_;
   }
@@ -775,7 +807,8 @@ class Kresba {
     c.titul = text1(pBold_, "N&P VISION", r.titulPx, 0.03f, c.w * 0.80f, r.titulPx * 0.10f);
     c.slogan = text1(pSemi_, "RETRO UNIVERSE", r.sloganPx, 0.55f, c.w * 0.80f, r.sloganPx * 0.25f);
     if (r.podpisY > 0.f) c.podpis = text1(pItal_, u8"René Frank", r.podpisPx, 0.02f, c.w * 0.6f, r.podpisPx * 0.15f);
-    if (c.tv) c.napoveda = text1(pSemi_, u8"ŠIPKAMI LISTUJ  ·  ENTER OTEVŘE", r.popisPx * 0.85f, 0.10f, c.w * 0.9f, r.popisPx * 0.1f);
+    if (c.tv) c.napoveda = text1(pSemi_, en_ ? std::string(u8"ARROWS TO BROWSE  ·  ENTER TO OPEN") : std::string(u8"ŠIPKAMI LISTUJ  ·  ENTER OTEVŘE"),
+                                 r.popisPx * 0.85f, 0.10f, c.w * 0.9f, r.popisPx * 0.1f);
     for (const Karta &k : karty_) {
       Odstavec o;
       o.text = k.popis; o.pismo = &pMed_; o.px = r.popisPx; o.radek = 1.30f;
@@ -790,7 +823,8 @@ class Kresba {
       c.popis.push_back(t);
       if (k.zamceno) {
         Odstavec z;
-        z.text = std::string(u8"ZAMČENO · ") + (k.zamekText.empty() ? std::string(u8"zatím nejde otevřít") : k.zamekText);
+        z.text = en_ ? std::string(u8"LOCKED · ") + (k.zamekText.empty() ? std::string("can't be opened yet") : k.zamekText)
+                     : std::string(u8"ZAMČENO · ") + (k.zamekText.empty() ? std::string(u8"zatím nejde otevřít") : k.zamekText);
         z.pismo = &pSemi_; z.px = r.popisPx; z.radek = 1.30f;
         TextTex tz = Sazec::vysazej({z}, r.popisW, 0, r.popisPx * 0.18f);
         for (int pokus = 0; pokus < 6 && tz.tex && tz.obsahH > z.px * z.radek * maxRadku * 1.05f; pokus++) {
@@ -802,7 +836,7 @@ class Kresba {
       } else {
         c.zamek.push_back(TextTex());
       }
-      c.tlac.push_back(text1(pBold_, k.zamceno ? std::string(u8"ZAMČENO") : k.tlacitko, r.tlacPx, 0.12f, c.w * 0.62f, 0.f));
+      c.tlac.push_back(text1(pBold_, k.zamceno ? (en_ ? std::string("LOCKED") : std::string(u8"ZAMČENO")) : k.tlacitko, r.tlacPx, 0.12f, c.w * 0.62f, 0.f));
     }
     c.textW = c.w; c.textH = c.h; c.textVerze = verze_;
   }

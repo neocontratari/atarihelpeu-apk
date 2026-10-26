@@ -1,0 +1,68 @@
+B314 - vsechny texty hlavni nabidky a OPTIONS anglicky (pro kontrolu ocima)
+N&P VISION
+RETRO UNIVERSE
+LOCKED
+ATARI 130XE
+EMULATOR · C++
+SEGA MEGA DRIVE
+16-BIT CONSOLE
+PS1
+PLAYSTATION · 32-BIT
+MP3 PLAYER
+RETRO CASSETTE PLAYER
+JUKEBOX
+PRO DJ MIXER
+ATARIHELP.EU
+OFFICIAL WEBSITE
+HELP
+GUIDE AND FAQ
+Atari 130XE with VBXE graphics, all in C++. Keyboard, joystick, tapes, disks and games from atarihelp.eu.
+▶ START
+René Frank
+OPTIONS
+START WEB TV
+OPEN IN A BROWSER ON YOUR TV OR PC
+same Wi-Fi · click the picture to turn the sound on
+PLAY INTRO
+DOWNLOAD GAMES AND BIOS
+UPDATE THE APP
+TV TEST: BOTH
+SERVICE
+CONFIRM CODE
+UNLOCK NEXT
+LOCK ALL
+SETTINGS
+AUTOMATIC
+MANUAL
+The app sets everything itself to suit your phone
+PICTURE QUALITY (WEB TV)
+LOW
+MED
+HIGH
+SOUND (LATENCY)
+AUTO - to suit your phone (applies the next time a game starts)
+CLOSE
+aria-label=N&P VISION Retro Universe
+aria-label=N&P
+aria-label=OPTIONS
+aria-label=Cards
+placeholder=SERVICE CODE
+aria-label=Service code
+LOCKED · Type 47 more program lines on the Atari (numbered lines – they count on RUN or LIST).
+🔒 LOCKED
+LOCKED Type 47 more program lines on the Atari (numbered lines – they count on RUN or LIST).
+LOCKED · Unlock the Sega first, then play it for 30 minutes.
+Manual settings - choose below
+LOW - most reliable, highest latency (applies the next time a game starts)
+HIGH - lowest latency, may crackle (applies the next time a game starts)
+Quality: MEDIUM
+WEB TV IS RUNNING
+http://192.168.1.50:8765/
+TV TEST: SOUND ONLY
+TV TEST: PICTURE ONLY
+Wrong code.
+Too many attempts – wait 30 s.
+Service stays open for 10 more min.
+SERVICE OPEN FOR 10 MINUTES
+UNLOCKED: SEGA
+ALL LOCKED – the new player’s view

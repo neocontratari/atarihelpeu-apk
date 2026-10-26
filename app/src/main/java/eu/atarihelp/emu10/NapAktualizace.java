@@ -113,16 +113,22 @@ public final class NapAktualizace {
     private static void zeptejSe(final Activity a, int nova, int moje,
                                  final String zip, final Hlaska log) {
         try {
-            String text = "Na atarihelp.eu je verze " + nova
+            // B314: cesky / anglicky (NapJazyk)
+            String text = NapJazyk.t(a, "Na atarihelp.eu je verze " + nova
                     + ", ty mas " + moje + ".\n\n"
                     + "Stahne se a rovnou nainstaluje - do telefonu se pritom"
                     + " NEULOZI zadny soubor.\n\n"
-                    + "Telefon se jeste zepta, jestli instalaci povolis.";
+                    + "Telefon se jeste zepta, jestli instalaci povolis.",
+                    "atarihelp.eu has version " + nova
+                    + ", you have " + moje + ".\n\n"
+                    + "It downloads and installs right away - NO file is"
+                    + " saved on the phone.\n\n"
+                    + "The phone will still ask whether you allow the installation.");
             new AlertDialog.Builder(a)
-                    .setTitle("Aktualizace")
+                    .setTitle(NapJazyk.t(a, "Aktualizace", "Update"))
                     .setMessage(text)
-                    .setPositiveButton("AKTUALIZOVAT", (d, w) -> nainstaluj(a, zip, log))
-                    .setNegativeButton("TED NE", null)
+                    .setPositiveButton(NapJazyk.t(a, "AKTUALIZOVAT", "UPDATE"), (d, w) -> nainstaluj(a, zip, log))
+                    .setNegativeButton(NapJazyk.t(a, "TED NE", "NOT NOW"), null)
                     .show();
         } catch (Throwable t) {
             if (log != null) log.rekni("AKTUALIZACE dialog: " + t.getClass().getSimpleName());
@@ -142,12 +148,12 @@ public final class NapAktualizace {
             box.setOrientation(android.widget.LinearLayout.VERTICAL);
             int p = (int) (16 * a.getResources().getDisplayMetrics().density);
             box.setPadding(p * 2, p, p * 2, p);
-            popis.setText("Pripojuji se...");
+            popis.setText(NapJazyk.t(a, "Pripojuji se...", "Connecting..."));
             popis.setTextSize(15f);
             box.addView(popis);
             pruh.setIndeterminate(true);
             box.addView(pruh);
-            dlg = new AlertDialog.Builder(a).setTitle("Aktualizace")
+            dlg = new AlertDialog.Builder(a).setTitle(NapJazyk.t(a, "Aktualizace", "Update"))
                     .setView(box).setCancelable(false).create();
             dlg.show();
         } catch (Throwable t) {
@@ -196,7 +202,7 @@ public final class NapAktualizace {
                         final long mam = staženo;
                         final long rychlost = mam * 1000 / Math.max(1, ted - zacatek);
                         a.runOnUiThread(() -> {
-                            popis.setText("Instaluji primo ze site");
+                            popis.setText(NapJazyk.t(a, "Instaluji primo ze site", "Installing straight from the network"));
                             pruh.setIndeterminate(celkem <= 0);
                             if (celkem > 0) pruh.setProgress((int) (mam * 100 / celkem));
                         });
@@ -231,8 +237,8 @@ public final class NapAktualizace {
                 if (log != null) log.rekni("AKTUALIZACE " + v);
                 if (!v.startsWith("OK")) {
                     try {
-                        new AlertDialog.Builder(a).setTitle("Aktualizace nevysla")
-                                .setMessage(v + "\n\nZkus to znovu z nabidky OPTIONS.")
+                        new AlertDialog.Builder(a).setTitle(NapJazyk.t(a, "Aktualizace nevysla", "The update failed"))
+                                .setMessage(v + NapJazyk.t(a, "\n\nZkus to znovu z nabidky OPTIONS.", "\n\nTry again from the OPTIONS menu."))
                                 .setPositiveButton("OK", null).show();
                     } catch (Throwable ignored) {}
                 }

@@ -1,0 +1,94 @@
+B314 - vsechny anglicke texty stranky dj (dj/index.html), pro kontrolu ocima
+ASSISTANT ON · watches continuity and safe limits
+MODE: SEMI-AUTO
+TURN OFF (hold)
+BROWSE
+LIBRARY
+EFFECTS
+N&P VISION
+PRO DJ MIXER
+MENU
+SETTINGS
+HELP
+A
+DECK A
+USB 1 ▾
+TAP
+BPM
+KEY LOCK
+— empty —
+load a track from the playlist
+PLAYLIST
+◇ LOAD
+CUE
+N&P
+VISION
+THE MIX IS YOURS
+B
+DECK B
+USB 2 ▾
+MASTER
+CROSSFADE
+CENTER = BOTH EQUAL
+⇄ SYNC BPM
+◄ HARD A
+HARD B ►
+BAL
+C
+BASS
+TREB
+TEMPO
+GAIN
+▶ PLAY
+STUTTER
+SYNC
+10 BAND EQUALIZER
+1k
+2k
+4k
+8k
+16k
+RECORD
+KICK
+SNARE
+HAT
+CLAP
+SYNTH
+VOCAL
+FX
+MASTER LIMITER
+ON
+PROFESSIONAL DJ SYSTEM
+BUILT FOR PERFORMANCE
+MIX · CREATE · INSPIRE
+PLAYLIST · DECK A
++ ADD
+CLOSE
+HELP · N&P VISION DJ
+USB 1/2, PLAYLIST, BROWSE, LIBRARY
+→ deck's playlist (+ ADD, LOAD).
+= jump to start and play ·
+▶ PLAY / ❚❚
+−0.15 s ·
+±5 s ·
+matches tempo to the other deck.
+= tap out the deck's BPM (min. 2 taps) ·
+KEY
+= key lock, tempo without pitch change.
+deck volume ·
+EQ
+10 bands under the faders.
+HOT CUE pads
+: 1st tap saves a point, next tap jumps to it, hold to delete.
+= records the master, 2nd tap saves the file ·
+MASTER LIMITER ON
+= brickwall protection.
+up top hides/shows the EQ rows ·
+shows the assistant ·
+MENU / ⏻
+= back to the app.
+CONFIRM ACTION
+Are you sure?
+CANCEL
+PROCEED
+[titulek] N&P VISION — PRO DJ MIXER

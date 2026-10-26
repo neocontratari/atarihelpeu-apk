@@ -182,23 +182,31 @@ public final class NapStahovaniSeSouhlasem {
     public static void zeptejSeAStahni(final Activity a, final File korenSlozky,
                                        final Hotovo pak) {
         try {
-            String text =
+            // B314: cesky / anglicky (NapJazyk)
+            String text = NapJazyk.t(a,
                 "Stahnout ze stranek atarihelp.eu?\n\n" +
                 "  \u2022 Sonic the Hedgehog  (asi 0,5 MB)\n" +
                 "  \u2022 BIOS pro PlayStation  (asi 1 MB)\n\n" +
                 "Ulozi se do slozky Download/AtariHelp a zustanou v telefonu -" +
                 " budes je moci pouzit i bez internetu.\n\n" +
                 "Bez nich aplikace funguje dal, jen se v uvodnim filmu preskoci" +
-                " cast se Segou a PlayStation.";
+                " cast se Segou a PlayStation.",
+                "Download from atarihelp.eu?\n\n" +
+                "  \u2022 Sonic the Hedgehog  (about 0.5 MB)\n" +
+                "  \u2022 BIOS for PlayStation  (about 1 MB)\n\n" +
+                "They are saved to the Download/AtariHelp folder and stay on the phone -" +
+                " you can use them without the internet too.\n\n" +
+                "The app works without them, the intro film just skips" +
+                " the Sega and PlayStation part.");
             new AlertDialog.Builder(a)
-                .setTitle("Stazeni souboru")
+                .setTitle(NapJazyk.t(a, "Stazeni souboru", "File download"))
                 .setMessage(text)
                 .setCancelable(true)
-                .setPositiveButton("STAHNOUT", (d, w) -> {
+                .setPositiveButton(NapJazyk.t(a, "STAHNOUT", "DOWNLOAD"), (d, w) -> {
                     zapamatuj(a);
                     stahniSPrubehem(a, korenSlozky, pak);
                 })
-                .setNegativeButton("TED NE", (d, w) -> {
+                .setNegativeButton(NapJazyk.t(a, "TED NE", "NOT NOW"), (d, w) -> {
                     zapamatuj(a);
                     if (pak != null) pak.hotovo("ODMITNUTO");
                 })
@@ -225,7 +233,7 @@ public final class NapStahovaniSeSouhlasem {
         box.setPadding(p * 2, p, p * 2, p);
 
         final android.widget.TextView popisek = new android.widget.TextView(a);
-        popisek.setText("Pripojuji se k atarihelp.eu...");
+        popisek.setText(NapJazyk.t(a, "Pripojuji se k atarihelp.eu...", "Connecting to atarihelp.eu..."));
         popisek.setTextSize(15f);
         box.addView(popisek);
 
@@ -246,7 +254,7 @@ public final class NapStahovaniSeSouhlasem {
         box.addView(cisla);
 
         final AlertDialog dlg = new AlertDialog.Builder(a)
-                .setTitle("Stahuji")
+                .setTitle(NapJazyk.t(a, "Stahuji", "Downloading"))
                 .setView(box)
                 .setCancelable(false)
                 .create();
@@ -258,19 +266,19 @@ public final class NapStahovaniSeSouhlasem {
             if (celkem > 0) {
                 pruh.setIndeterminate(false);
                 pruh.setProgress((int) (kolik * 100 / celkem));
-                cisla.setText(kb(kolik) + " z " + kb(celkem)
+                cisla.setText(kb(kolik) + NapJazyk.t(a, " z ", " of ") + kb(celkem)
                         + "   " + kb(rychlost) + "/s");
             } else {
                 cisla.setText(kb(kolik) + "   " + kb(rychlost) + "/s");
             }
         }, zprava -> {
             try { dlg.dismiss(); } catch (Throwable ignored) {}
-            String hezky = prelozVysledek(zprava);
+            String hezky = prelozVysledek(zprava, NapJazyk.en(a));
             new AlertDialog.Builder(a)
-                    .setTitle(zprava.contains("OK") ? "Stazeno" : "Nestazeno")
+                    .setTitle(zprava.contains("OK") ? NapJazyk.t(a, "Stazeno", "Downloaded") : NapJazyk.t(a, "Nestazeno", "Not downloaded"))
                     .setMessage(hezky)
                     .setCancelable(false)
-                    .setPositiveButton("POKRACOVAT", (d2, w2) -> {
+                    .setPositiveButton(NapJazyk.t(a, "POKRACOVAT", "CONTINUE"), (d2, w2) -> {
                         if (pak != null) pak.hotovo(zprava);
                     })
                     .show();
@@ -284,10 +292,21 @@ public final class NapStahovaniSeSouhlasem {
     }
 
     /** Z technicke zpravy udela vetu, ktera dava smysl. */
-    private static String prelozVysledek(String z) {
+    private static String prelozVysledek(String z, boolean en) {
         StringBuilder v = new StringBuilder();
         boolean sonicOk = z.contains("sonic=OK");
         boolean biosOk  = z.contains("bios=OK");
+        if (en) {   // B314
+            v.append(sonicOk ? "\u2713 Sonic the Hedgehog - saved\n" : "\u2717 Sonic the Hedgehog - not downloaded\n");
+            v.append(biosOk  ? "\u2713 BIOS for PlayStation - saved\n" : "\u2717 BIOS for PlayStation - not downloaded\n");
+            v.append("\nFolder: Download/AtariHelp/emu\n");
+            if (!sonicOk || !biosOk) {
+                v.append("\nWhat did not download can be tried again in");
+                v.append(" OPTIONS -> DOWNLOAD GAMES AND BIOS.");
+                v.append("\n\nDetails: ").append(z);
+            }
+            return v.toString();
+        }
         v.append(sonicOk ? "\u2713 Sonic the Hedgehog - ulozen\n"
                          : "\u2717 Sonic the Hedgehog - nestazen\n");
         v.append(biosOk  ? "\u2713 BIOS pro PlayStation - ulozen\n"
@@ -325,7 +344,7 @@ public final class NapStahovaniSeSouhlasem {
                         ".gen,.bin,.md,.smd", "Sonic the Hedgehog", prubeh));
                 z.append(' ');
                 z.append(jednoStazeni(a, BIOS_URL, ps1Dir, "bios",
-                        ".bin", "BIOS pro PlayStation", prubeh));
+                        ".bin", NapJazyk.t(a, "BIOS pro PlayStation", "BIOS for PlayStation"), prubeh));
             } catch (Throwable t) {
                 z.append("CHYBA ").append(t.getClass().getSimpleName());
             }
@@ -353,7 +372,7 @@ public final class NapStahovaniSeSouhlasem {
             if (pokus > 1) {
                 if (prubeh != null) {
                     final int p2 = pokus;
-                    a.runOnUiThread(() -> prubeh.krok(hezkyNazev + " - pokus " + p2 + " ze 3",
+                    a.runOnUiThread(() -> prubeh.krok(hezkyNazev + NapJazyk.t(a, " - pokus " + p2 + " ze 3", " - attempt " + p2 + " of 3"),
                             0, 0, 0));
                 }
                 try { Thread.sleep(1500L * (pokus - 1)); } catch (Throwable ignored) {}
@@ -403,7 +422,7 @@ public final class NapStahovaniSeSouhlasem {
                 final long mam = bo.size();
                 long ubehlo = Math.max(1, System.currentTimeMillis() - zacatek);
                 final long rychlost = mam * 1000 / ubehlo;
-                a.runOnUiThread(() -> prubeh.krok(hezkyNazev + " - rozbaluji",
+                a.runOnUiThread(() -> prubeh.krok(hezkyNazev + NapJazyk.t(a, " - rozbaluji", " - unpacking"),
                         mam, celkem, rychlost));
             }
             byte[] zip = bo.toByteArray();

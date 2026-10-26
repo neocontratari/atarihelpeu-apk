@@ -1,0 +1,62 @@
+B314 - vsechny anglicke texty stranky mp3 (player/index.html), pro kontrolu ocima
+C
+READY • MY PLAYLISTS
+MENU
+SETTINGS
+REWIND
+PLAY
+STOP
+PAUSE
+FAST FWD
+RECORD
+MY PLAYLISTS
+YOUTUBE
+TRACK
+PLAYER
+PLAYLISTS
+LIBRARY
+FAVORITES
+The playlist is empty.
+PHONE - LOCAL MUSIC (MP3, WAV, M4A, OGG...)
+REFRESH THE PHONE LIST
+PICK WITH THE SYSTEM
+CLEAR THE PLAYLIST
+CLOSE
+SOUND SETTINGS
+SOUND RESET
+returns EQ, BASS, TREBLE, BALANCE and VOLUME to their original default state.
+Finer tuning:
+EQ 60/250/1K/4K/16K
+– drag up/down with a finger or the mouse.
+BALANCE
+– drag left/right.
+BASS / TREBLE / VOLUME
+– drag up/down.
+RESET SOUND TO DEFAULT
+★ ADD THE PLAYING TRACK
+▶ PLAY ALL FAVORITES
+aria-label=N&P Retro Cassette Player
+alt=N&P Retro Cassette Player
+aria-label=Equalizer 60Hz
+aria-label=Equalizer 250Hz
+aria-label=Equalizer 1kHz
+aria-label=Equalizer 4kHz
+aria-label=Equalizer 16kHz
+aria-label=Balance
+aria-label=Bass
+aria-label=Treble
+aria-label=Volume
+[titulek] N&P VISION — Retro Cassette Player
+Night Drive.mp3 4 MB
+Retro Wave.wav 9.3 MB
+aria-label=Add to favorites
+TRACKS FOUND - 2
+PLAYLIST CLEARED
+SOUND RESET • DEFAULT STATE
+NOTHING IS PLAYING - PICK A TRACK
+NO FAVORITES YET - ADD THEM WITH THE STAR ☆ NEXT TO A TRACK
+SEEK • NO TRACK
+RECORD • PICK TRACKS FIRST
+ALLOW ACCESS TO MUSIC ON THE PHONE
+NO LOCAL MUSIC FOUND
+TRACKS FOUND - 0

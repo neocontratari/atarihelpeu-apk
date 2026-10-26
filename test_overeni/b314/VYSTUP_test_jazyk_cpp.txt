@@ -1,0 +1,15 @@
+OK     karty.txt: 7 karet, bez varovani
+OK     kazda karta ma 4 anglicke sloupce bez ceskych pismen: atari=ATARI 130XE/START sega=SEGA MEGA DRIVE/START ps1=PS1/START mp3=MP3 PLAYER/PLAY dzubox=JUKEBOX/LET'S GO web=ATARIHELP.EU/OPEN WEBSITE help=HELP/OPEN GUIDE
+OK     pouzijJazyk(en): nazev, podtitul, popis a tlacitko anglicky; obrazek, cil, zamek a efekt beze zmeny
+OK     pouzijJazyk(cs) po anglictine: presne puvodni ceske texty (MP3 PŘEHRÁVAČ, PŘEHRÁT)
+OK     anglicke nazvy jako v navodu en.html: START, MP3 PLAYER, JUKEBOX, OPEN GUIDE
+OK     bez anglickych sloupcu: cesky text a tlacitko OPEN; jen cast sloupcu: zbytek cesky (SEE / POD)
+OK     zpet cesky: SPUSTIT / OTEVŘÍT (prazdne) / JEĎ
+OK     KARTY_ZALOHA (soubor v appce chybi): 7 karet, kazda s anglickym nazvem a tlacitkem
+OK     KARTY_ZALOHA: stejne karty, cile a zamky jako karty.txt
+OK     Atari cesky beze zmeny: HRY, MOBIL, 1 ŘÁDEK, 3 ŘÁDKY, 45 řádků
+OK     Atari anglicky: stitky NET / GAMES, XEX / PHONE, LOG / ERROR, SPACE (ostatni beze zmeny)
+OK     Atari anglicky: chyby kazety (i s pokracovanim textu)
+OK     Atari anglicky: 1 LINE, 2 LINES, 45 LINES
+OK     Atari zpet cesky za chodu (devCtl jazyk:cs)
+VYSLEDEK: 14 kontrol, 0 CHYB
