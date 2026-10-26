@@ -1,0 +1,16 @@
+B316 - navod v appce proti B315 (git 0fd67c7): smi se zmenit jen XEX / MOBIL a NET / HRY (pribyla cartridge CAR)
+index.html: 351 bloku textu v B315, 351 v B316
+   B315  dd: Spustí hru z telefonu – soubor XEX (i zabalený v ZIP).
+   B316  dd: Spustí hru z telefonu – soubor XEX nebo cartridge CAR (obojí i zabalené v ZIP). Cartridge se zasune do slotu a Atari se s ní zapne (překryje BASIC, jako skutečná cartridge). Ve slotu zůstává i po vypnutí a zapnutí, jiný program (XEX, ATR, TXT) ji vytáhne. Když je cartridge ve slotu, nabídne VYSU
+   B315  li: Na hru stačí klepnout – appka ji stáhne a spustí ve správném emulátoru: hra pro Atari (XEX, ATR, ZIP) v Atari 130XE, hra pro Segu v Sega Mega Drive, hra pro PlayStation (i odkaz na Google Drive) v PS1.
+   B316  li: Na hru stačí klepnout – appka ji stáhne a spustí ve správném emulátoru: hra pro Atari (XEX, ATR, CAR, ZIP) v Atari 130XE, hra pro Segu v Sega Mega Drive, hra pro PlayStation (i odkaz na Google Drive) v PS1.
+OK     index.html: zmenene presne 2 bloky (XEX / MOBIL a NET / HRY), 349 ostatnich beze zmeny
+OK     index.html: znacky HTML (kapitoly, odkazy, obrazky, tridy) beze zmeny, jen 2x pribyl nazev tlacitka <span class="t"> (1265 znacek)
+en.html: 351 bloku textu v B315, 351 v B316
+   B315  dd: Starts a game from the phone – a XEX file (also packed in a ZIP).
+   B316  dd: Starts a game from the phone – a XEX file or a CAR cartridge (both also packed in a ZIP). The cartridge goes into the slot and the Atari powers on with it (it covers BASIC, like a real cartridge). It stays in the slot even after switching off and on, another program (XEX, ATR, TXT) takes it out.
+   B315  li: Just tap a game – the app downloads it and starts it in the right emulator: an Atari game (XEX, ATR, ZIP) in the Atari 130XE, a Sega game in the Sega Mega Drive, a PlayStation game (also a Google Drive link) in the PS1.
+   B316  li: Just tap a game – the app downloads it and starts it in the right emulator: an Atari game (XEX, ATR, CAR, ZIP) in the Atari 130XE, a Sega game in the Sega Mega Drive, a PlayStation game (also a Google Drive link) in the PS1.
+OK     en.html: zmenene presne 2 bloky (XEX / MOBIL a NET / HRY), 349 ostatnich beze zmeny
+OK     en.html: znacky HTML (kapitoly, odkazy, obrazky, tridy) beze zmeny, jen 2x pribyl nazev tlacitka <span class="t"> (1265 znacek)
+VYSLEDEK: 0 CHYBA

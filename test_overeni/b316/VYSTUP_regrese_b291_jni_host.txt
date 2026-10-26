@@ -1,0 +1,138 @@
+B291 HELP otevren - pristroj ZAPNUT, studeny start Atari
+B293 JADRO = ATARI 130XE PAL: RAM 64 kB + rozsirena 4x16 kB (PORTB bity 2-3, procesor bit 4, ANTIC bit 5), OS XL/XE rev.2 (soucet $9211), BASIC rev.C vestaveny, self-test ROM $5000, TRIG3 = RD5 cartridge (prazdny slot = 0), RESET = reset CPU+ANTIC+PIA/MMU, plovouci datova sbernice, ANTIC/GTIA PAL 312 radku, POKEY 1,773 MHz
+B316 CARTRIDGE: soubory .car (XEX/MOBIL, NET, ZIP) - slot $8000-$9FFF / $A000-$BFFF pred BASICem, banky pres $D500-$D5FF, 67 typu (standard 2-16 kB, XEGS a Switchable XEGS, MegaCart, Atarimax 128 kB / 1 MB, SIC!, Williams, Express, Diamond, SpartaDOS X, OSS, Blizzard, Phoenix, Turbosoft, Atrax, Bounty Bob, J(atari)Cart, DCart ...); jiny program (XEX / ATR / TXT) cartridge vytahne, POWER ji necha ve slotu.
+B296 VBXE FX 1.26 v jadre: registry $D640, 512 kB VRAM, MEMAC A/B, XDL (overlay LR/SR/HR/text 80 sloupcu), atributova mapa, palety 4x256, blitter (rezimy 0-6, zoom, vzor, kolize) + IRQ; obraz 4 body na barevny takt. Joystick 1: leva pulka obrazovky = smer, prava = FIRE; herni ovladac taky.
+B298 ZVUK s pasmem jako TV (FIR 16 kHz, bez prekladu ultrazvuku do slysitelna), asynchronni prijem POKEY restartuje casovace 3+4 start bitem; KAZETA: hra (boot) = START+OPTION a RETURN samo, stereo WAV = zvukova stopa do TV, CLOAD i s disketou v D1:; DISKETA: ATR/DISK = vysunout / vymenit bez restartu.
+B299 BASIC/TBXL TXT: TXT soubor s programem napise appka sama do ATARI BASICu / Turbo-BASICu XL; klavesy z pristroje do logu (B299 KLAVESY); LOG/CHYBA = stav a cela pamet Atari v logu; SIO zkratka jen se zapnutou ROM OS (Turbo-BASIC XL ma na $E459 vlastni kod).
+B300 POKEY: casovac s AUDF=$FF (perioda 256) tika a dava preruseni - drive stal (Ghostbusters: hudba a rec z preruseni casovace 1, bez nej titulka stala; nejhlubsi tony byly potichu).
+B301 TV/PC (web prohlizec v appce): obraz Atari 130XE primo z jadra (vyrez 336x240 jako na telefonu) a zvuk 44100 Hz stereo - drive bylo na TV videt jen stranku s testy pod pristrojem.
+B302 KLAVESNICE POCITACE (prohlizec na TV/PC) -> Atari 130XE primo v C++: psani podle rozlozeni (cesky: diakritika bez hacku, AltGr znaky), sipky = kurzor, F1/F3/F4 START/SELECT/OPTION, F2 BREAK, F6 HELP, F8 INVERZE, F9 HRANI (WASD/sipky joystick, K skok, L FIRE); klavesy v tempu, ktere OS stihne.
+B303 TV/PC CELE V C++: kazdy snimek Atari (50/s) jako paleta + jen zmenene radky a zvuk v jednom proudu (/atari.stream) - Java uz nezvetsuje ani nekomprimuje (H.264/JPEG); Ctrl+V nebo pretazeny TXT v prohlizeci = program do BASICu bez NEW (UTF-8 s e s hackem uz neni ATASCII), jiny text = klavesy.
+B291 PRISTROJ plocha nova 1080x2160 -> kresleni 1080x2160
+B291 KRESLICI_VLAKNO start (pristroj kresli C++ primo na displej)
+B291 KRESLICI_VLAKNO priorita nice=-4 nastavena
+B291 EMULACE_VLAKNO start (50 snimku/s, zvuk OpenSL, vse v C++)
+B291 EMULACE_VLAKNO priorita nice=-8 nastavena
+B291 PRISTROJ rozlozen 1080x2160 (displej 1080x2160) za 103 ms
+B291 HELP otevren - pristroj ZAPNUT, studeny start Atari
+B293 JADRO = ATARI 130XE PAL: RAM 64 kB + rozsirena 4x16 kB (PORTB bity 2-3, procesor bit 4, ANTIC bit 5), OS XL/XE rev.2 (soucet $9211), BASIC rev.C vestaveny, self-test ROM $5000, TRIG3 = RD5 cartridge (prazdny slot = 0), RESET = reset CPU+ANTIC+PIA/MMU, plovouci datova sbernice, ANTIC/GTIA PAL 312 radku, POKEY 1,773 MHz
+B316 CARTRIDGE: soubory .car (XEX/MOBIL, NET, ZIP) - slot $8000-$9FFF / $A000-$BFFF pred BASICem, banky pres $D500-$D5FF, 67 typu (standard 2-16 kB, XEGS a Switchable XEGS, MegaCart, Atarimax 128 kB / 1 MB, SIC!, Williams, Express, Diamond, SpartaDOS X, OSS, Blizzard, Phoenix, Turbosoft, Atrax, Bounty Bob, J(atari)Cart, DCart ...); jiny program (XEX / ATR / TXT) cartridge vytahne, POWER ji necha ve slotu.
+B296 VBXE FX 1.26 v jadre: registry $D640, 512 kB VRAM, MEMAC A/B, XDL (overlay LR/SR/HR/text 80 sloupcu), atributova mapa, palety 4x256, blitter (rezimy 0-6, zoom, vzor, kolize) + IRQ; obraz 4 body na barevny takt. Joystick 1: leva pulka obrazovky = smer, prava = FIRE; herni ovladac taky.
+B298 ZVUK s pasmem jako TV (FIR 16 kHz, bez prekladu ultrazvuku do slysitelna), asynchronni prijem POKEY restartuje casovace 3+4 start bitem; KAZETA: hra (boot) = START+OPTION a RETURN samo, stereo WAV = zvukova stopa do TV, CLOAD i s disketou v D1:; DISKETA: ATR/DISK = vysunout / vymenit bez restartu.
+B299 BASIC/TBXL TXT: TXT soubor s programem napise appka sama do ATARI BASICu / Turbo-BASICu XL; klavesy z pristroje do logu (B299 KLAVESY); LOG/CHYBA = stav a cela pamet Atari v logu; SIO zkratka jen se zapnutou ROM OS (Turbo-BASIC XL ma na $E459 vlastni kod).
+B300 POKEY: casovac s AUDF=$FF (perioda 256) tika a dava preruseni - drive stal (Ghostbusters: hudba a rec z preruseni casovace 1, bez nej titulka stala; nejhlubsi tony byly potichu).
+B301 TV/PC (web prohlizec v appce): obraz Atari 130XE primo z jadra (vyrez 336x240 jako na telefonu) a zvuk 44100 Hz stereo - drive bylo na TV videt jen stranku s testy pod pristrojem.
+B302 KLAVESNICE POCITACE (prohlizec na TV/PC) -> Atari 130XE primo v C++: psani podle rozlozeni (cesky: diakritika bez hacku, AltGr znaky), sipky = kurzor, F1/F3/F4 START/SELECT/OPTION, F2 BREAK, F6 HELP, F8 INVERZE, F9 HRANI (WASD/sipky joystick, K skok, L FIRE); klavesy v tempu, ktere OS stihne.
+B303 TV/PC CELE V C++: kazdy snimek Atari (50/s) jako paleta + jen zmenene radky a zvuk v jednom proudu (/atari.stream) - Java uz nezvetsuje ani nekomprimuje (H.264/JPEG); Ctrl+V nebo pretazeny TXT v prohlizeci = program do BASICu bez NEW (UTF-8 s e s hackem uz neni ATASCII), jiny text = klavesy.
+B291 PRISTROJ plocha nova 1080x2160 -> kresleni 1080x2160
+B291 KRESLICI_VLAKNO start (pristroj kresli C++ primo na displej)
+B291 KRESLICI_VLAKNO priorita nice=-4 nastavena
+B291 EMULACE_VLAKNO start (50 snimku/s, zvuk OpenSL, vse v C++)
+B291 EMULACE_VLAKNO priorita nice=-8 nastavena
+B291 PRISTROJ rozlozen 1080x2160 (displej 1080x2160) za 103 ms
+OK     kresleni bezi - na displej doslo aspon jedno predani
+OK     okno nastaveno na 1080x2160 RGBA
+OK     emulace bezi (aspon 40 snimku za 1,5 s)
+OK     Atari nastartovalo do READY (obraz z jadra)
+B299 KLAVESY: PRINT 2+2 <RETURN>
+klidovy stav: 1 predani/s, 21.3 % plochy za snimek
+--- obrazovka ---
+
+  READY
+  PRINT 2+2
+  4
+
+  READY
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+---
+OK     dotyky na klavesy napsaly PRINT 2+2
+OK     Atari spocitalo 4
+OK     SHIFT po klepnuti zustava zamceny
+OK     druhe klepnuti SHIFT odemkne
+OK     SHIFT+1 napsalo '!'
+B291 TXT do Atari: 57 stisku klaves pripraveno (0 znaku na Atari klavesnici neni)
+OK     kratke tuknuti na START program zachytil (min. 5 snimku drzeni)
+B292 KAZETAK PLAY - kazeta: ZADNA, pozice 0.0 s
+OK     PLAY zamcene a pocitadlo pocita (+1 za vterinu)
+B292 KAZETAK STOP - kazeta: ZADNA, pozice 0.0 s
+OK     STOP pustil PLAY/REC
+OK     nulovaci spinac vynuloval pocitadlo
+OK     EJECT otevrel dvirka kazetaku
+OK     klepnuti na okenko dvirka zavrelo
+OK     MENU vraci Jave akci MENU
+OK     BASIC/TBXL TXT vraci akci TXT
+B291 POWER VYPNUTO
+OK     POWER vypnul stroj (zadne dalsi snimky)
+B291 POWER ZAPNUTO - studeny start (pamet i hardware od nuly, jako vypinac na skrini)
+OK     POWER zapnul stroj znovu (snimky bezi)
+B291 XEX turbo_basic_xl.xex: 20877 bajtu - studeny start s OPTION (BASIC vypnuty), pak segmenty
+OK     XEX prijat k zavedeni
+B291 XEX OS nastartovan za 87 snimku (BASIC=VYPNUTY, RAMTOP=$C0) - nahravam segmenty
+B291 TXT do Atari: 8 stisku klaves pripraveno (0 znaku na Atari klavesnici neni)
+B299 KLAVESY: PRINT 2+2 <RETURN>
+B291 TXT do Atari: 57 stisku klaves pripraveno (0 znaku na Atari klavesnici neni)
+B292 KAZETAK PLAY - kazeta: ZADNA, pozice 0.0 s
+B292 KAZETAK STOP - kazeta: ZADNA, pozice 0.0 s
+B291 POWER VYPNUTO
+B291 POWER ZAPNUTO - studeny start (pamet i hardware od nuly, jako vypinac na skrini)
+B291 XEX turbo_basic_xl.xex: 20877 bajtu - studeny start s OPTION (BASIC vypnuty), pak segmenty
+B291 XEX OS nastartovan za 87 snimku (BASIC=VYPNUTY, RAMTOP=$C0) - nahravam segmenty
+B291 TXT do Atari: 8 stisku klaves pripraveno (0 znaku na Atari klavesnici neni)
+--- obrazovka (TBXL) ---
+
+  READY
+  ? $FF*2
+  510
+
+  READY
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+---
+OK     Turbo-BASIC XL bezi ($FF*2 = 510 umi jen TBXL)
+B291 PRISTROJ plocha zanikla
+OK     bez plochy se nic nekresli
+B291 PRISTROJ plocha nova 1080x2160 -> kresleni 1080x2160
+OK     po navratu plochy se kresli znovu
+B291 KRESLICI_VLAKNO stop
+B291 EMULACE_VLAKNO stop
+OK     stop: obe vlakna skoncila (bez zaseknuti)
+B291 PRISTROJ plocha zanikla
+B291 PRISTROJ plocha nova 1080x2160 -> kresleni 1080x2160
+B291 KRESLICI_VLAKNO stop
+B291 EMULACE_VLAKNO stop
+B291 PRISTROJ stav: bezi=ne power=ZAP snimku=1400 pc=$F309 motor=VYP klaves_ve_fronte=0 zvuk_fronta=1486ms
+
+VYSLEDEK: 24 kontrol, 0 chyb

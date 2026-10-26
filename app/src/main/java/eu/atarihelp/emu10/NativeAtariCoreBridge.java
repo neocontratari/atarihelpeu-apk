@@ -111,6 +111,8 @@ public final class NativeAtariCoreBridge {
     private static native void    devEjectTapeNative();
     // B295: disketa ATR do mechaniky D1: (prikazy SIO v C++) + studeny start
     private static native String  devLoadAtrNative(byte[] atr, String jmeno);
+    // B316: cartridge .car do slotu (8000-BFFF, banky pres D500-D5FF) + studeny start
+    private static native String  devLoadCarNative(byte[] car, String jmeno);
     // B296: herni ovladac / klavesnice telefonu -> joystick 1 + START/SELECT/OPTION
     //  maska: bit0 nahoru, 1 dolu, 2 vlevo, 3 vpravo, 4 FIRE, 5 START, 6 SELECT, 7 OPTION,
     //  8 klavesa MEZERA, 9 klavesa RETURN
@@ -296,6 +298,13 @@ public final class NativeAtariCoreBridge {
         if (!loaded) return "CHYBA knihovna napatari neni nactena";
         if (atr == null) return "CHYBA zadna data";
         try { String r = devLoadAtrNative(atr, jmeno); return r == null ? "CHYBA nic" : r; }
+        catch (Throwable t) { return "CHYBA " + t.getMessage(); }
+    }
+    /** B316: cartridge (.car) do slotu a studeny start. Vraci "OK ..." / "CHYBA ..." pro log. */
+    public static String devLoadCarSafe(byte[] car, String jmeno) {
+        if (!loaded) return "CHYBA knihovna napatari neni nactena";
+        if (car == null) return "CHYBA zadna data";
+        try { String r = devLoadCarNative(car, jmeno); return r == null ? "CHYBA nic" : r; }
         catch (Throwable t) { return "CHYBA " + t.getMessage(); }
     }
     public static void devEjectTapeSafe() {

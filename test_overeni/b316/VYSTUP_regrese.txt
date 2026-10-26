@@ -1,0 +1,35 @@
+B316 - regrese: jadro Atari bez cartridge = B315 (git 0fd67c7), testy C++ s vlakny, navod
+OK     test_core boot  -- vystup B316 = B315 (26 radku), souboru obrazu/WAV 0 shodnych;   READY                                 
+OK     test_core xe130  -- vystup B316 = B315 (61 radku), souboru obrazu/WAV 0 shodnych; VYSLEDEK 130XE: 9 kontrol, 0 chyb
+OK     test_core pokey-casovac  -- vystup B316 = B315 (12 radku), souboru obrazu/WAV 0 shodnych; pokey-casovac: chyb 0
+OK     test_core vlozeni  -- vystup B316 = B315 (70 radku), souboru obrazu/WAV 0 shodnych; vlozeni: chyb 0
+OK     test_core tv-proud  -- vystup B316 = B315 (17 radku), souboru obrazu/WAV 0 shodnych; tv-proud: chyb 0
+OK     test_core pc-klavesnice  -- vystup B316 = B315 (106 radku), souboru obrazu/WAV 0 shodnych; pc-klavesnice: chyb 0
+OK     test_core pc-klavesnice-naivne  -- vystup B316 = B315 (107 radku), souboru obrazu/WAV 0 shodnych; pc-klavesnice: chyb 11
+OK     test_core kazeta  -- vystup B316 = B315 (31 radku), souboru obrazu/WAV 1 shodnych; KAZETA OK: program po CLOAD souhlasi
+OK     test_core kazeta-dlouha-basic  -- vystup B316 = B315 (5 radku), souboru obrazu/WAV 0 shodnych; KAZETA DLOUHA OK: LIST = zdroj, CSAVE -> CLOAD bez chyby, LIST po nahrani stejny
+OK     test_core kazeta-dlouha-tbxl  -- vystup B316 = B315 (5 radku), souboru obrazu/WAV 0 shodnych; KAZETA DLOUHA CHYBA
+OK     test_core bootkazeta  -- vystup B316 = B315 (5 radku), souboru obrazu/WAV 0 shodnych; BOOT KAZETA OK: hra z kazety nabootovala (START+OPTION pri zapnuti, RETURN po pipnuti)
+OK     test_core bootkazeta-stereo  -- vystup B316 = B315 (5 radku), souboru obrazu/WAV 0 shodnych; BOOT KAZETA OK: hra z kazety nabootovala (START+OPTION pri zapnuti, RETURN po pipnuti)
+OK     test_core txt-basic  -- vystup B316 = B315 (42 radku), souboru obrazu/WAV 0 shodnych; LMARGN=2 SHFLOK=$40 NOCLIK=$00 INVFLG=$00, snimku 172, stav 4
+OK     test_core txt-tbxl  -- vystup B316 = B315 (43 radku), souboru obrazu/WAV 0 shodnych; LMARGN=2 SHFLOK=$40 NOCLIK=$00 INVFLG=$00, snimku 101, stav 4
+OK     test_core tbxl-disketa  -- vystup B316 = B315 (16 radku), souboru obrazu/WAV 0 shodnych; tbxl-disketa: LIST OK, RUN CHYBA, zkratek SIO 6
+OK     test_core tbxl-disketa-stary  -- vystup B316 = B315 (16 radku), souboru obrazu/WAV 0 shodnych; tbxl-disketa: LIST OK, RUN CHYBA, zkratek SIO 6
+OK     test_core acid800  -- vystup B316 = B315 (56 radku), souboru obrazu/WAV 0 shodnych; KONEC snimek 1368: pass 39 fail 14 skip 1 | Acid800: Passed: 42  Failed                    
+OK     test_core popeye-vbxe  -- vystup B316 = B315 (8 radku), souboru obrazu/WAV 4 shodnych; VBXE konec: zapisu 38950, XDL snimku 1394, posledni overlay 2, sirka 0, XDL=$1E000 zap=1, MEMAC ctl=$A8 A=$9E 
+OK     test_core wolf3d-vbxe  -- vystup B316 = B315 (8 radku), souboru obrazu/WAV 8 shodnych; VBXE konec: zapisu 15711, XDL snimku 1546, posledni overlay 1, sirka 1, XDL=$0A000 zap=1, MEMAC ctl=$88 A=$8A 
+OK     test_core xex1-Donkey_Kong_Junior__Title_Version_  -- vystup B316 = B315 (9 radku), souboru obrazu/WAV 6 shodnych; VBXE konec: zapisu 0, XDL snimku 0, posledni overlay 0, sirka 1, XDL=$00000 zap=0, MEMAC ctl=$00 A=$00 B=$00, 
+OK     test_core xex2-Postcard_Atari_Rocky  -- vystup B316 = B315 (9 radku), souboru obrazu/WAV 6 shodnych; VBXE konec: zapisu 0, XDL snimku 0, posledni overlay 0, sirka 1, XDL=$00000 zap=0, MEMAC ctl=$00 A=$00 B=$00, 
+OK     test_core xex3-The_Activision_Decathlon  -- vystup B316 = B315 (9 radku), souboru obrazu/WAV 6 shodnych; VBXE konec: zapisu 0, XDL snimku 0, posledni overlay 0, sirka 1, XDL=$00000 zap=0, MEMAC ctl=$00 A=$00 B=$00, 
+OK     test_core xex4-The_Activision_Decathlon  -- vystup B316 = B315 (9 radku), souboru obrazu/WAV 6 shodnych; VBXE konec: zapisu 0, XDL snimku 0, posledni overlay 0, sirka 1, XDL=$00000 zap=0, MEMAC ctl=$00 A=$00 B=$00, 
+OK     test_core xex5-commando230810  -- vystup B316 = B315 (9 radku), souboru obrazu/WAV 6 shodnych; VBXE konec: zapisu 1559, XDL snimku 1407, posledni overlay 2, sirka 1, XDL=$20000 zap=1, MEMAC ctl=$00 A=$00 B
+OK     test_core xex6-mission  -- vystup B316 = B315 (9 radku), souboru obrazu/WAV 6 shodnych; VBXE konec: zapisu 0, XDL snimku 0, posledni overlay 0, sirka 1, XDL=$00000 zap=0, MEMAC ctl=$00 A=$00 B=$00, 
+OK     test_core xex7-nightdriver_vbxe  -- vystup B316 = B315 (9 radku), souboru obrazu/WAV 6 shodnych; VBXE konec: zapisu 777, XDL snimku 0, posledni overlay 0, sirka 1, XDL=$00000 zap=0, MEMAC ctl=$4E A=$00 B=$00
+OK     test_core xex8-rrumble  -- vystup B316 = B315 (9 radku), souboru obrazu/WAV 6 shodnych; VBXE konec: zapisu 7180, XDL snimku 1392, posledni overlay 2, sirka 1, XDL=$00000 zap=1, MEMAC ctl=$B8 A=$81 B
+OK     test_b291_runtime (psani klavesnici, CSAVE -> WAV)  -- B316 = B315: rozdilnych radku 0; VYSLEDEK: 10 kontrol, 0 chyb
+OK     B291 test_b291_jni_host (pristroj, psani, CSAVE)  -- VYSLEDEK: 24 kontrol, 0 chyb
+OK     B292-B303 test_b292_jni_host (kazeta, disketa, joystick, VBXE Popeye + W3D, TV, klavesnice PC, Ctrl+V)  -- VYSLEDEK: 86 kontrol, 0 chyb
+OK     navod cesky: kazde tlacitko z navodu v appce opravdu je (../b312 kontrola_navodu.py)  -- VYSLEDEK: 167 nazvu, 0 CHYBA (nazev v navodu, ktery v appce neni)
+OK     navod anglicky: tlacitka v appce anglicky, zadna cestina, stejne kapitoly (../b314 kontrola_navodu_en.py)  -- VYSLEDEK: 162 nazvu tlacitek, 0 CHYBA
+OK     B314 navod v Chromiu (presmerovani CZ/EN, hledani, 320-915 px, bez chyb JS; 5) jen nove texty B316: ['VYSUNOUT CARTRIDGE', '(Atari znovu s BASICem) a', 'VYBRAT JINÝ SOUBOR'])  -- VYSLEDEK: 34 kontrol, 1 CHYBA, jinych chyb nez 5): 0
+VYSLEDEK: 33 OK, 0 CHYBA

@@ -1,0 +1,5 @@
+B316 - JNI: hlavicka z NativeAtariCoreBridge.java (javac -h) proti nap_atari_native.cpp
+OK     preklad s hlavickou z Javy bez chyby
+nativnich metod v Jave 41, v C++ 41, v C++ chybi 0
+OK     devLoadCarNative(byte[], String) -> String je v Jave i v C++
+VYSLEDEK: 0 CHYBA

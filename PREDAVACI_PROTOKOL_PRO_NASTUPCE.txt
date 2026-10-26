@@ -3086,3 +3086,62 @@
        test proti B315, tyhle neprepisovat.
 
 ===============================================================================
+
+   B316: CARTRIDGE (.car) PRO ATARI 130XE.
+     Rene: "slo by do atari emu pridat i priponu *.car - tedy aby toty hry
+     sly v nasem emu spustit?" (poslal Wonderboy_VBXE.car = typ 42 Atarimax
+     1 MB (old), 128 bank po 8 KB, hra pro VBXE). Soubor se do repozitare
+     NEDAVA (neznama licence, 1 MB) - testy ho berou jako argument (CAR=).
+     - nap_atari_cart.h (bez Androidu): nap::Cartridge. CART_TYPY[113] =
+       velikost + nazev jako Atari800 cartridge_info.c (159/160 zvlast);
+       umim = 67 typu = vse, co Atari800 98cc2dc umi pro XL/XE, krome AST 32,
+       XEGS 8F 64, The!Cart, Ram-Cart, SiDiCar (typy 76-93 Atari800 nema).
+       nactiCar: "CART", typ BE32, soucet BE32 (nesedi = jen varovani, jako
+       Atari800), data kb*1024 (prebytek se ignoruje). Chyba: KRATKY,
+       NENI_CAR, NEZNAMY_TYP, PRO_5200, PRAVY_SLOT, NEUMIM, MALO_DAT.
+       okno[4] = posun v data pro $8000/$9000/$A000/$B000 po 4 KB (NIC =
+       RAM / BASIC, FF = cte se $FF - OSS). stav = "state" z Atari800,
+       studenyStart = ResetCartState (OSS 034M 1, Atarimax 1 MB old $7F,
+       MegaCart 4 MB 254, jinak 0). cteniD5 / zapisD5 = access_D5 + GetByte /
+       PutByte, mapuj = MapActiveCart + SwitchBank (XL/XE), bbPristup =
+       Bounty Bob. upravData: STD 2/4 KB doplnit $FF na 8 KB, Blizzard 4 KB
+       zrcadlo, Atrax 128 a Atrax SDX rozsifrovat (cross maps PreprocessCart).
+       Kod napsany znovu (Atari800 je GPL) - shoda overena testem.
+     - nap_atari_machine.h: Machine::cart. memRead / memWrite $8000-$BFFF:
+       okno cartridge pred BASICem i RAM (CPU i ANTIC), zapis do okna se
+       ztrati (Bounty Bob prepne). ioRead / ioWrite $D5xx -> cteniD5 /
+       zapisD5 (bez registru = busData, plovouci sbernice; Atari800 vraci
+       $FF). gtiaRead $13: TRIG3 = trig[3] | rd5(). peek Bounty Bob
+       neprepina. Machine::reset() cartridge nemeni (slot 130XE RESET nema),
+       studenyStartLocked cartridge presune do noveho stroje + studenyStart().
+     - nap_atari_native.cpp: devLoadCarNative(byte[], String) -> "OK ..." /
+       "CHYBA ..." (+ hlaska na pristroj). Pri OK: zrusi XEX a kazetovy boot,
+       disketu z D1: ven, cartridge do stroje, studenyStartLocked(7),
+       sioRychlyTimeout. devCtl "cart" = jmeno ("" = prazdny slot),
+       "cart_eject" = ven + studeny start s BASICem. vyjmoutCartridgeLocked
+       (duvod) pred kazdym jinym startem programu: XEX, ATR (ne VYMENA BEZ
+       RESTARTU), TXT do ATARI BASICu, kazeta s bootem, VYSUNOUT DISKETU.
+       LOG/CHYBA (devDiag): "cartridge <jmeno> typ ... stav, okna, TRIG3".
+     - Java: atariCppSpustProgram - hlavicka CART (nebo pripona .car bez
+       hlavicky XEX / ATR -> C++ poctive "NENI .CAR") -> devLoadCarSafe.
+       hasGameExtension + hasAtariPayloadExtension + .car (web, NET, ZIP).
+       XEX/MOBIL: cartridge ve slotu -> atariCppCartMenu (VYSUNOUT
+       CARTRIDGE / VYBRAT JINY SOUBOR), vyber = atariCppVyberProgram.
+       HELP dialog (CZ + ATARI_HELP_EN) a napoveda/index.html + en.html.
+     - CHOVANI: cartridge zustava ve slotu po POWER i po novem otevreni HELP
+       (devStart(true) = studeny start - jako disketa v D1:). Ven: XEX/MOBIL
+       -> VYSUNOUT CARTRIDGE, nebo jakykoli jiny program. Flash Atarimax se
+       nezapisuje (jako Atari800) - hra si do cartridge nic neulozi.
+     - TESTY: test_overeni/b316 (JAK_SPUSTIT.txt, vse.sh). test_b316_cart_diff
+       = nase Cartridge proti src/cartridge.c Atari800 98cc2dc (stahuje se
+       pri testu, nahrady pocitace ref_stub/) pristup po pristupu, 67 typu;
+       test_b316_core = skutecne jadro + OS (synteticke cartridge sestavene
+       v testu + Wonderboy 3000 snimku); test_b316_jni_host = native.cpp
+       s vlakny. regrese.sh: test_core s jadrem B315 (git 0fd67c7) i B316 -
+       vystupy a snimky her shodne do bajtu. Znamy rozdil: navod B314 test
+       5) "cesky = B313" neplati (pribyla cartridge) - kontrola_navodu_b316.py
+       hlida, ze se zmenily jen bloky XEX / MOBIL a NET / HRY.
+     - DALSI TYPY (az prijde soubor): pridat do pristupD5 / mapuj / zapisD5,
+       umim = 1, a test_b316_cart_diff to porovna s Atari800 samo.
+
+===============================================================================

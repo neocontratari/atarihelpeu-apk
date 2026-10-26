@@ -1,0 +1,63 @@
+B316 - CARTRIDGE (.car) PRO ATARI 130XE - testy (vse na obycejnem Linuxu)
+==========================================================================
+
+Vse najednou (vystupy VYSTUP_* sem):
+   PRAC=/tmp/nap_b316 ANDROID_JAR=.../android-34.jar CAR=.../Wonderboy_VBXE.car \
+       bash test_overeni/b316/vse.sh
+   CAR = Reneho Wonderboy_VBXE.car (typ 42, Atarimax 1 MB, hra pro VBXE). Do repozitare se
+   NEDAVA (neznama licence, 1 MB) - bez nej se kroky se skutecnou hrou preskoci.
+
+Potreba: g++ / gcc, curl, Python 3, JAVA_HOME = JDK (jni.h, javac), android.jar API 34,
+Chromium + Playwright pro Python (regrese: navod B314).
+
+1) test_b316_cart_diff.cpp - NASE cartridge proti emulatoru Atari800
+   Zdrojaky Atari800 (src/cartridge.c, cartridge.h, cartridge_info.c, cartridge_info.h, commit
+   98cc2dc749867c9c7317a0271ba062a6c797f886, GPL) se do repozitare NEDAVAJI - vse.sh je stahne
+   z GitHubu do $PRAC/atari800. Pocitac pro jejich cartridge.c = nahrady v ref_stub/ (nase:
+   pamet 64 kB, priznaky oken RD4 / RD5, 130XE s vestavenym BASICem).
+     ./test_b316_cart_diff [--car soubor.car] [--kroku 6000] [--prac adresar]
+   - tabulka 161 typu (velikost, nazev) = cartridge_info.c
+   - nacteni .car: typy 0-170 x (spravny / spatny soucet / o 1 B kratsi / bajty navic) proti
+     CARTRIDGE_ReadImage; zamerna odchylka: typy 113-158 (v Atari800 neobsazene, 0 kB) - Atari800
+     je vezme jako prazdnou cartridge, ktera nic nedela, my rekneme NEZNAMY TYP
+   - 67 typu, ktere appka umi: nahodna data, vlozeni, studeny start, 6000 nahodnych kroku
+     (cteni / zapis $D500-$D5FF, u Bounty Bob $8FF6-$9FF9, obcas POWER); po KAZDEM kroku se
+     porovna: okna RD4 / RD5 (= TRIG3), vsech 16 kB obsahu oken, hodnota prectena z $D5xx
+   - --car: skutecny soubor, 5x vic kroku
+   Ze test opravdu chyby najde, overeno zmenami kodu (banka po zapnuti, OSS, maska XEGS,
+   Bounty Bob, Atrax SDX, SIC!) - vsechny nasel (mutace se do repozitare nedavaji).
+
+2) test_b316_core.cpp - cartridge ve SKUTECNEM jadru (nap_atari_machine.h + OS a BASIC z appky)
+     g++ -std=c++17 -O2 -I../../app/src/main/cpp/atari -o test_b316_core test_b316_core.cpp
+     ./test_b316_core [Wonderboy_VBXE.car [prefix_snimku]]
+   A) bez cartridge (READY, TRIG3 = 0, $D5xx plovouci sbernice, BASIC, RAM)
+   B) Standard 8 KB: OS ji spusti (init + start), TRIG3, zapis do ROM se ztrati, ANTIC kresli
+      display list a text primo z ROM cartridge
+   C) Atarimax 1 MB jako Wonderboy: banka 127 po zapnuti, prepnuti na banku 0, z RAM vypnuti
+      ($D580): TRIG3 = 0 a RAM pod cartridge (zapis z doby cartridge se do ni nedostal),
+      banka 1, OS bezi dal (GINTLK), RESET banku necha, POWER vrati 127
+   D) Bounty Bob: procesor prepina $8FF6-$9FF9 (cteni i zapis), ANTIC ani peek ne
+   E) XEGS 32 KB: zapis $D500 = banka na $8000, cteni neprepina
+   F) skutecna hra 3000 snimku (START, FIRE, joystick): prepinani bank, VBXE, obraz (PPM
+      snimky do prefixu - kontroloval Claude, do repozitare se nedavaji)
+
+3) test_b316_jni_host.cpp - SKUTECNY nap_atari_native.cpp s vlakny (Android nahrazen ../b291/stub)
+     g++ -std=c++17 -O2 -pthread -I../b291/stub -I$JAVA_HOME/include -I$JAVA_HOME/include/linux \
+         -I../../app/src/main/cpp/atari -I../b292 -o test_b316_jni_host test_b316_jni_host.cpp
+     ./test_b316_jni_host [Wonderboy_VBXE.car]       (spoustet z test_overeni/b316, ~2 minuty)
+   start, spatne soubory (hlasky, Atari bezi dal), cartridge + POWER + LOG/CHYBA, VYSUNOUT
+   CARTRIDGE, XEX / ATR / TXT / kazeta s bootem / VYSUNOUT DISKETU cartridge vytahnou,
+   cartridge vysune disketu, skutecna hra (banky, VBXE, obraz pro TV, START / FIRE, POWER)
+
+4) javac proti android.jar + JNI: hlavicka z Javy (javac -h) vlozena pred nap_atari_native.cpp
+   (stejne typy, vsech 41 nativnich metod) - VYSTUP_javac_android.txt, VYSTUP_jni_podpisy.txt
+
+5) kontrola_navodu_b316.py - navod (napoveda/index.html, en.html) proti B315: zmenene jen bloky
+   XEX / MOBIL a NET / HRY, znacky HTML stejne (+2 nazvy tlacitek)
+
+6) regrese.sh PRAC JAVA_HOME - jadro BEZ cartridge = B315 (git 0fd67c7): test_core (../b292)
+   prelozeny s jadrem B315 i B316, vsechny rezimy + 9 her XEX / ATR (vc. VBXE) - vystupy
+   i snimky (.idx, .ppm) a WAV shodne do bajtu; test_b291_runtime B315 = B316; testy
+   s vlakny ../b291 a ../b292; navod cesky (../b312) a anglicky (../b314) proti appce;
+   navod B314 v Chromiu (kontrola 5 "cesky = B313" v B316 zamerne neplati - povolena jen
+   s novymi texty B316). acid800.atr se stahuje z GitHubu Atari800 (jen data pro test).

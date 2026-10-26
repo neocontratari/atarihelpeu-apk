@@ -1,0 +1,164 @@
+B291 HELP otevren - pristroj ZAPNUT, studeny start Atari
+B293 JADRO = ATARI 130XE PAL: RAM 64 kB + rozsirena 4x16 kB (PORTB bity 2-3, procesor bit 4, ANTIC bit 5), OS XL/XE rev.2 (soucet $9211), BASIC rev.C vestaveny, self-test ROM $5000, TRIG3 = RD5 cartridge (prazdny slot = 0), RESET = reset CPU+ANTIC+PIA/MMU, plovouci datova sbernice, ANTIC/GTIA PAL 312 radku, POKEY 1,773 MHz
+B316 CARTRIDGE: soubory .car (XEX/MOBIL, NET, ZIP) - slot $8000-$9FFF / $A000-$BFFF pred BASICem, banky pres $D500-$D5FF, 67 typu (standard 2-16 kB, XEGS a Switchable XEGS, MegaCart, Atarimax 128 kB / 1 MB, SIC!, Williams, Express, Diamond, SpartaDOS X, OSS, Blizzard, Phoenix, Turbosoft, Atrax, Bounty Bob, J(atari)Cart, DCart ...); jiny program (XEX / ATR / TXT) cartridge vytahne, POWER ji necha ve slotu.
+B296 VBXE FX 1.26 v jadre: registry $D640, 512 kB VRAM, MEMAC A/B, XDL (overlay LR/SR/HR/text 80 sloupcu), atributova mapa, palety 4x256, blitter (rezimy 0-6, zoom, vzor, kolize) + IRQ; obraz 4 body na barevny takt. Joystick 1: leva pulka obrazovky = smer, prava = FIRE; herni ovladac taky.
+B298 ZVUK s pasmem jako TV (FIR 16 kHz, bez prekladu ultrazvuku do slysitelna), asynchronni prijem POKEY restartuje casovace 3+4 start bitem; KAZETA: hra (boot) = START+OPTION a RETURN samo, stereo WAV = zvukova stopa do TV, CLOAD i s disketou v D1:; DISKETA: ATR/DISK = vysunout / vymenit bez restartu.
+B299 BASIC/TBXL TXT: TXT soubor s programem napise appka sama do ATARI BASICu / Turbo-BASICu XL; klavesy z pristroje do logu (B299 KLAVESY); LOG/CHYBA = stav a cela pamet Atari v logu; SIO zkratka jen se zapnutou ROM OS (Turbo-BASIC XL ma na $E459 vlastni kod).
+B300 POKEY: casovac s AUDF=$FF (perioda 256) tika a dava preruseni - drive stal (Ghostbusters: hudba a rec z preruseni casovace 1, bez nej titulka stala; nejhlubsi tony byly potichu).
+B301 TV/PC (web prohlizec v appce): obraz Atari 130XE primo z jadra (vyrez 336x240 jako na telefonu) a zvuk 44100 Hz stereo - drive bylo na TV videt jen stranku s testy pod pristrojem.
+B302 KLAVESNICE POCITACE (prohlizec na TV/PC) -> Atari 130XE primo v C++: psani podle rozlozeni (cesky: diakritika bez hacku, AltGr znaky), sipky = kurzor, F1/F3/F4 START/SELECT/OPTION, F2 BREAK, F6 HELP, F8 INVERZE, F9 HRANI (WASD/sipky joystick, K skok, L FIRE); klavesy v tempu, ktere OS stihne.
+B303 TV/PC CELE V C++: kazdy snimek Atari (50/s) jako paleta + jen zmenene radky a zvuk v jednom proudu (/atari.stream) - Java uz nezvetsuje ani nekomprimuje (H.264/JPEG); Ctrl+V nebo pretazeny TXT v prohlizeci = program do BASICu bez NEW (UTF-8 s e s hackem uz neni ATASCII), jiny text = klavesy.
+B291 PRISTROJ plocha nova 1080x2160 -> kresleni 1080x2160
+B291 EMULACE_VLAKNO start (50 snimku/s, zvuk OpenSL, vse v C++)
+B291 EMULACE_VLAKNO priorita nice=-8 nastavena
+B291 KRESLICI_VLAKNO start (pristroj kresli C++ primo na displej)
+B291 KRESLICI_VLAKNO priorita nice=-4 nastavena
+B291 PRISTROJ rozlozen 1080x2160 (displej 1080x2160) za 127 ms
+B316 - cartridge pres skutecny nap_atari_native.cpp (vlakna emulace a kresleni jako v appce)
+
+1) START
+OK     Atari nastartovalo do READY (bez cartridge jako dosud)
+OK     v logu je radek B316 CARTRIDGE (co jadro umi)
+OK     devCtl "cart" = "" (slot prazdny)
+OK     TRIG3 = 0
+B291 TXT do Atari: 20 stisku klaves pripraveno (0 znaku na Atari klavesnici neni)
+B316 CARTRIDGE CHYBA hra.car neni .car (chybi hlavicka CART)
+
+2) SPATNE SOUBORY - poctiva hlaska, Atari bezi dal
+   devLoadCar(hra.car, 18 B) -> CHYBA hra.car neni .car (chybi hlavicka CART)
+OK     XEX prejmenovany na .car: "neni .car" + na pristroji NENÍ .CAR
+B316 CARTRIDGE CHYBA kosmo.car: typ 4 (Standard 32 KB 5200) je cartridge pro Atari 5200, ne pro 130XE
+   devLoadCar(kosmo.car, 32784 B) -> CHYBA kosmo.car: typ 4 (Standard 32 KB 5200) je cartridge pro Atari 5200, ne pro 130XE
+OK     typ 4: cartridge pro Atari 5200
+B316 CARTRIDGE CHYBA pravy.car: typ 21 (Right slot 8 KB) patri do praveho slotu Atari 800 - 130XE ho nema
+   devLoadCar(pravy.car, 8208 B) -> CHYBA pravy.car: typ 21 (Right slot 8 KB) patri do praveho slotu Atari 800 - 130XE ho nema
+OK     typ 21: pravy slot (130XE ho nema)
+B316 CARTRIDGE CHYBA divny.car: neznamy typ cartridge 200
+   devLoadCar(divny.car, 8208 B) -> CHYBA divny.car: neznamy typ cartridge 200
+OK     typ 200: neznamy typ
+B316 CARTRIDGE CHYBA ast.car: typ 47 (AST 32 KB, 32 kB) zatim neumim
+   devLoadCar(ast.car, 32784 B) -> CHYBA ast.car: typ 47 (AST 32 KB, 32 kB) zatim neumim
+OK     typ 47 (AST 32 KB): zatim neumim
+B316 CARTRIDGE CHYBA pulka.car: soubor je kratsi nez typ 1 (Standard 8 KB) potrebuje (8 kB dat)
+   devLoadCar(pulka.car, 4112 B) -> CHYBA pulka.car: soubor je kratsi nez typ 1 (Standard 8 KB) potrebuje (8 kB dat)
+OK     typ 1 jen se 4 kB dat: soubor je neuplny
+OK     po spatnych souborech je slot porad prazdny
+B291 TXT do Atari: 5 stisku klaves pripraveno (0 znaku na Atari klavesnici neni)
+OK     Atari se nerestartovalo - program v BASICu zustal (LIST)
+B316 CARTRIDGE VLOZENA OK std8.car: typ 1 (Standard 8 KB), 8 kB, kontrolni soucet OK ($001D333B), po zapnuti $A000-$BFFF (stav $0) -> slot, studeny start
+
+3) CARTRIDGE STANDARD 8 KB
+   devLoadCar(std8.car, 8208 B) -> OK std8.car: typ 1 (Standard 8 KB), 8 kB, kontrolni soucet OK ($001D333B), po zapnuti $A000-$BFFF (stav $0) -> slot, studeny start
+OK     devLoadCar: OK, typ, velikost, kontrolni soucet
+OK     na pristroji CARTRIDGE: std8.car
+OK     OS cartridge spustil (program cartridge zapsal $42 do $0600)
+OK     program cartridge cte TRIG3 = 1
+OK     devCtl "cart" = std8.car (XEX/MOBIL nabidne VYSUNOUT)
+OK     v logu B316 CARTRIDGE VLOZENA
+B291 POWER VYPNUTO
+B291 POWER ZAPNUTO - studeny start (pamet i hardware od nuly, jako vypinac na skrini)
+OK     POWER vyp/zap: cartridge zustala ve slotu a spustila se znovu
+OK     po POWER je std8.car porad ve slotu
+OK     LOG/CHYBA popise cartridge (jmeno, typ, okna, TRIG3)
+B316 CARTRIDGE std8.car vysunuta - studeny start (BASIC)
+
+4) VYSUNOUT CARTRIDGE
+OK     devCtl "cart_eject" probehl
+OK     Atari se zapnulo znovu s BASICem (READY)
+OK     slot prazdny
+OK     TRIG3 = 0
+OK     log + na pristroji CARTRIDGE VYSUNUTA
+B316 CARTRIDGE VLOZENA OK std8.car: typ 1 (Standard 8 KB), 8 kB, kontrolni soucet OK ($001D333B), po zapnuti $A000-$BFFF (stav $0) -> slot, studeny start
+B316 CARTRIDGE std8.car vyjmuta ze slotu (spousti se XEX)
+B291 XEX turbo_basic_xl.xex: 20877 bajtu - studeny start s OPTION (BASIC vypnuty), pak segmenty
+
+5) JINY PROGRAM CARTRIDGE VYTAHNE (a cartridge vysune disketu)
+   devLoadCar(std8.car, 8208 B) -> OK std8.car: typ 1 (Standard 8 KB), 8 kB, kontrolni soucet OK ($001D333B), po zapnuti $A000-$BFFF (stav $0) -> slot, studeny start
+OK     XEX: cartridge ze slotu ven, XEX se zavadi
+OK     log: vyjmuta ze slotu (spousti se XEX)
+B291 XEX OS nastartovan za 87 snimku (BASIC=VYPNUTY, RAMTOP=$C0) - nahravam segmenty
+OK     Turbo-BASIC XL se nahral a prevzal rizeni
+OK     READY od Turbo-BASICu (ATARI BASIC vypnuty) - cartridge mu neprekazi
+B291 XEX zavadeni preruseno
+B316 CARTRIDGE VLOZENA OK std8.car: typ 1 (Standard 8 KB), 8 kB, kontrolni soucet OK ($001D333B), po zapnuti $A000-$BFFF (stav $0) -> slot, studeny start
+B316 CARTRIDGE std8.car vyjmuta ze slotu (bootuje disketa ATR)
+B295 DISKETA VLOZENA OK boot.atr: 720 sektoru po 128 B (90 kB) -> mechanika D1:, studeny start s OPTION (BASIC vypnuty)
+   devLoadCar(std8.car, 8208 B) -> OK std8.car: typ 1 (Standard 8 KB), 8 kB, kontrolni soucet OK ($001D333B), po zapnuti $A000-$BFFF (stav $0) -> slot, studeny start
+   devLoadAtr -> OK boot.atr: 720 sektoru po 128 B (90 kB) -> mechanika D1:, studeny start s OPTION (BASIC vypnuty)
+OK     ATR: cartridge ze slotu ven (log)
+OK     disketa nabootovala (boot sektor zapsal $99)
+B316 CARTRIDGE VLOZENA OK std8.car: typ 1 (Standard 8 KB), 8 kB, kontrolni soucet OK ($001D333B), po zapnuti $A000-$BFFF (stav $0) -> slot, studeny start
+B316 CARTRIDGE: disketa vyjmuta z D1: (bootuje cartridge)
+   devLoadCar(std8.car, 8208 B) -> OK std8.car: typ 1 (Standard 8 KB), 8 kB, kontrolni soucet OK ($001D333B), po zapnuti $A000-$BFFF (stav $0) -> slot, studeny start
+OK     cartridge vysunula disketu z D1: (log)
+OK     a spustila se cartridge, ne disketa
+B316 CARTRIDGE std8.car vyjmuta ze slotu (vysunout disketu = zapnout s BASICem)
+B298 DISKETA: D1: byla prazdna - studeny start (BASIC)
+OK     VYSUNOUT DISKETU: cartridge taky ven (BASIC)
+OK     READY
+B316 CARTRIDGE VLOZENA OK std8.car: typ 1 (Standard 8 KB), 8 kB, kontrolni soucet OK ($001D333B), po zapnuti $A000-$BFFF (stav $0) -> slot, studeny start
+B316 CARTRIDGE std8.car vyjmuta ze slotu (TXT program do ATARI BASICu)
+B299 TXT PROGRAM program.txt -> ATARI BASIC: 2 radku programu, 31 stisku klaves (textovy soubor); cekam na READY
+   devLoadCar(std8.car, 8208 B) -> OK std8.car: typ 1 (Standard 8 KB), 8 kB, kontrolni soucet OK ($001D333B), po zapnuti $A000-$BFFF (stav $0) -> slot, studeny start
+   devProgram -> B299 TXT PROGRAM program.txt -> ATARI BASIC: 2 radku programu, 31 stisku klaves (textovy soubor); cekam na READY
+OK     TXT do ATARI BASICu: cartridge ven
+B299 TXT PROGRAM: READY po 85 snimcich - pisu NEW a 2 radku
+OK     program z TXT se napsal do BASICu
+B299 TXT PROGRAM: psani preruseno (POWER / RESET / jiny program)
+B316 CARTRIDGE VLOZENA OK std8.car: typ 1 (Standard 8 KB), 8 kB, kontrolni soucet OK ($001D333B), po zapnuti $A000-$BFFF (stav $0) -> slot, studeny start
+B316 CARTRIDGE std8.car vyjmuta ze slotu (bootuje kazeta)
+B292 KAZETA VLOZENA OK hra_boot.wav: 28.4 s, 44100 Hz, 1 kanal(y) (FSK v kanalu 1), 16 bit; pri 600 Bd 264 bajtu v 2 zaznamech (kontrolni soucet OK 2, spatne 0), chyb ramce v zaznamech 0 (sum v mezerach 0); druh: bootovaci (hra - START+OPTION pri zapnuti); demodulace 26 ms
+B298 KAZETA S BOOTEM - studeny start s drzenym START+OPTION (jako pri zapnuti na skutecnem 130XE), po pipnuti RETURN sam
+   devLoadCar(std8.car, 8208 B) -> OK std8.car: typ 1 (Standard 8 KB), 8 kB, kontrolni soucet OK ($001D333B), po zapnuti $A000-$BFFF (stav $0) -> slot, studeny start
+   devLoadTape -> OK hra_boot.wav: 28.4 s, 44100 Hz, 1 kanal(y) (FSK v kanalu 1), 16 bit; pri 600 Bd 264 bajtu v 2 zaznamech (kontrolni so...
+OK     kazeta s hrou (boot): cartridge ven
+B292 KAZETA vyjmuta
+B316 CARTRIDGE VLOZENA OK Wonderboy_VBXE.car: typ 42 (Atarimax 1 MB Flash (old)), 1024 kB, kontrolni soucet OK ($04F1C688), po zapnuti $A000-$BFFF (stav $7F) -> slot, studeny start
+
+6) SKUTECNA HRA Wonderboy_VBXE.car
+   devLoadCar(Wonderboy_VBXE.car, 1048592 B) -> OK Wonderboy_VBXE.car: typ 42 (Atarimax 1 MB Flash (old)), 1024 kB, kontrolni soucet OK ($04F1C688), po zapnuti $A000-$BFFF (stav $7F) -> slot, studeny start
+OK     Wonderboy: typ 42, 1 MB, kontrolni soucet OK
+B296 VBXE: program nasel kartu VBXE (registry $D640, FX 1.26) a pouziva ji
+B296 VBXE: XDL ZAPNUTO, overlay zadny, blitru 2 (seznamu 2), zapisu palety 153, MEMAC A $00/$00 B $84, snimek 2099
+B296 VBXE: XDL ZAPNUTO, overlay SR 320 bodu, blitru 2 (seznamu 2), zapisu palety 153, MEMAC A $00/$00 B $84, snimek 2100
+   po 9 s: prepnuti bank 1036, zapisu do VBXE 292, blitu 2, XDL 1
+OK     hra bezi: prepina banky a kresli pres VBXE
+   obraz pro TV: 672x240, svetlych bodu 46806
+OK     obraz (i pro TV / PC) neni cerny - titulka Wonder Boy
+B296 JOYSTICK 1 z herniho ovladace / klavesnice telefonu (smer, FIRE, START, SELECT, OPTION)
+B296 VBXE: XDL VYPNUTO, overlay SR 320 bodu, blitru 2 (seznamu 2), zapisu palety 153, MEMAC A $00/$00 B $00, snimek 2654
+B296 VBXE: XDL ZAPNUTO, overlay SR 320 bodu, blitru 5 (seznamu 4), zapisu palety 375, MEMAC A $00/$00 B $00, snimek 2666
+   po START / FIRE: prepnuti bank 6186, zapisu do VBXE 1685, blitu 503
+OK     hra se rozbehla (blitter VBXE kresli postavy - stovky blitu)
+B291 POWER VYPNUTO
+B291 POWER ZAPNUTO - studeny start (pamet i hardware od nuly, jako vypinac na skrini)
+OK     POWER: cartridge zustala, banka 127 jako po zapnuti
+B296 VBXE: program nasel kartu VBXE (registry $D640, FX 1.26) a pouziva ji
+B296 VBXE: XDL ZAPNUTO, overlay zadny, blitru 2 (seznamu 2), zapisu palety 153, MEMAC A $00/$00 B $84, snimek 4274
+B296 VBXE: XDL ZAPNUTO, overlay SR 320 bodu, blitru 2 (seznamu 2), zapisu palety 153, MEMAC A $00/$00 B $84, snimek 4275
+OK     po POWER se hra spustila znovu
+B291 KRESLICI_VLAKNO stop
+B291 EMULACE_VLAKNO stop
+   LOG| B316 CARTRIDGE: soubory .car (XEX/MOBIL, NET, ZIP) - slot $8000-$9FFF / $A000-$BFFF pred BASICem, banky pres $D500-$D5FF, 67 typu (standard 2-16 kB, XEGS a Switchable XEGS, MegaCart, Atarimax 128 kB / 1 MB, SIC!, Williams, Express, Diamond, SpartaDOS X, OSS, Blizzard, Phoenix, Turbosoft, Atrax, Bounty Bob, J(atari)Cart, DCart ...); jiny program (XEX / ATR / TXT) cartridge vytahne, POWER ji necha ve slotu.
+   LOG| B316 CARTRIDGE CHYBA hra.car neni .car (chybi hlavicka CART)
+   LOG| B316 CARTRIDGE CHYBA kosmo.car: typ 4 (Standard 32 KB 5200) je cartridge pro Atari 5200, ne pro 130XE
+   LOG| B316 CARTRIDGE CHYBA pravy.car: typ 21 (Right slot 8 KB) patri do praveho slotu Atari 800 - 130XE ho nema
+   LOG| B316 CARTRIDGE CHYBA divny.car: neznamy typ cartridge 200
+   LOG| B316 CARTRIDGE CHYBA ast.car: typ 47 (AST 32 KB, 32 kB) zatim neumim
+   LOG| B316 CARTRIDGE CHYBA pulka.car: soubor je kratsi nez typ 1 (Standard 8 KB) potrebuje (8 kB dat)
+   LOG| B316 CARTRIDGE VLOZENA OK std8.car: typ 1 (Standard 8 KB), 8 kB, kontrolni soucet OK ($001D333B), po zapnuti $A000-$BFFF (stav $0) -> slot, studeny start
+   LOG| B316 CARTRIDGE std8.car vysunuta - studeny start (BASIC)
+   LOG| B316 CARTRIDGE VLOZENA OK std8.car: typ 1 (Standard 8 KB), 8 kB, kontrolni soucet OK ($001D333B), po zapnuti $A000-$BFFF (stav $0) -> slot, studeny start
+   LOG| B316 CARTRIDGE std8.car vyjmuta ze slotu (spousti se XEX)
+   LOG| B316 CARTRIDGE VLOZENA OK std8.car: typ 1 (Standard 8 KB), 8 kB, kontrolni soucet OK ($001D333B), po zapnuti $A000-$BFFF (stav $0) -> slot, studeny start
+   LOG| B316 CARTRIDGE std8.car vyjmuta ze slotu (bootuje disketa ATR)
+   LOG| B316 CARTRIDGE VLOZENA OK std8.car: typ 1 (Standard 8 KB), 8 kB, kontrolni soucet OK ($001D333B), po zapnuti $A000-$BFFF (stav $0) -> slot, studeny start
+   LOG| B316 CARTRIDGE: disketa vyjmuta z D1: (bootuje cartridge)
+   LOG| B316 CARTRIDGE std8.car vyjmuta ze slotu (vysunout disketu = zapnout s BASICem)
+   LOG| B316 CARTRIDGE VLOZENA OK std8.car: typ 1 (Standard 8 KB), 8 kB, kontrolni soucet OK ($001D333B), po zapnuti $A000-$BFFF (stav $0) -> slot, studeny start
+   LOG| B316 CARTRIDGE std8.car vyjmuta ze slotu (TXT program do ATARI BASICu)
+   LOG| B316 CARTRIDGE VLOZENA OK std8.car: typ 1 (Standard 8 KB), 8 kB, kontrolni soucet OK ($001D333B), po zapnuti $A000-$BFFF (stav $0) -> slot, studeny start
+   LOG| B316 CARTRIDGE std8.car vyjmuta ze slotu (bootuje kazeta)
+   LOG| B316 CARTRIDGE VLOZENA OK Wonderboy_VBXE.car: typ 42 (Atarimax 1 MB Flash (old)), 1024 kB, kontrolni soucet OK ($04F1C688), po zapnuti $A000-$BFFF (stav $7F) -> slot, studeny start
+
+VYSLEDEK: 45 kontrol, 0 CHYBA

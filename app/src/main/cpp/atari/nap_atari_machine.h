@@ -41,6 +41,7 @@
 #include "nap_atari_6502.h"
 #include "nap_atari_tape.h"
 #include "nap_atari_vbxe.h"
+#include "nap_atari_cart.h"
 
 namespace nap {
 
@@ -181,6 +182,7 @@ public:
   // (vestaveny BASIC se nepocita). Na Atari 800 byl TRIG3 tlacitko 4.
   // joysticku - s hodnotou 1 si programy mysli, ze je zasunuta cartridge
   // (napr. M.U.L.E. pak nefunguje).
+  // B316: se zasunutou cartridge (.car) cte TRIG3 stav jeji linky RD5 (gtiaRead).
   int trig[4] = {1, 1, 1, 0};
   int porta = 0xFF;                   // joysticky (1 = nestisknuto)
 
@@ -196,6 +198,7 @@ public:
   int audctl = 0;
   AtrDisk disk;
   TapeDeck tape;
+  Cartridge cart;                     // B316: slot pro cartridge (.car) - nap_atari_cart.h
   long long sioPrikazu = 0;
 
   // ---------------- VBXE (B296) ----------------
@@ -459,6 +462,8 @@ public:
   // cteni bez vedlejsich ucinku (zavadec, testy)
   uint8_t peek(uint16_t a) {
     if (a >= 0xD000 && a < 0xD800) return 0xFF;
+    // B316: Bounty Bob by ctenim $8FF6-$9FF9 prepnul banku - peek (LOG/CHYBA, zavadec) nesmi
+    if (a >= 0x8000 && a < 0xA000 && cart.bountyBob() && cart.okno[(a >> 12) - 8] != Cartridge::NIC) return cart.cti(a);
     return memRead(a, false);
   }
   void pokeMem(uint16_t a, uint8_t v) {
@@ -1328,12 +1333,20 @@ public:
     if ((a & 0xF800) == 0xD000) { ioWrite(a, v); return; }
     memWrite(a, v);
   }
-  // Poradi (kdo vyhraje): ROM (OS / BASIC / self-test) > VBXE MEMAC >
+  // Poradi (kdo vyhraje): ROM (OS / cartridge / BASIC / self-test) > VBXE MEMAC >
   // rozsirena pamet 130XE > zakladni pamet. ($D000-$D7FF = I/O resi volajici.)
+  // B316: cartridge ve slotu ($8000-$9FFF RD4, $A000-$BFFF RD5) ma prednost
+  // pred vestavenym BASICem (na 130XE ho RD5 vypne) i pred RAM.
   inline uint8_t memRead(uint16_t a, bool antic) {
     const int pb = mem.portB();
     if (a >= 0xC000) { if ((pb & 1) && mem.os) return mem.os[a - 0xC000]; }
-    else if (a >= 0xA000) { if (!(pb & 2) && mem.bas) return mem.bas[a - 0xA000]; }
+    else if (a >= 0x8000) {
+      if (cart.okno[(a >> 12) - 8] != Cartridge::NIC) {
+        if (cart.bountyBob() && !antic && a < 0xA000) cart.bbPristup(a);   // Bounty Bob: banka podle adresy
+        if (cart.okno[(a >> 12) - 8] != Cartridge::NIC) return cart.cti(a);
+      }
+      if (a >= 0xA000 && !(pb & 2) && mem.bas) return mem.bas[a - 0xA000];
+    }
     // self-test ROM ($5000-$57FF, PORTB bit 7 = 0, jen se zapnutou OS ROM):
     // MMU dekoduje adresu bez ohledu na to, kdo je na sbernici - vidi ji
     // procesor i ANTIC a ma prednost pred rozsirenou pameti
@@ -1355,7 +1368,11 @@ public:
   inline void memWrite(uint16_t a, uint8_t v) {
     const int pb = mem.portB();
     if (a >= 0xC000) { if (pb & 1) return; }
-    else if (a >= 0xA000) { if (!(pb & 2) && mem.bas) return; }
+    else if (a >= 0x8000) {
+      // B316: cartridge = ROM, zapis se ztrati (Bounty Bob: zapis na $8FF6-$9FF9 prepne banku)
+      if (cart.okno[(a >> 12) - 8] != Cartridge::NIC) { if (cart.bountyBob() && a < 0xA000) cart.bbPristup(a); return; }
+      if (a >= 0xA000 && !(pb & 2) && mem.bas) return;
+    }
     else if (a >= 0x5000 && a < 0x5800 && !(pb & 0x80) && (pb & 1)) return;
     if (vbx.mapAny) {
       const int32_t o = vbx.mapCpu[a >> 12];
@@ -1375,6 +1392,11 @@ public:
         // VBXE: registry $D640-$D65F (+ $D6C0-$D6FF konfigurace FPGA)
         if (vbxeOn) { const int r = vbx.read((uint8_t)(a & 0xFF), cyc); if (r >= 0) return (uint8_t)r; }
         return busData;
+      case 0xD500:
+        // B316: cartridge (linka CCTL) - cteni prepina banky (Atarimax, Williams, OSS ...);
+        // registr ma jen SIC! a MegaCart 4 MB, jinak na sbernici zustane, co tam bylo
+        if (cart.typ) { const int r = cart.cteniD5(a); if (r >= 0) return (uint8_t)r; }
+        return busData;
       // $D100 (PBI), $D500 (cartridge), $D600-$D7FF: na 130XE tam bez
       // pripojenych zarizeni nic neodpovida a datova sbernice "plave" - cte
       // se posledni hodnota, ktera na ni byla (typicky horni bajt adresy z
@@ -1393,6 +1415,7 @@ public:
       case 0xD300: piaWrite(a & 3, v); break;
       case 0xD400: anticRegWrite(a & 0x0F, v); break;
       case 0xD600: if (vbxeOn) { vbx.write((uint8_t)(a & 0xFF), v, cyc); updateIrq(); } break;
+      case 0xD500: if (cart.typ) cart.zapisD5(a, v); break;   // B316: cartridge - prepnuti banky
       default: break;
     }
   }
@@ -1454,7 +1477,8 @@ public:
   // ---------------- GTIA registry ----------------
   uint8_t gtiaRead(int r) {
     switch (r) {
-      case 0x10: case 0x11: case 0x12: case 0x13: return (uint8_t)(trig[r - 0x10] & 1);
+      case 0x10: case 0x11: case 0x12: return (uint8_t)(trig[r - 0x10] & 1);
+      case 0x13: return (uint8_t)((trig[3] | (cart.rd5() ? 1 : 0)) & 1);   // B316: TRIG3 = RD5 cartridge
       case 0x14: return 0x01;                       // PAL
       case 0x1F: {
         uint8_t in = (uint8_t)(0x08 | (consol & 7));

@@ -842,12 +842,16 @@ static int g_statusMs = 0;
 static void studenyStartLocked(int consol) {
   // B292: kazeta v magnetofonu zustava i pri vypnuti/zapnuti pocitace
   // B295: stejne tak disketa v mechanice D1:
+  // B316: a cartridge ve slotu (banky se vrati do stavu po zapnuti)
   nap::TapeDeck paska;
   nap::AtrDisk disketa;
-  if (g_stroj) { paska = std::move(g_stroj->tape); disketa = std::move(g_stroj->disk); }
+  nap::Cartridge cartridge;
+  if (g_stroj) { paska = std::move(g_stroj->tape); disketa = std::move(g_stroj->disk); cartridge = std::move(g_stroj->cart); }
   delete g_stroj; g_stroj = nullptr;
   delete g_view;  g_view  = nullptr;
   zaloz();                       // novy stroj: pamet = vzor DRAM 130XE po zapnuti
+  g_stroj->cart = std::move(cartridge);
+  if (g_stroj->cart.vlozena()) g_stroj->cart.studenyStart();
   g_stroj->reset();
   g_stroj->consol = consol & 7;
   g_stroj->tape = std::move(paska);
@@ -863,6 +867,14 @@ static void studenyStartLocked(int consol) {
   g_klavLog.clear(); g_klavLogPc = false;
   g_postupRadek.clear(); g_postupRadekVlozeny = false;   // B310: rozepsany radek zmizel se strojem
   g_pcHrac.zrus();               // B302: novy stroj nema zadnou klavesu stisknutou
+}
+
+// B316: jiny program (XEX, ATR, TXT do BASICu, kazeta s bootem, VYSUNOUT DISKETU)
+// -> cartridge ze slotu ven, jinak by ji OS po zapnuti spustil misto nej.
+static void vyjmoutCartridgeLocked(const char *proc) {
+  if (!g_stroj || !g_stroj->cart.vlozena()) return;
+  devLog(std::string("B316 CARTRIDGE ") + g_stroj->cart.jmeno + " vyjmuta ze slotu (" + proc + ")");
+  g_stroj->cart.vyjmout();
 }
 
 // B310: postup hrace - je to radek programu ("10 PRINT A"), ne jen cislo (smazani radku)?
@@ -1400,10 +1412,14 @@ Java_eu_atarihelp_emu10_NativeAtariCoreBridge_devStartNative(JNIEnv *, jclass, j
       const unsigned osSum = (unsigned)NAP_OS_ROM[0] | ((unsigned)NAP_OS_ROM[1] << 8);
       snprintf(b, sizeof(b),
                "B293 JADRO = ATARI 130XE PAL: RAM 64 kB + rozsirena 4x16 kB (PORTB bity 2-3, procesor bit 4, ANTIC bit 5), "
-               "OS XL/XE rev.%u (soucet $%04X), BASIC rev.C vestaveny, self-test ROM $5000, TRIG3=0 (bez cartridge), "
+               "OS XL/XE rev.%u (soucet $%04X), BASIC rev.C vestaveny, self-test ROM $5000, TRIG3 = RD5 cartridge (prazdny slot = 0), "
                "RESET = reset CPU+ANTIC+PIA/MMU, plovouci datova sbernice, ANTIC/GTIA PAL 312 radku, POKEY 1,773 MHz",
                (unsigned)NAP_OS_ROM[0x3FF7], osSum);
       devLog(b);
+      devLog("B316 CARTRIDGE: soubory .car (XEX/MOBIL, NET, ZIP) - slot $8000-$9FFF / $A000-$BFFF pred BASICem, banky pres "
+             "$D500-$D5FF, 67 typu (standard 2-16 kB, XEGS a Switchable XEGS, MegaCart, Atarimax 128 kB / 1 MB, SIC!, "
+             "Williams, Express, Diamond, SpartaDOS X, OSS, Blizzard, Phoenix, Turbosoft, Atrax, Bounty Bob, J(atari)Cart, DCart ...); "
+             "jiny program (XEX / ATR / TXT) cartridge vytahne, POWER ji necha ve slotu.");
       devLog("B296 VBXE FX 1.26 v jadre: registry $D640, 512 kB VRAM, MEMAC A/B, XDL (overlay LR/SR/HR/text 80 sloupcu), "
              "atributova mapa, palety 4x256, blitter (rezimy 0-6, zoom, vzor, kolize) + IRQ; obraz 4 body na barevny takt. "
              "Joystick 1: leva pulka obrazovky = smer, prava = FIRE; herni ovladac taky.");
@@ -1561,6 +1577,36 @@ Java_eu_atarihelp_emu10_NativeAtariCoreBridge_devCtlNative(JNIEnv *env, jclass, 
     }
     return env->NewStringUTF(out.c_str());
   }
+  // B316: slot pro cartridge - "cart" = co je ve slotu ("" = prazdny),
+  // "cart_eject" = vytahnout cartridge a zapnout znovu (BASIC)
+  if (cmd == "cart" || cmd == "cart_eject") {
+    std::string jm;
+    {
+      std::lock_guard<std::mutex> l(g_mStroj);
+      if (g_stroj && g_stroj->cart.vlozena()) jm = g_stroj->cart.jmeno;
+      if (cmd == "cart_eject" && g_stroj) {
+        g_xex.zrus();
+        g_stroj->cart.vyjmout();                   // do logu jeden radek nize ("vysunuta")
+        studenyStartLocked(7);
+        g_stroj->sioRychlyTimeout = false;
+        g_strojBezi = true;
+        g_consolChtene = 7; g_consolDrzetDo[0] = g_consolDrzetDo[1] = g_consolDrzetDo[2] = 0;
+        vyzvednoutVystupyLocked();
+      }
+    }
+    if (cmd == "cart_eject") {
+      devLog(jm.empty() ? std::string("B316 CARTRIDGE: slot byl prazdny - studeny start (BASIC)")
+                        : "B316 CARTRIDGE " + jm + " vysunuta - studeny start (BASIC)");
+      std::lock_guard<std::mutex> dl(g_mDev);
+      nap::dev::Device &dv = devGet();
+      if (!dv.power) { dv.power = true; dv.powerAt = nap_ted_ms(); }
+      dv.atariValid = false; dv.markScreen(); dv.markLegend();
+      dv.setStatusMessage(nap::tx("CARTRIDGE VYSUNUTA", "CARTRIDGE REMOVED"), nap_ted_ms(), 4000);
+      pokeRender();
+      return env->NewStringUTF("");
+    }
+    return env->NewStringUTF(nap::pcAscii(jm, 120, true).c_str());
+  }
   // B298: disketova mechanika D1: - "d1" = co je v mechanice ("" = prazdna),
   // "disk_eject" = vysunout a zapnout znovu (BASIC), "atr_vymena" = dalsi ATR
   // jen vymenit bez restartu (druha strana hry), "atr_normal" = zrusit
@@ -1576,6 +1622,7 @@ Java_eu_atarihelp_emu10_NativeAtariCoreBridge_devCtlNative(JNIEnv *env, jclass, 
         vysunuto = g_stroj->disk.mounted;
         g_stroj->disk = nap::AtrDisk();
         g_xex.zrus();
+        vyjmoutCartridgeLocked("vysunout disketu = zapnout s BASICem");
         studenyStartLocked(7);                 // jako vysunout disketu a vypnout/zapnout: BASIC
         g_stroj->sioRychlyTimeout = false;
         g_strojBezi = true;
@@ -1711,6 +1758,7 @@ Java_eu_atarihelp_emu10_NativeAtariCoreBridge_devProgramNative(JNIEnv *env, jcla
     if (rezim == 0) {
       g_xex.zrus();
       if (g_stroj->disk.mounted) { odpojena = true; g_stroj->disk = nap::AtrDisk(); }
+      vyjmoutCartridgeLocked("TXT program do ATARI BASICu");
       studenyStartLocked(7);                       // ATARI BASIC
       g_stroj->sioRychlyTimeout = true;            // D1: je prazdna - OS nema na co cekat
       g_strojBezi = true;
@@ -1731,6 +1779,16 @@ Java_eu_atarihelp_emu10_NativeAtariCoreBridge_devProgramNative(JNIEnv *env, jcla
   return env->NewStringUTF(vysl.c_str());
 }
 
+// B316: cartridge do LOG/CHYBA - typ, stav banky, okna, TRIG3, kolikrat se prepnulo
+static std::string cartPopis(const Machine &m) {
+  if (!m.cart.vlozena()) return "ZADNA (slot prazdny, TRIG3=0)";
+  char b[300];
+  snprintf(b, sizeof(b), "%s typ %d (%s) stav $%X, okna %s%s, TRIG3=%d, prepnuti %lld", m.cart.jmeno.c_str(), m.cart.typ,
+           nap::cartJmeno(m.cart.typ), (unsigned)m.cart.stav, m.cart.rd4() ? "$8000-$9FFF " : "", m.cart.rd5() ? "$A000-$BFFF" : (m.cart.rd4() ? "" : "VYPNUTA"),
+           m.cart.rd5() ? 1 : 0, m.cart.zmen);
+  return b;
+}
+
 /** B299: diagnostika pameti pro LOG/CHYBA - stav procesoru a MMU, ukazatele
  *  BASICu a kontrolni soucty oblasti pameti (porovnam se stejnym postupem na PC). */
 extern "C" JNIEXPORT jstring JNICALL
@@ -1746,11 +1804,11 @@ Java_eu_atarihelp_emu10_NativeAtariCoreBridge_devDiagNative(JNIEnv *env, jclass)
     char b[900];
     snprintf(b, sizeof(b), "B299 PAMET STAV: PC=$%04X A=$%02X X=$%02X Y=$%02X S=$%02X P=$%02X%s, PORTB=$%02X (ROM OS %s, BASIC %s, "
              "rozsirena pamet pro CPU %s banka %d), NMIEN=$%02X, DLIST=$%04X, SAVMSC=$%04X, DDEVIC=$%02X, D1: %s, rychly timeout SIO %s, "
-             "XEX stav %d, psani TXT stav %d, snimek %lld",
+             "XEX stav %d, psani TXT stav %d, snimek %lld, cartridge %s",
              m.cpu.pc, m.cpu.a, m.cpu.x, m.cpu.y, m.cpu.s, m.cpu.p, m.cpu.jam ? " JAM" : "", pb, (pb & 1) ? "zap" : "VYP",
              (pb & 2) ? "vyp" : "ZAP", (pb & 0x10) ? "vyp" : "ZAP", (pb >> 2) & 3, m.nmien, w(0x230), w(0x58), r[0x300],
              m.disk.mounted ? m.disk.name.c_str() : "prazdna", m.sioRychlyTimeout ? "ANO" : "ne", (int)g_xex.stav, (int)g_psani.stav,
-             (long long)m.frame);
+             (long long)m.frame, cartPopis(m).c_str());
     out += b; out += "\n";
     out += nap::napDiagPameti(m);
   }
@@ -2010,6 +2068,7 @@ Java_eu_atarihelp_emu10_NativeAtariCoreBridge_devLoadXexNative(JNIEnv *env, jcla
     std::lock_guard<std::mutex> l(g_mStroj);
     ok = g_xex.priprav(buf.data(), buf.size(), nm);
     if (ok) {
+      vyjmoutCartridgeLocked("spousti se XEX");
       studenyStartLocked(3);                 // OPTION drzene = BASIC vypnuty
       // B295: disketa z mechaniky ven - jinak by OS nabootoval ji misto XEX
       if (g_stroj->disk.mounted) { devLog("B295 DISKETA vyjmuta z D1: (spousti se XEX)"); g_stroj->disk = nap::AtrDisk(); }
@@ -2077,6 +2136,7 @@ Java_eu_atarihelp_emu10_NativeAtariCoreBridge_devLoadTapeNative(JNIEnv *env, jcl
       // presne to se ted stane samo: studeny start s drzenym START+OPTION,
       // OS pipne, RETURN, hra se nahraje a spusti.
       g_xex.zrus();
+      vyjmoutCartridgeLocked("bootuje kazeta");
       if (g_stroj->disk.mounted) { odpojenaDisketa = true; g_stroj->disk = nap::AtrDisk(); }
       studenyStartLocked(nap::KazetaBoot::konzole(7));
       g_stroj->sioRychlyTimeout = false;
@@ -2164,6 +2224,7 @@ Java_eu_atarihelp_emu10_NativeAtariCoreBridge_devLoadAtrNative(JNIEnv *env, jcla
   {
     std::lock_guard<std::mutex> l(g_mStroj);
     g_xex.zrus();
+    vyjmoutCartridgeLocked("bootuje disketa ATR");
     studenyStartLocked(3);
     g_stroj->disk = std::move(d);
     g_stroj->sioRychlyTimeout = false;
@@ -2181,6 +2242,92 @@ Java_eu_atarihelp_emu10_NativeAtariCoreBridge_devLoadAtrNative(JNIEnv *env, jcla
     if (!dv.power) { dv.power = true; dv.powerAt = nap_ted_ms(); }
     dv.atariValid = false; dv.markScreen(); dv.markLegend();
     dv.setStatusMessage((nap::tx("DISKETA D1: ", "DISK D1: ") + nm).c_str(), nap_ted_ms(), 5000);
+  }
+  pokeRender();
+  return env->NewStringUTF(b);
+}
+
+/** B316: cartridge (.car) do slotu a studeny start (jako zasunout cartridge
+ *  a zapnout pocitac). Vraci "OK ..." / "CHYBA ..." pro log. */
+extern "C" JNIEXPORT jstring JNICALL
+Java_eu_atarihelp_emu10_NativeAtariCoreBridge_devLoadCarNative(JNIEnv *env, jclass, jbyteArray data, jstring jmeno) {
+  std::string nm = "cartridge.car";
+  if (jmeno) { const char *c = env->GetStringUTFChars(jmeno, nullptr); if (c) { nm = c; env->ReleaseStringUTFChars(jmeno, c); } }
+  for (auto &ch : nm) if ((unsigned char)ch >= 0x80) ch = '?';
+  if (!data) return env->NewStringUTF("CHYBA zadna data");
+  jsize n = env->GetArrayLength(data);
+  std::vector<uint8_t> buf((size_t)n);
+  if (n > 0) env->GetByteArrayRegion(data, 0, n, (jbyte *)buf.data());
+  const std::string kratke = nm.size() > 26 ? nm.substr(0, 24) + ".." : nm;   // na pristroj (jako u diskety)
+  nap::Cartridge c;
+  const nap::Cartridge::Chyba ch = c.nactiCar(buf.data(), buf.size(), nm);
+  char b[500];
+  if (ch != nap::Cartridge::OK) {
+    const int t = c.posledniTyp;
+    std::string st;
+    switch (ch) {
+      case nap::Cartridge::KRATKY: case nap::Cartridge::NENI_CAR:
+        snprintf(b, sizeof(b), "CHYBA %s neni .car (chybi hlavicka CART)", nm.c_str());
+        st = nap::tx(std::string(u8"NENÍ .CAR: "), std::string("NOT A .CAR: ")) + kratke;
+        break;
+      case nap::Cartridge::NEZNAMY_TYP:
+        snprintf(b, sizeof(b), "CHYBA %s: neznamy typ cartridge %d", nm.c_str(), t);
+        st = nap::tx(u8"NEZNÁMÝ TYP CARTRIDGE ", "UNKNOWN CARTRIDGE TYPE ") + std::to_string(t);
+        break;
+      case nap::Cartridge::PRO_5200:
+        snprintf(b, sizeof(b), "CHYBA %s: typ %d (%s) je cartridge pro Atari 5200, ne pro 130XE", nm.c_str(), t, nap::cartJmeno(t));
+        st = nap::tx("CARTRIDGE PRO ATARI 5200", "AN ATARI 5200 CARTRIDGE");
+        break;
+      case nap::Cartridge::PRAVY_SLOT:
+        snprintf(b, sizeof(b), "CHYBA %s: typ %d (%s) patri do praveho slotu Atari 800 - 130XE ho nema", nm.c_str(), t, nap::cartJmeno(t));
+        st = nap::tx(u8"JEN PRO PRAVÝ SLOT ATARI 800", "RIGHT SLOT (ATARI 800) ONLY");
+        break;
+      case nap::Cartridge::NEUMIM:
+        snprintf(b, sizeof(b), "CHYBA %s: typ %d (%s, %d kB) zatim neumim", nm.c_str(), t, nap::cartJmeno(t), nap::cartKb(t));
+        st = nap::tx(u8"CARTRIDGE TYP ", "CARTRIDGE TYPE ") + std::to_string(t) + nap::tx(u8" ZATÍM NEUMÍM", " NOT SUPPORTED YET");
+        break;
+      default:
+        snprintf(b, sizeof(b), "CHYBA %s: soubor je kratsi nez typ %d (%s) potrebuje (%d kB dat)", nm.c_str(), t, nap::cartJmeno(t), nap::cartKb(t));
+        st = nap::tx(u8"SOUBOR .CAR JE NEÚPLNÝ", "THE .CAR FILE IS INCOMPLETE");
+        break;
+    }
+    devLog(std::string("B316 CARTRIDGE ") + b);
+    std::lock_guard<std::mutex> dl(g_mDev);
+    devGet().setStatusMessage(st.c_str(), nap_ted_ms(), 8000);
+    pokeRender();
+    return env->NewStringUTF(b);
+  }
+  char soucet[120];
+  if (c.soucetHlavicka == c.soucetDat) snprintf(soucet, sizeof(soucet), "OK ($%08X)", (unsigned)c.soucetDat);
+  else snprintf(soucet, sizeof(soucet), "NESEDI (hlavicka $%08X, data $%08X) - nahravam i tak, jako Atari800",
+                (unsigned)c.soucetHlavicka, (unsigned)c.soucetDat);
+  snprintf(b, sizeof(b), "OK %s: typ %d (%s), %d kB, kontrolni soucet %s, po zapnuti %s (stav $%X) -> slot, studeny start",
+           nm.c_str(), c.typ, nap::cartJmeno(c.typ), nap::cartKb(c.typ), soucet,
+           c.rd4() && c.rd5() ? "$8000-$BFFF" : c.rd5() ? "$A000-$BFFF" : c.rd4() ? "$8000-$9FFF" : "okna vypnuta", (unsigned)c.stav);
+  const size_t navic = c.prebytek(buf.size());
+  bool odpojena = false;
+  {
+    std::lock_guard<std::mutex> l(g_mStroj);
+    if (!g_stroj) zaloz();
+    g_xex.zrus();
+    g_kazBoot.zrus();
+    if (g_stroj->disk.mounted) { odpojena = true; g_stroj->disk = nap::AtrDisk(); }
+    g_stroj->cart = std::move(c);
+    studenyStartLocked(7);                   // zapnout s cartridge (OPTION netreba - cartridge prekryje BASIC)
+    g_stroj->sioRychlyTimeout = true;        // D1: je prazdna - OS nema na co cekat
+    g_strojBezi = true;
+    g_consolChtene = 7; g_consolDrzetDo[0] = g_consolDrzetDo[1] = g_consolDrzetDo[2] = 0;
+    vyzvednoutVystupyLocked();
+  }
+  devLog(std::string("B316 CARTRIDGE VLOZENA ") + b);
+  if (navic) devLog("B316 CARTRIDGE: za daty je jeste " + std::to_string(navic) + " B navic - nevadi, nepouziji se");
+  if (odpojena) devLog("B316 CARTRIDGE: disketa vyjmuta z D1: (bootuje cartridge)");
+  {
+    std::lock_guard<std::mutex> dl(g_mDev);
+    nap::dev::Device &dv = devGet();
+    if (!dv.power) { dv.power = true; dv.powerAt = nap_ted_ms(); }
+    dv.atariValid = false; dv.markScreen(); dv.markLegend();
+    dv.setStatusMessage(("CARTRIDGE: " + kratke).c_str(), nap_ted_ms(), 5000);
   }
   pokeRender();
   return env->NewStringUTF(b);

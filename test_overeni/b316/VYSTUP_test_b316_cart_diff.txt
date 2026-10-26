@@ -1,0 +1,82 @@
+B316 CARTRIDGE - nap::Cartridge (appka) proti src/cartridge.c emulatoru Atari800 (commit 98cc2dc)
+pocitac: 130XE (XL/XE), BASIC vestaveny; porovnava se po KAZDEM kroku: okna RD4/RD5 (= TRIG3), 16 kB obsahu, cteni $D5xx
+
+1) TABULKA TYPU: 161 typu (0-160) - velikost a nazev sedi u vsech
+2) NACTENI .CAR: 670 souboru (typy 0-170, spravne / spatny soucet / o 1 B kratsi / s bajty navic, XEX, prazdny) - nacteno 201, odmitnuto 465 (MALO_DAT 67, NEUMIM 118, NEZNAMY_TYP 228, PRAVY_SLOT 8, PRO_5200 44) - shodne s Atari800 ve vsech pripadech
+   zamerna odchylka: 184 souboru s typem 113-158 (v Atari800 neobsazene, 0 kB) - Atari800 je vezme jako prazdnou cartridge, ktera nic nedela, my rekneme NEZNAMY TYP
+
+3) PREPINANI BANK (6000 nahodnych kroku na typ: cteni / zapis $D500-$D5FF, Bounty Bob $8FF6-$9FF9, obcas POWER)
+   typ  nazev                                kB   cteni  zapisu   BB  POWER  ruznych mapovani  zmen   vysledek
+     1  Standard 8 KB                           8    2959    3020     0    21         1               0   SHODA
+     2  Standard 16 KB                         16    2971    3004     0    25         1               0   SHODA
+     3  OSS two chip 16 KB (034M)              16    3026    2952     0    22         5            4126   SHODA
+     5  DB 32 KB                               32    3031    2935     0    34         4            4295   SHODA
+     8  64 KB Williams                         64    2914    3066     0    20         9            5466   SHODA
+     9  Express 64 KB                          64    2986    2991     0    23         9             452   SHODA
+    10  Diamond 64 KB                          64    3006    2966     0    28         9             402   SHODA
+    11  SpartaDOS X 64 KB                      64    2909    3069     0    22         9             388   SHODA
+    12  XEGS 32 KB                             32    3045    2932     0    23         4            2236   SHODA
+    13  XEGS 64 KB (banks 0-7)                 64    2863    3111     0    26         8            2692   SHODA
+    14  XEGS 128 KB                           128    2984    2994     0    22        16            2806   SHODA
+    15  OSS one chip 16 KB                     16    2930    3049     0    21         5            4489   SHODA
+    17  Decoded Atrax 128 KB                  128    2931    3045     0    24        17            2935   SHODA
+    18  Bounty Bob 40 KB                       40     302    2996  2675    27        16            2007   SHODA
+    22  32 KB Williams                         32    3054    2923     0    23         5            5186   SHODA
+    23  XEGS 256 KB                           256    2984    2996     0    20        32            2901   SHODA
+    24  XEGS 512 KB                           512    3050    2933     0    17        64            2871   SHODA
+    25  XEGS 1 MB                            1024    2936    3036     0    28       128            2985   SHODA
+    26  MegaCart 16 KB                         16    3029    2956     0    15         2            1466   SHODA
+    27  MegaCart 32 KB                         32    2993    2983     0    24         3            2242   SHODA
+    28  MegaCart 64 KB                         64    2893    3079     0    28         5            2708   SHODA
+    29  MegaCart 128 KB                       128    2987    2992     0    21         9            2807   SHODA
+    30  MegaCart 256 KB                       256    2952    3027     0    21        17            2932   SHODA
+    31  MegaCart 512 KB                       512    2978    2997     0    25        33            2928   SHODA
+    32  MegaCart 1 MB                        1024    2934    3040     0    26        65            3000   SHODA
+    33  Switchable XEGS 32 KB                  32    2960    3015     0    25         5            2623   SHODA
+    34  Switchable XEGS 64 KB                  64    3011    2961     0    28         9            2771   SHODA
+    35  Switchable XEGS 128 KB                128    3003    2969     0    28        17            2874   SHODA
+    36  Switchable XEGS 256 KB                256    3029    2948     0    23        33            2884   SHODA
+    37  Switchable XEGS 512 KB                512    2991    2979     0    30        65            2949   SHODA
+    38  Switchable XEGS 1 MB                 1024    2945    3026     0    29       129            2993   SHODA
+    39  Phoenix 8 KB                            8    2945    3039     0    16         2              17   SHODA
+    40  Blizzard 16 KB                         16    3041    2939     0    20         2              21   SHODA
+    41  Atarimax 128 KB Flash                 128    2932    3040     0    28        17            1489   SHODA
+    42  Atarimax 1 MB Flash (old)            1024    2941    3035     0    24       129            5936   SHODA
+    43  SpartaDOS X 128 KB                    128    3020    2962     0    18        17             848   SHODA
+    44  OSS 8 KB                                8    3042    2921     0    37         3            3625   SHODA
+    45  OSS two chip 16 KB (043M)              16    2936    3039     0    25         5            4126   SHODA
+    46  Blizzard 4 KB                           4    2951    3019     0    30         2              31   SHODA
+    48  Atrax SDX 64 KB                        64    2985    2987     0    28         9             445   SHODA
+    49  Atrax SDX 128 KB                      128    3029    2948     0    23        17             867   SHODA
+    50  Turbosoft 64 KB                        64    2890    3083     0    27         9            5516   SHODA
+    51  Turbosoft 128 KB                      128    3002    2973     0    25        17            5754   SHODA
+    52  Ultracart 32 KB                        32    2978    2994     0    28         5            5972   SHODA
+    53  Low bank 8 KB                           8    2948    3031     0    21         1               0   SHODA
+    54  SIC! 128 KB                           128    2958    3008     0    34        25             799   SHODA
+    55  SIC! 256 KB                           256    2949    3035     0    16        49             765   SHODA
+    56  SIC! 512 KB                           512    2962    3020     0    18        96             784   SHODA
+    57  Standard 2 KB                           2    2890    3081     0    29         1               0   SHODA
+    58  Standard 4 KB                           4    2958    3017     0    25         1               0   SHODA
+    60  Blizzard 32 KB                         32    2949    3028     0    23         5              96   SHODA
+    61  MegaMax 2 MB                         2048    2935    3041     0    24       129            5922   SHODA
+    63  Flash MegaCart 4 MB                  4096    2995    2982     0    23       216             746   SHODA
+    64  MegaCart 2 MB                        2048    2970    3000     0    30       129            2977   SHODA
+    68  Atrax 128 KB                          128    2894    3082     0    24        17            2980   SHODA
+    69  aDawliah 32 KB                         32    2979    2994     0    27         4            5973   SHODA
+    70  aDawliah 64 KB                         64    2960    3019     0    21         8            5979   SHODA
+    75  Atarimax 1 MB Flash (new)            1024    2945    3039     0    16       129            5926   SHODA
+   104  J(atari)Cart8(kB)                       8    2977    3002     0    21         2            5936   SHODA
+   105  J(atari)Cart16(kB)                     16    2984    3001     0    15         3            5937   SHODA
+   106  J(atari)Cart32(kB)                     32    3013    2965     0    22         5            5940   SHODA
+   107  J(atari)Cart64(kB)                     64    3015    2959     0    26         9            5916   SHODA
+   108  J(atari)Cart128(kB)                   128    2992    2993     0    15        17            5923   SHODA
+   109  J(atari)Cart256(kB)                   256    2903    3078     0    19        33            5923   SHODA
+   110  J(atari)Cart512(kB)                   512    2977    2994     0    29        65            5912   SHODA
+   111  J(atari)Cart1024(kB)                 1024    2946    3026     0    28       129            5922   SHODA
+   112  DCart                                 512    2899    3069     0    32        65            3048   SHODA
+   => 67 typu, 402000 kroku, shodne 67 / 67
+
+4) SKUTECNY SOUBOR Wonderboy_VBXE.car (1048592 B): OK, typ 42 (Atarimax 1 MB Flash (old)), 1024 kB, kontrolni soucet sedi ($04F1C688)
+   30000 kroku (cteni 14907, zapisu 14974, POWER 119), 129 ruznych mapovani - SHODA s Atari800
+
+VYSLEDEK: 0 CHYBA

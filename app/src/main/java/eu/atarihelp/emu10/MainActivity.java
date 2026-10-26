@@ -8415,10 +8415,13 @@ public class MainActivity extends Activity {
                     break;
                 case 2: { // XEX / MOBIL
                     atariCppAtrVymena = false;   // B298: vymena diskety jen z menu ATR/DISK
-                    Intent i = new Intent(Intent.ACTION_GET_CONTENT);
-                    i.addCategory(Intent.CATEGORY_OPENABLE);
-                    i.setType("*/*");
-                    startActivityForResult(Intent.createChooser(i, tx("XEX / ZIP pro Atari 130XE (C++)", "XEX / ZIP for the Atari 130XE (C++)")), PICK_ATARI_CPP_XEX);
+                    // B316: cartridge ve slotu -> nejdriv nabidnout VYSUNOUT (jako disketa v ATR/DISK)
+                    final String cart = NativeAtariCoreBridge.devCtlSafe("cart");
+                    if (cart != null && !cart.isEmpty()) {
+                        atariCppCartMenu(cart);
+                        break;
+                    }
+                    atariCppVyberProgram();
                     break;
                 }
                 case 3: { // ATR / DISK - B295: disketova mechanika D1: v C++
@@ -8511,7 +8514,7 @@ public class MainActivity extends Activity {
                 tx("PROHODIT D-PAD A AKCE (LEVÁK)", "SWAP D-PAD AND ACTIONS (LEFT-HANDED)"),
                 tx("VÝCHOZÍ ROZLOŽENÍ TLAČÍTEK", "DEFAULT BUTTON LAYOUT"),
                 "RESET ATARI",
-                tx("XEX / MOBIL - spustit hru z telefonu", "XEX / PHONE - start a game from the phone"),
+                tx("XEX / MOBIL - hra nebo cartridge (.car) z telefonu", "XEX / PHONE - a game or cartridge (.car) from the phone"),
                 tx("ATR / DISK - disketa do D1: (vysunout, vyměnit)", "ATR / DISK - disk in D1: (eject, swap)"),
                 tx("NET / HRY", "NET / GAMES"),
                 tx("KAZETA (WAV) - vložit kazetu, hry z kazety", "TAPE (WAV) - insert a tape, games on tape"),
@@ -8757,6 +8760,35 @@ public class MainActivity extends Activity {
                 .show();
     }
 
+    // B316: XEX/MOBIL - vyber souboru z telefonu (XEX, CAR, ATR, ZIP - rozhoduje obsah)
+    private void atariCppVyberProgram() {
+        Intent i = new Intent(Intent.ACTION_GET_CONTENT);
+        i.addCategory(Intent.CATEGORY_OPENABLE);
+        i.setType("*/*");
+        startActivityForResult(Intent.createChooser(i, tx("XEX / CAR / ZIP pro Atari 130XE (C++)", "XEX / CAR / ZIP for the Atari 130XE (C++)")), PICK_ATARI_CPP_XEX);
+    }
+
+    // B316: cartridge ve slotu (XEX/MOBIL) - vysunout, nebo vybrat jiny soubor
+    private void atariCppCartMenu(final String cart) {
+        final String[] polozky = {
+                tx("VYSUNOUT CARTRIDGE - Atari se zapne znovu s BASICem", "REMOVE THE CARTRIDGE - the Atari restarts with BASIC"),
+                tx("VYBRAT JINÝ SOUBOR (XEX / CAR / ATR / ZIP)", "CHOOSE ANOTHER FILE (XEX / CAR / ATR / ZIP)")
+        };
+        new android.app.AlertDialog.Builder(this)
+                .setTitle("CARTRIDGE: " + cart)
+                .setItems(polozky, (dlg, w) -> {
+                    if (w == 0) {
+                        NativeAtariCoreBridge.devCtlSafe("cart_eject");
+                        appendNativeLog("B316 CARTRIDGE_MENU vysunout " + cart);
+                    } else {
+                        appendNativeLog("B316 CARTRIDGE_MENU vybrat jiny soubor (" + cart + " zatim zustava ve slotu)");
+                        atariCppVyberProgram();
+                    }
+                })
+                .setNegativeButton(tx("ZRUŠIT", "CANCEL"), null)
+                .show();
+    }
+
     private void atariCppVyberAtr(boolean vymena) {
         atariCppAtrVymena = vymena;
         Intent i = new Intent(Intent.ACTION_GET_CONTENT);
@@ -8776,6 +8808,18 @@ public class MainActivity extends Activity {
         AtariExtract ex = extractAtariPayloadFromMaybeZip(name, data);
         byte[] d = (ex != null && ex.data != null && ex.data.length > 0) ? ex.data : data;
         String n = (ex != null && ex.name != null && ex.name.length() > 0) ? ex.name : name;
+        final boolean hlavickaCart = d.length >= 4 && d[0] == 'C' && d[1] == 'A' && d[2] == 'R' && d[3] == 'T';
+        final boolean priponaCar = n != null && n.toLowerCase(Locale.US).endsWith(".car")
+                && !(d.length >= 2 && (((d[0] & 0xFF) == 0xFF && (d[1] & 0xFF) == 0xFF) || ((d[0] & 0xFF) == 0x96 && (d[1] & 0xFF) == 0x02)));
+        if (hlavickaCart || priponaCar) {
+            // B316: CAR = cartridge (hlavicka "CART" + typ + kontrolni soucet) -> slot v C++
+            // a studeny start; disketa z D1: a XEX jdou pryc. Rozhoduje obsah: .car bez
+            // hlavicky CART (a bez XEX / ATR uvnitr) C++ poctive odmitne "NENI .CAR".
+            atariCppAtrVymena = false;
+            String r = NativeAtariCoreBridge.devLoadCarSafe(d, n);
+            appendNativeLog("B316 " + odkud + " " + n + " je CAR (cartridge) bajtu=" + d.length + " -> " + r);
+            return;
+        }
         if (d.length >= 2 && (d[0] & 0xFF) == 0x96 && (d[1] & 0xFF) == 0x02) {
             // B295: ATR = disketa -> mechanika D1: v C++ a studeny start (boot z diskety)
             // B298: z menu ATR/DISK "VYMENIT BEZ RESTARTU" -> jen vymena v D1:
@@ -8927,7 +8971,10 @@ public class MainActivity extends Activity {
               + "HRY NA KAZETE (boot, ne BASIC): appka to pozna sama z kazety - Atari zapne s drzenym START+OPTION "
               + "(jako na skutecnem 130XE), po pipnuti stiskne RETURN a hra se nahraje. Rucne: drz START a OPTION "
               + "a prepni POWER. Na sirku je vyber kazety v kolecku (KAZETA).\n\n"
-              + "XEX/MOBIL - spusti XEX nebo ZIP z telefonu. TURBO/BASIC - Turbo-BASIC XL 1.5. "
+              + "XEX/MOBIL - spusti XEX, CAR (cartridge) nebo ZIP z telefonu. CARTRIDGE (.car) se zasune do slotu "
+              + "a Atari se s ni zapne (jako skutecna cartridge - prekryje BASIC). Ve slotu zustava i po vypnuti/zapnuti "
+              + "POWER, jiny program (XEX / ATR / TXT) ji vytahne. Kdyz je cartridge ve slotu, XEX/MOBIL nabidne "
+              + "VYSUNOUT CARTRIDGE (Atari znovu s BASICem) nebo jiny soubor. TURBO/BASIC - Turbo-BASIC XL 1.5. "
               + "NET/HRY - hry z atarihelp.eu (spusti se tady v C++).\n\n"
               + "BASIC/TBXL TXT - TXT SOUBOR s programem (z telefonu): appka zapne ATARI BASIC nebo nahraje "
               + "TURBO-BASIC XL a program sama napise klavesnici Atari (NEW, radek po radku). Pak RUN, CSAVE, CLOAD. "
@@ -8985,7 +9032,10 @@ public class MainActivity extends Activity {
           + "GAMES ON TAPE (boot, not BASIC): the app recognises it from the tape - the Atari powers on with START+OPTION held "
           + "(like on a real 130XE), presses RETURN after the beep and the game loads. Manually: hold START and OPTION "
           + "and flip POWER. In landscape the tape choice is in the gear (TAPE).\n\n"
-          + "XEX / PHONE - starts a XEX or ZIP from the phone. TURBO / BASIC - Turbo-BASIC XL 1.5. "
+          + "XEX / PHONE - starts a XEX, CAR (cartridge) or ZIP from the phone. A CARTRIDGE (.car) goes into the slot "
+          + "and the Atari powers on with it (like a real cartridge - it covers BASIC). It stays in the slot even after "
+          + "switching POWER off/on, another program (XEX / ATR / TXT) takes it out. When a cartridge is in the slot, "
+          + "XEX / PHONE offers REMOVE THE CARTRIDGE (the Atari restarts with BASIC) or another file. TURBO / BASIC - Turbo-BASIC XL 1.5. "
           + "NET / GAMES - games from atarihelp.eu (they start here in C++).\n\n"
           + "BASIC/TBXL TXT - a TXT FILE with a program (from the phone): the app switches on ATARI BASIC or loads "
           + "TURBO-BASIC XL and types the program itself on the Atari keyboard (NEW, line by line). Then RUN, CSAVE, CLOAD. "
@@ -10460,7 +10510,8 @@ public class MainActivity extends Activity {
         int q = v.indexOf('?'); if (q >= 0) v = v.substring(0, q);
         int h = v.indexOf('#'); if (h >= 0) v = v.substring(0, h);
         return v.endsWith(".zip") || v.endsWith(".xex") || v.endsWith(".atr")
-                || v.endsWith(".com") || v.endsWith(".exe");
+                || v.endsWith(".com") || v.endsWith(".exe")
+                || v.endsWith(".car");   // B316: cartridge Atari
     }
 
 
@@ -11068,7 +11119,7 @@ public class MainActivity extends Activity {
             Intent i = new Intent(Intent.ACTION_GET_CONTENT);
             i.addCategory(Intent.CATEGORY_OPENABLE);
             i.setType("*/*");
-            startActivityForResult(Intent.createChooser(i, tx("XEX / ATR / ZIP pro Atari 130XE", "XEX / ATR / ZIP for the Atari 130XE")), PICK_ATARI_CPP_XEX);
+            startActivityForResult(Intent.createChooser(i, tx("XEX / ATR / CAR / ZIP pro Atari 130XE", "XEX / ATR / CAR / ZIP for the Atari 130XE")), PICK_ATARI_CPP_XEX);
             appendNativeLog("B310 VYBER_HRY_Z_TELEFONU -> Atari 130XE (C++)");
         } catch (Throwable t) {
             appendNativeLog("B310 VYBER_HRY_Z_TELEFONU_CHYBA " + safeMsg(t));
@@ -11257,7 +11308,8 @@ public class MainActivity extends Activity {
         String v = value.toLowerCase();
         int q = v.indexOf('?'); if (q >= 0) v = v.substring(0, q);
         int h = v.indexOf('#'); if (h >= 0) v = v.substring(0, h);
-        return v.endsWith(".xex") || v.endsWith(".atr") || v.endsWith(".com") || v.endsWith(".exe");
+        return v.endsWith(".xex") || v.endsWith(".atr") || v.endsWith(".com") || v.endsWith(".exe")
+                || v.endsWith(".car");   // B316: cartridge Atari (i uvnitr ZIP)
     }
 
     private boolean isSegaCollectionContext() {

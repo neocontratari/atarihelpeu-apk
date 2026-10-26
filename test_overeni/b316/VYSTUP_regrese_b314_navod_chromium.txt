@@ -1,0 +1,35 @@
+OK     1) appka anglicky: index.html#tv -> en.html#tv (lang=en, titulek "N&P VISION — Guide", historie 2 -> 3 = navod jen jednou, stranka dojede na kapitolu tv)
+OK     1)   ZPET z navodu vede na predchozi stranku (karty.txt), ne na presmerovany navod
+OK     1) appka cesky: en.html#sega -> index.html#sega (lang=cs, titulek "N&P VISION — Návod", historie 2 -> 3 = navod jen jednou, stranka dojede na kapitolu sega)
+OK     1)   ZPET z navodu vede na predchozi stranku (karty.txt), ne na presmerovany navod
+OK     1) appka anglicky: en.html -> en.html (lang=en, titulek "N&P VISION — Guide", historie 2 -> 3 = navod jen jednou)
+OK     1)   ZPET z navodu vede na predchozi stranku (karty.txt), ne na presmerovany navod
+OK     1) appka cesky: index.html -> index.html (lang=cs, titulek "N&P VISION — Návod", historie 2 -> 3 = navod jen jednou)
+OK     1)   ZPET z navodu vede na predchozi stranku (karty.txt), ne na presmerovany navod
+OK     1) bez mostu Javy: index.html -> index.html
+OK     1) bez mostu Javy: en.html -> en.html
+OK     1) bez mostu Javy: index.html?lang=en#mp3 -> en.html?lang=en#mp3
+OK     1) bez mostu Javy: en.html?lang=cs -> index.html?lang=cs
+OK     2) pismo Chakra Petch z appky nacteno
+OK     2) obsah: 13 dlazdic, kazda vede na existujici kapitolu: 01 MAIN MENU CARDS AND CONTROLS | 02 ATARI 130XE EMULATOR · C++ | 03 SEGA MEGA DRIVE 16-BIT CONSOLE | 04 PS1 PLAYSTATION · 32-BIT | 05 MP3 PLAYER RETRO CASSETTE PLAYER | 06 JUKEBOX PRO DJ MIXER | 07 ATARIHELP.EU OFFICIAL WEBSITE | 08 OPTIONS APP SETTINGS | 09 WEB TV AND PC PICTURE IN A BROWSER | 10 UNLOCKING SEGA AND PS1 | 11 FILES WHAT IS WHERE ON THE PHONE | 12 LOG AND ERRORS WHEN SOMETHING FAILS | 13 FAQ QUICK ANSWERS
+OK     2) 13 kapitol, kazda konci tlacitky ▲ CONTENTS a ◀ BACK TO THE MENU (../index.html)
+OK     2) vsechny odkazy uvnitr navodu vedou na existujici misto
+OK     2) vsech 12 obrazku se nacte
+OK     2) klepnuti v obsahu na OPTIONS: stranka dojede na kapitolu, historie 2 -> 2, adresa beze zmeny
+OK     2) plovouci tlacitko nahoru se ukaze
+OK     2) OPTIONS popisuje prepinac jazyka: "LANGUAGE JAZYK · LANGUAGE – ČEŠTINA / ENGLISH. The whole app switches right away: the menu, OPTIONS, the emulators, messages, this guide and the WEB T"
+OK     3) hledani "tape": FOUND 31× · 4 CHAPTERS (videt: atari, mp3, soubory, otazky)
+OK     3) "tapes" (mnozne cislo) najde totez: FOUND 31× · 4 CHAPTERS
+OK     3) "BIOS" otevre shodnou otazku (A PS1 game does not start.) a ukaze PS1 i OPTIONS
+OK     3) "cestina" (bez hacku) najde prepinac ČEŠTINA: FOUND 2× · 2 CHAPTERS
+OK     3) nesmysl: "NOTHING FOUND – TRY ANOTHER WORD", zadna kapitola
+OK     3) jedna kapitola = jednotne cislo: FOUND 2× · 1 CHAPTER
+OK     3) smazani hledani vrati vse
+OK     4) anglicky navod bez zbytku cestiny (1014 textu, 8 atributu, titulek "N&P VISION — Guide")
+CHYBA  5) cesky navod: texty jako v B313, zmeneno jen zamerne (+19 -5: Appka mluví jazykem telefonu (česky nebo anglicky). Přepneš ho kdykoli: | JAZYK · LANGUAGE | Spustí hru z telefonu – soubor XEX nebo cartridge CAR (obojí i zabalené v ZIP). Cartridge se zasune do slotu a Atari se s ní zapne (překryje BASIC, jako skutečná cartridge). Ve slotu zůstává i po vypnutí a zapnutí, jiný program (XEX, ATR, TXT) ji vytáhne. Když je cartridge ve slotu, nabídne | VYSUNOUT CARTRIDGE | (Atari znovu s BASICem) a | VYBRAT JINÝ SOUBOR | Na hru stačí klepnout – appka ji stáhne a spustí ve správném emulátoru: hra pro Atari (XEX, ATR, CAR, ZIP) v | Jazyk) - NECEKANE: ['VYSUNOUT CARTRIDGE', '(Atari znovu s BASICem) a', 'VYBRAT JINÝ SOUBOR']
+OK     6) 320x640: nic nepreteka do strany (scrollWidth 320, sirka 320)
+OK     6) 360x740: nic nepreteka do strany (scrollWidth 360, sirka 360)
+OK     6) 915x412: nic nepreteka do strany (scrollWidth 915, sirka 915)
+OK     7) zadna chyba JavaScriptu
+OK     7) zadny soubor, ktery stranka chce, nechybi
+VYSLEDEK: 34 kontrol, 1 CHYBA

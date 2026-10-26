@@ -1,0 +1,78 @@
+B316 - cartridge v jadre Atari 130XE (skutecne nap_atari_machine.h, OS a BASIC z appky)
+
+A) BEZ CARTRIDGE (jako dosud)
+  OK     BASIC po zapnuti: READY                                                    (1)
+  OK     TRIG3 ($D013) = 0 (prazdny slot)                                           (0)
+  OK     slot prazdny, RD4 = RD5 = 0                                                (1)
+  OK     cteni $D500 = plovouci sbernice (posledni bajt na sbernici)                (92)
+  OK     zapis $D500 nic nezmeni (cartridge zadna)                                  (0)
+  OK     $A000 = BASIC ROM (PORTB bit 1 = 0)                                        (165)
+  OK     $8000 = RAM (zapis se drzi)                                                (60)
+
+B) STANDARD 8 KB (typ 1) - OS ji spusti, ANTIC cte z ROM cartridge
+  OK     cartridge spustena (OS skocil na $A000)                                    (1)
+  OK     init cartridge zavolan ($BFFE)                                             (17)
+  OK     TRIG3 v programu cartridge = 1                                             (1)
+  OK     zapis $5A do $A000 se ztratil (ROM), cte se $A9                            (169)
+  OK     RAM pod cartridge zapis nedostala                                          (1)
+  OK     zadne prepnuti banky (obycejna cartridge)                                  (0)
+  OK     ANTIC: display list z ROM cartridge ($B000-$B00A)                          (45056)
+  OK     ANTIC cte ROM cartridge ($B100 = 'A')                                      (33)
+  OK     na obraze 3 radky textu z ROM cartridge (body pisma)                       (2736)
+
+C) ATARIMAX 1 MB (typ 42, jako Wonderboy) - banky ctenim $D5xx, vypnuti, RAM pod cartridge, TRIG3
+  OK     po zapnuti banka 127 (stav $7F)                                            (127)
+  OK     OS spustil banku 127, ta prepla na banku 0 a vse dobehlo                   (1)
+  OK     kod v bance 0 bezel                                                        (66)
+  OK     TRIG3 s cartridge = 1                                                      (1)
+  OK     zapis do ROM cartridge se ztratil                                          (169)
+  OK     po $D580 je cartridge vypnuta: TRIG3 = 0                                   (0)
+  OK     na $A000 je pak RAM (stejna jako v pameti)                                 (128)
+  OK     zapis $5A z doby cartridge se do RAM nedostal                              (1)
+  OK     po $D501 banka 1 (podpis $C1)                                              (193)
+  OK     TRIG3 zase 1                                                               (1)
+  OK     stav cartridge = 1                                                         (1)
+  OK     OS bezi dal: VBI za 50 snimku 50x (RTCLOK)                                 (50)
+  OK     RESET: banka zustala (stav 1)                                              (1)
+  OK     POWER (studeny start cartridge): banka 127                                 (127)
+
+D) BOUNTY BOB 40 KB (typ 18) - procesor prepina banky na $8FF6-$9FF9, ANTIC ne
+  OK     cartridge spustena                                                         (1)
+  OK     po zapnuti $8000 = banka 0                                                 (128)
+  OK     po zapnuti $9000 = banka 0                                                 (144)
+  OK     cteni $8FF7 -> $8000 banka 1                                               (129)
+  OK     zapis $9FF8 -> $9000 banka 2                                               (146)
+  OK     ANTIC kresli radek z $8FF0-$9017 (display list $B000)                      (45056)
+  OK     ANTIC (30 snimku cteni $8FF6-$8FF9) banku neprepnul - stav $09             (9)
+  OK     zadne dalsi prepnuti                                                       (2)
+  OK     peek (LOG/CHYBA, zavadec) banku neprepne                                   (9)
+
+E) XEGS 32 KB (typ 12) - zapis $D500 vybere banku na $8000, cteni neprepina
+  OK     cartridge spustena (kod v posledni bance na $A000)                         (1)
+  OK     po zapnuti $8000 = banka 0                                                 (224)
+  OK     zapis $D500 = 2 -> $8000 banka 2                                           (226)
+  OK     cteni $D500 neprepina (porad banka 2)                                      (226)
+  OK     TRIG3 = 1                                                                  (1)
+  OK     RD4 i RD5 (16 kB okno $8000-$BFFF)                                         (1)
+
+F) SKUTECNA HRA: Wonderboy_VBXE.car
+  typ 42 (Atarimax 1 MB Flash (old)), 1024 kB, kontrolni soucet sedi, po zapnuti stav $7F, RD4 0 RD5 1
+  snimek   50: banka $7F (prepnuti 0), VBXE zapisu 0 (+0), XDL vyp, blitu 0, barev na obraze 1, svetlych bodu 0, PC $C2F4
+  snimek  150: banka $02 (prepnuti 133), VBXE zapisu 292 (+292), XDL zap, blitu 2, barev na obraze 50, svetlych bodu 46806, PC $2218
+  snimek  300: banka $02 (prepnuti 583), VBXE zapisu 292 (+0), XDL zap, blitu 2, barev na obraze 50, svetlych bodu 46806, PC $2218
+  snimek  600: banka $02 (prepnuti 1483), VBXE zapisu 292 (+0), XDL zap, blitu 2, barev na obraze 50, svetlych bodu 46806, PC $2218
+  snimek  900: banka $06 (prepnuti 2364), VBXE zapisu 813 (+521), XDL zap, blitu 67, barev na obraze 73, svetlych bodu 152572, PC $221B
+  snimek 1200: banka $14 (prepnuti 3335), VBXE zapisu 2771 (+1958), XDL zap, blitu 1195, barev na obraze 41, svetlych bodu 113322, PC $A162
+  snimek 1500: banka $0A (prepnuti 7226), VBXE zapisu 9742 (+6971), XDL zap, blitu 2815, barev na obraze 35, svetlych bodu 113640, PC $2218
+  snimek 2000: banka $0A (prepnuti 13729), VBXE zapisu 19174 (+9432), XDL zap, blitu 5294, barev na obraze 37, svetlych bodu 113126, PC $2218
+  snimek 2500: banka $0A (prepnuti 19173), VBXE zapisu 30159 (+10985), XDL zap, blitu 7804, barev na obraze 33, svetlych bodu 113202, PC $221D
+  snimek 3000: banka $0A (prepnuti 24673), VBXE zapisu 40159 (+10000), XDL zap, blitu 9304, barev na obraze 33, svetlych bodu 112902, PC $221B
+  3000 snimku za 7.7 s (388 snimku/s; Atari ma 50/s)
+  procesor: v ROM cartridge 2499541 krat, v RAM 28870525, v OS 657770; ruznych stavu banky 20
+  OK     procesor nezamrzl (zadny JAM)                                              (1)
+  OK     hra prepina banky cartridge (ctenim/zapisem $D5xx)                         (24673)
+  OK     procesor bezi v ROM cartridge                                              (2499541)
+  OK     hra pouziva VBXE (zapisy do registru $D640-)                               (40159)
+  OK     obraz na konci neni cerny (barvy / svetle body)                            (33)
+
+VYSLEDEK: 50 OK, 0 CHYBA
