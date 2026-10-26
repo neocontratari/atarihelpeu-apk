@@ -1,0 +1,3 @@
+OK     tv_skript0.js
+OK     tv_skript1.js
+VYSLEDEK: 2 skriptu stranky WEB TV, 0 CHYBA

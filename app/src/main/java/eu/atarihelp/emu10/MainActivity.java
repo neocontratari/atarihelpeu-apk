@@ -3894,7 +3894,15 @@ public class MainActivity extends Activity {
                 + "<br><button id='sF' type='button' style='margin-top:4px;padding:3px 8px'>OBRAZ: vyplnit obrazovku</button>"
                 + "<br><button id='sV' type='button' style='margin-top:4px;padding:3px 8px'>VYLADENI OBRAZU: zapnuto</button></div>"
                 + "<div id='q'><button type='button' data-t='0' style='display:none'>LOW</button><button type='button' data-t='1' style='display:none'>MED</button><button type='button' data-t='2' style='display:none'>HIGH</button><button type='button' id='fs' style='display:none'>\u26f6 FULL</button></div>"
-                + "<script>(function(){var AVD=(function(){try{var m=location.search.match(/[?&]av=([0-9.]+)/);if(m)return parseFloat(m[1]);var q=localStorage.getItem('napAvd');return q!==null?parseFloat(q):0.30;}catch(e){return 0.30;}})();function setAvd(x){AVD=Math.max(0,Math.min(2,Math.round(x*100)/100));try{localStorage.setItem('napAvd',AVD);}catch(e){}var o=document.getElementById('avdmsg');if(!o){o=document.createElement('div');o.id='avdmsg';o.style.cssText='position:fixed;left:50%;top:12%;transform:translateX(-50%);background:rgba(0,0,0,.75);color:#0f0;font:20px monospace;padding:8px 16px;border-radius:6px;z-index:99999;pointer-events:none';document.body.appendChild(o);}o.textContent='ZVUK '+Math.round(AVD*1000)+' ms';o.style.display='block';clearTimeout(window._avdT);window._avdT=setTimeout(function(){o.style.display='none';},1200);}var v=document.getElementById('v'),s=document.getElementById('s'),a=document.getElementById('a'),n=0,fb=false,ac=null,g=null,next=0,aseq=0,aon=false,active=[],lastSeq=0,lastSeqT=0,curFps=0,staleTicks=0;" // BUILD2SB1
+                // B315: AVD = zpozdeni stare cesty zvuku (/audio.raw), sipka nahoru / dolu, ulozene v prohlizeci.
+                // Pri 0 (6x sipka dolu - od B313 jsou sipky v menu na TV listovani kartami) nechalo prvni navazani
+                // stare cesty (cutover) spolecny zesilovac na 0 NAPORAD -> na TV / PC hral zvuk jen v prvni hre.
+                // Ted: nejmene 100 ms, ulozena nesmyslna hodnota se vrati na 300 ms (a do logu appky).
+                + "<script>(function(){var AVD0=null,AVD=(function(){try{var m=location.search.match(/[?&]av=([0-9.]+)/);if(m)return parseFloat(m[1]);var q=localStorage.getItem('napAvd');return q!==null?parseFloat(q):0.30;}catch(e){return 0.30;}})();"
+                + "if(!(AVD>=0.1&&AVD<=2)){AVD0=AVD;AVD=0.30;try{if(localStorage.getItem('napAvd')!==null)localStorage.setItem('napAvd',AVD);}catch(e){}}"
+                + "function setAvd(x){AVD=Math.max(0.1,Math.min(2,Math.round(x*100)/100));try{localStorage.setItem('napAvd',AVD);}catch(e){}"
+                + "clearTimeout(window._avdL);window._avdL=setTimeout(function(){clog('B315 ZVUK: zpozdeni stare cesty (MP3, YouTube, mezery) zmeneno klavesou na '+Math.round(AVD*1000)+' ms');},1500);"
+                + "var o=document.getElementById('avdmsg');if(!o){o=document.createElement('div');o.id='avdmsg';o.style.cssText='position:fixed;left:50%;top:12%;transform:translateX(-50%);background:rgba(0,0,0,.75);color:#0f0;font:20px monospace;padding:8px 16px;border-radius:6px;z-index:99999;pointer-events:none';document.body.appendChild(o);}o.textContent='ZVUK '+Math.round(AVD*1000)+' ms';o.style.display='block';clearTimeout(window._avdT);window._avdT=setTimeout(function(){o.style.display='none';},1200);}var v=document.getElementById('v'),s=document.getElementById('s'),a=document.getElementById('a'),n=0,fb=false,ac=null,g=null,gp=null,vy=null,next=0,aseq=0,aon=false,active=[],rawS=0,rawN=0,lastSeq=0,lastSeqT=0,curFps=0,staleTicks=0;" // BUILD2SB1 (+B315 gp = zesilovac proudu z C++, vy = mereni vystupu, rawS / rawN = stara cesta za 30 s)
                 + "var h264v=document.getElementById('h264v'),h264Active=false,h264Reader=null,jm=null,h264Loading=false,h264LastFeedMs=0,h264Gen=0;" // BUILD2SK57+SK73 (+B309 h264Gen)
                 + "var pan=document.getElementById('pan'),sB=document.getElementById('sB'),sC=document.getElementById('sC'),sS=document.getElementById('sS'),sR=document.getElementById('sR'),sF=document.getElementById('sF'),panT=0;"
                 + "function napF(){var f='brightness('+(sB.value/100)+') contrast('+(sC.value/100)+') saturate('+(sS.value/100)+')';h264v.style.filter=f;v.style.filter=f;if(ap&&ap.cv)ap.cv.style.filter=f;"
@@ -3957,7 +3965,16 @@ public class MainActivity extends Activity {
                 + "}).catch(function(e){if(mg===h264Gen)clog('read err '+e);});}pump();"
                 + "}).catch(function(e){if(mg!==h264Gen)return;clog('fetch FAILED '+e);h264Active=false;h264Gen++;if(!(window.napAp&&napAp.chce))v.style.display='';h264v.style.display='none';});}" // BUILD2SK57+SK59: syrovy H.264 (Annex-B) ze serveru -> JMuxer.js remuxuje na fMP4 primo v prohlizeci -> MSE -> <video>
                 + "function fallback(){fb=true;function tick(){if(ap&&ap.chce){setTimeout(tick,300);return;}v.onload=v.onerror=function(){setTimeout(tick,45)};v.src='/frame.jpg?'+Date.now();if((++n%40)===0)label('JPEG');}tick();}"
-                + "function startAudio(){if(aon)return;try{var C=window.AudioContext||window.webkitAudioContext;if(!C){a.textContent='AUDIO NENI';return;}ac=new C({latencyHint:'interactive'});ac.onstatechange=zvukStav;if(ac.resume){var pr=ac.resume();if(pr&&pr.catch)pr.catch(function(){});}g=ac.createGain();g.gain.value=1;g.connect(ac.destination);next=ac.currentTime+AVD;aon=true;a.textContent='AUDIO ON';pollAudio();label(fb?'JPEG':'MJPEG');zvukStav();}catch(e){a.textContent='AUDIO ERR';}}" // BUILD2SB1: jitter polstar 350 ms + master gain pro fady
+                // B315: g = jen stara cesta (/audio.raw, fady pri navazani), gp = proud z C++ (Atari, Sega, PS1,
+                // menu) - zadne fady, takze ho stara cesta nikdy neztlumi; oba jdou pres vy (mereni, co opravdu
+                // jde do reproduktoru - do logu appky misto pouheho "zvuk hraje").
+                + "function startAudio(){if(aon)return;try{var C=window.AudioContext||window.webkitAudioContext;if(!C){a.textContent='AUDIO NENI';return;}ac=new C({latencyHint:'interactive'});ac.onstatechange=zvukStav;if(ac.resume){var pr=ac.resume();if(pr&&pr.catch)pr.catch(function(){});}"
+                + "var ven=ac.destination;try{vy=ac.createAnalyser();vy.fftSize=2048;vy.connect(ac.destination);ven=vy;}catch(e){vy=null;}"
+                + "g=ac.createGain();g.gain.value=1;g.connect(ven);gp=ac.createGain();gp.gain.value=1;gp.connect(ven);"
+                + "next=ac.currentTime+AVD;aon=true;a.textContent='AUDIO ON';pollAudio();label(fb?'JPEG':'MJPEG');zvukStav();"
+                + "clog('B315 ZVUK: proud z C++ ma vlastni zesilovac, zpozdeni stare cesty (MP3, YouTube, mezery) '+Math.round(AVD*1000)+' ms'"
+                + "+(AVD0!==null?' (ulozene bylo '+Math.round(AVD0*1000)+' ms - sipkou dolu, od B313 i v menu na TV; pri 0 zvuk hral jen v prvni hre - vraceno na 300 ms)':''));"
+                + "}catch(e){a.textContent='AUDIO ERR';}}" // BUILD2SB1: jitter polstar 350 ms + master gain pro fady
                 // ===== B306: ZVUK SE ODEMKNE JAKYMKOLI KLIKNUTIM NEBO KLAVESOU =====
                 // Prohlizec (autoplay) nechava AudioContext "suspended", dokud uzivatel do stranky
                 // neklikne / nestiskne klavesu - a po obnoveni stranky (F5) znovu. Drive se o to
@@ -3972,9 +3989,30 @@ public class MainActivity extends Activity {
                 + "function zvukOdemkni(){try{if(!ac)startAudio();if(ac&&ac.state!=='running'&&ac.resume){var p=ac.resume();if(p&&p.then)p.then(zvukStav,function(){});}}catch(e){}}"
                 + "['pointerdown','mousedown','touchend','keydown','click'].forEach(function(t){window.addEventListener(t,zvukOdemkni,true);});"
                 + "setInterval(zvukStav,1000);"
-                + "function cutover(){if(!ac||!g)return;var t=ac.currentTime;try{g.gain.cancelScheduledValues(t);g.gain.setValueAtTime(g.gain.value,t);g.gain.linearRampToValueAtTime(0,t+0.01);}catch(e){}for(var i=0;i<active.length;i++){try{active[i].stop(t+0.012);}catch(e){}}active=[];next=t+AVD;try{g.gain.setValueAtTime(0,next-0.012);g.gain.linearRampToValueAtTime(1,next);}catch(e){}}" // BUILD2SB1: 10ms fade-out/in misto lepeni
-                + "async function pollAudio(){if(!aon||!ac)return;if(ap&&ap.chce){setTimeout(pollAudio,150);return;}try{var r=await fetch('/audio.raw?after='+aseq+'&t='+Date.now(),{cache:'no-store'});var sq=parseInt(r.headers.get('x-nap-audio-seq')||aseq,10);var st=parseInt(r.headers.get('x-nap-audio-start')||aseq,10);var rate=parseInt(r.headers.get('x-nap-audio-rate')||'44100',10);var dis=(r.headers.get('x-nap-audio-discontinuity')||'0')==='1';var ab=await r.arrayBuffer();var expected=aseq;if(!isNaN(sq))aseq=sq;if(ab.byteLength>=4){var now=ac.currentTime;if(dis||next<now+0.04||next>now+AVD+0.5)cutover();var dv=new DataView(ab),frames=Math.floor(ab.byteLength/4),buf=ac.createBuffer(2,frames,rate),L=buf.getChannelData(0),R=buf.getChannelData(1);for(var i=0,p=0;i<frames;i++,p+=4){L[i]=dv.getInt16(p,true)/32768;R[i]=dv.getInt16(p+2,true)/32768;}var src=ac.createBufferSource();src.buffer=buf;src.connect(g);if(next<ac.currentTime+0.02)next=ac.currentTime+AVD;src.start(next);next+=frames/rate;active.push(src);src.onended=function(){var k=active.indexOf(src);if(k>=0)active.splice(k,1);};if(active.length>60)active.splice(0,active.length-60);}}catch(e){}setTimeout(pollAudio,20);}" // BUILD2SB1: planovane buffery (jitter buffer), zadne tvrde resety next, cutover s fadem
-                + "a.onclick=startAudio;function toggleFs(){var el=document.documentElement;try{if(!(document.fullscreenElement||document.webkitFullscreenElement)){(el.requestFullscreen||el.webkitRequestFullscreen||el.msRequestFullscreen).call(el);}else{(document.exitFullscreen||document.webkitExitFullscreen||document.msExitFullscreen).call(document);}}catch(e){}}document.addEventListener('click',toggleFs,true);document.addEventListener('keydown',function(e){if(window.napVAtari||window.napVSeze||window.napVPs1)return;if(e.key==='ArrowUp'){setAvd(AVD+0.05);e.preventDefault();}else if(e.key==='ArrowDown'){setAvd(AVD-0.05);e.preventDefault();}else if(e.key==='0'){setAvd(0.30);e.preventDefault();}},true);setTimeout(function(){try{startAudio();}catch(e){}},80);var aTry=setInterval(function(){if(aon){clearInterval(aTry);return;}try{startAudio();if(ac&&ac.state==='suspended'&&ac.resume)ac.resume();}catch(e){}},1000);"
+                // B315: mereni vystupu (4x za vterinu, okno 2048 vzorku) - nejvyssi uroven a v kolika merenich
+                // neco hralo; hlaseni kazdych 30 s (proud: PROHLIZEC, stara cesta: STARA CESTA)
+                + "var zm={n:0,max:0,hr:0},zmB=null;"
+                + "function zvMer(){try{if(!vy||!ac||ac.state!=='running')return;var N=vy.fftSize,i,s=0,x;"
+                + "if(vy.getFloatTimeDomainData){if(!zmB||zmB.length!==N)zmB=new Float32Array(N);vy.getFloatTimeDomainData(zmB);for(i=0;i<N;i++){x=zmB[i];s+=x*x;}}"
+                + "else{if(!zmB||zmB.length!==N)zmB=new Uint8Array(N);vy.getByteTimeDomainData(zmB);for(i=0;i<N;i++){x=(zmB[i]-128)/128;s+=x*x;}}"
+                + "var r=Math.sqrt(s/N);zm.n++;if(r>zm.max)zm.max=r;if(r>0.001)zm.hr++;}catch(e){}}"
+                + "setInterval(zvMer,250);"
+                + "function zvMerText(){var t=!vy?'nemereno':!zm.n?'nemereno (zvuk nepusten)':zm.max>0.0005?'max '+Math.round(20*Math.log(zm.max)/Math.LN10)+' dB, zvuk v '+Math.round(100*zm.hr/zm.n)+' % mereni'"
+                + ":'TICHO (zesileni proud '+(gp?Math.round(gp.gain.value*100)/100:'-')+', stara cesta '+(g?Math.round(g.gain.value*100)/100:'-')+')';zm={n:0,max:0,hr:0};return t;}"
+                + "function rawHlas(){var t=zvMerText();if(rawS>0.05)clog('B315 STARA CESTA (/audio.raw - MP3, YouTube, mezery mezi proudy): zvuk '+(Math.round(rawS*10)/10)+' s, navazani '+rawN+', zpozdeni '+Math.round(AVD*1000)+' ms, vystup '+t);rawS=0;rawN=0;}"
+                // B315: navazani stare cesty - fade ven, novy zacatek za AVD (nejmene 50 ms, aby se navrat
+                // zesilovace na 1 naplanoval AZ PO ztlumeni; driv pri AVD 0 zustal na 0 naporad)
+                + "function cutover(){if(!ac||!g)return;var t=ac.currentTime;rawN++;try{g.gain.cancelScheduledValues(t);g.gain.setValueAtTime(g.gain.value,t);g.gain.linearRampToValueAtTime(0,t+0.01);}catch(e){}for(var i=0;i<active.length;i++){try{active[i].stop(t+0.012);}catch(e){}}active=[];next=t+Math.max(AVD,0.05);try{g.gain.setValueAtTime(0,next-0.012);g.gain.linearRampToValueAtTime(1,next);}catch(e){}}" // BUILD2SB1: 10ms fade-out/in misto lepeni
+                // B315: proud z C++ prebira zvuk - co stara cesta jeste ma naplanovane, skonci s fadem PRAVE tam,
+                // kde zacne zvuk proudu (driv hralo pres nej ~0,25 s, pri vetsim zpozdeni dele = ozvena pri prepnuti)
+                + "function rawPredej(tz){if(!ac||!g||!active.length)return;var t=ac.currentTime;if(tz<t+0.012)tz=t+0.012;"
+                + "try{var gv=g.gain.value;g.gain.cancelScheduledValues(t);g.gain.setValueAtTime(gv,t);g.gain.setValueAtTime(gv,tz-0.01);g.gain.linearRampToValueAtTime(0,tz);g.gain.setValueAtTime(1,tz+0.02);}catch(e){}"
+                + "for(var i=0;i<active.length;i++){try{active[i].stop(tz+0.005);}catch(e){}}active=[];next=0;}"
+                + "async function pollAudio(){if(!aon||!ac)return;if(ap&&ap.chce){setTimeout(pollAudio,150);return;}try{var r=await fetch('/audio.raw?after='+aseq+'&t='+Date.now(),{cache:'no-store'});var sq=parseInt(r.headers.get('x-nap-audio-seq')||aseq,10);var st=parseInt(r.headers.get('x-nap-audio-start')||aseq,10);var rate=parseInt(r.headers.get('x-nap-audio-rate')||'44100',10);var dis=(r.headers.get('x-nap-audio-discontinuity')||'0')==='1';var ab=await r.arrayBuffer();var expected=aseq;if(!isNaN(sq))aseq=sq;"
+                + "if(ab.byteLength>=4&&!(ap&&ap.chce)){var now=ac.currentTime;if(dis||next<now+0.04||next>now+AVD+0.5)cutover();var dv=new DataView(ab),frames=Math.floor(ab.byteLength/4),buf=ac.createBuffer(2,frames,rate),L=buf.getChannelData(0),R=buf.getChannelData(1);for(var i=0,p=0;i<frames;i++,p+=4){L[i]=dv.getInt16(p,true)/32768;R[i]=dv.getInt16(p+2,true)/32768;}var src=ac.createBufferSource();src.buffer=buf;src.connect(g);if(next<ac.currentTime+0.02)next=ac.currentTime+Math.max(AVD,0.05);src.start(next);next+=frames/rate;rawS+=frames/rate;active.push(src);src.onended=function(){var k=active.indexOf(src);if(k>=0)active.splice(k,1);};if(active.length>400)active.splice(0,active.length-400);}}catch(e){}setTimeout(pollAudio,20);}" // BUILD2SB1: planovane buffery (jitter buffer), zadne tvrde resety next, cutover s fadem (B315: kus, ktery dorazil az po startu proudu z C++, se uz nehraje; seznam az 400 kusu - pri zpozdeni 2 s jich je naplanovano ~120 a cutover / rawPredej musi zastavit vsechny)
+                // B315: sipky nahoru / dolu meni zpozdeni stare cesty jen tam, kde nic jineho neovladaji - ne v menu
+                // (tam od B313 listuji kartami) a ne v posuvniku panelu OBRAZ
+                + "a.onclick=startAudio;function toggleFs(){var el=document.documentElement;try{if(!(document.fullscreenElement||document.webkitFullscreenElement)){(el.requestFullscreen||el.webkitRequestFullscreen||el.msRequestFullscreen).call(el);}else{(document.exitFullscreen||document.webkitExitFullscreen||document.msExitFullscreen).call(document);}}catch(e){}}document.addEventListener('click',toggleFs,true);document.addEventListener('keydown',function(e){if(window.napVAtari||window.napVSeze||window.napVPs1||window.napVMenu)return;var tg=e.target;if(tg&&(tg.tagName==='INPUT'||tg.tagName==='TEXTAREA'))return;if(e.key==='ArrowUp'){setAvd(AVD+0.05);e.preventDefault();}else if(e.key==='ArrowDown'){setAvd(AVD-0.05);e.preventDefault();}else if(e.key==='0'){setAvd(0.30);e.preventDefault();}},true);setTimeout(function(){try{startAudio();}catch(e){}},80);var aTry=setInterval(function(){if(aon){clearInterval(aTry);return;}try{startAudio();if(ac&&ac.state==='suspended'&&ac.resume)ac.resume();}catch(e){}},1000);"
                 + "(function(){var qs=document.querySelectorAll('#q button');function mark(t){for(var i=0;i<qs.length;i++)qs[i].classList.toggle('on',qs[i].getAttribute('data-t')===(''+t));}"
                 + "fetch('/quality').then(function(r){return r.text();}).then(function(t){var m=/tier=(\\d)/.exec(t);mark(m?m[1]:'0');}).catch(function(){});"
                 + "for(var i=0;i<qs.length;i++){qs[i].onclick=function(e){var t=e.target.getAttribute('data-t');fetch('/quality?tier='+t).then(function(){mark(t);}).catch(function(){});};}})();"
@@ -4145,7 +4183,7 @@ public class MainActivity extends Activity {
                 //    prijde v dalsich paketech a stane se rezervou na pristi vypadek - deset vterin se
                 //    pak rezerva nezmensuje (zadrhnuti se muze opakovat).
                 + "var ZV_BEZP=0.015;"
-                + "function apZvuk(dv,o,an,kan,rate){ap.fsIn=rate;if(!aon||!ac||!g)return;"
+                + "function apZvuk(dv,o,an,kan,rate){ap.fsIn=rate;if(!aon||!ac||!gp)return;"   // B315: vlastni zesilovac gp
                 + "if(ac.state!=='running'){ap.nF=0;ap.zahS+=an;return;}"   // prohlizec zvuk jeste nepustil - nic se nehromadi
                 + "try{var fs=ac.sampleRate,now=ac.currentTime,i,k;"
                 + "if(rate!==ap.rsFs){ap.rsFs=rate;ap.rsPos=0;ap.rsP.fill(0);ap.nF=0;}"
@@ -4156,7 +4194,7 @@ public class MainActivity extends Activity {
                 + "if(dob){ap.pod++;ap.cil=ZV_BEZP;ap.lbM=-1;}"
                 // zacatek proudu: 35 ms; dlouhy prvni kus (rozjezd hry) - jen jeho konec
                 + "else{ap.cil=0.035;var dl=an/rate;if(dl>0.06){var vyn=Math.floor((dl-0.04)*rate);o+=vyn*(kan===1?2:4);an-=vyn;ap.vyn+=vyn;}}"
-                + "ap.nF=Math.ceil((now+ap.cil)*fs);lb=ap.nF/fs-now;ap.fade=true;ap.uber=0;ap.rsPos=0;ap.rsP.fill(0);}"
+                + "ap.nF=Math.ceil((now+ap.cil)*fs);if(!dob)rawPredej(ap.nF/fs);lb=ap.nF/fs-now;ap.fade=true;ap.uber=0;ap.rsPos=0;ap.rsP.fill(0);}"   // B315: zacatek zvuku proudu = konec stare cesty
                 + "else if(lb>0.35||(ap.uber>0&&an/rate<=ap.uber+0.005)){ap.uber=Math.max(0,ap.uber-an/rate);ap.zah++;ap.fade=true;return;}"
                 // rezerva: minimum za kazdou vterinu (poslednich 10) -> zrychleni / zpomaleni / vynechani
                 + "if(lb<ap.lbM)ap.lbM=lb;if(lb<ap.lmin)ap.lmin=lb;"
@@ -4178,7 +4216,7 @@ public class MainActivity extends Activity {
                 + "a0=X[q-1];a1=X[q];a2=X[q+1];a3=X[q+2];L[k]=a1+0.5*t*(a2-a0+t*(2*a0-5*a1+4*a2-a3+t*(3*(a1-a2)+a3-a0)));"
                 + "a0=X[NL+q-1];a1=X[NL+q];a2=X[NL+q+1];a3=X[NL+q+2];R[k]=a1+0.5*t*(a2-a0+t*(2*a0-5*a1+4*a2-a3+t*(3*(a1-a2)+a3-a0)));}"
                 + "if(ap.fade){var fm=Math.min(n,Math.round(fs*0.003));for(k=0;k<fm;k++){L[k]*=k/fm;R[k]*=k/fm;}ap.fade=false;}"
-                + "var s=ac.createBufferSource();s.buffer=b;s.connect(g);s.start(ap.nF/fs);ap.nF+=n;}"
+                + "var s=ac.createBufferSource();s.buffer=b;s.connect(gp);s.start(ap.nF/fs);ap.nF+=n;}"
                 + "ap.rsPos=pos+n*step-an;P[0]=X[an];P[1]=X[an+1];P[2]=X[an+2];P[3]=X[NL+an];P[4]=X[NL+an+1];P[5]=X[NL+an+2];"
                 + "ap.zv+=an;"
                 // statistika: rezerva po zarazeni a odhad, o kolik zvuk zaostava za obrazem (vcetne zvukove karty)
@@ -4189,7 +4227,7 @@ public class MainActivity extends Activity {
                 + "if(lag>-1000&&lag<5000){ap.vsum+=lag;ap.vcnt++;}"
                 + "}catch(e){}}"
                 // kazdych 30 s do logu appky, jak proud v prohlizeci jede (diagnostika zpozdeni)
-                + "setInterval(function(){if(!ap.on)return;var t=Date.now(),s=(t-ap.tl)/1000;"
+                + "setInterval(function(){if(!ap.on){rawHlas();return;}var t=Date.now(),s=(t-ap.tl)/1000;"   // B315: bez proudu hlasi starou cestu
                 + "if(ap.tl&&s>0)clog((ap.druh==='atari'?'B303 PROHLIZEC: ':'B306 PROHLIZEC '+ap.druh.toUpperCase()+': ')+(Math.round((ap.pak-ap.pl)/s*10)/10)+' snimku/s'"
                 + "+(ap.ver===3?', JPEG '+(Math.round((ap.jpg-ap.jl)/s*10)/10)+'/s (prekrytych zahozeno '+(ap.jzah-ap.jzl)+')':'')"
                 + "+', zvuk '+(aon&&ac&&ac.state==='running'?'hraje, napred '"
@@ -4200,7 +4238,8 @@ public class MainActivity extends Activity {
                 + "+(ap.zahS>ap.zahSl&&ap.fsIn?', bez zvuku '+(Math.round((ap.zahS-ap.zahSl)/ap.fsIn*10)/10)+' s':'')"
                 + "+', podteceni '+(ap.pod-ap.podl)"
                 + "+', zahozeno '+(ap.zah-ap.zahl)+', chyb '+ap.chyb+', okno '+window.innerWidth+'x'+window.innerHeight"
-                + "+(ap.ver>1?', obraz '+ap.W+'x'+ap.H+(napFill?' vyplnit':' cely 4:3'):''));"
+                + "+(ap.ver>1?', obraz '+ap.W+'x'+ap.H+(napFill?' vyplnit':' cely 4:3'):'')"
+                + "+', vystup '+zvMerText());"   // B315: co opravdu slo do reproduktoru (driv jen "zvuk hraje" podle stavu AudioContextu)
                 + "ap.tl=t;ap.pl=ap.pak;ap.podl=ap.pod;ap.zahl=ap.zah;ap.jl=ap.jpg;ap.jzl=ap.jzah;"
                 + "ap.zahSl=ap.zahS;ap.lsum=0;ap.lcnt=0;ap.lmin=1e9;ap.vsum=0;ap.vcnt=0;ap.rMin=ap.r;ap.rMax=ap.r;},30000);"
                 + "setInterval(pollFps,1000);"

@@ -9,8 +9,8 @@ android {
         applicationId "eu.atarihelp.emu10.test"  // TEST vedle prave apky (neprepise ji)
         minSdk 24
         targetSdk 34
-        versionCode 357
-        versionName "EMU10-B314-JAZYK-CZ-EN"
+        versionCode 358
+        versionName "EMU10-B315-ZVUK-TV"
         // B314: Rene - "slo by dat vyber jazyka - volbu Cze a Ang? ... po volbe na ang byla apka
         // v anglictine? a naopak?" - OPTIONS -> JAZYK · LANGUAGE (CESTINA / ENGLISH), poprve podle
         // jazyka telefonu: menu (C++), OPTIONS, HELP (napoveda/en.html), Atari, Sega, PS1, MP3,

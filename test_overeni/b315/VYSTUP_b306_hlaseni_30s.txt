@@ -1,0 +1,26 @@
+B315 - proc kontrola B306 "prohlizec hlasi do logu appky kazdych 30 s" obcas neprojde (stejne u stranky B314)
+Hlaseni PROHLIZEC jde kazdych 30 s od nacteni stranky, ALE jen kdyz v tu chvili bezi proud (ap.on). Test B306
+po F5 jede Sega (~25 s), PS1 (~20 s), demo (~11 s), pak 33 s bez proudu a 3 s Sega. Kdyz 30s tik padne do prepnuti
+Sega -> PS1 (sega_stop, ps1_start, 0,5 s) nebo za konec dema, hlaseni nevznikne a kontrola neprojde - nezavisle na
+strance. B315 pise hlaseni stejne (navic ", vystup ..."); deterministicky to overuje test_b315_zvuk_tv.py (30. a 60. s).
+Dva behy B306 testu s casem kazde zpravy prohlizece (s od prvniho startu proudu), stejne knihovny (soucasne C++):
+
+--- stranka b314: VYSLEDEK: 37 kontrol, 0 chyb
+   0.0 s  B306 SEGA PROUD start
+   5.7 s  B306 SEGA PROUD start
+   9.4 s  B306 SEGA PROUD start
+  31.7 s  B306 PS1 PROUD start
+  34.7 s  B306 PROHLIZEC PS1: 50.8 snimku/s, JPEG 30.1/s (prekrytych zahozeno 0), zvuk hraje, napred 90 ms (min 15, pri rozjezdu 48), zvuk za obrazem ~127 ms, r
+  49.2 s  B306 PS1 PROUD start
+  51.7 s  B306 INTRO PROUD start
+  62.7 s  B306 INTRO PROUD konec
+
+--- stranka b315: VYSLEDEK: 37 kontrol, 0 chyb
+   0.0 s  B306 SEGA PROUD start
+   5.7 s  B306 SEGA PROUD start
+   9.3 s  B306 SEGA PROUD start
+  31.7 s  B306 PS1 PROUD start
+  34.7 s  B306 PROHLIZEC PS1: 52.4 snimku/s, JPEG 29.7/s (prekrytych zahozeno 0), zvuk hraje, napred 92 ms (min 3, pri rozjezdu 43), zvuk za obrazem ~128 ms, ry
+  49.1 s  B306 PS1 PROUD start
+  51.7 s  B306 INTRO PROUD start
+  62.7 s  B306 INTRO PROUD konec

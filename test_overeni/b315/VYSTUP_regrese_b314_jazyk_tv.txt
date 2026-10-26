@@ -1,0 +1,31 @@
+B314 - stranka WEB TV cesky / anglicky (Chromium, stranka z MainActivity.java, server jako Java)
+CHYBA  a) cesky: stranka WEB TV z MainActivity = B313 + jen napTr u napovedy klavesnice (40310 znaku)
+OK     a) anglicky: Java vlozi za </title> 2 skripty (NAP_JAZYK + prekladac se slovnikem), 19199 znaku navic
+OK     a) cesky: 9 stavu stranky + 18 hlasek stejne jako B313
+OK     b) anglicky: 9 stavu stranky (menu, Atari psani / hrani, Sega, PS1, panel OBRAZ, vlozeni) bez cestiny (36 ruznych textu)
+OK     c) napoveda klavesnice atari       anglicky: ATARI - type normally; F1 START, F3 SELECT, F4 OPTION, F2 BREAK, F6 HELP, F8 INVERSE (F9 = game mode)
+OK     c) napoveda klavesnice atari_hrani anglicky: ATARI GAME MODE - WASD/arrows direction, L = FIRE, K/space jump, F1 START (F9 = typing)
+OK     c) napoveda klavesnice sega        anglicky: SEGA - WASD move, K = A, L = B, O = C, P = START
+OK     c) napoveda klavesnice ps1         anglicky: PS1 - arrows/WASD direction, K/space CROSS, L CIRCLE, J SQUARE, I TRIANGLE, Q/E L1/R1, Z/C L2/R2, Enter/P STAR
+OK     c) napoveda klavesnice menu        anglicky: MENU - arrows / A D browse, Enter opens, Home / End
+OK     c) vlozeni: appka "VLOZENO: 3 RADKU PROGRAMU (BEZ NEW) - PISU" -> cesky "VLOZENO: 3 RADKU PROGRAMU (BEZ NEW) - PISU", anglicky "PASTED: 3 PROGRAM LINES (NO NEW) - TYPING"
+OK     c) vlozeni: appka "VLOZENO: 1 RADKU PROGRAMU (BEZ NEW) - PISU AZ BUDE READY (NEJVYS 45 S) (BEZ CISLA PRESKOCENO 2)" -> cesky "VLOZENO: 1 RADKU PROGRAMU (BEZ NEW) - PISU AZ BUDE READY (NEJVYS 45 S) (BEZ CISLA PRESKOCENO 2)", anglicky "PASTED: 1 PROGRAM LINE (NO NEW) - TYPING WHEN READY (45 S AT MOST) (SKIPPED 2 WITHOUT A NUMBER)"
+OK     c) vlozeni: appka "NAPSANO: 1 ZNAKU" -> cesky "NAPSANO: 1 ZNAKU", anglicky "TYPED: 1 CHARACTER"
+OK     c) vlozeni: appka "NAPSANO: 12 ZNAKU (2 NA ATARI NENI)" -> cesky "NAPSANO: 12 ZNAKU (2 NA ATARI NENI)", anglicky "TYPED: 12 CHARACTERS (2 NOT ON THE ATARI)"
+OK     c) vlozeni: appka "VLOZENI: ATARI JE VYPNUTE" -> cesky "VLOZENI: ATARI JE VYPNUTE", anglicky "PASTE: THE ATARI IS OFF"
+OK     c) vlozeni: appka "VLOZENI: APPKA PRAVE PISE JINY PROGRAM - POCKEJ" -> cesky "VLOZENI: APPKA PRAVE PISE JINY PROGRAM - POCKEJ", anglicky "PASTE: THE APP IS TYPING ANOTHER PROGRAM - WAIT"
+OK     c) vlozeni: appka "VLOZENI: TO NENI TEXT (XEX / ATR / BAS NAHRAJ V APPCE)" -> cesky "VLOZENI: TO NENI TEXT (XEX / ATR / BAS NAHRAJ V APPCE)", anglicky "PASTE: NOT TEXT (LOAD XEX / ATR / BAS IN THE APP)"
+OK     c) vlozeni: appka "VLOZENI: ATARI 130XE NENI NA OBRAZOVCE" -> cesky "VLOZENI: ATARI 130XE NENI NA OBRAZOVCE", anglicky "PASTE: THE ATARI 130XE IS NOT ON SCREEN"
+OK     c) vlozeni: appka "VLOZENI: KNIHOVNA NENI NACTENA" -> cesky "VLOZENI: KNIHOVNA NENI NACTENA", anglicky "PASTE: THE LIBRARY IS NOT LOADED"
+OK     c) vlozeni: appka "VLOZENI: PRAZDNE" -> cesky "VLOZENI: PRAZDNE", anglicky "PASTE: EMPTY"
+OK     c) vlozeni: appka "(prazdna odpoved)" -> cesky "VLOZENI: BEZ ODPOVEDI", anglicky "PASTE: NO RESPONSE"
+OK     c) napoveda + klavesa: appka "SKOK" -> anglicky "RI GAME MODE - WASD/arrows direction, L = FIRE, K/space jump, F1 START   (F9 = typing)   [JUMP]"
+OK     c) napoveda + klavesa: appka "VYSTREL" -> anglicky "RI GAME MODE - WASD/arrows direction, L = FIRE, K/space jump, F1 START   (F9 = typing)   [FIRE]"
+OK     c) napoveda + klavesa: appka "SMER:KeyW" -> anglicky "DE - WASD/arrows direction, L = FIRE, K/space jump, F1 START   (F9 = typing)   [DIRECTION:KeyW]"
+OK     c) napoveda + klavesa: appka "NEZNAMA:F12" -> anglicky "1 START, F3 SELECT, F4 OPTION, F2 BREAK, F6 HELP, F8 INVERSE   (F9 = game mode)   [UNKNOWN:F12]"
+OK     c) napoveda + klavesa: appka "PS1:KRIZEK" -> anglicky "CIRCLE, J SQUARE, I TRIANGLE, Q/E L1/R1, Z/C L2/R2, Enter/P START, Backspace/O SELECT   [CROSS]"
+OK     c) napoveda + klavesa: appka "PS1:TROJUHELNIK" -> anglicky "CLE, J SQUARE, I TRIANGLE, Q/E L1/R1, Z/C L2/R2, Enter/P START, Backspace/O SELECT   [TRIANGLE]"
+OK     c) napoveda + klavesa: appka "PS1:NAHORU" -> anglicky " L CIRCLE, J SQUARE, I TRIANGLE, Q/E L1/R1, Z/C L2/R2, Enter/P START, Backspace/O SELECT   [UP]"
+OK     c) vsechny hlasky zachyceny (18)
+OK     d) zadna chyba JavaScriptu (B313 0, cesky 0, anglicky 0)
+VYSLEDEK: 29 kontrol, 1 CHYBA

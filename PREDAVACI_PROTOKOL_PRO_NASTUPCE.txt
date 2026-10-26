@@ -3042,3 +3042,47 @@
        s novymi texty: novy test proti B314 (83dc22b), ne prepisovat tyhle.
 
 ===============================================================================
+
+   B315: ZVUK NA TV / PC HRAL JEN V PRVNI HRE (uz od B313).
+     Rene: "bezel zvuk pouze jednou v atari - pak uz ne - ani v atari ani
+     v sega ani v ps1 - na mobilu zvuk funguje. Ale na TV nebo PC uz ne."
+     - PRICINA (stranka WEB TV, napTvWebWriteHtml): JEDEN GainNode g pro
+       proud z C++ (apZvuk) i starou cestu /audio.raw (pollAudio). cutover()
+       stare cesty: ramp g na 0 za 10 ms, navrat na 1 v case next = t+AVD.
+       AVD (zpozdeni stare cesty, localStorage napAvd) menily sipky nahoru /
+       dolu vsude mimo Atari / Segu / PS1 - i v MENU na TV (klavesnice od
+       B311/B313, CO_JE_V_B313 "listuj sipkami"). 6x dolu = AVD 0 -> navrat
+       na 1 naplanovany PRED rampou na 0 -> g = 0 NAPORAD (i po F5, AVD je
+       ulozene). Stara cesta poprve navaze az v mezere po prvni hre (pristroj
+       bezi, jeho proud jeste nema prohlizece -> Java plni /audio.raw:
+       napTvAtariProudKlientu == 0) -> hralo jen prvni Atari. Stranka
+       hlasila "zvuk hraje" = jen ac.state.
+       Overeno: test_b315_zvuk_tv.py se strankou B314 (git 8629955) chybu
+       presne zopakuje (vychozi AVD hraje vsude, po 6x sipce dolu jen prvni
+       Atari). Primo z logu B314 AVD videt nebylo - B315 ho pise do logu.
+     - OPRAVA: gp = vlastni GainNode proudu z C++ (bez automatizace), g jen
+       pro starou cestu; vy = AnalyserNode pred ac.destination (g -> vy,
+       gp -> vy). cutover: next = t + max(AVD, 0.05). AVD 0.1..2 s, ulozena
+       hodnota mimo -> 0.3 (log "B315 ZVUK: ... ulozene bylo X ms").
+       Sipky nemeni AVD v menu (napVMenu) ani v INPUT. rawPredej(tz): prvni
+       kus zvuku proudu (apZvuk, !dob) ukonci naplanovanou starou cestu
+       fadem prave v case tz (driv 0,25-0,3 s ozveny, merene); kus /audio.raw, ktery
+       dorazi po startu proudu (ap.chce), se zahodi.
+     - LOG: kazdych 30 s PROHLIZEC ... ", vystup max -X dB, zvuk v Y %
+       mereni" / "vystup TICHO (zesileni proud a, stara cesta b)"; bez proudu
+       "B315 STARA CESTA (/audio.raw ...): zvuk X s, navazani N, zpozdeni".
+     - TESTY: test_overeni/b315 (JAK_SPUSTIT.txt, vse.sh). Mereni v Chromiu
+       = AnalyserNode zapojeny pred ac.destination (co opravdu jde ven).
+       regrese.sh: TV testy B302, B303, B306 (knihovny ze soucasneho C++,
+       jadro Segy do PRAC/clown; demo z knihovny B306 - tv_intro.cpp jde
+       prelozit jen s C++ dema z B306), B313, B314 se strankou B315.
+       Znamy rozdil: B314 test a) "HTML = B313 + jen napTr" v B315 neplati
+       zamerne (co presne se zmenilo, hlida kontrola_stranky.py: B315 = B314
+       + 22 mist, vse zvuk). B306 kontrola "hlasi kazdych 30 s" je nahodna
+       (30s tik musi padnout do bezicho proudu - VYSTUP_b306_hlaseni_30s.txt,
+       stejne u B314) -> je-li jedina chyba, regrese.sh test jednou zopakuje.
+     - DALSI VERZE se zmenou stranky WEB TV: test_b315_zvuk_tv.py porovnava
+       s B314 (8629955) a kontrola_stranky.py taky - pro novou verzi novy
+       test proti B315, tyhle neprepisovat.
+
+===============================================================================

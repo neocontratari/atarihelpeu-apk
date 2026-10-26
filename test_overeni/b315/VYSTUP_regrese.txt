@@ -1,0 +1,8 @@
+B315 - regrese (testy stranky WEB TV z B302, B303, B306, B313 a B314 se strankou B315)
+OK     B313 TV / PC: prepnuti proudu po odchodu z menu (409 + X-Nap-Proud)  -- VYSLEDEK: 3 kontrol, 0 CHYBA
+OK     B313 menu na TV / PC v Chromiu (ostrost, kvalita, klavesnice)  -- VYSLEDEK: 11 kontrol, 0 CHYBA
+OK     B314 stranka WEB TV: texty cesky ve vsech stavech = B313, anglicky bez cestiny, bez chyby JS (HTML a) se v B315 zamerne zmenilo - zvuk)  -- VYSLEDEK: 29 kontrol, 1 CHYBA, jinych chyb nez HTML a): 0
+OK     B302 klavesnice PC do Atari se strankou B315  -- VYSLEDEK: 23 kontrol, 0 chyb
+OK     B303 Atari na TV (proud z C++, zvuk, Ctrl+V) se strankou B315  -- VYSLEDEK: 23 kontrol, 0 chyb
+OK     B306 Sega, PS1, demo na TV bez autoplay (zvuk: vyzva, kliknuti, F5, klavesa; zvuk za obrazem; zadrhavajici sit), knihovny: sega=soucasny ps1=soucasny intro=z_B306  -- VYSLEDEK: 37 kontrol, 0 chyb
+VYSLEDEK: 6 OK, 0 CHYBA

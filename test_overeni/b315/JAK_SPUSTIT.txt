@@ -1,0 +1,68 @@
+B315 - ZVUK NA TV / PC HRAL JEN V PRVNI HRE
+============================================
+
+Rene (log B314, chyba uz od B313): "Po spusteni LAN streamu bezel zvuk pouze jednou v Atari - pak uz
+ne - ani v Atari, ani v Sega, ani v PS1. Na mobilu zvuk funguje, na TV nebo PC uz ne."
+
+PRICINA (stranka WEB TV, MainActivity.napTvWebWriteHtml):
+  - stranka mela JEDEN zesilovac (GainNode g) pro oba zvuky: proud z C++ (Atari / Sega / PS1 / menu,
+    apZvuk) i starou cestu /audio.raw (pollAudio: MP3 prehravac, YouTube a mezery mezi proudy);
+  - stara cesta pri kazdem navazani (cutover) g ztlumi na 0 a navrat na 1 naplanuje za AVD
+    ("zpozdeni zvuku", sipka nahoru / dolu, ulozene v prohlizeci - localStorage napAvd);
+  - sipky nahoru / dolu menily AVD vsude mimo Atari / Segu / PS1 - tedy i v MENU, kde od B311/B313
+    sipky na TV listuji kartami (CO_JE_V_B313: "Pak listuj sipkami"); 6x sipka dolu = AVD 0;
+  - pri AVD 0 se navrat na 1 naplanoval PRED ztlumenim -> g zustal na 0 NAPORAD a s nim cely zvuk
+    stranky (i po F5 - AVD je ulozene);
+  - poprve stara cesta navaze az v mezere po prvni hre (pristroj Atari bezi a jeho proud jeste nema
+    prohlizece -> Java plni /audio.raw, u Reneho 17:32:03.764 "ATARI PROUD konec" -> 17:32:05.161
+    "ATARI PROUD start") - proto hralo jen prvni Atari. Stranka pritom hlasila "zvuk hraje" (jen stav
+    AudioContextu, ne co jde do reproduktoru).
+
+OPRAVA B315 (jen stranka WEB TV):
+  - proud z C++ ma vlastni zesilovac gp bez fadu - stara cesta ho nemuze ztlumit;
+  - cutover: novy zacatek nejmene 50 ms po ztlumeni (navrat na 1 vzdy az po ztlumeni);
+  - AVD nejmene 100 ms; ulozena hodnota mimo 100 ms - 2 s se vrati na 300 ms (a do logu appky:
+    "B315 ZVUK: ... (ulozene bylo 0 ms - sipkou dolu ...)");
+  - sipky nahoru / dolu nemeni AVD v menu (listuji kartami) ani v posuvnicich panelu OBRAZ;
+  - kdyz zacne zvuk proudu z C++, co stara cesta jeste ma naplanovane, skonci s fadem PRAVE tam
+    (driv hralo pres proud 0,25-0,3 s - ozvena pri prepnuti); kus /audio.raw, ktery dorazi az po
+    startu proudu, se uz nehraje;
+  - mereni vystupu (AnalyserNode pred reproduktorem, 4x za vterinu): hlaseni PROHLIZEC kazdych 30 s
+    konci ", vystup max -X dB, zvuk v Y % mereni" (nebo "vystup TICHO (zesileni proud .., stara cesta ..)"),
+    bez proudu "B315 STARA CESTA (/audio.raw ...): zvuk X s, navazani N, zpozdeni ..., vystup ...".
+
+TESTY (spoustet z adresare test_overeni/b315, nebo vse najednou vse.sh):
+
+1) python3 test_b315_zvuk_tv.py                        -> VYSTUP_test_b315_zvuk_tv.txt (cca 9 minut)
+   Stranka PRESNE z appky (vytahne se z MainActivity.java; B314 z gitu 8629955) v Chromiu,
+   Python server dela, co Java: /status, /menu.stream, /atari.stream (verze 1), /sega.stream
+   (verze 2, 48000 Hz), /ps1.stream (verze 3), 409 + X-Nap-Proud, /audio.raw jako
+   napTvWebWriteAudioRaw (kruh se plni, jen kdyz proud jadra nema prohlizece; jina frekvence =
+   sekvence od 0), pripojeni proudu 300 ms. Postup jako v logu Reneho: menu, kliknuti, Atari,
+   NET_HRY (proud 0), Atari znovu, menu, Sega, menu, PS1 rovnou z menu, MP3 (stara cesta).
+   Meri se, co OPRAVDU jde do reproduktoru (AnalyserNode zapojeny pred ac.destination): RMS
+   (ton proudu Atari 440 / Sega 660 / PS1 550 Hz, stara cesta MP3 330 Hz, vse RMS 0,21) a spektrum
+   (stara cesta ma pro Atari JINY ton 880 Hz -> jak dlouho hraje pres proud = ozvena, a nejdelsi
+   ticho pri prechodu). Hlaseni PROHLIZEC v 30. a 60. s (Atari, PS1) musi uvest uroven vystupu.
+   Scenare: vychozi zpozdeni, 6x sipka dolu v menu, ulozene zpozdeni 0, ulozene zpozdeni 2 s.
+   Stranka B314 musi chybu Reneho ukazat (vychozi hraje vsude; po sipkach jen prvni Atari).
+
+2) vse.sh krok 2: skripty stranky WEB TV bez chyby syntaxe (acorn, ES2017)
+                                                        -> VYSTUP_kontrola_skriptu_tv.txt
+   python3 kontrola_stranky.py: stranka B315 = stranka B314 + JEN zmeny zvuku (difflib po
+   prikazech, kazde zmenene misto musi patrit ke zvuku)  -> VYSTUP_kontrola_stranky.txt
+3) vse.sh krok 3: javac proti android.jar (API 34)     -> VYSTUP_javac_android.txt
+
+4) bash regrese.sh PRAC INC JAVA_HOME PNG320            -> VYSTUP_regrese.txt + VYSTUP_regrese_*.txt
+   Testy stranky WEB TV starsich verzi se strankou B315 (puvodni VYSTUP_* zpet z gitu):
+   B313 prepnuti proudu (409), B313 menu na TV (SKUTECNE C++ menu, klavesnice), B314 stranka cesky
+   = B313 / anglicky bez cestiny (jedina povolena CHYBA = kontrola a) "HTML = B313 + jen napTr" -
+   HTML se v B315 zamerne zmenilo, co presne hlida kontrola_stranky.py; texty ve vsech stavech
+   musi byt dal stejne), B302 klavesnice PC do Atari, B303 Atari na TV + Ctrl+V,
+   B306 Sega / PS1 / demo na TV bez autoplay (zvuk, zvuk za obrazem, zadrhavajici sit) - knihovny
+   Segy a PS1 ze SOUCASNEHO C++ (jadro Segy clownmdemu prelozi do PRAC/clown jako CMakeLists.txt),
+   demo z knihovny B306 (tv_intro.cpp jde prelozit jen s C++ dema z B306; proud dema jen krmi
+   stranku - zkousi se stranka B315).
+
+Vse najednou:
+   PRAC=/tmp/nap_b315 INC=... PNG320=... ANDROID_JAR=.../android-34.jar bash vse.sh

@@ -1,0 +1,69 @@
+B315 - stranka WEB TV (MainActivity.napTvWebWriteHtml): B314 37798 znaku / 1862 prikazu, B315 40310 znaku / 1974 prikazu
+OK    misto 1 (replace, prikazy B314 89-90 -> B315 89-90):
+       B314: var AVD=(function(){
+       B315: var AVD0=null,AVD=(function(){
+OK    misto 2 (insert, prikazy B314 101-101 -> B315 101-110):
+       B314: (nic)
+       B315: if(!(AVD>=0.1&&AVD<=2)){AVD0=AVD;AVD=0.30;try{if(localStorage.getItem('napAvd')!==null)localStorage.setItem('napAvd',AVD);}catch(e){}}
+OK    misto 3 (replace, prikazy B314 102-103 -> B315 111-112):
+       B314: AVD=Math.max(0,Math.min(2,Math.round(x*100)/100));
+       B315: AVD=Math.max(0.1,Math.min(2,Math.round(x*100)/100));
+OK    misto 4 (insert, prikazy B314 108-108 -> B315 117-122):
+       B314: (nic)
+       B315: clearTimeout(window._avdL);window._avdL=setTimeout(function(){clog('B315 ZVUK: zpozdeni stare cesty (MP3, YouTube, mezery) zmeneno klavesou na '+Math.round(AVD*1000)+' ms');},1500);
+OK    misto 5 (replace, prikazy B314 133-134 -> B315 147-148):
+       B314: var v=document.getElementById('v'),s=document.getElementById('s'),a=document.getElementById('a'),n=0,fb=false,ac=null,g=null,next=0,aseq=0,aon=false,active=[],lastSeq=0,lastSeqT=0,curFps=0,staleTicks=0;
+       B315: var v=document.getElementById('v'),s=document.getElementById('s'),a=document.getElementById('a'),n=0,fb=false,ac=null,g=null,gp=null,vy=null,next=0,aseq=0,aon=false,active=[],rawS=0,rawN=0,lastSeq=0,lastSeqT=0,curFps=0,staleTicks=0;
+OK    misto 6 (insert, prikazy B314 389-389 -> B315 403-413):
+       B314: (nic)
+       B315: var ven=ac.destination;try{vy=ac.createAnalyser();vy.fftSize=2048;vy.connect(ac.destination);ven=vy;}catch(e){vy=null;}
+OK    misto 7 (replace, prikazy B314 391-392 -> B315 415-419):
+       B314: g.connect(ac.destination);
+       B315: g.connect(ven);gp=ac.createGain();gp.gain.value=1;gp.connect(ven);
+OK    misto 8 (insert, prikazy B314 398-398 -> B315 425-427):
+       B314: (nic)
+       B315: clog('B315 ZVUK: proud z C++ ma vlastni zesilovac, zpozdeni stare cesty (MP3, YouTube, mezery) '+Math.round(AVD*1000)+' ms'+(AVD0!==null?' (ulozene bylo '+Math.round(AVD0*1000)+' ms - sipkou dolu, od B313 i v menu na TV; pri 0 zvuk hral jen v prvni hre - vraceno na 300 ms)':''));
+OK    misto 9 (insert, prikazy B314 438-438 -> B315 467-516):
+       B314: (nic)
+       B315: var zm={n:0,max:0,hr:0},zmB=null;function zvMer(){try{if(!vy||!ac||ac.state!=='running')return;var N=vy.fftSize,i,s=0,x;if(vy.getFloatTimeDomainData){if(!zmB||zmB.length!==N)zmB=new Float32Array(N);vy.getFloatTimeDomainData(zmB);for(i=0;i<N;i++){x=zmB[i];s+=x*x;}}else{if(!zmB||zmB.length!==N)zmB=new ...
+OK    misto 10 (insert, prikazy B314 441-441 -> B315 519-520):
+       B314: (nic)
+       B315: rawN++;
+OK    misto 11 (replace, prikazy B314 458-459 -> B315 537-538):
+       B314: next=t+AVD;
+       B315: next=t+Math.max(AVD,0.05);
+OK    misto 12 (insert, prikazy B314 465-465 -> B315 544-570):
+       B314: (nic)
+       B315: }function rawPredej(tz){if(!ac||!g||!active.length)return;var t=ac.currentTime;if(tz<t+0.012)tz=t+0.012;try{var gv=g.gain.value;g.gain.cancelScheduledValues(t);g.gain.setValueAtTime(gv,t);g.gain.setValueAtTime(gv,tz-0.01);g.gain.linearRampToValueAtTime(0,tz);g.gain.setValueAtTime(1,tz+0.02);}catch(e ...
+OK    misto 13 (replace, prikazy B314 483-484 -> B315 588-589):
+       B314: if(ab.byteLength>=4){
+       B315: if(ab.byteLength>=4&&!(ap&&ap.chce)){
+OK    misto 14 (replace, prikazy B314 496-497 -> B315 601-602):
+       B314: if(next<ac.currentTime+0.02)next=ac.currentTime+AVD;
+       B315: if(next<ac.currentTime+0.02)next=ac.currentTime+Math.max(AVD,0.05);
+OK    misto 15 (insert, prikazy B314 499-499 -> B315 604-605):
+       B314: (nic)
+       B315: rawS+=frames/rate;
+OK    misto 16 (replace, prikazy B314 505-506 -> B315 611-612):
+       B314: if(active.length>60)active.splice(0,active.length-60);
+       B315: if(active.length>400)active.splice(0,active.length-400);
+OK    misto 17 (replace, prikazy B314 528-529 -> B315 634-637):
+       B314: if(window.napVAtari||window.napVSeze||window.napVPs1)return;
+       B315: if(window.napVAtari||window.napVSeze||window.napVPs1||window.napVMenu)return;var tg=e.target;if(tg&&(tg.tagName==='INPUT'||tg.tagName==='TEXTAREA'))return;
+OK    misto 18 (replace, prikazy B314 1347-1348 -> B315 1455-1456):
+       B314: if(!aon||!ac||!g)return;
+       B315: if(!aon||!ac||!gp)return;
+OK    misto 19 (insert, prikazy B314 1380-1380 -> B315 1488-1489):
+       B314: (nic)
+       B315: if(!dob)rawPredej(ap.nF/fs);
+OK    misto 20 (replace, prikazy B314 1472-1473 -> B315 1581-1582):
+       B314: s.connect(g);
+       B315: s.connect(gp);
+OK    misto 21 (replace, prikazy B314 1499-1500 -> B315 1608-1612):
+       B314: if(!ap.on)return;
+       B315: if(!ap.on){rawHlas();return;}
+OK    misto 22 (replace, prikazy B314 1501-1502 -> B315 1613-1614):
+       B314: if(ap.tl&&s>0)clog((ap.druh==='atari'?'B303 PROHLIZEC: ':'B306 PROHLIZEC '+ap.druh.toUpperCase()+': ')+(Math.round((ap.pak-ap.pl)/s*10)/10)+' snimku/s'+(ap.ver===3?', JPEG '+(Math.round((ap.jpg-ap.jl)/s*10)/10)+'/s (prekrytych zahozeno '+(ap.jzah-ap.jzl)+')':'')+', zvuk '+(aon&&ac&&ac.state==='runni ...
+       B315: if(ap.tl&&s>0)clog((ap.druh==='atari'?'B303 PROHLIZEC: ':'B306 PROHLIZEC '+ap.druh.toUpperCase()+': ')+(Math.round((ap.pak-ap.pl)/s*10)/10)+' snimku/s'+(ap.ver===3?', JPEG '+(Math.round((ap.jpg-ap.jl)/s*10)/10)+'/s (prekrytych zahozeno '+(ap.jzah-ap.jzl)+')':'')+', zvuk '+(aon&&ac&&ac.state==='runni ...
+beze zmeny 1849 z 1862 prikazu B314
+VYSLEDEK: 22 zmenenych mist, 0 CHYBA (nechtena zmena mimo zvuk)
