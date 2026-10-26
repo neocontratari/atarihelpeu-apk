@@ -80,4 +80,9 @@ na ANG byla apka v angličtině? A naopak?“
 - **Java:** pravidla zámků a karty HELP 10/0, věty zámků v Javě a v HTML menu stejné 18/0,
   překlad proti skutečnému Androidu 0 chyb, podpisy JNI 24/24 (menu) a 17/17 (intro).
 - **Skripty jazyka** pro starý WebView (ES5): 8 souborů, 0 chyb. **Obrázek Segy** anglicky 4/0.
+- **Regrese** (testy B291–B313 na kódu B314, jako český uživatel): 23/0 – mimo jiné skutečné menu přes
+  JNI + ThreadSanitizer, kodeky a rozbočovač pro TV, intro z Javy bit po bitu, celé demo, menu na TV,
+  klávesnice PC a Ctrl+V do Atari, MP3 přehrávač (FAVORITES, RECORD), DŽUBOX, servis v OPTIONS,
+  zámky Segy / PS1, mosty JavaScript → Java, odkazy na soubory, skutečný kód přístroje Atari.
+  Jediné „rozdíly“ jsou záměrné: seznam kroků testu na stránce Atari je pryč (kroky ti píšu do zprávy).
 - **CI:** APK sestavené (Build APK – success).

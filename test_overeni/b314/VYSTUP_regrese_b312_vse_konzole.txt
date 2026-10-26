@@ -1,0 +1,25 @@
+== 0) C++ se v B312 nemenilo (testy C++ menu, Atari, Segy, PS1 z B311 a starsich plati dal)
+   souboru v app/src/main/cpp zmenenych od B311 (21c3aad): 16
+== 1) JVM: NapServis (PBKDF2 proti Pythonu, kod, pokusy, 10 min) a NapPravidla (zamky, hudba, ZPET)
+VYSLEDEK: 11 kontrol, 0 CHYBA
+== 2) MainActivity: kazda cesta ke hre Segy / PS1 se nejdriv zepta na zamek, servis hlida Java
+VYSLEDEK: 18 kontrol, 0 CHYBA
+== 3) MP3 PREHRAVAC v Chromiu: knihovna, FAVORITES, RECORD (mixtape), ZPET, WebM, chyba zapisu, PC
+VYSLEDEK: 30 kontrol, 0 CHYBA
+== 4) DZUBOX v Chromiu: RECORD M4A / WebM s delkou, chyba zapisu, PC, odchod behem nahravani
+VYSLEDEK: 12 kontrol, 0 CHYBA
+== 5) OPTIONS v Chromiu: servisni tlacitka schovana, kod, pokusy, 10 minut
+VYSLEDEK: 18 kontrol, 1 CHYBA
+== 6) navod v Chromiu (B311 + B312) a nazvy tlacitek v navodu proti appce
+VYSLEDEK: 26 kontrol, 0 CHYBA
+VYSLEDEK: 165 nazvu, 0 CHYBA (nazev v navodu, ktery v appce neni)
+== 7) mosty JavaScript -> Java a odkazy na soubory (i smazane obrazky)
+VYSLEDEK: 105 volani v poradku, 0 CHYBA
+VYSLEDEK: 0 chyb
+== 8) Java appky prelozena proti SKUTECNEMU Androidu (android.jar API 34, Java 17 jako v build.gradle)
+VYSLEDEK: 0 chyb prekladu
+== 9) regrese: hlavni menu B311 v Chromiu (zaloha v HTML, C++ menu, OPTIONS, WEB TV) se strankou z B312
+VYSLEDEK: 24 kontrol, 1 CHYBA
+   (A11 = 10 kroku testu B311 na strance Atari 130XE - v B312 jsou tam nove kroky B312; ty kontroluje bod 5, test_b312_servis.py 9)
+== 10) servisni kod NENI v repozitari (soubory ani historie) - jen s NAP_SERVIS_KOD
+   (preskoceno - NAP_SERVIS_KOD neni nastaveny)

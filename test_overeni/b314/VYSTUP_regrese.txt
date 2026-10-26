@@ -1,0 +1,25 @@
+B314 - regrese (testy B291, B312, B313 a jejich regrese na kodu B314)
+OK     B313 postup po nove instalaci (zaloha Androidu vypnuta)  -- VYSLEDEK: 4 kontrol, 0 CHYBA
+OK     B313 TV / PC prepnuti proudu po odchodu z menu (Chromium, stranka z MainActivity)  -- VYSLEDEK: 3 kontrol, 0 CHYBA
+OK     B313 kodek JPEG pro menu na TV  -- VYSLEDEK: 11 OK, 0 CHYBA
+OK     B313 kodek JPEG pro menu pod ThreadSanitizerem  -- hlaseni ThreadSanitizeru: 0
+OK     B313 SKUTECNE menu pres JNI (bez jazyka - jako B313)  -- VYSLEDEK: 15 OK, 0 CHYBA
+OK     B313 SKUTECNE menu pres JNI pod ThreadSanitizerem  -- VYSLEDEK: 0 zavodu v nasem kodu
+OK     B313 menu na TV / PC v Chromiu (ostrost, kvalita, klavesnice)  -- VYSLEDEK: 11 kontrol, 0 CHYBA
+OK     B313 konzole N&P 16 / 32: animace  -- VYSLEDEK: 10 OK, 0 CHYBA
+OK     B313 shadery GLSL ES 1.00  -- VYSLEDEK: 17 shaderu menu, 20 programu, 0 chyb
+OK     B313 Java proti android.jar  -- VYSLEDEK: 0 chyb prekladu
+OK     B313 podpisy JNI menu (Java = C++)  -- VYSLEDEK: 24 native metod v Jave, 24 v C++, 0 nesouhlasi
+OK     B313 regrese (B305, B306, B309, B307, B311, B302, B303)  -- VYSLEDEK: 12 OK, 0 CHYBA
+OK     B312 JVM: NapServis a NapPravidla (cesky beze zmeny)  -- VYSLEDEK: 11 kontrol, 0 CHYBA
+OK     B312 kazda cesta ke hre Segy / PS1 se pta na zamek  -- VYSLEDEK: 18 kontrol, 0 CHYBA
+OK     B312 MP3 prehravac (knihovna, FAVORITES, RECORD) se strankou B314  -- VYSLEDEK: 30 kontrol, 0 CHYBA
+OK     B312 DZUBOX RECORD  -- VYSLEDEK: 12 kontrol, 0 CHYBA
+OK     B312 OPTIONS: servisni kod, ODEMKNOUT DALSI / ZAMKNOUT VSE (s prepinacem jazyka); krok 9 (kroky testu na strance Atari) v B314 zamerne prazdny  -- VYSLEDEK: 18 kontrol, 1 CHYBA, jinych chyb nez krok 9: 0
+OK     B312 navod v Chromiu  -- VYSLEDEK: 26 kontrol, 0 CHYBA
+OK     B312 nazvy tlacitek v ceskem navodu proti appce  -- VYSLEDEK: 165 nazvu, 0 CHYBA (nazev v navodu, ktery v appce neni)
+OK     B312 mosty JS -> Java (vcetne AHJAZYK)  -- VYSLEDEK: 105 volani v poradku, 0 CHYBA
+OK     B312 odkazy na soubory (en.html, jazyk/*.js, obrazky _en)  -- VYSLEDEK: 0 chyb
+OK     B312 hlavni menu B311 v Chromiu se strankou B314 (A11 = kroky testu B311 na strance Atari, zmenene od B312)  -- VYSLEDEK: 24 kontrol, 1 CHYBA, jinych chyb nez A11: 0
+OK     B291 SKUTECNY nap_atari_native.cpp: pristroj, dotyk, kazeta (s jazykem B314)  -- VYSLEDEK: 24 kontrol, 0 chyb
+VYSLEDEK: 23 OK, 0 CHYBA

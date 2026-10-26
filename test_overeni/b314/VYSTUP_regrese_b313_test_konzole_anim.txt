@@ -1,0 +1,14 @@
+B313 - animace konzoli N&P 16 a N&P 32 (menu i intro)
+
+OK     1) N&P 16 mimo stred menu: cartridge se vznasi nad sterbinou (>= 2,7 cm), klapky zavrene, vypnuto, kontrolky zhasnute
+OK     2) N&P 16: cartridge sjede plynule dolu (zadne couvani), cvakne (-5.22 cm) a zustane zasunuta (-5.00 cm pod vrchem veze), klapky otevrene
+OK     3) N&P 16: klapky se otevrou, az kdyz cartridge vjede do sterbiny (nad ni 0.00, v pulce 1.00)
+OK     4) N&P 16: po zasunuti vypinac doprava, POWER sviti, CART zablika 3x a pak sviti slabe (0.60)
+OK     5) N&P 16: zasunuta cartridge konci 0.30 cm nad dnem sterbiny, vznasejici se 2.72 cm nad rameckem
+OK     6) N&P 32 mimo stred menu: viko otevrene, disk nad mechanikou (>= 5,5 cm), vypnuto, disk se jen pomalu otaci
+OK     7) N&P 32: disk dosedne na hridel (0.03 cm), pak se viko zavre (1.00 -> 0.76 -> 0.00)
+OK     8) N&P 32: disk se roztoci (2.00 -> 7.50 -> 11.00 rad/s, pak stale), potisk se rozmaze (0.09 -> 0.50 rad)
+OK     9) N&P 32: POWER sviti, rada kontrolek se rozsviti po sobe (1.65, 1.77, 1.89, 2.01 s), pas dole a prstenec okenka sviti
+OK     10) N&P 32: disk nad mechanikou i pri padani nenarazi do otevreneho vika (nejbliz 0.64 cm)
+
+VYSLEDEK: 10 OK, 0 CHYBA

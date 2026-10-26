@@ -1,0 +1,26 @@
+== 1) postup se po nove instalaci nevraci: zaloha Androidu vypnuta (allowBackup=false), log pri startu
+VYSLEDEK: 4 kontrol, 0 CHYBA
+== 2) TV / PC: prohlizec se po odchodu z menu prepne na spravny proud (409 + X-Nap-Proud, Chromium)
+VYSLEDEK: 3 kontrol, 0 CHYBA
+== 3) kodek JPEG pro menu na TV: vic obdelniku, zjemneni za pohybu, kvalita, vlakna (+ ThreadSanitizer)
+VYSLEDEK: 11 OK, 0 CHYBA
+hlaseni ThreadSanitizeru: 0
+== 4) SKUTECNY nap_menu_gl.cpp jako z Javy (JNI): velikost TV podle kvality, menuGrabFrame, perioda displeje
+VYSLEDEK: 15 OK, 0 CHYBA
+VYSLEDEK: 0 zavodu v nasem kodu
+== 5) menu na TV / PC v Chromiu: 1280x720, OSTRE v klidu (canvas proti obrazu menu), zmena kvality, klavesnice
+VYSLEDEK: 11 kontrol, 0 CHYBA
+== 6) mereni: skutecne menu (plocha jako S8 1080x2004) na TV 1280x720 - kB na snimek, casti, ostrost
+   listovani (3x sipka)     3.3 snimku/s,   79.3 kB na snimek (nejvic   98.8 kB), 2.20 casti na snimek, 2.15 Mbit/s
+   klid 2 (5 s)             6.4 snimku/s,   36.8 kB na snimek (nejvic   86.7 kB), 3.72 casti na snimek, 1.92 Mbit/s
+== 7) konzole N&P 16 / N&P 32: animace (logika) a obrazky karty (Mesa)
+VYSLEDEK: 10 OK, 0 CHYBA
+CHYB GL celkem: 0
+== 8) shadery (vcetne noveho FS_KONZOLE) prisne podle GLSL ES 1.00
+VYSLEDEK: 17 shaderu menu, 20 programu, 0 chyb
+== 9) Java proti SKUTECNEMU Androidu a podpisy JNI (23 native metod)
+VYSLEDEK: 0 chyb prekladu
+VYSLEDEK: 24 native metod v Jave, 24 v C++, 0 nesouhlasi
+   JNI funkci viditelnych z knihovny (-fvisibility=hidden, JNIEXPORT): 24 z 23
+== 10) regrese: PS1 / Sega / demo na TV (kodeky, pasy, rozbocovac + TSan), cele intro, intro z Javy, menu (Mesa)
+VYSLEDEK: 12 OK, 0 CHYBA

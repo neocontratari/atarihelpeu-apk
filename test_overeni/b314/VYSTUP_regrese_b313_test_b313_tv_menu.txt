@@ -1,0 +1,19 @@
+B313: hlavni menu na TV / PC - stranka z MainActivity.java (37804 B), proud ze skutecneho nap_menu_gl.cpp (Mesa)
+klavesy menu z napTvMenuKlavesa: ArrowLeft=KL_VLEVO, ArrowRight=KL_VPRAVO, End=KL_KONEC, Enter=KL_POTVRD, Home=KL_ZACATEK, KeyA=KL_VLEVO, KeyD=KL_VPRAVO, NumpadEnter=KL_POTVRD, Space=KL_POTVRD
+OK     Java: klavesy prohlizece -> menu (sipky / A D, Enter / mezernik, Home / End)
+OK     C++ menu bezi (7 karet, pripraveno za 0.4 s na Mesa / CPU)
+   {'nahore': 'ap', 'cv': 'block', 'druh': 'menu', 'ver': 3, 'W': 1280, 'H': 720, 'pak': 12, 'menu': True, 'popis': 'MENU - sipky / A D listuji, Enter otevre, Home / End', 'popisVidet': 'block', 'jas': 21.44717013888889}
+OK     prohlizec bere proud menu z C++ (/menu.stream, JPEG po castech v3, 1280x720 - drive 854x480) a canvas je navrchu (za 1.6 s)
+OK     obraz menu bezi (72 snimku za 3 s; Mesa na CPU) a neni cerny (prumerny jas 21.4)
+   ostrost v klidu (canvas prohlizece proti obrazu menu): horni pas 43.7 dB, spodni pas 47.8 dB
+OK     v klidu je obraz v prohlizeci ostry: napisy nahore 43.7 dB a dole 47.8 dB (>= 38 = kvalita 94; drive JPEG 76 bez zjemneni)
+   log proudu: B306 TV PROUD MENU: prohlizec 1 pripojen (celkem 1) - obraz a zvuk primo z C++ (JPEG po castech), kazdy snimek, zvuk 44100 Hz v tomtez paketu
+OK     kvalita TV za chodu: NIZKA -> obraz 854x480, VYSOKA -> 1280x720 (prohlizec se prizpusobi sam)
+OK     popis klaves vpravo dole: "MENU - sipky / A D listuji, Enter otevre, Home / End"
+   karta po sipce vpravo 1, D 2, A 1, End 6, Home 0
+OK     klavesnice PC listuje C++ menu: sipka vpravo, D, A, End (HELP), Home (ATARI)
+OK     Enter na zamcene SEGE: C++ vrati "zamceno" (3001), nic se nespusti [('Enter', 3001)]
+OK     Enter na ATARI 130XE: C++ vrati "spustit kartu 0" (1000) -> Java prepne stranku [('Enter', 1000)]
+OK     zadna chyba JavaScriptu
+log proudu: B306 TV PROUD MENU: prohlizec 1 odpojen po 22 s - 505 paketu (22.7/s), 18.8 MB celkem, JPEG kvalita 85 (max 85, snizeno 0x), kodovani prumer 6.9 ms max 39.5 ms (pasu 4), castecnych 863, zjemneni 1, beze zmeny 102 z 505, B313: obdelniku 1086 (snimku s vic castmi 174), zjemneni za pohybu 52, zvuk pres
+VYSLEDEK: 11 kontrol, 0 CHYBA

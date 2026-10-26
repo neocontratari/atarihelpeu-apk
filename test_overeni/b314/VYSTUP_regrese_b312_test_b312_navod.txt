@@ -1,0 +1,27 @@
+OK     1) pismo Chakra Petch z appky (pisma/chakra_bold + semibold.woff2) nacteno: NapChakra 600, NapChakra 700, NapChakra 700
+OK     2) obsah: 13 dlazdic, kazda vede na existujici kapitolu (menu, atari, sega, ps1, mp3, dzubox, web, options, tv, odemykani, soubory, log, otazky)
+OK     2) 13 kapitol, kazda konci tlacitky OBSAH a ZPET DO MENU (../index.html existuje)
+OK     2) poradi kapitol = poradi v obsahu
+OK     2) vsechny odkazy uvnitr navodu vedou na existujici misto
+OK     2) vsech 12 obrazku (6 karet z menu/ v obsahu a 6 v nadpisech kapitol) se nacte
+OK     2) logo N&P v liste (design/nap_logo_original.png)
+OK     B312) MP3 PREHRAVAC: bloky RECORD (mixtape, Download/AtariHelp/Mixtape, ● REC, C90) a FAVORITES
+OK     B312) OPTIONS ani nikde jinde v navodu uz nejsou ODEMKNOUT DALSI / ZAMKNOUT VSE (servis se nepopisuje)
+OK     B312) ATARIHELP.EU a ODEMYKANI: zamky plati i pro hry z webu; SOUBORY: Mixtape; DZUBOX: odchod pri nahravani mix ulozi
+OK     3) klepnuti v obsahu na WEB TV: stranka dojede na kapitolu tesne pod listu (top 68, lista 58), historie 2 -> 2, adresa beze zmeny
+OK     3) po odjeti z obsahu se ukaze plovouci tlacitko nahoru
+OK     3) tlacitko nahoru vrati na obsah (bez historie)
+OK     3) odkaz v textu (Sega -> Odemykani) posune na kapitolu, bez historie
+OK     4) hledani "sipky" (bez hacku) najde "šipky" i "šipkami" (koncovka se nehleda): NALEZENO 4× · 3 KAPITOLY, ['Šipk', 'šipk']
+OK     4) kapitoly bez shody se schovaji (videt: menu, ps1, tv)
+OK     4) hledani "BIOS" otevre shodnou otazku (PS1 hra nejde spustit.) a ukaze PS1 i OPTIONS
+OK     4) nesmysl: "NIC NENALEZENO – ZKUS JINÉ SLOVO", zadna kapitola
+OK     4) smazani hledani vrati vse (zadne schovane kapitoly, znacky ani otevrene otazky)
+OK     4) hledani "řádků" (s diakritikou) najde 10 mist (řádky, řádků, řádku ...)
+OK     5) casta otazka se klepnutim rozbali
+OK     6) 320x640: nic nepreteka do strany (scrollWidth 320, sirka 320)
+OK     6) 360x740: nic nepreteka do strany (scrollWidth 360, sirka 360)
+OK     6) 915x412: nic nepreteka do strany (scrollWidth 915, sirka 915)
+OK     7) zadna chyba JavaScriptu
+OK     7) zadny soubor, ktery stranka chce, nechybi
+VYSLEDEK: 26 kontrol, 0 CHYBA

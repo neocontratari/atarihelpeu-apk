@@ -1,0 +1,13 @@
+OK     1) RECORD zapnuto (tlacitko sviti)
+OK     1) souborZacni(DJ_mixy, NP_VISION_mix_20261026_160136.m4a, audio/mp4), 6 kousku, SAVED
+OK     1) hlaska: "MIX SAVED · Download/AtariHelp/DJ_mixy/NP_VISION_mix_20261026_160136.m4a"
+OK     1) soubor: MP4 (opus), delka 4.70 s v hlavicce = 4.66 s dekodovano, ffmpeg bez chyby
+OK     1) za chvili tlacitko zase RECORD
+OK     2) bez M4A: NP_VISION_mix_20261026_160145.webm, WebM / Opus, delka v hlavicce 3.71 s = dekodovano 3.72 s (drive v hlavicce zadna)
+OK     3) chyba zapisu v Jave: souborZrus 1x, SAVE FAILED, hlaska "MIX NOT SAVED · write error"
+OK     3) po chybe jde nahravat znovu
+OK     4) prohlizec na PC: stazeni NP_VISION_mix_20261026_160157.m4a (37263 B, 2.14 s)
+OK     5) BACK behem nahravani: pult pocka, mix ulozi (souborDokonci 1) a teprve pak jde do menu (drive se nahravka zahodila)
+OK     5) ZPET na telefonu (napZpet): nic -> 0 (appka jde zpet), napoveda -> zavre (1), nahravani -> ulozi a pak menu (1)
+OK     6) zadna chyba JavaScriptu
+VYSLEDEK: 12 kontrol, 0 CHYBA

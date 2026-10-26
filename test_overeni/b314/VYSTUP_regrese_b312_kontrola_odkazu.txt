@@ -1,0 +1,3 @@
+smazanych obrazku: 9 (v appce nejsou, nic na ne nevede); spolecne/nap_nahravka.js nacita: dj/index.html, player/index.html
+relativnich odkazu v HTML: 124, url() ve stylech: 12, cest k assetum v Jave a C++: 16, souboru z karty.txt: 13
+VYSLEDEK: 0 chyb

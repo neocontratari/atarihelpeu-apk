@@ -1,0 +1,19 @@
+B313 - kodek JPEG po castech pro hlavni menu na TV (Hub + KodekJpeg z appky, prohlizec v C++)
+
+   menu 1280x720: listovani 166.6 kB/snimek, klid 11.3 kB/snimek; ostrost horniho pasu: pri listovani 28.6 dB, 1 s po nem 40.8 dB, na konci 40.8 dB; cely obraz 39.8 dB
+   log: B306 TV PROUD TEST: prohlizec 1 pripojen (celkem 1) - obraz a zvuk primo z C++ (JPEG po castech), kazdy snimek, zvuk 44100 Hz v tomtez paketu
+   log: B306 TV PROUD TEST: prohlizec 1 odpojen po 1 s - 180 paketu (121.0/s), 6.5 MB celkem, JPEG kvalita 85 (max 85, snizeno 0x), kodovani prumer 1.2 ms max 9.8 ms (pasu 1), castecnych 177, zjemneni 0, beze zmeny 0 z 180, B313: obdelniku 208 (snimku s vic castmi 27), zjemneni za pohybu 4, zvuk preskoku 0, paketu jen se zvukem 0 (zbyva 0)
+OK     1) pakety jdou rozebrat jako ve strance (208 paketu, 180 snimku, dalsich casti 28), dalsi casti maji priznak 8 a zadny zvuk; chyb 0
+OK     2) pri listovani (meni se vse) jde snimek jako jeden JPEG v kvalite 75 (casti 1, kvalita 75), v klidu konzole v kvalite 85 (strop menu 85)
+OK     3) v klidu (konzole + obcas vedlejsi karta) jdou zmeny jako vic obdelniku: nejvic 2 v jednom snimku
+OK     4) stojici casti se zjemni, i kdyz se konzole porad hybe: horni pas 40.80 dB (>= 40 = kvalita 94)
+OK     5) v klidu jen zlomek prenosu: 11.31 kB proti 166.6 kB pri listovani
+OK     6) ostrost se po listovani vrati do 1 s (30 snimku): 40.80 dB (pri listovani 28.55 dB)
+   bez voleb menu (PS1 / demo): klid 8.0 kB/snimek, horni pas na konci 28.7 dB, nejvic casti 1
+OK     7) PS1 / demo beze zmeny: jeden obdelnik na snimek, zadne dalsi casti, za pohybu se nezjemnuje (log bez B313)
+OK     8) obraz v prohlizeci = posledni snimek (zadna cast nechybi): nejhorsi PSNR celeho obrazu 39.06 dB, i po zmene 854x480 -> 1280x720 (1280x720)
+OK     9) sit nestiha (zapis 20 ms): za pohybu se nezjemnuje (velke pakety by sit ucpaly)
+OK     10) snimek z glReadPixels (RGBA zdola nahoru) bez kopie: buffer vymenen 60x z 60, oba prohlizece maji spravny obraz (pri pohybu 29.03 dB, po zjemneni 39.74 dB - ne vzhuru nohama)
+OK     11) vlakna: kresleni 60x/s, dva prohlizece soubezne - 300 snimku, zadny roztrzeny (nejhorsi 29.22 dB proti snimku se stejnym cislem), chyb 0
+
+VYSLEDEK: 11 OK, 0 CHYBA

@@ -1,0 +1,19 @@
+OK     1) OPTIONS: ODEMKNOUT DALSI ani ZAMKNOUT VSE nejsou videt (ani slovo SERVIS)
+OK     1) 4 klepnuti na nadpis nic, 5 pomalych (pres 3 s) taky nic
+OK     2) 5 rychlych klepnuti na nadpis OPTIONS: pole pro servisni kod (kurzor v nem)
+OK     2) pole se vejde do OPTIONS i na sirku 360 px (306x48)
+OK     3) spatny kod: "Špatný kód.", pole se vymaze, servis zavreny
+OK     3) Enter taky potvrdi; 3. spatny pokus: "Moc pokusů – počkej 60 s."
+OK     3) behem pauzy nepomuze ani spravny kod: "Moc pokusů – počkej 60 s."
+OK     4) spravny kod (i malymi pismeny s pomlckou): SERVIS s ODEMKNOUT DALSI a ZAMKNOUT VSE, "SERVIS OTEVŘEN NA 10 MINUT", "Servis je otevřený ještě 10 min."
+OK     4) ODEMKNOUT DALSI: "ODEMČENO: SEGA", OPTIONS se zavre
+OK     4) az zprava zhasne, vrati se C++ menu (AHINTRO.menuZpet)
+OK     5) OPTIONS znovu: servis je porad otevreny (10 minut) - tlacitka rovnou videt
+OK     5) dalsi ODEMKNOUT: "ODEMČENO: PS1"; ZAMKNOUT VSE: "ZAMČENO VŠE – pohled nového hráče"
+OK     6) po 10 minutach: OPTIONS zase bez servisnich tlacitek
+OK     6) servis vyprsel s otevrenym OPTIONS: Java odmitne (ZAMCENO), "SERVIS VYPRŠEL – zadej kód znovu", tlacitka zmizi
+OK     7) napsany kod neni v logu stranky (14 radku konzole)
+CHYBA  9) stranka Atari 130XE: 8 kroku testu B312 pro Reneho (RECORD, FAVORITES, ZPET, SERVIS, zamky z webu, DZUBOX, VOLUME, regrese) a poznamka B312
+OK     9) kroky ani poznamka neprozrazuji, jak se servis otevira (jen "jak, vis z me zpravy")
+OK     8) zadna chyba JavaScriptu
+VYSLEDEK: 18 kontrol, 1 CHYBA

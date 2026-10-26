@@ -38,7 +38,7 @@ EXPORT LOG (DIAGNOSTICS)
 CLOSE
 CONTROLS — pro settings
 D-pad sensitivity
-— how far from the centre your finger has to move before a direction switches on.
+— how far from the center your finger has to move before a direction switches on.
 Sensitivity: 7 %
 Button transparency
 Transparency: 100 %
