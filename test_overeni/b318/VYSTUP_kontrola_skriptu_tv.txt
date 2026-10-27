@@ -1,0 +1,4 @@
+OK     tv_skript0.js (ES2017, 30027 znaku)
+OK     tv_skript1.js (ES2017, 8030 znaku)
+OK     tv_skript2.js (ES5, 4595 znaku)
+VYSLEDEK: 3 skriptu stranky WEB TV, 0 CHYBA

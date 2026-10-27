@@ -420,10 +420,17 @@ void vlaknoMenu(ANativeWindow *okno) {
         else if (zmeskano == 0 && ++bezChyby >= 3 && u < 3) { u++; bezChyby = 0; }
         else if (zmeskano > 0) bezChyby = 0;
         g_uroven.store(u);
-        char b[320];
-        std::snprintf(b, sizeof b, "snimek %.1f ms (perioda displeje %.1f ms = %.0f Hz %s), zmeskano %d z 60, uroven %d, plocha %dx%d, prekresleno karet %d, TV %s %dx%d",
+        // B318: TV srozumitelne (Rene: "zase vidim JAVA"): proud z C++ = prohlizec bere menu primo
+        // z C++; stara cesta = Java si snimek bere pro prohlizec bez proudu (od B318 jen kdyz se
+        // takovy prohlizec opravdu diva); jinak TV menu nekresli vubec
+        char tvTxt[96];
+        if (tvProud) std::snprintf(tvTxt, sizeof tvTxt, "proud z C++ %dx%d", tv.w, tv.h);
+        else if (tvJava) std::snprintf(tvTxt, sizeof tvTxt, "stara cesta pres Javu (prohlizec bez proudu) %dx%d", tv.w, tv.h);
+        else std::snprintf(tvTxt, sizeof tvTxt, "nikdo se nediva - TV obraz se nekresli");
+        char b[360];
+        std::snprintf(b, sizeof b, "snimek %.1f ms (perioda displeje %.1f ms = %.0f Hz %s), zmeskano %d z 60, uroven %d, plocha %dx%d, prekresleno karet %d, TV: %s",
                       soucetMs / okno60, perioda * 1000.0, 1.0 / perioda, (hz >= 20.f && hz <= 250.f) ? "z displeje" : "vychozi",
-                      zmeskano, u, (int)w, (int)h, kr->prekreslenoMinule(), tvProud ? "proud" : (tvJava ? "Java" : "ne"), tv.w, tv.h);
+                      zmeskano, u, (int)w, (int)h, kr->prekreslenoMinule(), tvTxt);
         {
           std::lock_guard<std::mutex> z(g_infoZamek);
           g_infoBeh = b;

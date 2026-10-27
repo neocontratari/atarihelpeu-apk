@@ -112,6 +112,17 @@ NapJazyk.slovnik({
     'The choice is remembered for each game separately. If the game does not see the mouse in another port either, start the game again (CD ISO) – the mouse is then plugged in from power-on.',
   'MYŠ: jádro PS1 neodpovídá': 'MOUSE: the PS1 core does not answer',
   'MYŠ VYPNUTÁ – zase ovladač': 'MOUSE OFF – controller again',
+  // B318: zrychleni, mys pocitace v prohlizeci
+  'ZRYCHLENÍ: ZAPNUTO': 'ACCELERATION: ON',
+  'ZRYCHLENÍ: VYPNUTO': 'ACCELERATION: OFF',
+  'Zrychlení': 'Acceleration',
+  '— jako u myši počítače: pomalý tah prstem = jemný přesný posun, rychlý tah = kurzor dojede dál.':
+    '— like a computer mouse: a slow finger drag = fine precise movement, a fast drag = the cursor travels further.',
+  'ZRYCHLENÍ ZAPNUTO – pomalý tah jemně, rychlý dál': 'ACCELERATION ON – slow drag fine, fast drag further',
+  'ZRYCHLENÍ VYPNUTO – kurzor jede přesně jako prst': 'ACCELERATION OFF – the cursor moves exactly like your finger',
+  'Myš počítače:': 'Computer mouse:',
+  'v prohlížeči na PC nebo TV (WEB TV) klikni do obrazu – kurzor hry pak ovládá myš počítače, její tlačítka jsou tlačítka myši PlayStation. Esc = myš pustit.':
+    'in the browser on a PC or TV (WEB TV) click into the picture – the computer mouse then moves the game cursor and its buttons are the PlayStation mouse buttons. Esc = release the mouse.',
   // dialogy
   'Smazat PS1 stazene hry/cache z telefonu?': 'Delete the downloaded PS1 games/cache from the phone?',
   'Na TV otevri tuto adresu v prohlizeci / AirScreen browseru:': 'On the TV open this address in a browser / the AirScreen browser:',

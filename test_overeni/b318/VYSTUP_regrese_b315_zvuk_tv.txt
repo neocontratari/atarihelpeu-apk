@@ -1,0 +1,60 @@
+B315 - zvuk na TV / PC po prvni hre (stranka WEB TV z MainActivity.java v Chromiu, mereno pred reproduktorem)
+postup jako v logu Reneho: menu, kliknuti, Atari, NET_HRY (proud 0), Atari znovu, menu, Sega, menu, PS1, MP3
+
+--- stranka B314 (git 8629955) - musi ukazat chybu Reneho ---
+B314 vychozi zpozdeni (AVD 0,3 s): Atari poprve HRAJE (100 %), Atari podruhe (po NET_HRY) HRAJE (100 %), Sega HRAJE (100 %), PS1 HRAJE (100 %), MP3 (stara cesta /audio.raw) HRAJE (100 %)
+OK     B314 s vychozim zpozdenim hraje vsude (chyba neni v proudu z C++ ani v mezere samotne)
+   B314 prechod stare cesty na proud (Atari podruhe, 17.4 s): stara cesta hrala pres proud jeste 0.25 s (ozvena), mezera 0.00 s
+B314 6x sipka dolu v menu na TV (jako listovani kartami): Atari poprve HRAJE (100 %), Atari podruhe (po NET_HRY) TICHO (0 %), Sega TICHO (0 %), PS1 TICHO (0 %), MP3 (stara cesta /audio.raw) TICHO (0 %), ulozene AVD=0
+OK     B314 po 6x sipce dolu v menu: prvni Atari hraje, pak TICHO v Atari, Sege, PS1 i MP3 = PRESNE chyba Reneho (sipky v menu zmenily zpozdeni na 0 a prvni navazani stare cesty nechalo zesilovac na 0)
+   zesilovace stranky B314 v tichu (g): 0
+B314 ulozene zpozdeni 0 ms (z drivejska v prohlizeci): Atari poprve HRAJE (100 %), Atari podruhe (po NET_HRY) TICHO (0 %), Sega TICHO (0 %), PS1 TICHO (0 %), MP3 (stara cesta /audio.raw) TICHO (0 %)
+OK     B314 s ulozenym zpozdenim 0 (zustava v prohlizeci i po F5): stejne - zvuk jen poprve
+
+--- stranka B315 (z MainActivity.java v pracovnim stromu) ---
+B315 vychozi zpozdeni (AVD 0,3 s): Atari poprve HRAJE (100 %), Atari podruhe (po NET_HRY) HRAJE (100 %), Sega HRAJE (100 %), PS1 HRAJE (100 %), MP3 (stara cesta /audio.raw) HRAJE (100 %), ulozene AVD=None
+   Atari poprve                   vzorku  160, hraje 100.0 %, stredni RMS 0.212, zesilovace 1/1
+   Atari podruhe (po NET_HRY)     vzorku  480, hraje 100.0 %, stredni RMS 0.212, zesilovace 1/1
+   Sega                           vzorku  159, hraje 100.0 %, stredni RMS 0.212, zesilovace 1/1
+   PS1                            vzorku  359, hraje 100.0 %, stredni RMS 0.212, zesilovace 1/1
+   MP3 (stara cesta /audio.raw)   vzorku  140, hraje 100.0 %, stredni RMS 0.212, zesilovace 1/1
+OK     B315 vychozi zpozdeni (AVD 0,3 s): zvuk hraje v Atari poprve i podruhe, v Sege, PS1 i v MP3 (stara cesta)
+OK     B315 vychozi zpozdeni (AVD 0,3 s): zadna chyba JavaScriptu
+OK     B315 vychozi zpozdeni (AVD 0,3 s): prechod stare cesty na proud Atari (17.5 s) - stara cesta hrala a skonci do 0,15 s po zacatku proudu (0.03 s; B314 0.25 s ozveny), mezera mezi nimi 0.00 s
+   zpravy B315 do logu appky: B315 ZVUK: proud z C++ ma vlastni zesilovac, zpozdeni stare cesty (MP3, YouTube, mezery) 300 ms
+OK     B315 stranka hlasi do logu appky stav zvuku (zpozdeni stare cesty, uroven vystupu)
+   hlaseni: B303 PROHLIZEC: 48.7 snimku/s, zvuk hraje, napred 67 ms (min 12, pri rozjezdu 37), zvuk za obrazem ~106 ms, rychlost 0..+0.4 %, 44100->44100 Hz, podteceni 0, zahozeno 0, chyb 0, okno 1280x720, vystup max -13 dB, zvuk v 69 % mereni
+   hlaseni: B306 PROHLIZEC PS1: 57.9 snimku/s, JPEG 0/s (prekrytych zahozeno 0), zvuk hraje, napred 78 ms (min 14, pri rozjezdu 41), zvuk za obrazem ~114 ms, rychlost 0..+0.3 %, 44100->44100 Hz, podteceni 0, zahozeno 0, chyb 0, okno 1280x720, obraz 640x480 vyplnit, vystup max -13 dB, zvuk v 66 % mereni
+OK     hlaseni PROHLIZEC (kazdych 30 s, Atari i PS1) uvadi skutecnou uroven vystupu (ton -13 dB, ne jen "zvuk hraje")
+B315 6x sipka dolu v menu na TV (jako listovani kartami): Atari poprve HRAJE (100 %), Atari podruhe (po NET_HRY) HRAJE (100 %), Sega HRAJE (100 %), PS1 HRAJE (100 %), MP3 (stara cesta /audio.raw) HRAJE (100 %), ulozene AVD=None
+   Atari poprve                   vzorku  158, hraje 100.0 %, stredni RMS 0.212, zesilovace 1/1
+   Atari podruhe (po NET_HRY)     vzorku  479, hraje  99.8 %, stredni RMS 0.212, zesilovace 1/1
+   Sega                           vzorku  157, hraje 100.0 %, stredni RMS 0.212, zesilovace 1/1
+   PS1                            vzorku  360, hraje 100.0 %, stredni RMS 0.212, zesilovace 1/1
+   MP3 (stara cesta /audio.raw)   vzorku  140, hraje 100.0 %, stredni RMS 0.212, zesilovace 1/1
+OK     B315 6x sipka dolu v menu na TV (jako listovani kartami): zvuk hraje v Atari poprve i podruhe, v Sege, PS1 i v MP3 (stara cesta)
+OK     B315 6x sipka dolu v menu na TV (jako listovani kartami): zadna chyba JavaScriptu
+OK     B315 6x sipka dolu v menu na TV (jako listovani kartami): prechod stare cesty na proud Atari (17.5 s) - stara cesta hrala a skonci do 0,15 s po zacatku proudu (0.03 s; B314 0.25 s ozveny), mezera mezi nimi 0.00 s
+OK     B315 sipky v menu listuji kartami a zpozdeni zvuku NEMENI (ulozene AVD=None)
+B315 ulozene zpozdeni 0 ms (z drivejska v prohlizeci): Atari poprve HRAJE (100 %), Atari podruhe (po NET_HRY) HRAJE (100 %), Sega HRAJE (100 %), PS1 HRAJE (100 %), MP3 (stara cesta /audio.raw) HRAJE (100 %), ulozene AVD=0.3
+   Atari poprve                   vzorku  160, hraje 100.0 %, stredni RMS 0.212, zesilovace 1/1
+   Atari podruhe (po NET_HRY)     vzorku  479, hraje 100.0 %, stredni RMS 0.212, zesilovace 1/1
+   Sega                           vzorku  160, hraje 100.0 %, stredni RMS 0.212, zesilovace 1/1
+   PS1                            vzorku  358, hraje 100.0 %, stredni RMS 0.212, zesilovace 1/1
+   MP3 (stara cesta /audio.raw)   vzorku  140, hraje 100.0 %, stredni RMS 0.212, zesilovace 1/1
+OK     B315 ulozene zpozdeni 0 ms (z drivejska v prohlizeci): zvuk hraje v Atari poprve i podruhe, v Sege, PS1 i v MP3 (stara cesta)
+OK     B315 ulozene zpozdeni 0 ms (z drivejska v prohlizeci): zadna chyba JavaScriptu
+OK     B315 ulozene zpozdeni 0 ms (z drivejska v prohlizeci): prechod stare cesty na proud Atari (17.5 s) - stara cesta hrala a skonci do 0,15 s po zacatku proudu (0.03 s; B314 0.25 s ozveny), mezera mezi nimi 0.00 s
+   B315 ZVUK: proud z C++ ma vlastni zesilovac, zpozdeni stare cesty (MP3, YouTube, mezery) 300 ms (ulozene bylo 0 ms - sipkou dolu, od B313 i v menu na TV; pri 0 zvuk hral jen v prvni hre - vraceno na 300 ms)
+OK     B315 ulozene zpozdeni 0 (od sipek v menu) se vrati na 300 ms a do logu appky to pise "ulozene bylo 0 ms" (Reneho dalsi log ukaze, jestli to byla tahle pricina)
+B315 ulozene zpozdeni 2 s (nejvic): Atari poprve HRAJE (100 %), Atari podruhe (po NET_HRY) HRAJE (100 %), Sega HRAJE (100 %), PS1 HRAJE (100 %), MP3 (stara cesta /audio.raw) HRAJE (100 %), ulozene AVD=2
+   Atari poprve                   vzorku  158, hraje 100.0 %, stredni RMS 0.212, zesilovace 1/1
+   Atari podruhe (po NET_HRY)     vzorku  474, hraje 100.0 %, stredni RMS 0.212, zesilovace 1/1
+   Sega                           vzorku  160, hraje 100.0 %, stredni RMS 0.212, zesilovace 1/1
+   PS1                            vzorku  357, hraje 100.0 %, stredni RMS 0.212, zesilovace 1/1
+   MP3 (stara cesta /audio.raw)   vzorku  140, hraje 100.0 %, stredni RMS 0.212, zesilovace 1/1
+OK     B315 ulozene zpozdeni 2 s (nejvic): zvuk hraje v Atari poprve i podruhe, v Sege, PS1 i v MP3 (stara cesta)
+OK     B315 ulozene zpozdeni 2 s (nejvic): zadna chyba JavaScriptu
+OK     B315 ulozene zpozdeni 2 s (nejvic): prechod stare cesty na proud Atari (17.4 s) - stara cesta nehrala, skonci do 0,15 s po zacatku proudu (0.00 s; B314 0.25 s ozveny), mezera mezi nimi -
+OK     B315 rucne nastavene zpozdeni 2 s (nejvic) zustava
+VYSLEDEK: 20 kontrol, 0 CHYBA

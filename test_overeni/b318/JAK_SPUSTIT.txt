@@ -1,0 +1,92 @@
+B318 - JEMNEJSI MYS PS1 + MYS POCITACE NA TV / PC + STARA CESTA TV (JAVA) JEN KDYZ SE NEKDO DIVA
+==============================================================================================
+
+Rene (log B317): "mys sice funguje ale je dost neomalena i pri nastaveni citlivosti na 300 je to divny"
+... "Prenos LAN bud nefunguje a nebo nevim jak na to" ... "a zase vidim JAVA - tok ... ve me furt neco
+vrta". Z jeho logu: Dune 2000 USA (SLUS00973) s mysi v portu 1 + ovladac 2 a rychlosti 295 %, hra kresli
+presne 20 obrazu za sekundu (kazdy 3. snimek), obraz PS1 na PC sel primo z C++ (59 paketu/s), mys
+pocitace na PC jeste nebyla; "TV Java" = Java snimala menu pro TV 14 s, nez se pripojil prohlizec.
+
+Kod v appce:
+  cpp/nap_ps1_mys.h          - lano 1,5 % sirky obrazu misto 3% mrtve zony (kurzor se rozjede plynule, ne
+                               skokem), tuknuti do 3 % a 0,25 s, podrzeni 0,65 s (B317 0,5 s) jen v lane
+                             - zrychleni podle rychlosti prstu (0,7 sirky obrazu za s = 1x, 0,4x - 2,5x),
+                               vypinatelne, pamatuje se pro hru (4. sloupec PS1_mys_pro_hry.txt)
+                             - poSnimku(novy obraz): jak casto hra kresli -> posun mysi se rozlozi rovnym
+                               dilem do 2-4 snimku a zaokrouhli "po fazich" (zbytek do snimku o N dal): hra,
+                               ktera cte mys jen kazdy N. snimek, vidi presne 1/N kazdeho pohybu (B317 nahodne)
+                             - klik po tuknuti az po dojeti kurzoru; mys z PC v 1/100000 sirky obrazu
+                             - denik: MYS TAH n (prvnich 12 tahu), "hra kresli kazdy X. snimek", MYS ZDRAVI
+  cpp/nap_ps1_native.cpp     - po retro_run ps1_mys_po_kroku (novy obraz = nap_video ne-NULL), JNI
+                               ps1MysZrychleni(int)
+  cpp/menu/nap_menu_gl.cpp   - radek MENU: "TV: proud z C++ / stara cesta pres Javu (prohlizec bez proudu) /
+                               nikdo se nediva - TV obraz se nekresli"
+  NativePs1CoreBridge.java   - ps1MysZrychleni + mysZrychleniSafe (28 native)
+  MainActivity.java          - AHPS1.ps1MysZrychleni; server TV /mys (-> pcMysSafe jen s PS1 na obrazovce),
+                               /status ps1mys=1; stara cesta TV (Java: snimek -> JPEG / H.264) jen s klientem
+                               MJPEG / JPEG / H.264 (napTvWebStaraCestaKouka, 3 s); stranka TV: MJPEG az podle
+                               /status, klik s mysi PS1 = zamek ukazatele, skript mysi pocitace (ES5)
+  assets/emu_ps1/index.html  - tlacitko ZRYCHLENI v panelu MYS PLAYSTATION, odstavec "Mys pocitace"
+  assets/jazyk/en_ps1.js, en_tv.js, napoveda CZ / EN
+
+Spoustet z adresare test_overeni/b318 (nebo odkudkoli: bash test_overeni/b318/vse.sh).
+Potreba: g++ / gcc, clang + ld.lld + llvm-objcopy (PS-EXE pro mipsel), JAVA_HOME = JDK, hlavicky EGL /
+GLES2 / KHR v $INC, knihovny Mesa (libEGL, libGLESv2), zlib, Python 3 + Playwright + Chromium + wordfreq +
+numpy, Node.js (acorn), android.jar API 34 ($ANDROID_JAR), snimky 320x240 ($PNG320 - ../b305/JAK_SPUSTIT.txt
+krok 0, pro regresi B306), git (B317 = 2f8fff4 pro srovnani).
+Vse najednou: PRAC=... INC=... ANDROID_JAR=... PNG320=... bash vse.sh          (vystupy VYSTUP_* sem)
+
+1) Logika mysi: g++ -std=c++17 -O2 -pthread -o test_b318_mys test_b318_mys.cpp && ./test_b318_mys PRAC
+   lano (zadny skok, prst po 1 bodu = kurzor nejvys 1 bod za snimek), zrychleni (krivka, pomalu / normalne /
+   rychle, vypnute = vzdy stejne), rozlozeni (2 / 3 / 4 snimky podle hry, hystereze, soucet presny, 1000 max),
+   "hra cte jen kazdy 3. snimek" s chvenim dotyku: B318 vs B317 (vynutVyhlazeni(1)), tuknuti (i s posunem -
+   klik po dojeti, nejvys 6 snimku cekani), dva prsty, podrzeni 0,65 s, KRIZEK / KOLECKO / D-pad, mys z PC
+   (jednotky), pamet (4 sloupce, soubor B317), souhrn + ThreadSanitizer (-DNAP_TSAN)
+                                              -> VYSTUP_test_b318_mys.txt, VYSTUP_tsan_b318_mys.txt
+2) SKUTECNE jadro PS1:
+   bash stavba_jadra.sh PRAC                  (jadro z appky pro PC: interpret, bez gpu_neon)
+   python3 udelej_exe.py PRAC                 (mys_test.S -> PRAC/mys_test.exe: cte mys pres BIOS; B318: perioda
+                                               P v RAM 0x801000F0 - mys cte a obraz GP1(05h) prepina jen kazdy
+                                               P. snimek, jako Dune 2000)
+   g++ -std=c++17 -O1 -g -pthread $PS1 -o PRAC/integrace_b318 integrace_b318.cpp PRAC/jadro/*.o \
+       -l:libEGL.so.1 -l:libGLESv2.so.2 -lz -ldl
+   EGL_PLATFORM=surfaceless PRAC/integrace_b318 PRAC PRAC/mys_test.exe
+   ($PS1 = -DANDROID -I../b305/stub -I../b291/stub -I$INC -I$JAVA_HOME/include -I$JAVA_HOME/include/linux)
+   nahrada cipu GPU: GP1(05h) -> pl_rearmed_cbs.pl_vout_flip (jako gpulib) -> jadro hlasi novy obraz;
+   ps1EglBoot / ps1EglTick po snimcich: tah za lanem +32 / +16, bez skoku, rychly tah, tuknuti, dva prsty,
+   podrzeni 0,65 s, KRIZEK / KOLECKO / D-pad, mys z PC, cteni 2x za snimek, hra kresli kazdy 3. snimek ->
+   rozlozeni 3, tah s nerovnomernymi dotyky: hra presne na tretine (B317 ujizdel), klik pri cteni kazdy 3.,
+   porty 2 a 3, vypnuti, znovu spustena hra (i zrychleni zapamatovano); ps1BootDoMonitoru + vlakno emulace,
+   MYS ZDRAVI + MYS TAH + ThreadSanitizer
+                                              -> VYSTUP_integrace_b318.txt, VYSTUP_tsan_integrace_b318.txt, UKAZKA_denik_mys.txt
+3) Stranka PS1 (Chromium): python3 test_b318_stranka.py PRAC
+   skutecne dotyky (CDP), zaznam prehrany do logiky B318 (prehraj_dotyky.cpp): tah za lanem, stejny tah se
+   zrychlenim (podle skutecne rychlosti prstu ze zaznamu), tuknuti, dva prsty, podrzeni 0,8 s + tah; panel:
+   ZRYCHLENI (stav z C++ bit5, ps1MysZrychleni, hlasky), volba portu se nepleti; cesky = B317 + B318, anglicky
+   bez cestiny, bez chyby JS              -> VYSTUP_test_b318_stranka.txt, VYSTUP_texty_ps1_mys_en.txt
+4) Stranka WEB TV (Chromium, stranka z MainActivity.java): python3 test_b318_tv_mys.py
+   proud z C++ = zadna stara cesta (B317 hned MJPEG); mys PS1: napoveda, klik = zamek ukazatele (+ cela
+   obrazovka, ne vypnuti), pohyb -> /mys presne (1/100000 sirky obrazu), tlacitka, "jsem tu" pri drzeni,
+   panel OBRAZ se neukazuje, Esc = b=0, mys na telefonu vypnuta = zamek pryc, bez mysi klik zase cela
+   obrazovka; bez proudu MJPEG po /status, /status 500 hned, /status bez odpovedi po 2,5 s; prohlizec zamek
+   odmitne; anglicky; HTML = B317 + jen B318     -> VYSTUP_test_b318_tv_mys.txt
+   + skripty stranky TV (acorn: ES2017, skript mysi ES5) -> VYSTUP_kontrola_skriptu_tv.txt
+   + python3 kontrola_java_b318.py PRAC: SKUTECNA metoda napTvWebStaraCestaKouka z MainActivity v JVM
+     (nikdo / JPEG / MJPEG / 3 s / H.264), napojeni (snimani az za podminkou, zvuk PS1 porad, /mys, /status,
+     AHPS1)                                   -> VYSTUP_kontrola_java_b318.txt
+5) Navod: python3 kontrola_navodu_b318.py (zmenilo se jen to o mysi), ../b312/kontrola_navodu.py,
+   ../b314/kontrola_navodu_en.py, ../b314/test_b314_jazyk_navod.py
+       -> VYSTUP_kontrola_navodu_b318.txt, VYSTUP_kontrola_navodu_cz.txt / _en.txt, VYSTUP_navod_b314_chromium.txt
+6) ES5: slovniky en_ps1.js, en_tv.js, nap_jazyk.js a skripty stranky PS1 (acorn) -> VYSTUP_kontrola_es5.txt
+7) Regrese: bash regrese.sh PRAC INC JAVA_HOME ANDROID_JAR PNG320
+   testy B308 na kodu B318 (denik, klavesnice z TV, TSan, JVM TestPodpisu, klavesnice v prohlizeci TV, stranka
+   PS1 cesky), JVM jvm/TestB318Mys.java (-Xcheck:jni), symboly knihovny, preklad TV B305 / B306, javac proti
+   android.jar, podpisy JNI (kontrola_jni_ps1.py, 28); stranka WEB TV B318 v testech B315 (zvuk po prvni
+   hre), B313 (prepnuti proudu), B314 (jazyk - kontrola a) "HTML = B313" zamerne neplati od B315), B302
+   (klavesnice PC do Atari), B303 (Atari na TV, Ctrl+V), B306 (Sega, PS1, demo bez autoplay)
+                                              -> VYSTUP_regrese.txt (+ VYSTUP_regrese_*, jvm/VYSTUP_*)
+
+Co se na PC overit neda: Dune 2000 sama (hra neni v repozitari) - jestli cte mys jen kazdy 3. snimek
+(tomu odpovida Reneho 295 %), ukaze jeho zkouska a denik (MYS TAH, "hra kresli kazdy X. snimek"); skutecny
+dotykovy displej (Chromium dotyky jsou skutecne udalosti, ale ne prst); skutecny zamek ukazatele (v Chromiu
+bez okna je API nahrazene - zbytek stranky je skutecny); vytizeni hlavniho vlakna telefonu starou cestou TV.

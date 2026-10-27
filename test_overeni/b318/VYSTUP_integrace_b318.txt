@@ -1,0 +1,38 @@
+B318 - mys PlayStation se SKUTECNYM jadrem PS1 (PCSX-ReARMed z appky, BIOS HLE, hra mys_test.exe)
+OK      jadro nastartovalo hru mys_test.exe (ps1EglBoot = 1)
+OK      mys vypnuta (hra bez zaznamu): BIOS cte port 1 kazdy snimek - standardni ovladac (ID 41), 89 cteni (jako B316 / B317)
+OK      ps1MysStav: "0|100|32|mys_test.exe" (bit5 = 32: zrychleni zapnuto - vychozi)
+OK      mys vypnuta: KRIZEK = tlacitko ovladace v portu 1 (BFFF), port 2 nic
+OK      hra kresli kazdy snimek (P = 1): 60 prepnuti obrazu za 60 snimku
+OK      ps1MysNastav(1, 100) -> "1|100|33|mys_test.exe"
+OK      ps1MysZrychleni(0) -> "1|100|1|mys_test.exe" (bit5 dole)
+OK      hra vidi v portu 1 MYS PlayStation (ID 12), port 2 prazdny (FF)
+OK      denik PS1: "MYS: zrychleni VYPNUTO (kurzor jede presne jako prst)"
+OK      zapamatovano pro hru vcetne zrychleni: "mys_test.exe 1 100 0"
+OK      tah 10 % x 5 % sirky obrazu za lanem 1,5 %: kurzor ve hre +32 / +16 (je 32 / 16), zadny klik
+OK      prst po 1 bodu za snimek pres hranici lana: kurzor plynule +13 (vse za lanem), nejvys 1 bod za snimek - zadny skok (B317: skok o 10 bodu)
+OK      rychly tah 2x pres celou sirku: -636 bodu (vypocet -635), za snimek nejvys 127 (127)
+OK      tuknuti (67 ms): hra vidi 1 klik levym, tlacitko 5 snimku (5), kurzor stoji; dotyk vratil bit klik L
+OK      tuknuti dvema prsty: hra vidi 1 klik pravym (5 snimku), levym ne
+OK      prst drzeny 0,5 s: jeste nic (1|100|5|), 0,7 s: leve drzi (1|100|7| - bit1 -> DRZIM LEVE TLACITKO)
+OK      hra: leve tlacitko 1x stisknuto a drzeno 13 snimku, behem toho posun +32 (vyber ramem)
+OK      KRIZEK = leve (10 snimku), KOLECKO = prave tlacitko mysi (6 snimku)
+OK      D-pad vpravo 1 s: kurzor +253 (zrychluje z 1 na 6 bodu za snimek)
+OK      mys z PC: -15625 / +7813 (1/100000 sirky obrazu v prohlizeci) = -50 / +25 bodu a leve tlacitko ve hre
+OK      hra cte mys 2x v jednom snimku: poprve +10 / -7, podruhe 0 / 0 (posun se precte jednou - oprava B317)
+OK      hra kresli kazdy 3. snimek (40 obrazu za 120 snimku): mys rozklada posun do 3 snimku
+OK      denik: "MYS: hra kresli kazdy 2.7. snimek - posun mysi se rozklada do 3 snimku"
+OK      tah prstem, dotyky nerovnomerne, hra cte jen kazdy 3. snimek (40x): kurzor ve hre presne na tretine posunu mysi - odchylka nejvys 1.0 bodu (hra +44 z 130)
+OK      stejne jako B317 (posun bez rozlozeni): kurzor ujizdel od tretiny az o 4.7 bodu (hra +48 z 131) - cukal se podle toho, do kterych snimku dotyky padly
+OK      mys poslala v obou pripadech stejne (130 / 131 bodu) - soucet presny, zmena je jen v rozlozeni
+OK      tuknuti: hra, ktera cte jen kazdy 3. snimek, klik uvidi (1 stisk, 2 cteni s tlacitkem)
+OK      hra zase kresli kazdy snimek: zpet rozlozeni do 2 snimku
+OK      mys port 1 + ovladac port 2: KRIZEK a smer jdou ovladaci v portu 2 (BFDF), mys jen z dotyku (+32)
+OK      ovladac port 1 + mys port 2: KOLECKO na ovladaci v portu 1, mys v portu 2 (posun +16 / +32, klik)
+OK      mys vypnuta: zpet standardni ovladac v portu 1 (KRIZEK ve hre), port 2 bez stisku
+OK      vypnuta: dotyk ani mys z PC hru nijak neovlivni (PC dostane PS1:MYS_VYP)
+OK      znovu spustena hra: mys v portu 1, 150 %, zrychleni vypnuto (zapamatovano) od prvniho snimku (1|150|1|mys_test.exe)
+OK      telefonni cesta (ps1BootDoMonitoru, vlakno emulace, dotyk z jineho vlakna): mys od startu, 3 tahy = +302 (vypocet 302), 1 klik
+OK      denik: MYS ZDRAVI: mys v portu 1, citlivost 150 %, zrychleni VYP, vyhlazeni 2 snimky (hra kresli kazdy 1.0. snimek): dotyku 4 (tuknuti 1, tahu 3 (prumer 0.12 s), drzeni L 0), posun 302 / 0 bodu (oriznuto snimku 0), klik L 1 P 0, snimku s L 5 P 0, smerem 0, z PC zprav 0 (zmen tlacitek 0) | hra cte port 1 61x/s, port 2 61x/s
+OK      denik: kazdy tah - MYS TAH 1: 0.08 s, prst 0.11 sirky obrazu (rychlost prumer 1.35, nejvys 1.92 sirky/s), zrychleni vypnuto, do hry 36 bodu (citlivost 100 %)
+VYSLEDEK: 36 OK, 0 CHYBA

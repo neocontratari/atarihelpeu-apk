@@ -1,0 +1,85 @@
+B318 - mys PlayStation: jemnejsi touchpad (nap_ps1_mys.h)
+OK      vychozi: mys vypnuta, citlivost 100 %, zrychleni zapnuto
+OK      vypnuta: oba porty standardni ovladac (jako jadro po nacteni hry)
+OK      vypnuta: ovladac v portu 1 dostane vsech 16 tlacitek beze zmeny (KRIZEK i KOLECKO), port 2 nic (jako B316 / B317)
+OK      vypnuta: dotyk, mys z PC ani KRIZEK mys nehybou; stav pro stranku jen bit5 = zrychleni zapnuto (32)
+OK      vypnuta a nic se nedelo: zadny radek MYS ZDRAVI
+OK      nastav(1): mys v portu 1 (zmena hlasena)
+OK      stejne nastaveni znovu: zadna zmena
+OK      spatny rezim -> vypnuta, citlivost 10 % -> 25 %
+OK      rezim -3 -> vypnuta, citlivost 9999 % -> 400 %
+OK      zrychleni vypnout / zapnout (zmena hlasena jen pri zmene)
+OK      denik: "MYS: zrychleni VYPNUTO ..." a "MYS: zrychleni ZAPNUTO ..."
+OK      stav pro stranku: zrychleni vypnuto = bit5 dole (1)
+OK      prst 1,4 % sirky od dotyku (v lane): kurzor stoji (tuknuti zustane presne)
+OK      prst po 1 bodu za snimek pres hranici lana: kurzor nejvys 1 bod za snimek - zadny skok (B317: skok o 10 bodu)
+OK      tah 50 bodu stranky: kurzor 17 bodu = vse za lanem (17)
+OK      tah 10 % x 5 % sirky za lanem = posun 32 / 16 bodu (je 32 / 16), zadny klik
+OK      krivka zrychleni: 0,7 sirky/s = 1x (rychlost z nastaveni plati), 0,175 = 0,5x, 2,8 = 2x
+OK      krivka zrychleni: nejmene 0,4x (pomalounku), nejvys 2,5x
+OK      zrychleni VYPNUTO: tah 20 % sirky pomalu / normalne / rychle = vzdy stejne 59 / 59 / 60 bodu (vypocet 59.2)
+OK      zrychleni ZAPNUTO, bezny tah (0,7 sirky/s): 59 bodu = jako bez zrychleni (59.2) - Reneho 295 % plati dal
+OK      pomaly presny tah (0,1 sirky/s): 23 bodu = 0,4x - kurzor jde jemne (vybrat jednu jednotku)
+OK      rychly tah (2,8 sirky/s): 124 bodu = 2x - pres celou mapu jednim tahem
+OK      denik: kazdy tah - "MYS TAH 1: 2.00 s, prst 0.19 sirky obrazu (rychlost prumer 0.09, nejvys 0.10 sirky/s), zrychleni vypnuto, do hry 59 bodu (citlivost 100 %)", "MYS TAH 4: 2.00 s, prst 0.19 sirky obrazu (rychlost prumer 0.09, nejvys 0.10 sirky/s), zrychleni 0.4-0.4x, do hry 24 bodu (citlivost 100 %)"
+OK      denik: po 12 tazich uz jen souhrn (zadne zahlceni)
+OK      na zacatku (hra nic nekreslila): posun rozlozen do 2 snimku
+OK      posun 30 bodu -> 15 + 15 (2 snimky), soucet presne 30
+OK      hra kresli kazdy 3. snimek -> posun do 3 snimku; denik: "MYS: hra kresli kazdy 2.7. snimek - posun mysi se rozklada do 3 snimku"
+OK      30 bodu -> 10 + 10 + 10
+OK      hra stridave po 2 a 3 snimcich: rozlozeni se neprepina sem a tam (zmen 0)
+OK      hra kresli kazdy snimek -> zase 2 snimky (nejmene - vyhladi i nerovnomerne dotyky)
+OK      hra skoro nekresli -> nejvys 4 snimky (4)
+OK      nova hra: zase od 2 snimku
+OK      velky posun 320 / -160: soucet presny, za snimek nejvys 127 (127)
+OK      20x 320 bodu najednou: hra dostane nejvys 1000 (zbytek zahozen, zadne dlouhe dobihani) - 1000
+OK      hra cte jen kazdy 3. snimek: B318 (rozlozeni do 3 snimku) - kurzor ve hre presne na tretine pohybu prstu, odchylka nejvys 2.3 bodu (8 behu s chvenim dotyku)
+OK      stejne dotyky jako B317 (bez rozlozeni): hra videla nahodne vic / min - kurzor ujizdel od prstu az o 36.0 bodu
+OK      posun za jedno cteni hry: B318 kolisa +-0.91 bodu, B317 +-2.53 (kurzor se cukal)
+OK      rychlost kurzoru ve hre zustava (B317 3.55 / B318 3.63 bodu za cteni) - Reneho citlivost plati dal
+OK      tuknuti (0,11 s, chveni prstu): dotyk hlasi klik levym (stranka zavibruje)
+OK      tuknuti = leve tlacitko hned v dalsim snimku, 1x dole presne 5 snimku, kurzor stoji: LLLLL..........
+OK      prst nahore az po 0,3 s: zadny klik (neni to tuknuti)
+OK      tuknuti s posunem prstu 2,3 %: kurzor +3 bod(y) a klik AZ PO dojeti (posun do snimku 2, klik od 3) - klikne tam, kam prst ukazal
+OK      prst ujel 3,4 % (vic nez tuknuti): jen posun, zadny klik
+OK      dvojite tuknuti = 2 kliky: LLLLL....LLLLL......
+OK      10 tuknuti za 50 ms: nejvys 4 kliky ve fronte (4)
+OK      kurzor se porad hybe (mys z PC): klik po tuknuti cekal jen 6 snimku
+OK      tuknuti dvema prsty: klik pravym (hlaseno jednou)
+OK      dva prsty = prave tlacitko 5 snimku, leve ani posun ne: PPPPP..........
+OK      dva prsty a jeden tahne (posun 2 prsty): zadny klik, kurzor stoji
+OK      tah + kratky dotyk druhym prstem: zadny klik, tah pokracuje (83 bodu)
+OK      prst na miste 0,6 s: tlacitko jeste ne (B317 uz po 0,5 s - Rene obcas omylem)
+OK      prst na miste 0,65 s: leve tlacitko DRZI (stav bit1 pro stranku)
+OK      tah s drzenym levym = vyber ramem (posun 32 za lanem, tlacitko porad dole)
+OK      prst nahoru: leve tlacitko pusteno, zadny klik navic
+OK      prst se do 0,65 s pohnul o 2 % (tah): leve se nestiskne
+OK      dotyk zrusen behem drzeni: tlacitko pusteno, zadny prst
+OK      denik: "MYS: dotyk zrusen - leve tlacitko pusteno"
+OK      zmena rezimu behem drzeni: tlacitko pusteno
+OK      mys sama v portu 1: KRIZEK drzi leve, KOLECKO prave tlacitko (beze zmeny)
+OK      mys sama v portu 1: ovladac neni zapojeny nikde (hra tlacitka nevidi)
+OK      D-pad drzeny: zrychli z 1 na 6 bodu za snimek (123 za 36 snimku, vypocet 126; pak 60 za 10)
+OK      nahoru + dolu naraz: vyrusi se
+OK      sikmo vlevo nahoru zase pomalu (-7 / -7)
+OK      mys port 1 + ovladac port 2: KRIZEK / KOLECKO / smer jdou ovladaci v portu 2, mys stoji
+OK      mys z PC s vypnutou mysi: nic
+OK      mys z PC: 10 % sirky obrazu v prohlizeci = 32 bodu x 150 % = 48 (stejne miritko jako prst, bez zrychleni - to dela PC), leve drzi
+OK      mys z PC: prave tlacitko
+OK      prohlizec se odmlcel 2,5 s: tlacitka pustena + radek v deniku
+OK      hra bez zaznamu: mys vypnuta, citlivost 100 %, zrychleni zapnuto
+OK      ulozeni pro Dune 2000 USA (SLUS00973): port 1 + ovladac 2, 295 %, zrychleni vypnuto
+OK      novy start appky: SLUS00973 = port 1 + ovladac 2, 295 %, zrychleni vypnuto
+OK      soubor: klic TAB rezim TAB citlivost TAB zrychleni
+OK      soubor z B317 (bez sloupce zrychleni): Reneho Dune 2000 zustava port 1 + ovladac 2, 295 %, zrychleni zapnuto
+OK      po ulozeni: ostatni hry z B317 souboru beze zmeny, zrychleni jen u Dune vypnuto
+OK      starsi appka (B317) z radku B318 precte citlivost spravne (atoi skonci na TAB)
+OK      poskozeny soubor: radek bez citlivosti preskocen, nesmysly opraveny, zrychleni 7 = zap, x = vyp
+OK      slozka neexistuje: ulozeni hlasi chybu (do deniku)
+OK      souhrn do MYS ZDRAVI: mys v portu 1, citlivost 100 %, zrychleni ZAP (1.6-1.6x), vyhlazeni 3 snimky (hra kresli kazdy 3.0. snimek): dotyku 2 (tuknuti 1, tahu 1 (prumer 0.17 s), drzeni L 0), posun 494 / 0 bodu (oriznuto snimku 0), klik L 1 P 0, snimku s L 11 P 0, smerem 20, z PC zprav 1 (zmen tlacitek 1)
+OK      dalsi okno zacina od nuly: mys v portu 1, citlivost 100 %, zrychleni ZAP, vyhlazeni 3 snimky (hra nekresli nic noveho): dotyku 0 (tuknuti 0, tahu 0, drzeni L 0), posun 0 / 0 bodu (oriznuto snimku 0), klik L 0 P 0, snimku s L 0 P 0, smerem 0, z PC zprav 0 (zmen tlacitek 0)
+OK      zrychleni vypnuto a hra stoji - v souhrnu
+OK      nova hra (poNacteniHry): rozlozeni od zacatku (2)
+OK      vypnuta a nic: prazdny souhrn
+OK      soubezne: stranka, vlakno emulace (+ poSnimku), nastaveni + zrychleni + soubor, mys z PC - dobehlo (670224 dotazu jadra)
+VYSLEDEK: 83 OK, 0 CHYBA

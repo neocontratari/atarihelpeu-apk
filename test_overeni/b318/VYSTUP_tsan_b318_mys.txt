@@ -1,0 +1,4 @@
+B318 - mys PlayStation: jemnejsi touchpad (nap_ps1_mys.h)
+OK      soubezne: stranka, vlakno emulace (+ poSnimku), nastaveni + zrychleni + soubor, mys z PC - dobehlo (92264 dotazu jadra)
+VYSLEDEK: 1 OK, 0 CHYBA
+hlaseni ThreadSanitizer: 0

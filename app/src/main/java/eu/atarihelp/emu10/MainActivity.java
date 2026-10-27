@@ -1140,7 +1140,12 @@ public class MainActivity extends Activity {
                             if (gotA > 0) napTvWebAudioPush(tvAtariPcm, 0, gotA, 44100, "ATARI_CPP");
                         } catch (Throwable ignored) {}
                     }
-                    boolean gotFromCore = napTvWebCaptureIntro(bw, bh)
+                    // B318: stara cesta (Java: snimek -> zvetseni -> JPEG / H.264 na tomhle vlakne) jen
+                    // tehdy, kdyz se na ni nekdo diva. Prohlizec s proudem z C++ ji nepotrebuje - a kdyz
+                    // se nediva nikdo, Java snimala menu i hru pro nikoho (Rene v logu menu: "TV Java").
+                    final boolean staraCestaKouka = napTvWebStaraCestaKouka();
+                    boolean gotFromCore = !staraCestaKouka
+                            || napTvWebCaptureIntro(bw, bh)
                             || napTvWebCaptureAtariCpp()
                             || napTvWebCaptureFromCore(bw, bh);
                     if (gotFromCore) {
@@ -2918,6 +2923,27 @@ public class MainActivity extends Activity {
         out.write(b);
     }
 
+    // ===== B318: MYS POCITACE -> MYS PLAYSTATION =====
+    // Rene: "Prenos LAN bud nefunguje a nebo nevim jak na to". Obraz PS1 na PC sel (v logu 59 paketu/s),
+    // ale mys pocitace do hry nesla - nebyla hotova. Prohlizec (klik do obrazu = zamek ukazatele) posila
+    // /mys?dx=&dy=&b= : posun v 1/100000 sirky obrazu v prohlizeci, tlacitka bit0 leve, bit1 prave.
+    // Vse ostatni (miritko, citlivost pro hru, hlidac 2,5 s, kam je mys zapojena) dela C++.
+    private void napTvWebMys(String fullPath, java.io.OutputStream out) throws Exception {
+        String odp;
+        if (!isPs1OwnerUrl(napTvWebCurrentUrl)) {
+            odp = "NE_PS1";
+        } else {
+            final int dx = (int) Math.max(-2000000L, Math.min(2000000L, napTvWebQueryLong(fullPath, "dx", 0)));
+            final int dy = (int) Math.max(-2000000L, Math.min(2000000L, napTvWebQueryLong(fullPath, "dy", 0)));
+            final int b = (int) (napTvWebQueryLong(fullPath, "b", 0) & 3L);
+            String r = NativePs1CoreBridge.pcMysSafe(dx, dy, b);
+            odp = r == null ? "PS1_NEBEZI" : r;
+        }
+        byte[] body = odp.getBytes("UTF-8");
+        napTvWebHeader(out, "200 OK", "text/plain; charset=utf-8", body.length, true);
+        out.write(body);
+    }
+
     // ===================================================================
     //  B303: ATARI 130XE (C++) NA TV / PC CELE V C++ - MALE ZPOZDENI
     //
@@ -3744,6 +3770,9 @@ public class MainActivity extends Activity {
             } else if ("/klavesy".equals(path)) {
                 // B302: vic klaves naraz (co se nahromadilo, kdyz Wi-Fi zpomalila)
                 napTvWebKlavesy(fullPath, out);
+            } else if ("/mys".equals(path)) {
+                // B318: mys pocitace z prohlizece na TV / PC -> mys PlayStation (C++ nap_ps1_mys.h)
+                napTvWebMys(fullPath, out);
             } else if ("/quality".equals(path)) {
                 long t = napTvWebQueryLong(fullPath, "tier", napTvWebQualityTier);
                 byte[] body = ("tier=" + napTvWebSetQualityTier(t)).getBytes("UTF-8");
@@ -3764,6 +3793,12 @@ public class MainActivity extends Activity {
                 boolean vPs1 = isPs1OwnerUrl(curUrl3);
                 String klavRezim = null;
                 if (atariCpp) klavRezim = NativeAtariCoreBridge.devPcKlavesaSafe("STAV", "", 0, true);
+                // B318: mys PlayStation zapnuta (rezim 1-3)? Prohlizec pak klikem do obrazu zachyti mys PC
+                boolean ps1Mys = false;
+                if (vPs1) {
+                    String ms = NativePs1CoreBridge.mysStavSafe();
+                    ps1Mys = ms != null && ms.length() > 1 && ms.charAt(1) == '|' && ms.charAt(0) >= '1' && ms.charAt(0) <= '3';
+                }
                 // B305: ktery proud z C++ ma prohlizec brat (atari / sega / ps1 / 0)
                 final String proudDruh = napTvProudDruh();
                 // B313: zmena proudu do logu (jen kdyz se zmeni) - kdyby prohlizec zase visel na starem
@@ -3780,6 +3815,7 @@ public class MainActivity extends Activity {
                         + (klavRezim != null ? " klavRezim=" + klavRezim : "")
                         + " sega=" + (vSeze ? 1 : 0)
                         + " ps1=" + (vPs1 ? 1 : 0)
+                        + " ps1mys=" + (ps1Mys ? 1 : 0)
                         + " menu=" + (menuPlocha != null ? 1 : 0)
                         + " seq=" + napTvWebSeq
                         + " mirror=" + (napTvWebSystemMirrorActive ? "SCREEN" : "APP")
@@ -3934,7 +3970,7 @@ public class MainActivity extends Activity {
                 + ".then(function(t){napV=(t.trim()==='1');sV.textContent='VYLADENI OBRAZU: '+(napV?'zapnuto':'vypnuto');"
                 + "if(window.napAp&&napAp.cv)napAp.cv.style.imageRendering=napV?'auto':'pixelated';})"
                 + ".catch(function(e){clog('vyladeni: '+e);});};"
-                + "function panUkaz(){pan.style.opacity='1';clearTimeout(panT);panT=setTimeout(function(){pan.style.opacity='0';},2600);}"
+                + "function panUkaz(){if(window.napPm&&napPm.lock)return;pan.style.opacity='1';clearTimeout(panT);panT=setTimeout(function(){pan.style.opacity='0';},2600);}"
                 + "document.addEventListener('mousemove',panUkaz);document.addEventListener('touchstart',panUkaz);panUkaz();"
                 + "function label(t){s.textContent='AtariHelp TV WEB CAST [SK60] '+t+' '+new Date().toLocaleTimeString()+' '+curFps+'fps'+(aon?' AUDIO ON':' AUDIO OFF');}"
                 + "function clog(m){try{fetch('/clientlog?m='+encodeURIComponent(m));}catch(e){}}" // BUILD2SK59: diagnostika z prohlizece zpet do /log - bez tohohle zadna viditelnost, kdyz H264 cesta selze drive, nez se server vubec dozvi
@@ -4012,7 +4048,7 @@ public class MainActivity extends Activity {
                 + "if(ab.byteLength>=4&&!(ap&&ap.chce)){var now=ac.currentTime;if(dis||next<now+0.04||next>now+AVD+0.5)cutover();var dv=new DataView(ab),frames=Math.floor(ab.byteLength/4),buf=ac.createBuffer(2,frames,rate),L=buf.getChannelData(0),R=buf.getChannelData(1);for(var i=0,p=0;i<frames;i++,p+=4){L[i]=dv.getInt16(p,true)/32768;R[i]=dv.getInt16(p+2,true)/32768;}var src=ac.createBufferSource();src.buffer=buf;src.connect(g);if(next<ac.currentTime+0.02)next=ac.currentTime+Math.max(AVD,0.05);src.start(next);next+=frames/rate;rawS+=frames/rate;active.push(src);src.onended=function(){var k=active.indexOf(src);if(k>=0)active.splice(k,1);};if(active.length>400)active.splice(0,active.length-400);}}catch(e){}setTimeout(pollAudio,20);}" // BUILD2SB1: planovane buffery (jitter buffer), zadne tvrde resety next, cutover s fadem (B315: kus, ktery dorazil az po startu proudu z C++, se uz nehraje; seznam az 400 kusu - pri zpozdeni 2 s jich je naplanovano ~120 a cutover / rawPredej musi zastavit vsechny)
                 // B315: sipky nahoru / dolu meni zpozdeni stare cesty jen tam, kde nic jineho neovladaji - ne v menu
                 // (tam od B313 listuji kartami) a ne v posuvniku panelu OBRAZ
-                + "a.onclick=startAudio;function toggleFs(){var el=document.documentElement;try{if(!(document.fullscreenElement||document.webkitFullscreenElement)){(el.requestFullscreen||el.webkitRequestFullscreen||el.msRequestFullscreen).call(el);}else{(document.exitFullscreen||document.webkitExitFullscreen||document.msExitFullscreen).call(document);}}catch(e){}}document.addEventListener('click',toggleFs,true);document.addEventListener('keydown',function(e){if(window.napVAtari||window.napVSeze||window.napVPs1||window.napVMenu)return;var tg=e.target;if(tg&&(tg.tagName==='INPUT'||tg.tagName==='TEXTAREA'))return;if(e.key==='ArrowUp'){setAvd(AVD+0.05);e.preventDefault();}else if(e.key==='ArrowDown'){setAvd(AVD-0.05);e.preventDefault();}else if(e.key==='0'){setAvd(0.30);e.preventDefault();}},true);setTimeout(function(){try{startAudio();}catch(e){}},80);var aTry=setInterval(function(){if(aon){clearInterval(aTry);return;}try{startAudio();if(ac&&ac.state==='suspended'&&ac.resume)ac.resume();}catch(e){}},1000);"
+                + "a.onclick=startAudio;function toggleFs(e){if(window.napPs1MysKlik&&window.napPs1MysKlik(e))return;var el=document.documentElement;try{if(!(document.fullscreenElement||document.webkitFullscreenElement)){(el.requestFullscreen||el.webkitRequestFullscreen||el.msRequestFullscreen).call(el);}else{(document.exitFullscreen||document.webkitExitFullscreen||document.msExitFullscreen).call(document);}}catch(e){}}document.addEventListener('click',toggleFs,true);document.addEventListener('keydown',function(e){if(window.napVAtari||window.napVSeze||window.napVPs1||window.napVMenu)return;var tg=e.target;if(tg&&(tg.tagName==='INPUT'||tg.tagName==='TEXTAREA'))return;if(e.key==='ArrowUp'){setAvd(AVD+0.05);e.preventDefault();}else if(e.key==='ArrowDown'){setAvd(AVD-0.05);e.preventDefault();}else if(e.key==='0'){setAvd(0.30);e.preventDefault();}},true);setTimeout(function(){try{startAudio();}catch(e){}},80);var aTry=setInterval(function(){if(aon){clearInterval(aTry);return;}try{startAudio();if(ac&&ac.state==='suspended'&&ac.resume)ac.resume();}catch(e){}},1000);"
                 + "(function(){var qs=document.querySelectorAll('#q button');function mark(t){for(var i=0;i<qs.length;i++)qs[i].classList.toggle('on',qs[i].getAttribute('data-t')===(''+t));}"
                 + "fetch('/quality').then(function(r){return r.text();}).then(function(t){var m=/tier=(\\d)/.exec(t);mark(m?m[1]:'0');}).catch(function(){});"
                 + "for(var i=0;i<qs.length;i++){qs[i].onclick=function(e){var t=e.target.getAttribute('data-t');fetch('/quality?tier='+t).then(function(){mark(t);}).catch(function(){});};}})();"
@@ -4020,8 +4056,13 @@ public class MainActivity extends Activity {
                 + "function upd(){fb.textContent=isFs()?'⛶ EXIT':'⛶ FULL';try{var kb=navigator.keyboard;if(kb&&kb.lock){if(isFs()&&(window.napVAtari||window.napVSeze||window.napVPs1)){var pr=kb.lock();if(pr&&pr.catch)pr.catch(function(){});}else if(!isFs()&&kb.unlock)kb.unlock();}}catch(e){}}"
                 + "fb.onclick=function(){var el=document.documentElement;try{if(!isFs()){(el.requestFullscreen||el.webkitRequestFullscreen||el.msRequestFullscreen).call(el);}else{(document.exitFullscreen||document.webkitExitFullscreen||document.msExitFullscreen).call(document);}}catch(e){}};"
                 + "document.addEventListener('fullscreenchange',upd);document.addEventListener('webkitfullscreenchange',upd);document.addEventListener('msfullscreenchange',upd);upd();})();"
-                + "v.onerror=function(){if(!fb)fallback();};v.src='/stream.mjpg?'+Date.now();label('MJPEG');"
-                + "function pollFps(){if(window.napPollBezi&&Date.now()-window.napPollBezi<2600)return;window.napPollBezi=Date.now();var ac=window.AbortController?new AbortController():null;var tm=setTimeout(function(){if(ac)try{ac.abort();}catch(e){}},2500);fetch('/status?'+Date.now(),ac?{cache:'no-store',signal:ac.signal}:{cache:'no-store'}).then(function(r){return r.text();}).then(function(t){clearTimeout(tm);window.napPollBezi=0;var mp=/ proud=(\\w+)/.exec(t),pd=(mp&&mp[1]!=='0')?mp[1]:'';var od=window.napOdmit;if(od&&Date.now()<od.t&&pd===od.d)pd=od.n;if(!mp){var m0=/atariProud=(\\d)/.exec(t);if(m0&&m0[1]==='1')pd='atari';}window.napProud=pd;window.napAtariProud=(pd==='atari');if(pd&&apLze()){ap.bez=0;if(ap.chce&&ap.druh&&ap.druh!==pd)apZnovu();else if(!ap.on&&!ap.rd)apStart();}else if(ap.chce){if(!ap.bez)ap.bez=Date.now();else if(Date.now()-ap.bez>2500){ap.bez=0;apStop();}}if(ap.chce)apHlidej();var m=/seq=(\\d+)/.exec(t);var m2=/h264Seq=(\\d+)/.exec(t);if(!h264Active&&!h264Loading&&!ap.chce&&!(window.napProud&&apLze())){clog('pollFps calling startH264 (universal)');startH264();}var useM=h264Active&&m2?m2:m;if(useM){var sq=parseInt(useM[1],10),now=Date.now();if(lastSeqT>0){var dt=(now-lastSeqT)/1000;if(dt>0)curFps=Math.round((sq-lastSeq)/dt*10)/10;}if(sq===lastSeq&&sq>0){staleTicks++;}else{staleTicks=0;}lastSeq=sq;lastSeqT=now;if(staleTicks>=4&&!fb&&!h264Active&&!ap.chce){staleTicks=0;v.src='/stream.mjpg?'+Date.now();}}var ma=/atari=(\\d)/.exec(t), ms=/sega=(\\d)/.exec(t);var vA=!!(ma&&ma[1]==='1'), vS=!!(ms&&ms[1]==='1');window.napVAtari=vA;window.napVSeze=vS;var mp1=/ ps1=(\\d)/.exec(t);var vP=!!(mp1&&mp1[1]==='1');window.napVPs1=vP;var mc=/atariCpp=(\\d)/.exec(t), mr=/klavRezim=(\\w+)/.exec(t);window.napVAtariCpp=!!(mc&&mc[1]==='1');if(window.napVAtariCpp&&mr)window.napRezim=mr[1];var mm=/ menu=(\\d)/.exec(t);window.napVMenu=!!(mm&&mm[1]==='1');if(window.napKlavesnicePopis)window.napKlavesnicePopis(vA||vS||vP||window.napVMenu);label(h264Active?'H264':(fb?'JPEG':'MJPEG'));}).catch(function(e){clearTimeout(tm);window.napPollBezi=0;var n=Date.now();if(!window.napPollErrT||n-window.napPollErrT>5000){window.napPollErrT=n;clog('pollFps fetch err '+e);}label(h264Active?'H264':(fb?'JPEG':'MJPEG'));});}" // BUILD2SK45+SK57+SK59: stale-reconnect jen v MJPEG rezimu; "seq" v /status je porad ta sama zachytavaci sekvence i v H264 rezimu
+                // B318: stara cesta (MJPEG z Javy) se pusti az podle /status. Drive se pustila hned po
+                // nacteni stranky - Java pak snimala obraz pro TV, i kdyz si prohlizec za chvili vzal proud
+                // primo z C++ (Rene v logu menu: "TV Java"). Bez odpovedi /status do 2,5 s jako drive.
+                + "window.napMjStart=function(){if(window.napMjJe)return;window.napMjJe=1;if(window.napAp&&napAp.chce)return;"
+                + "v.onerror=function(){if(!fb)fallback();};v.src='/stream.mjpg?'+Date.now();label('MJPEG');};"
+                + "setTimeout(function(){if(!window.napMjJe)window.napMjStart();},2500);setTimeout(pollFps,0);"
+                + "function pollFps(){if(window.napPollBezi&&Date.now()-window.napPollBezi<2600)return;window.napPollBezi=Date.now();var ac=window.AbortController?new AbortController():null;var tm=setTimeout(function(){if(ac)try{ac.abort();}catch(e){}},2500);fetch('/status?'+Date.now(),ac?{cache:'no-store',signal:ac.signal}:{cache:'no-store'}).then(function(r){return r.text();}).then(function(t){clearTimeout(tm);window.napPollBezi=0;var mp=/ proud=(\\w+)/.exec(t),pd=(mp&&mp[1]!=='0')?mp[1]:'';var od=window.napOdmit;if(od&&Date.now()<od.t&&pd===od.d)pd=od.n;if(!mp){var m0=/atariProud=(\\d)/.exec(t);if(m0&&m0[1]==='1')pd='atari';}window.napProud=pd;window.napAtariProud=(pd==='atari');if(!window.napMjJe){if(pd&&apLze())window.napMjJe=1;else if(window.napMjStart)window.napMjStart();}if(pd&&apLze()){ap.bez=0;if(ap.chce&&ap.druh&&ap.druh!==pd)apZnovu();else if(!ap.on&&!ap.rd)apStart();}else if(ap.chce){if(!ap.bez)ap.bez=Date.now();else if(Date.now()-ap.bez>2500){ap.bez=0;apStop();}}if(ap.chce)apHlidej();var m=/seq=(\\d+)/.exec(t);var m2=/h264Seq=(\\d+)/.exec(t);if(!h264Active&&!h264Loading&&!ap.chce&&!(window.napProud&&apLze())){clog('pollFps calling startH264 (universal)');startH264();}var useM=h264Active&&m2?m2:m;if(useM){var sq=parseInt(useM[1],10),now=Date.now();if(lastSeqT>0){var dt=(now-lastSeqT)/1000;if(dt>0)curFps=Math.round((sq-lastSeq)/dt*10)/10;}if(sq===lastSeq&&sq>0){staleTicks++;}else{staleTicks=0;}lastSeq=sq;lastSeqT=now;if(staleTicks>=4&&!fb&&!h264Active&&!ap.chce){staleTicks=0;v.src='/stream.mjpg?'+Date.now();}}var ma=/atari=(\\d)/.exec(t), ms=/sega=(\\d)/.exec(t);var vA=!!(ma&&ma[1]==='1'), vS=!!(ms&&ms[1]==='1');window.napVAtari=vA;window.napVSeze=vS;var mp1=/ ps1=(\\d)/.exec(t);var vP=!!(mp1&&mp1[1]==='1');window.napVPs1=vP;var mq=/ ps1mys=(\\d)/.exec(t),pmz=!!(vP&&mq&&mq[1]==='1');if(pmz!==!!window.napPs1Mys){window.napPs1Mys=pmz;if(window.napPmZmena)window.napPmZmena(pmz);}var mc=/atariCpp=(\\d)/.exec(t), mr=/klavRezim=(\\w+)/.exec(t);window.napVAtariCpp=!!(mc&&mc[1]==='1');if(window.napVAtariCpp&&mr)window.napRezim=mr[1];var mm=/ menu=(\\d)/.exec(t);window.napVMenu=!!(mm&&mm[1]==='1');if(window.napKlavesnicePopis)window.napKlavesnicePopis(vA||vS||vP||window.napVMenu);label(h264Active?'H264':(fb?'JPEG':'MJPEG'));}).catch(function(e){clearTimeout(tm);window.napPollBezi=0;var n=Date.now();if(!window.napPollErrT||n-window.napPollErrT>5000){window.napPollErrT=n;clog('pollFps fetch err '+e);}label(h264Active?'H264':(fb?'JPEG':'MJPEG'));});}" // BUILD2SK45+SK57+SK59: stale-reconnect jen v MJPEG rezimu; "seq" v /status je porad ta sama zachytavaci sekvence i v H264 rezimu
                 // ===== B303 + B305: ATARI 130XE, SEGA A PS1 - OBRAZ A ZVUK PRIMO Z C++ =====
                 // B303 (Atari): "ma to na TV zpozdeni - nejde to vylepsit?" Misto H.264 / JPEG
                 // z Javy (zvetsovani, komprese, buffer prohlizece) posila C++ kazdy snimek
@@ -4467,6 +4508,64 @@ public class MainActivity extends Activity {
                 + "  if(window.napPosledni) t+='   ['+napTr(window.napPosledni)+']';"
                 + "  if(kn.textContent!==t) kn.textContent=t; },700);"
                 + "document.body.appendChild(kn);"
+                + "})();</script>"
+                // ===== B318: MYS POCITACE -> MYS PLAYSTATION (PS1 - Dune 2000 ...) =====
+                // Rene: "Prenos LAN bud nefunguje a nebo nevim jak na to". Obraz sel (log: 59 paketu/s),
+                // mys pocitace ale do hry nesla - nebyla hotova. Kdyz je na telefonu PS1 se zapnutou mysi
+                // PlayStation (/status ps1mys=1), klik do obrazu mys zachyti (zamek ukazatele, jako hry
+                // v prohlizeci), pohyb (v podilu sirky obrazu - stejne miritko jako prst na telefonu)
+                // a obe tlacitka jdou pres /mys do C++. Esc mys pusti. VLASTNI SKRIPT jako klavesnice.
+                + "<script>(function(){'use strict';"
+                + "function tr(s){try{return (window.NapJazyk&&NapJazyk.en())?NapJazyk.tr(s):s;}catch(e){return s;}}"
+                + "function clog(m){try{fetch('/clientlog?m='+encodeURIComponent(m));}catch(e){}}"
+                + "var pm={lock:false,dx:0,dy:0,b:0,leti:false,znovu:false,posl:0,t:0,hl:null,hlT:0,zprav:0};window.napPm=pm;"
+                + "var NAPOVEDA='MYS PS1: KLIKNI DO OBRAZU - KURZOR HRY OVLADA MYS POCITACE (ESC = PUSTIT)';"
+                + "function zamceno(){return !!(document.pointerLockElement||document.mozPointerLockElement);}"
+                // sirka obrazu hry v prohlizeci (proud z C++ kresli do canvasu), jinak 3/4 okna (4:3 na 16:9)
+                + "function sirka(){try{var a=window.napAp;if(a&&a.cv&&a.cv.style.display!=='none'){var w=parseFloat(a.cv.style.width);if(w>50)return w;}}catch(e){}"
+                + "return Math.max(200,window.innerWidth*0.75);}"
+                + "function hint(t,ms){if(!pm.hl){pm.hl=document.createElement('div');pm.hl.id='pmh';"
+                + "pm.hl.style.cssText='position:fixed;left:50%;top:4%;transform:translateX(-50%);z-index:100000;pointer-events:none;"
+                + "background:rgba(0,0,0,.82);border:2px solid #ffd54a;border-radius:8px;padding:8px 16px;color:#ffe9a8;font:700 18px sans-serif;text-align:center;display:none';"
+                + "document.body.appendChild(pm.hl);}clearTimeout(pm.hlT);if(!t){pm.hl.style.display='none';return;}"
+                + "pm.hl.textContent=tr(t);pm.hl.style.display='';pm.hlT=setTimeout(function(){pm.hl.style.display='none';},ms||6000);}"
+                // jedna zprava naraz; co se mezitim nahromadi, jde v dalsi (posun se scita, nic se neztrati)
+                + "function posli(hned){if(pm.leti){pm.znovu=true;return;}var dx=Math.round(pm.dx),dy=Math.round(pm.dy);if(!dx&&!dy&&!hned)return;"
+                + "pm.dx-=dx;pm.dy-=dy;pm.leti=true;pm.posl=Date.now();var x=new XMLHttpRequest();"
+                + "x.open('GET','/mys?dx='+dx+'&dy='+dy+'&b='+pm.b+'&t='+pm.posl,true);x.timeout=3000;"
+                + "x.onload=function(){pm.leti=false;var r=x.responseText||'';"
+                + "if(++pm.zprav===1)clog('B318 MYS PC: prvni zprava - odpoved appky '+r);"
+                + "if(r.indexOf('PS1:MYS_VYP')===0)hint('MYS PS1 JE NA TELEFONU VYPNUTA - ZAPNI JI TLACITKEM MYS',4000);"
+                + "if(pm.znovu){pm.znovu=false;posli(true);}};"
+                + "x.onerror=x.ontimeout=function(){pm.leti=false;if(pm.znovu){pm.znovu=false;setTimeout(function(){posli(true);},200);}};"
+                + "try{x.send();}catch(e){pm.leti=false;}}"
+                + "function planuj(){if(!pm.t)pm.t=setTimeout(function(){pm.t=0;posli(false);},16);}"
+                + "function zamkni(){try{var el=document.documentElement;"
+                + "if(!(document.fullscreenElement||document.webkitFullscreenElement)){var f=el.requestFullscreen||el.webkitRequestFullscreen;"
+                + "if(f){var p0=f.call(el);if(p0&&p0.catch)p0.catch(function(){});}}"
+                + "var rl=el.requestPointerLock||el.mozRequestPointerLock;if(!rl){hint('TENHLE PROHLIZEC NEUMI ZACHYTIT MYS',4000);return;}"
+                + "var p=rl.call(el);if(p&&p.catch)p.catch(function(e){clog('B318 MYS PC: prohlizec zamek ukazatele odmitl: '+e);});"
+                + "}catch(e){clog('B318 MYS PC: zamek ukazatele chyba '+e);}}"
+                // klik do obrazu (volano z toggleFs): s mysi PS1 mys zachytit misto prepnuti cele obrazovky
+                + "window.napPs1MysKlik=function(e){if(!window.napPs1Mys&&!pm.lock)return false;var tg=e&&e.target,de=document.documentElement;"
+                + "if(!pm.lock&&!(de.requestPointerLock||de.mozRequestPointerLock))return false;"
+                + "if(!pm.lock&&tg&&tg.closest&&tg.closest('#pan,#q,#a,button,input'))return false;if(!pm.lock)zamkni();return true;};"
+                + "document.addEventListener('pointerlockchange',function(){var z=zamceno();if(z===pm.lock)return;pm.lock=z;"
+                + "if(z){pm.dx=pm.dy=0;hint('MYS PS1 ZACHYCENA - POHYB A TLACITKA JDOU DO HRY (ESC = PUSTIT)',3500);clog('B318 MYS PC: mys zachycena (zamek ukazatele)');posli(true);}"
+                + "else{pm.b=0;posli(true);clog('B318 MYS PC: mys pustena');if(window.napPs1Mys)hint('MYS PS1 PUSTENA - KLIKNI DO OBRAZU A ZASE OVLADAS HRU',4000);}});"
+                + "document.addEventListener('pointerlockerror',function(){clog('B318 MYS PC: prohlizec zamek ukazatele nedovolil');"
+                + "hint('PROHLIZEC NEDOVOLIL ZACHYTIT MYS - KLIKNI DO OBRAZU ZNOVU',4000);});"
+                + "document.addEventListener('mousemove',function(e){if(!pm.lock){if(window.napPs1Mys&&(!pm.hl||pm.hl.style.display==='none'))hint(NAPOVEDA,3000);return;}"
+                + "var k=100000/sirka();pm.dx+=(e.movementX||0)*k;pm.dy+=(e.movementY||0)*k;planuj();},true);"
+                + "function bit(e){return e.button===0?1:(e.button===2?2:0);}"
+                + "document.addEventListener('mousedown',function(e){if(!pm.lock)return;var b=bit(e);if(b){pm.b|=b;posli(true);}e.preventDefault();},true);"
+                + "document.addEventListener('mouseup',function(e){if(!pm.lock)return;var b=bit(e);if(b){pm.b&=~b;posli(true);}e.preventDefault();},true);"
+                + "document.addEventListener('contextmenu',function(e){if(pm.lock||window.napPs1Mys)e.preventDefault();},true);"
+                + "window.addEventListener('blur',function(){if(pm.b){pm.b=0;posli(true);}});"
+                // drzene tlacitko: "jsem tu" (C++ po 2,5 s ticha tlacitka pusti)
+                + "setInterval(function(){if(pm.lock&&Date.now()-pm.posl>900)posli(true);},450);"
+                + "window.napPmZmena=function(z){if(z){clog('B318 MYS PC: na telefonu je PS1 s mysi PlayStation - klik do obrazu mys PC zachyti');hint(NAPOVEDA,7000);}"
+                + "else{if(pm.lock){try{(document.exitPointerLock||document.mozExitPointerLock).call(document);}catch(e){}}hint('');}};"
                 + "})();</script></body></html>";
         body = napTvJazykStranka(body);   // B314: anglicky - prekladac a slovnik primo do stranky
         byte[] b = body.getBytes("UTF-8");
@@ -4500,7 +4599,32 @@ public class MainActivity extends Activity {
         }
     }
 
+    // ===== B318: STARA CESTA (JAVA) JEN KDYZ SE NA NI NEKDO DIVA =====
+    // Rene: "zase vidim JAVA - tok ... ve me furt neco vrta". Obraz pro TV / PC jde od B303-B311 primo
+    // z C++ (/menu.stream, /ps1.stream ...). Java (snimek, zvetseni, JPEG / H.264 na hlavnim vlakne)
+    // je jen pro prohlizec bez tohoto proudu (MJPEG / JPEG / H.264) - jenze snimala porad, kdyz byl
+    // prenos zapnuty: i kdyz se nikdo nedival (v Reneho logu 14 s menu pro nikoho, "TV Java" a
+    // menu nestihalo 24 snimku z 60). Ted snima jen do 3 s po posledni zadosti stareho prohlizece.
+    private volatile long napTvWebStaryKlientMs = 0;
+    private volatile boolean napTvWebStaraCestaBezi = true;
+    private boolean napTvWebStaraCestaKouka() {
+        final boolean kouka = !napTvWebH264ClientQueues.isEmpty()
+                || System.currentTimeMillis() - napTvWebStaryKlientMs < 3000L;
+        if (kouka != napTvWebStaraCestaBezi) {
+            napTvWebStaraCestaBezi = kouka;
+            if (kouka) {
+                napTvWebLastFrameMs = 0;   // mezera po spanku neni "pomaly snimek"
+                appendNativeLog("B318 TV STARA CESTA (Java) snima - prohlizec bez proudu z C++ chce obraz (MJPEG / JPEG / H.264)");
+            } else {
+                napTvWebJpeg = null;       // pri dalsim pripojeni "cekam na snimek", ne obraz z minula
+                appendNativeLog("B318 TV STARA CESTA (Java) spi - nikdo se nediva, nebo prohlizec bere obraz primo z C++");
+            }
+        }
+        return kouka;
+    }
+
     private void napTvWebWriteFrame(OutputStream out) throws IOException {
+        napTvWebStaryKlientMs = System.currentTimeMillis();   // B318
         napTvWebEnsurePlaceholderFrame("FRAME_CONNECT");
         byte[] img = napTvWebJpeg;
         if (img == null) {
@@ -4621,6 +4745,7 @@ public class MainActivity extends Activity {
         try {
             long last = -1;
             while (napTvWebRunning) {
+                napTvWebStaryKlientMs = System.currentTimeMillis();   // B318: MJPEG se diva - Java snima
                 byte[] img = napTvWebJpeg;
                 long seq = napTvWebSeq;
                 if (img != null && seq != last) {
@@ -6613,6 +6738,13 @@ public class MainActivity extends Activity {
         @JavascriptInterface
         public String ps1MysStav() {
             return NativePs1CoreBridge.mysStavSafe();
+        }
+        // B318: zrychleni podle rychlosti prstu (panel MYS PLAYSTATION), zapamatuje se pro hru
+        @JavascriptInterface
+        public String ps1MysZrychleni(int zap) {
+            String r = NativePs1CoreBridge.mysZrychleniSafe(zap);
+            appendNativeLog("B318 PS1_MYS_ZRYCHLENI " + (zap != 0 ? "ZAP" : "VYP") + " -> " + r);
+            return r;
         }
         private File ps1StateFile() {
             File saveDir = new File(getFilesDir(), "ps1_saves");

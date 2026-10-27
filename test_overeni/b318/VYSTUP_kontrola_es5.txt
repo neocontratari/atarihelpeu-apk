@@ -1,0 +1,5 @@
+OK     ES5 emu_ps1/index.html skript 1 (72864 znaku)
+OK     ES5 jazyk/en_ps1.js
+OK     ES5 jazyk/en_tv.js
+OK     ES5 spolecne/nap_jazyk.js
+VYSLEDEK: 4 souboru / skriptu, 0 CHYBA

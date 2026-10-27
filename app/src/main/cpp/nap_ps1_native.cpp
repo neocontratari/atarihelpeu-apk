@@ -1002,6 +1002,11 @@ static void ps1_mys_pred_krokem(void) {
   }
   g_mys.snimek(ps1_ms_ted(), g_input_bits.load(std::memory_order_relaxed) | g_klav_bits.load(std::memory_order_relaxed));
 }
+// B318: po retro_run - nakreslila hra novy obraz? (jadro posle nap_video NULL = stejny obraz.)
+// Mys z toho pozna, jak casto hra kresli (Dune 2000 kazdy 3. snimek) a posun rozlozi do tolika snimku.
+static void ps1_mys_po_kroku(uint64_t snimkyPred, uint64_t stejnychPred) {
+  g_mys.poSnimku(g_frames.load() != snimkyPred && g_dupe_frames.load() == stejnychPred);
+}
 
 static int16_t nap_input_state(unsigned port, unsigned device, unsigned, unsigned id) {
   // BUILD2SA4: RetroPad -> PS1 core. device 1 = RETRO_DEVICE_JOYPAD.
@@ -1054,7 +1059,8 @@ Java_eu_atarihelp_emu10_NativePs1CoreBridge_ps1PcKlavesa(JNIEnv *env, jclass, js
 /** Dotyk na obraze hry (touchpad). akce 0 dolu, 1 nahoru, 2 pohyb, 3 zruseno;
  *  x, y = poloha prstu v obrazu, w, h = velikost obrazu (body stranky).
  *  Vraci stav: bit0 mys zapnuta, bit1 leve tlacitko drzi, bit2 prst na obraze,
- *  bit3 tenhle dotyk byl klik levym, bit4 klik pravym (stranka zavibruje). */
+ *  bit3 tenhle dotyk byl klik levym, bit4 klik pravym (stranka zavibruje),
+ *  bit5 zrychleni zapnuto (B318). */
 extern "C" JNIEXPORT jint JNICALL
 Java_eu_atarihelp_emu10_NativePs1CoreBridge_ps1MysDotyk(JNIEnv *, jclass, jint akce, jint id, jfloat x, jfloat y, jfloat w, jfloat h) {
   const int udalost = g_mys.dotyk((int)akce, (int)id, (float)x, (float)y, (float)w, (float)h, ps1_ms_ted());
@@ -1077,12 +1083,25 @@ Java_eu_atarihelp_emu10_NativePs1CoreBridge_ps1MysNastav(JNIEnv *env, jclass, ji
   ps1_mys_denik();
   return env->NewStringUTF(ps1_mys_stav_text().c_str());
 }
-/** "rezim|citlivost|stavBity|klic hry" */
+/** "rezim|citlivost|stavBity|klic hry" (stavBity bit5 = zrychleni zapnuto) */
 extern "C" JNIEXPORT jstring JNICALL
 Java_eu_atarihelp_emu10_NativePs1CoreBridge_ps1MysStav(JNIEnv *env, jclass) {
   return env->NewStringUTF(ps1_mys_stav_text().c_str());
 }
-/** Mys pocitace z prohlizece na TV / PC: posun (body) a tlacitka (bit0 leve, bit1 prave). */
+/** B318: zrychleni podle rychlosti prstu (1 zap, 0 vyp) - zapamatuje se pro tuto hru.
+ *  Vraci stav jako ps1MysStav. */
+extern "C" JNIEXPORT jstring JNICALL
+Java_eu_atarihelp_emu10_NativePs1CoreBridge_ps1MysZrychleni(JNIEnv *env, jclass, jint zap) {
+  if (g_mys.nastavZrychleni(zap != 0)) {
+    const std::string soubor = ps1_mys_soubor();
+    if (!g_mys.klic().empty() && !g_mys.ulozProHru(soubor))
+      ps1_denik("MYS: nastaveni se nepodarilo ulozit do %s", soubor.empty() ? "(slozka karty neni)" : soubor.c_str());
+  }
+  ps1_mys_denik();
+  return env->NewStringUTF(ps1_mys_stav_text().c_str());
+}
+/** Mys pocitace z prohlizece na TV / PC: posun v 1/100000 sirky obrazu v prohlizeci
+ *  (B318 - stejne miritko jako prst na telefonu) a tlacitka (bit0 leve, bit1 prave). */
 extern "C" JNIEXPORT jstring JNICALL
 Java_eu_atarihelp_emu10_NativePs1CoreBridge_ps1PcMys(JNIEnv *env, jclass, jint dx, jint dy, jint tlacitka) {
   static std::atomic<int> zprav{0};
@@ -1509,7 +1528,9 @@ extern "C" JNIEXPORT void JNICALL
 Java_eu_atarihelp_emu10_NativePs1CoreBridge_ps1EglTick(JNIEnv*, jclass) {
     if (!g_loaded.load()) return;
     ps1_mys_pred_krokem();   // B317
+    const uint64_t sn0 = g_frames.load(), du0 = g_dupe_frames.load();
     retro_run();
+    ps1_mys_po_kroku(sn0, du0);   // B318: jak casto hra kresli (rozlozeni posunu mysi)
     ps1_mys_denik();         // B317: hlasky mysi (zmena portu ...) do deniku
     if (g_gles_ready) nap_gles_sync_display_settings();
 }
@@ -2127,7 +2148,9 @@ static void nap_core_thread_fn(void) {
             // UPROSTRED kroku emulace z jineho vlakna (rozbita pozice, nebo pad).
             std::lock_guard<std::mutex> core(g_core_mutex);
             ps1_mys_pred_krokem();        // B317: porty a mys pro tenhle snimek
+            const uint64_t sn0 = g_frames.load(), du0 = g_dupe_frames.load();
             retro_run();
+            ps1_mys_po_kroku(sn0, du0);   // B318: jak casto hra kresli (rozlozeni posunu mysi)
         }
         ps1_mys_denik();
         {

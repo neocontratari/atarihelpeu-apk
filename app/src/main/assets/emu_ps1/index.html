@@ -530,11 +530,15 @@ body.mysLeveDrzi .mysUkazDrzi{display:block;}
     <p><b style="color:#5ef0b0;">Rychlost kurzoru</b> — jak daleko kurzor dojede, když táhneš prstem nebo držíš D-pad.</p>
     <input id="mysCitlivost" type="range" min="25" max="400" step="5" value="100">
     <p id="mysCitlivostVal" class="ctrlVal"></p>
+    <!-- B318: Rene - "mys ... je dost neomalena i pri nastaveni citlivosti na 300" -->
+    <button id="mysZrychleni" class="mysRezim secondary" type="button" aria-pressed="true">ZRYCHLENÍ: ZAPNUTO</button>
+    <p><b style="color:#5ef0b0;">Zrychlení</b> — jako u myši počítače: pomalý tah prstem = jemný přesný posun, rychlý tah = kurzor dojede dál.</p>
     <p><b>Táhni prstem po obrazu</b> = pohyb kurzoru.</p>
     <p><b>Ťukni</b> = levé tlačítko (vybrat, potvrdit).</p>
     <p><b>Ťukni dvěma prsty</b> = pravé tlačítko (zrušit).</p>
     <p><b>Podrž prst na místě</b> (zavibruje, nahoře se ukáže DRŽÍM LEVÉ TLAČÍTKO) a táhni = levé tlačítko drží – výběr jednotek rámečkem.</p>
     <p><b>Myš v portu 1:</b> ✕ = levé a ○ = pravé tlačítko (dají se i držet), D-pad = pomalý přesný posun kurzoru. Ostatní tlačítka hra s myší nevidí, proto jsou schovaná.</p>
+    <p><b>Myš počítače:</b> v prohlížeči na PC nebo TV (WEB TV) klikni do obrazu – kurzor hry pak ovládá myš počítače, její tlačítka jsou tlačítka myši PlayStation. Esc = myš pustit.</p>
     <p>Volba se pamatuje pro každou hru zvlášť. Když hra myš nevidí ani v jiném portu, spusť hru znovu (CD ISO) – myš je pak zapojená od zapnutí.</p>
     <button id="mysZavrit" type="button" class="zavrit">ZAVŘÍT</button>
   </div>
@@ -1167,15 +1171,16 @@ function bindDpad(el){
    mys zapojena a zapamatovani pro kazdou hru je take v C++ (nap_ps1_mys.h).
    Tady jen predani dotyku a vzhled: tlacitko MYS, panel, schovani tlacitek, ktera
    hra s mysi samotnou v portu 1 nevidi, ukazatel drzeni. */
-var MYS={rezim:0,citlivost:100,stav:0,klic:'',prsty:{},pocetPrstu:0,tik:null,drzelo:false};
+var MYS={rezim:0,citlivost:100,stav:0,klic:'',prsty:{},pocetPrstu:0,tik:null,drzelo:false,zrychleni:true};
 var MYS_REZIMY=['VYPNUTÁ','MYŠ V PORTU 1','MYŠ PORT 1 + OVLADAČ PORT 2','OVLADAČ PORT 1 + MYŠ PORT 2'];
 var MYS_VSE=['UP','DOWN','LEFT','RIGHT','CROSS','CIRCLE','SQUARE','TRIANGLE','L1','L2','R1','R2','START','SELECT'];
 function mysVibruj(ms){if(!ctrlSettings.haptic)return;try{if(window.AHPS1&&window.AHPS1.ps1Vibrate)window.AHPS1.ps1Vibrate(ms);}catch(_){}}
-/* "rezim|citlivost|stav|klic hry" z C++ */
+/* "rezim|citlivost|stav|klic hry" z C++ (B318: stav bit5 = zrychleni zapnuto) */
 function mysCtiStav(t){
   t=String(t||'');var c=t.split('|');
   if(c.length<4||!/^\d+$/.test(c[0]))return false;
   MYS.rezim=parseInt(c[0],10)||0;MYS.citlivost=parseInt(c[1],10)||100;MYS.stav=parseInt(c[2],10)||0;
+  MYS.zrychleni=!!(MYS.stav&32);
   MYS.klic=c.slice(3).join('|');
   return true;
 }
@@ -1214,6 +1219,15 @@ function mysNastav(rezim,citlivost,proc){
   mysObnov();
   return true;
 }
+/* B318: zrychleni podle rychlosti prstu (pamatuje se pro hru v C++) */
+function mysZrychleniPrepni(){
+  var r='';
+  try{if(window.AHPS1&&window.AHPS1.ps1MysZrychleni)r=String(window.AHPS1.ps1MysZrychleni(MYS.zrychleni?0:1)||'');}catch(_){}
+  if(!mysCtiStav(r)){toast('MYŠ: jádro PS1 neodpovídá',3000);return;}
+  jsLog('MYS_ZRYCHLENI '+(MYS.zrychleni?'ZAP':'VYP')+' hra='+(MYS.klic||'-'));
+  toast(MYS.zrychleni?'ZRYCHLENÍ ZAPNUTO – pomalý tah jemně, rychlý dál':'ZRYCHLENÍ VYPNUTO – kurzor jede přesně jako prst',2600);
+  mysObnov();
+}
 /* tlacitko MYS (na sirku): zapnout (naposledy zvoleny port) / vypnout */
 function mysPrepni(){
   if(MYS.rezim>0){if(mysNastav(0,MYS.citlivost,'tlacitko MYS'))toast('MYŠ VYPNUTÁ – zase ovladač',2400);return;}
@@ -1226,10 +1240,12 @@ function mysPrepni(){
 }
 function mysPanelObnov(){
   var p=$('mysPanel');if(!p||!p.classList.contains('open'))return;
-  var bt=p.querySelectorAll('.mysRezim');
+  var bt=p.querySelectorAll('.mysRezim[data-rezim]');
   for(var i=0;i<bt.length;i++)bt[i].classList.toggle('aktivni',parseInt(bt[i].getAttribute('data-rezim'),10)===MYS.rezim);
   var s=$('mysCitlivost');if(s&&!s.__napTahne)s.value=MYS.citlivost;
   var v=$('mysCitlivostVal');if(v)v.textContent='Rychlost: '+MYS.citlivost+' %';
+  var z=$('mysZrychleni');
+  if(z){z.textContent=MYS.zrychleni?'ZRYCHLENÍ: ZAPNUTO':'ZRYCHLENÍ: VYPNUTO';z.classList.toggle('aktivni',MYS.zrychleni);z.setAttribute('aria-pressed',MYS.zrychleni?'true':'false');}
   var h=$('mysHra');
   if(h)h.textContent=(MYS.klic?'Hra: '+MYS.klic:'Hra zatím neběží')+' – '+MYS_REZIMY[MYS.rezim<0||MYS.rezim>3?0:MYS.rezim];
 }
@@ -1770,11 +1786,12 @@ $('btnMys').addEventListener('click',function(e){e.preventDefault();mysPrepni();
 $('btnMysNastaveni').addEventListener('click',function(e){e.preventDefault();closeHelp();closeDpadMenu();showMysPanel();},true);
 $('mysZavrit').addEventListener('click',function(e){e.preventDefault();closeMysPanel();},true);
 (function(){
-  var bt=document.querySelectorAll('#mysPanel .mysRezim');
+  var bt=document.querySelectorAll('#mysPanel .mysRezim[data-rezim]');
   for(var i=0;i<bt.length;i++)(function(b){
     b.addEventListener('click',function(e){e.preventDefault();mysNastav(parseInt(b.getAttribute('data-rezim'),10)||0,MYS.citlivost,'panel');},true);
   })(bt[i]);
 })();
+$('mysZrychleni').addEventListener('click',function(e){e.preventDefault();mysZrychleniPrepni();},true);
 $('mysCitlivost').addEventListener('input',function(e){e.target.__napTahne=true;var v=$('mysCitlivostVal');if(v)v.textContent='Rychlost: '+e.target.value+' %';},true);
 $('mysCitlivost').addEventListener('change',function(e){e.target.__napTahne=false;mysNastav(MYS.rezim,parseInt(e.target.value,10)||100,'rychlost');},true);
 window.addEventListener('blur',function(e){if(e.target===window)mysZrusPrsty();});

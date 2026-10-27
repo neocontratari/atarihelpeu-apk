@@ -1,0 +1,22 @@
+B318 - stara cesta TV (Java) jen kdyz se nekdo diva, /mys, /status ps1mys - kontrola Javy
+OK     1) z MainActivity.java: 2 pole (napTvWebStaryKlientMs, napTvWebStaraCestaBezi) + metoda napTvWebStaraCestaKouka (821 znaku)
+OK     1) metoda z appky prelozena v JVM (javac)
+OK        prenos zapnuty, nikdo se nediva: Java nesnima, posledni snimek zapomenut, 1 hlaska "B318 TV STARA CESTA (Java) spi - nikdo se nediva, nebo prohlizec bere obraz primo z C++"
+OK        dalsich 5 kol smycky: zadna dalsi hlaska (jen pri zmene)
+OK        stary prohlizec chce obraz (/frame.jpg, MJPEG): Java snima, "B318 TV STARA CESTA (Java) snima - prohlizec bez proudu z C++ chce obraz (MJPEG / JPEG / H.264)" (mezera po spanku neni pomaly snimek)
+OK        2,5 s od posledni zadosti: porad snima
+OK        3 s ticho (prohlizec odesel / prepnul na proud z C++): Java zase spi
+OK        pripojeny prohlizec H.264: Java snima (enkoder potrebuje snimky)
+OK        H.264 odpojen: spi
+   JVM VYSLEDEK: 7 OK, 0 CHYBA
+OK     2) smycka TV: snimani intro / menu / Atari / PS1 / Sega jen kdyz se nekdo diva (jinak "hotovo" - ani PixelCopy okna)
+OK        PixelCopy okna appky (DJ, MP3 ...) az za touto podminkou
+OK        zvuk PS1 pro TV se z jadra vyzvedava porad, pred podminkou (jinak by v jadre pretekal - viz komentar Vyzvedavat se musi VZDY)
+OK        /frame.jpg hlasi zajem (napTvWebStaryKlientMs)
+OK        smycka MJPEG hlasi zajem kazde kolo (dokud je prohlizec pripojeny)
+OK     2) /mys: jen s PS1 na obrazovce -> NativePs1CoreBridge.pcMysSafe(dx, dy, b), tlacitka jen bit0 / bit1
+OK        /mys v serveru TV (napTvWebHandleClient)
+OK     2) /status: ps1mys=1 jen s PS1 na obrazovce a mysi zapnutou (rezim 1-3 z ps1MysStav)
+OK     2) AHPS1.ps1MysZrychleni (stranka PS1) -> NativePs1CoreBridge.mysZrychleniSafe -> C++ ps1MysZrychleni
+OK        NativePs1CoreBridge: native ps1MysZrychleni + obal mysZrychleniSafe (jen kdyz je knihovna nactena)
+VYSLEDEK: 19 kontrol, 0 CHYBA

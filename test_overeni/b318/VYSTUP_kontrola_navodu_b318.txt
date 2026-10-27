@@ -1,0 +1,20 @@
+B318 - navod v appce: co se zmenilo proti B317 (2f8fff4)
+index.html: 359 bloku textu v B317, 361 v B318
+   B317  li: Táhni prstem po obrazu = pohyb kurzoru. Ťukni = levé tlačítko, ťukni dvěma prsty = pravé.
+   B317  p: TIP Na TV / PC s myší v portu 1: šipky = kurzor, K nebo mezerník = levé, L = pravé tlačítko myši.
+   B318  li: Táhni prstem po obrazu = pohyb kurzoru. Kurzor se rozjede plynule, až když prst kousek ujede – ťuknutí tak zůstane přesné. Ťukni = levé tlačítko, ťukni dvěma prsty = pravé.
+   B318  li: Zrychlení jako u myši počítače: pomalý tah = jemný přesný posun, rychlý tah = kurzor dojede dál. Vypíná se v nastavení myši tlačítkem ZRYCHLENÍ: ZAPNUTO.
+   B318  p: TIP Na TV / PC přes WEB TV: klikni do obrazu – kurzor hry pak ovládá myš počítače, její levé a pravé tlačítko jsou tlačítka myši PlayStation, Esc myš pustí. S myší v portu 1 jde i klávesnice: šipky = kurzor, K nebo mezerník = levé, L = p
+   B318  li: PS1 se zapnutou myší PlayStation: klikni do obrazu – myš počítače ovládá kurzor hry (pohyb i obě tlačítka), Esc ji pustí.
+OK      index.html: zmenilo se jen to o mysi PS1 (2 bloky pryc, 4 nove)
+OK      index.html: znacky HTML (kapitoly, odkazy, obrazky) stejne jako B317, navic jen polozky, odkaz na WEB TV a klavesy (7 zmen)
+en.html: 359 bloku textu v B317, 361 v B318
+   B317  li: Drag your finger over the picture = cursor movement. Tap = left button, tap with two fingers = right.
+   B317  p: TIP On a TV / PC with the mouse in port 1: arrows = cursor, K or space = left, L = right mouse button.
+   B318  li: Drag your finger over the picture = cursor movement. The cursor starts moving smoothly once your finger has travelled a little – so taps stay precise. Tap = left button, tap with two fingers = right.
+   B318  li: Acceleration like a computer mouse: a slow drag = fine precise movement, a fast drag = the cursor travels further. Switch it off in the mouse settings with the ACCELERATION: ON button.
+   B318  p: TIP On a TV / PC through WEB TV: click into the picture – the computer mouse then moves the game cursor, its left and right buttons are the PlayStation mouse buttons, Esc releases the mouse. With the mouse in port 1 the keyboard works to
+   B318  li: PS1 with the PlayStation mouse switched on: click into the picture – the computer mouse moves the game cursor (movement and both buttons), Esc releases it.
+OK      en.html: zmenilo se jen to o mysi PS1 (2 bloky pryc, 4 nove)
+OK      en.html: znacky HTML (kapitoly, odkazy, obrazky) stejne jako B317, navic jen polozky, odkaz na WEB TV a klavesy (7 zmen)
+VYSLEDEK: 0 CHYBA

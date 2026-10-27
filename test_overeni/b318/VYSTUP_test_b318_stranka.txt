@@ -1,0 +1,31 @@
+B318 - stranka PS1: jemnejsi mys (Chromium, skutecne dotyky, logika mysi B318 z appky)
+OK     na sirku je tlacitko MYŠ (vlevo nahore)
+OK     mys vypnuta: dotyk na obraze se mysi neposila (jako B316 / B317)
+OK     MYŠ: ps1MysNastav(1, 100) - mys v portu 1 (['1,100'])
+OK     poprve se rovnou otevre napoveda MYŠ PLAYSTATION
+OK     B318 panel: tlacitko "ZRYCHLENÍ: ZAPNUTO" (zvyraznene - stav z C++, bit5), volba portu zvyraznena zvlast: ['mysRezim1']
+OK     B318 panel: vysvetleni zrychleni a odstavec "Myš počítače: v prohlížeči na PC nebo TV (WEB TV) klikni do obrazu ..."
+OK     ZRYCHLENÍ: klik -> ps1MysZrychleni(0) "ZRYCHLENÍ: VYPNUTO" + hlaska "ZRYCHLENÍ VYPNUTO – kurzor jede přesně jako prst", znovu -> (1) "ZRYCHLENÍ: ZAPNUTO" ([0, 1])
+OK     prepnuti zrychleni nezmenilo zvyraznenou volbu portu (['mysRezim1'])
+OK     mys v portu 1: schovane tlacitka, ktera hra s mysi nevidi; KRIZEK, KOLECKO, D-pad zustavaji
+OK     tah: stranka poslala dolu, 15x pohyb, nahoru; sirka obrazu 732 bodu (w v kazde zprave)
+OK     tah 150 x 60 bodu stranky, zrychleni vypnuto: hra +61 / +24 (vypocet za lanem 1,5 %: 61.1 / 24.4), nejvic 3 bodu za snimek - zadny skok
+OK     stejny tah se zrychlenim: prst 0.51 sirky obrazu za s -> nasobek 0.85, hra +49 (bez zrychleni +61, pomer 0.80)
+OK     tuknuti: hra 1 klik levym (5 snimku), kurzor stoji
+OK     tuknuti dvema prsty: hra 1 klik pravym, levym ne
+OK     podrzeni 0,8 s a tah: leve tlacitko 1x stisknuto, drzeno 26 snimku (od 0,65 s do zvednuti), posun +30 (vyber ramem)
+OK     prst na KRIZKU + druhy po obrazu: KRIZEK jde jako tlacitko (['CROSS+', 'CROSS-']), mysi jen prst z obrazu
+OK     C++ hlasi leve drzi: DRŽÍM LEVÉ TLAČÍTKO + vibrace 30 ms, po zvednuti zmizi
+OK     C++ hlasi klik levym / pravym: vibrace 12 / 28 ms ([12, 28]) - bit5 (zrychleni) v odpovedi nevadi
+OK     system dotyk zrusil: stranka posle ZRUSENO (akce 3)
+OK     panel z kolecka: zrychleni podle C++ (VYPNUTO), "Hra: SLUS00973 – MYŠ V PORTU 1", "Rychlost: 100 %"
+OK     Reneho nastaveni Dune 2000 (port 1 + ovladac 2, 295 %): ps1MysNastav jako B317, zvyraznena jen volba portu (['mysRezim2'])
+OK     gesta a panel: zadna chyba JavaScriptu
+OK     cesky na vysku (kroky testu B314): 24 stavu stranky - texty jako B317, navic jen texty B318
+OK     cesky i anglicky na vysku (kroky testu B314): zadna nova chyba JavaScriptu (B317: 0)
+OK     anglicky na vysku (kroky testu B314): 24 stavu bez cestiny
+OK     cesky na sirku (mys): vsechny nove texty B318 na strance (8 / 8)
+OK     cesky i anglicky na sirku (mys): zadna nova chyba JavaScriptu (B317: 3)
+OK     anglicky na sirku (mys): 15 stavu bez cestiny
+OK     anglicky: zrychleni, mys pocitace, hlasky (vse prelozeno)
+VYSLEDEK: 29 kontrol, 0 CHYBA

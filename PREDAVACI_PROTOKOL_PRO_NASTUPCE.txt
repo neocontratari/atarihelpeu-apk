@@ -3211,3 +3211,76 @@
        TV (pointer lock) -> /mys -> pcMysSafe (C++ hotove).
 
 ===============================================================================
+
+   B318: JEMNEJSI MYS PS1, MYS POCITACE NA TV / PC, STARA CESTA TV JEN PRO DIVAKA.
+     Rene (log B317): "mys sice funguje ale je dost neomalena i pri nastaveni
+     citlivosti na 300 je to divny" / "Prenos LAN bud nefunguje a nebo nevim
+     jak na to" / "zase vidim JAVA - tok". Z logu: Dune 2000 USA (SLUS00973),
+     port 1 + ovladac 2, 295 %; hra kresli presne 20 obrazu / s ("stejnych
+     40.0/s"), BIOS cte porty 60x / s; obraz PS1 na PC sel z C++ (59 paketu/s),
+     mys PC nebyla hotova; "TV Java" = menu snimane Javou 14 s pro nikoho.
+     - nap_ps1_mys.h: LANO 1,5 % (do nej kurzor stoji, pak jen to, co lano
+       presahlo - B317 stal do 3 % a skocil o cele 3 %), tuk = draha0 <= 3 %
+       a <= 250 ms, DRZENI 650 ms (jen v lane), dva prsty draha0 <= 6 %.
+       ZRYCHLENI (zrychleni_, vychozi zap): rychlost prstu v (sirky / s, EMA
+       tau 40 ms, pocatek = prumer od dotyku), nasobek (v / 0,7)^0,5 v 0,4-2,5
+       (0,7 sirky / s = 1x -> Reneho 295 % plati). ROZLOZENI: poSnimku(novy
+       obraz) po retro_run -> perioda_ (EMA 0,15, max 6), vyhlN_ 2-4 s
+       hysterezi 0,7; pridej_ jde do nov_, snimek() ho rozlozi rovnym dilem do
+       plan_[N]; ZAOKROUHLENI PO FAZICH (zas_[faze], faze = snimek mod N):
+       kazda faze dostane presne 1/N kazdeho pohybu -> hra, ktera cte jen
+       kazdy N. snimek, vidi presne 1/N (B317: nahodne 0-2x podle toho, kam
+       dotyky padly, kurzor ujizdel); hra, ktera cte kazdy snimek, soucet
+       presne. dorovnej_: kdyz v planu nic neni, zbytky fazi (|soucet| >= 0,5)
+       dojedou hned. Klik z fronty ceka na dojeti posunu (max KLIK_CEKA_MAX 6
+       snimku). pcMys: posun v 1/100000 sirky obrazu v prohlizeci (PC_JEDNOTEK
+       _NA_SIRKU), bez zrychleni. stavBity bit5 = zrychleni. Soubor 4. sloupec
+       zrychleni (B317 radek = zap; B317 cte B318 radek spravne - atoi do TAB).
+       Denik: "MYS TAH n: ..." (prvnich 12 tahu hry), "MYS: hra kresli kazdy
+       X. snimek - posun mysi se rozklada do N snimku", MYS ZDRAVI rozsireno
+       (zrychleni, vyhlazeni, tuknuti / tahy, oriznuto).
+     - nap_ps1_native.cpp: ps1_mys_po_kroku(g_frames, g_dupe_frames pred
+       retro_run) v ps1EglTick i ve vlakne; JNI ps1MysZrychleni(int) -> stav
+       (+ ulozi pro hru); ps1PcMys = nove jednotky.
+     - Java: NativePs1CoreBridge 28 native (+ ps1MysZrychleni,
+       mysZrychleniSafe), AHPS1.ps1MysZrychleni. Server TV: /mys (jen s PS1
+       na obrazovce -> pcMysSafe, odpoved PS1:MYS / PS1:MYS_VYP / NE_PS1),
+       /status ps1mys=1 (vPs1 + rezim 1-3 z mysStavSafe). STARA CESTA:
+       napTvWebStaraCestaKouka() - snima (intro / menu / Atari / PS1 / Sega +
+       PixelCopy) jen s H.264 klientem nebo do 3 s po /frame.jpg / smycce
+       MJPEG (napTvWebStaryKlientMs); spani = napTvWebJpeg null (pri
+       pripojeni placeholder, ne stary obraz), log jen pri zmene. Zvuk PS1
+       pro TV (pullTvAudioSafe) se vyzvedava dal porad (pred podminkou).
+     - Stranka TV (napTvWebWriteHtml): MJPEG az podle prvniho /status
+       (napMjStart; setTimeout(pollFps,0); bez odpovedi po 2,5 s), toggleFs(e)
+       -> napPs1MysKlik (s mysi PS1 klik = zamek ukazatele + cela obrazovka,
+       ne prepinani), panUkaz se pri zamku neukazuje, pollFps cte ps1mys ->
+       napPmZmena. TRETI <script> (ES5): pointer lock, movementX/Y * 100000 /
+       sirka canvasu, jedna zprava /mys naraz (zbytek se scita), tlacitka
+       hned, "jsem tu" po 0,9 s, Esc / blur -> b=0, napovedy (en_tv.js).
+     - Menu (nap_menu_gl.cpp): "TV: proud z C++ WxH" / "stara cesta pres
+       Javu (prohlizec bez proudu)" / "nikdo se nediva - TV obraz se nekresli".
+     - Stranka PS1: tlacitko #mysZrychleni (class mysRezim bez data-rezim -
+       smycky rezimu maji [data-rezim]), odstavce Zrychleni + Mys pocitace,
+       en_ps1.js; napoveda CZ / EN (blok mys + WEB TV V prohlizeci).
+     - TESTY test_overeni/b318 (vse.sh): test_b318_mys.cpp 83 + TSan (i
+       "hra cte kazdy 3. snimek" s chvenim dotyku: B318 odchylka <= 2,3 bodu,
+       B317 az 36); integrace_b318.cpp = SKUTECNE jadro + mys_test.S s
+       periodou P v RAM 0x801000F0 (cte a prepina obraz GP1(05h) jen kazdy
+       P. snimek; nahrada GPUwriteStatus vola pl_rearmed_cbs.pl_vout_flip ->
+       jadro hlasi novy obraz) 36 OK; test_b318_stranka.py (CDP dotyky ->
+       prehraj_dotyky B318); test_b318_tv_mys.py (stranka TV z Javy, nahrada
+       pointer lock); kontrola_java_b318.py (metoda z MainActivity v JVM);
+       kontrola_navodu_b318.py; regrese.sh (B308, JVM TestB318Mys, symboly,
+       B305 / B306 preklad, javac, JNI 28, TV: B315 zvuk, B313 prepnuti, B314
+       jazyk - a) zamerne, B302, B303, B306, SKUTECNE menu - radek TV).
+       Testy test_overeni/b317 (logika, integrace, stranka) plati pro B317:
+       chovani mysi se v B318 zamerne zmenilo (lano misto 3 %, zrychleni,
+       podrzeni 0,65 s, rozlozeni, stav bit5, jednotky mysi z PC) - nahrazuji
+       je testy b318 (stejne scenare + nove).
+     - DALSI KROK (az Rene posle log): MYS TAH radky (jak rychle tahne, jake
+       zrychleni), "hra kresli kazdy X. snimek" a jestli se mu to libi; prip.
+       ZR_V0 / ZR_EXP. Kdyby Dune cetla mys kazdy snimek, rozlozeni nic
+       nemeni (jen o snimek pozdeji).
+
+===============================================================================

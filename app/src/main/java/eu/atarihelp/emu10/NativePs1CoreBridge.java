@@ -173,13 +173,16 @@ public final class NativePs1CoreBridge {
     // Dotyk na obraze hry jako touchpad: akce 0 dolu, 1 nahoru, 2 pohyb, 3 zruseno;
     // x, y v obrazu, w, h = velikost obrazu (body stranky). Vraci stav (bit0 mys zapnuta,
     // bit1 leve tlacitko drzi, bit2 prst na obraze, bit3 / bit4 = tenhle dotyk byl klik
-    // levym / pravym tlacitkem).
+    // levym / pravym tlacitkem, bit5 = zrychleni zapnuto - B318).
     private static native int ps1MysDotyk(int akce, int id, float x, float y, float w, float h);
     // rezim 0 vyp, 1 port 1, 2 port 1 + ovladac v portu 2, 3 port 2 + ovladac v portu 1;
     // citlivost v %. Zapamatuje se pro hru. Vraci "rezim|citlivost|stav|klic hry".
     private static native String ps1MysNastav(int rezim, int citlivost);
     private static native String ps1MysStav();
-    // mys pocitace z prohlizece na TV / PC: posun a tlacitka (bit0 leve, bit1 prave)
+    // B318: zrychleni podle rychlosti prstu (1 zap, 0 vyp), zapamatuje se pro hru. Vraci jako ps1MysStav.
+    private static native String ps1MysZrychleni(int zap);
+    // mys pocitace z prohlizece na TV / PC (B318: /mys): posun v 1/100000 sirky obrazu
+    // v prohlizeci, tlacitka (bit0 leve, bit1 prave)
     private static native String ps1PcMys(int dx, int dy, int tlacitka);
 
     public static int mysDotykSafe(int akce, int id, float x, float y, float w, float h) {
@@ -193,6 +196,10 @@ public final class NativePs1CoreBridge {
     public static String mysStavSafe() {
         if (!loaded) return "";
         try { String r = ps1MysStav(); return r == null ? "" : r; } catch (Throwable t) { return ""; }
+    }
+    public static String mysZrychleniSafe(int zap) {
+        if (!loaded) return "";
+        try { String r = ps1MysZrychleni(zap); return r == null ? "" : r; } catch (Throwable t) { return ""; }
     }
     public static String pcMysSafe(int dx, int dy, int tlacitka) {
         if (!loaded) return null;
