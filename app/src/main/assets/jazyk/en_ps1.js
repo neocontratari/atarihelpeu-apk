@@ -79,6 +79,39 @@ NapJazyk.slovnik({
   'CHYBA cteni .cue': 'ERROR reading the .cue',
   '.CUE precten, ale FILE radek nenalezen - vyber primo .bin': '.CUE read, but no FILE line found - pick the .bin directly',
   '(zatim prazdny - PS1 jeste nebezelo)': '(empty so far - PS1 has not run yet)',
+  // B317: mys PlayStation (tlacitko MYS, panel, ukazatel drzeni, hlasky)
+  'MYŠ': 'MOUSE',
+  'DRŽÍM LEVÉ TLAČÍTKO': 'HOLDING THE LEFT BUTTON',
+  'MYŠ PLAYSTATION (DUNE 2000 …)': 'PLAYSTATION MOUSE (DUNE 2000 …)',
+  'MYŠ PLAYSTATION': 'PLAYSTATION MOUSE',
+  'Pro hry s myší PlayStation – Dune 2000, Command & Conquer, Warzone 2100 … Obraz hry funguje jako touchpad na notebooku.':
+    'For games with the PlayStation mouse – Dune 2000, Command & Conquer, Warzone 2100 … The game picture works like a laptop touchpad.',
+  'VYPNUTÁ – JEN OVLADAČ': 'OFF – CONTROLLER ONLY',
+  'MYŠ V PORTU 1 (DUNE 2000)': 'MOUSE IN PORT 1 (DUNE 2000)',
+  'MYŠ PORT 1 + OVLADAČ PORT 2': 'MOUSE PORT 1 + CONTROLLER PORT 2',
+  'OVLADAČ PORT 1 + MYŠ PORT 2': 'CONTROLLER PORT 1 + MOUSE PORT 2',
+  'VYPNUTÁ': 'OFF',
+  'MYŠ V PORTU 1': 'MOUSE IN PORT 1',
+  'Hry hledají myš na různých místech. Když hra kurzor nevidí, zkus další volbu.':
+    'Games look for the mouse in different places. If the game does not see the cursor, try the next option.',
+  'Rychlost kurzoru': 'Cursor speed',
+  '— jak daleko kurzor dojede, když táhneš prstem nebo držíš D-pad.': '— how far the cursor travels when you drag your finger or hold the D-pad.',
+  'Táhni prstem po obrazu': 'Drag your finger over the picture',
+  'pohyb kurzoru.': 'cursor movement.',
+  'Ťukni': 'Tap',
+  'levé tlačítko (vybrat, potvrdit).': 'left button (select, confirm).',
+  'Ťukni dvěma prsty': 'Tap with two fingers',
+  'pravé tlačítko (zrušit).': 'right button (cancel).',
+  'Podrž prst na místě': 'Hold your finger still',
+  '(zavibruje, nahoře se ukáže DRŽÍM LEVÉ TLAČÍTKO) a táhni = levé tlačítko drží – výběr jednotek rámečkem.':
+    '(it vibrates and HOLDING THE LEFT BUTTON shows at the top) and drag = the left button is held – select units with a box.',
+  'Myš v portu 1:': 'Mouse in port 1:',
+  '✕ = levé a ○ = pravé tlačítko (dají se i držet), D-pad = pomalý přesný posun kurzoru. Ostatní tlačítka hra s myší nevidí, proto jsou schovaná.':
+    '✕ = left and ○ = right button (you can hold them too), D-pad = slow precise cursor movement. A game with only the mouse does not see the other buttons, so they are hidden.',
+  'Volba se pamatuje pro každou hru zvlášť. Když hra myš nevidí ani v jiném portu, spusť hru znovu (CD ISO) – myš je pak zapojená od zapnutí.':
+    'The choice is remembered for each game separately. If the game does not see the mouse in another port either, start the game again (CD ISO) – the mouse is then plugged in from power-on.',
+  'MYŠ: jádro PS1 neodpovídá': 'MOUSE: the PS1 core does not answer',
+  'MYŠ VYPNUTÁ – zase ovladač': 'MOUSE OFF – controller again',
   // dialogy
   'Smazat PS1 stazene hry/cache z telefonu?': 'Delete the downloaded PS1 games/cache from the phone?',
   'Na TV otevri tuto adresu v prohlizeci / AirScreen browseru:': 'On the TV open this address in a browser / the AirScreen browser:',
@@ -112,6 +145,12 @@ NapJazyk.vzory([
   [/^([\s\S]*): vyber PS1 hru \(\.bin\/\.iso\/\.img, pripadne \.cue obsah\)( \| posledni: ([\s\S]*))?$/, function (m, a, b, c) {
     return a + ': choose a PS1 game (.bin/.iso/.img, or the .cue contents)' + (b ? ' | last: ' + c : ''); }],
   [/^HRA SE NESPUSTILA: ([\s\S]*)$/, 'THE GAME DID NOT START: $1'],
+  // B317: mys PlayStation
+  [/^Rychlost: (\d+) %$/, 'Speed: $1 %'],
+  [/^Hra: ([\s\S]+?) – ([\s\S]+)$/, function (m, hra, r) { return 'Game: ' + hra + ' – ' + NapJazyk.tr(r); }],
+  [/^Hra zatím neběží – ([\s\S]+)$/, function (m, r) { return 'No game running yet – ' + NapJazyk.tr(r); }],
+  [/^MYŠ ZAPNUTÁ \(([\s\S]+)\) – táhni prstem po obrazu, ťuk = klik\. Nastavení: kolečko → MYŠ$/, function (m, r) {
+    return 'MOUSE ON (' + NapJazyk.tr(r) + ') – drag your finger over the picture, tap = click. Settings: gear → PLAYSTATION MOUSE'; }],
   [/^✓ Karta je uložená na disku \((\d+) bajtů\)\.$/, '✓ The card is saved on storage ($1 bytes).'],
   [/^([\s\S]*)… (\d+) s \(nic se nekazí, jen to chvíli trvá\)$/, function (m, a, n) {
     return NapJazyk.tr(a) + '… ' + n + ' s (nothing is broken, it just takes a moment)'; }]

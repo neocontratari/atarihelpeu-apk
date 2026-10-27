@@ -3145,3 +3145,69 @@
        umim = 1, a test_b316_cart_diff to porovna s Atari800 samo.
 
 ===============================================================================
+
+   B317: MYS PLAYSTATION PRO PS1 (DUNE 2000 ...).
+     Rene: "U PS1 - slo by napriklad u hry dune2000 pouzit i pres obrazovku
+     mys?" ... "Ted tu mysku pro ps1 dune2000". Dune 2000 (SLES-02250) mys
+     PlayStation oficialne umi; psxdatacenter: "ePSXe 1.9.0 (Disable pad 2
+     to use the Mouse)" -> vychozi rezim = mys v portu 1, port 2 prazdny.
+     Hru jsme nemeli (do repozitare se nedava) - port overi Rene + denik.
+     - nap_ps1_mys.h (bez Androidu): nap::Ps1Mys, vse pod jednim zamkem.
+       Rezim VYP / PORT1 / PORT1_OVL2 / PORT2_OVL1, zarizeni() -> porty
+       (mys = RETRO_DEVICE_PSE_MOUSE 0x102, nic = 0), poNacteniHry (jadro po
+       retro_load_game da do vsech portu ovladac) + zmenaPortu (jednou za
+       zmenu, vlakno emulace pred retro_run). dotyk(): gesta JEDEN / DVA /
+       DRZENI / KONEC - tah az za 3 % sirky (pak cely posun od dotyku),
+       tuk <= 250 ms = klik L (fronta max 4, 5 snimku dole + 4 nahore),
+       2 prsty <= 350 ms bez tahu = klik P, prst 500 ms na miste = leve
+       drzi (snimek()), ZRUSENO vse pusti; vraci KLIK_L / KLIK_P. Posun:
+       320 bodu na sirku obrazu x citlivost, zasobnik double (max 1000),
+       snimek lround, max +-127. Tlacitka ovladace (KRIZEK = L, KOLECKO = P,
+       smer = posun 1 -> 6 bodu / snimek za 0,7 s) JEN v PORT1 (ovladac neni
+       zapojeny); jinak jdou ovladaci (padDotaz jen v portOvladace).
+       pcMys (prohlizec TV - zatim nevola nikdo, JNI ps1PcMys pripraveno,
+       hlidac 2,5 s). Pamet: PS1_mys_pro_hry.txt v g_savedir (slozka karty)
+       "klic TAB rezim TAB citlivost", max 500, zapis .novy + rename;
+       klicHry = CdromId (SLUS99999 = zastupne ID -> jmeno souboru), bez
+       disku "BIOS". souhrn() pro MYS ZDRAVI (prazdny, kdyz je vypnuta).
+     - nap_ps1_native.cpp: g_mys, nap_input_state (MOUSE -> mysDotaz, JOYPAD
+       -> padDotaz = pri VYP presne B316: jen port 1), ps1_mys_po_startu ve
+       VSECH 3 startech (ps1BootDoMonitoru, ps1EglBoot, nap_ps1_egl_boot_c),
+       ps1_mys_pred_krokem pred retro_run (vlakno emulace i ps1EglTick),
+       retro_set_controller_port_device + CdromId + nap_pad_cteni SLABE
+       (stare testy s falesnym jadrem se prelozi beze zmeny). ZDRAVI: "MYS
+       ZDRAVI: <souhrn> | hra cte port 1 Nx/s, port 2 Nx/s". JNI ps1MysDotyk
+       (int, int, float x4) -> int (bit0 zapnuta, bit1 leve drzi, bit2 prst,
+       bit3 / bit4 klik L / P), ps1MysNastav(int, int) -> "rezim|citlivost|
+       stav|klic" (pri zmene ulozi pro hru), ps1MysStav, ps1PcMys.
+     - vendor pcsx_rearmed: pad.c nap_pad_cteni[2] (PAD1/2_startPoll),
+       frontend/plugin.c PAD1/2_readPort: in_mouse se po precteni vynuluje
+       (posun jen jednou za snimek - hra, ktera cte 2x, mela 2x posun;
+       overeno se skutecnym jadrem proti plugin.c B316).
+     - Java: NativePs1CoreBridge 4 native + obaly mysDotykSafe, mysNastavSafe,
+       mysStavSafe, pcMysSafe; MainActivity AHPS1.ps1MysDotyk / ps1MysNastav
+       / ps1MysStav. Stranka emu_ps1: #btnMys (jen na sirku), dotyky na
+       #psMonitor -> ps1MysDotyk (jen se zapnutou mysi, identifikator prstu,
+       x / y vuci obrazu, w / h obrazu), stav kazdou 1 s (+ 0,1 s s prstem na
+       obraze - DRZIM LEVE TLACITKO + vibrace), panel #mysPanel z D-PAD
+       panelu (btnMysNastaveni), body.mysPort1 schova trojuhelnik, ctverec,
+       L1, L2, R1, R2, SELECT, START. localStorage: napPs1MysRezim (posledni
+       port pro tlacitko MYS), napPs1MysNapoveda (napoveda jen poprve).
+       en_ps1.js + napoveda CZ / EN (blok v kapitole PS1).
+     - TESTY test_overeni/b317 (JAK_SPUSTIT.txt, vse.sh): test_b317_mys.cpp
+       (logika + TSan), integrace_b317.cpp = SKUTECNE jadro PCSX z appky
+       (stavba_jadra.sh: x86_64, DRC_DISABLE, bez gpu_neon / gpulib - cip GPU
+       nahrazen, NDRC_THREAD pryc, new_dynarec jen emu_if.c) + BIOS HLE +
+       mys_test.S (PS-EXE pres clang mipsel / ld.lld, InitPAD / StartPAD,
+       scita posun jako hra, vysledky v RAM 0x80100100) - ps1EglBoot /
+       ps1EglTick po snimcich i ps1BootDoMonitoru s vlaknem; --b316 = plugin.c
+       z B316. test_b317_stranka.py = Chromium, skutecne dotyky CDP, zaznam
+       prehrany do logiky (prehraj_dotyky.cpp), cesky = B316 + mys, anglicky.
+       regrese.sh = testy B308 na kodu B317 (stranka B308 jen s ceskym
+       Chromiem - test je starsi nez jazyk B314; anglicky B317 = B316), JVM
+       TestB317Mys -Xcheck:jni, javac, kontrola_jni_ps1.py.
+     - DALSI KROK (az Rene posle log): podle "hra cte port 1 / 2" a jestli
+       Dune kurzor videla, prip. zmenit vychozi rezim. Mys PC na TV: stranka
+       TV (pointer lock) -> /mys -> pcMysSafe (C++ hotove).
+
+===============================================================================

@@ -1,0 +1,22 @@
+B308: klavesnice PC v TV prohlizeci (Chromium) -> server jako Java -> SKUTECNY nap_ps1_native.cpp
+stranka z MainActivity.java: 40316 bajtu
+OK     Java: /status hlasi ps1=..., klavesa na strance PS1 jde do NativePs1CoreBridge.pcKlavesaSafe
+OK     PS1 bezi (vlakno emulace cte tlacitka 60x za sekundu)
+OK     stranka z /status (ps1=1) poznala PS1 - klavesnice se zapnula sama
+   napoveda v rohu: PS1 - sipky/WASD smer, K/mezernik KRIZEK, L KOLECKO, J CTVEREC, I TROJUHELNIK, Q/E L1/R1, Z/C L2/R2, Enter/P START, Backspace/O SELECT
+OK     v rohu obrazovky je napoveda klaves pro PS1
+OK     vsech 21 klaves z prohlizece dojde do jadra PS1 a po pusteni se pusti; prohlizec ukaze, co klavesa udelala []
+OK     tri klavesy drzene najednou (NAHORU + VPRAVO + KRIZEK)
+OK     vse pusteno
+OK     klavesa drzena 4 s - jadro ji celou dobu vidi (prohlizec posila "Zije" kazdych 0,8 s)
+OK     behem drzeni prisel "Zije" 11x
+OK     pusteno
+OK     okno prohlizece ztratilo zamereni -> PustVse -> C++ vse pustilo
+OK     spadla Wi-Fi s drzenym KRIZKEM -> C++ ho pustilo samo za 2.3 s (postava nebezi do nekonecna)
+OK     po obnoveni spojeni klavesnice zase funguje
+OK     rychla sekvence 10 klaves - na konci nic nezustalo drzene
+OK     appka uz neni na strance PS1 (ps1=0) -> prohlizec klavesy pro PS1 neposila
+OK     denik PS1: stisky z TV, PustVse i hlidac
+OK     zadna chyba JavaScriptu na strance []
+
+VYSLEDEK: 17 kontrol, 0 CHYB

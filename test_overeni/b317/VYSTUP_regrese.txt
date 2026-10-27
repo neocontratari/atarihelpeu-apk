@@ -1,0 +1,15 @@
+B317 - regrese PS1 (mys vypnuta = B316), JVM, JNI, javac
+OK     preklad ps1_harness.cpp (B308) s nap_ps1_native.cpp B317, -Wl,--no-undefined  -- varovani: 0, chyb: 0
+OK     B308 denik PS1 + klavesnice z TV v C++ + zamek kolem retro_run (test_ps1_denik.py)  -- VYSLEDEK: 63 kontrol, 0 CHYB
+OK     B308 ThreadSanitizer: vlakno emulace, zvuk, klavesy z prohlizece, denik, SAVE / LOAD, dotyk (tsan_denik.cpp)  -- hlaseni ThreadSanitizer: 0; stop: PS1_STOPPED, krokem emulace 793, soubeznych ulozeni 0, ulozeni 78
+OK     B308 JVM TestPodpisu (-Xcheck:jni): skutecna trida NativePs1CoreBridge B317  -- VYSLEDEK: nove native metody B308 (ps1PcKlavesa, ps1Denik) i obaly sedi, 0 chyb
+OK     B308 klavesnice PC v TV prohlizeci -> PS1 (Chromium, stranka z MainActivity.java)  -- VYSLEDEK: 17 kontrol, 0 CHYB
+OK     B308 stranka PS1: nahravani hry podle skutecneho stavu, banner, LOG s denikem (Chromium cesky, stranka B317)  -- VYSLEDEK: 23 kontrol, 0 CHYB
+OK     B308 stranka PS1 v anglickem Chromiu: B317 stejne jako B316 (ceske texty test nenajde od B314 - nic noveho)  -- B316: VYSLEDEK: 23 kontrol, 7 CHYB | B317: VYSLEDEK: 23 kontrol, 7 CHYB
+OK     JVM TestB317Mys (-Xcheck:jni): ps1MysNastav / ps1MysStav / ps1MysDotyk / ps1PcMys primo i pres obaly MainActivity  -- VYSLEDEK: 0 chyb
+OK     kazda native metoda NativePs1CoreBridge ma v knihovne svou funkci (nm)  -- 27 OK, 0 CHYB
+OK     B305 tv_ps1.cpp (proud PS1 na TV) s nap_ps1_native.cpp B317: preklad + link  -- 
+OK     B306 tv_ps1_6.cpp s nap_ps1_native.cpp B317: preklad + link  -- 
+OK     javac proti android.jar (cela appka)  -- trid prelozeno: 76 VYSLEDEK: 0 chyb prekladu 
+OK     podpisy JNI: NativePs1CoreBridge (javac -h) = nap_ps1_native.cpp (jmeno, navratovy typ, typy parametru)  -- VYSLEDEK: 27 native metod Javy, 0 CHYB
+VYSLEDEK: 13 OK, 0 CHYBA

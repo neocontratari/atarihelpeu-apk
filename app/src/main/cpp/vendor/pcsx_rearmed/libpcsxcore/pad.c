@@ -526,12 +526,17 @@ static int PADstartPollMain(PadDataS *pad)
 	return 1;
 }
 
+// NAP B317: kolikrat hra cetla port 1 / port 2 - do deniku PS1 (kde hra hleda mys)
+unsigned int nap_pad_cteni[2];
+
 // refresh the button state on port 1.
 // int pad is not needed.
 unsigned char PAD1_startPoll(void)
 {
 	PadDataS *pad = &g.pads[0];
 	int i;
+
+	nap_pad_cteni[0]++;	// NAP B317
 
 	pad->requestPadIndex = 0;
 	PAD1_readPort(pad, &pad->portMultitap);
@@ -556,6 +561,8 @@ unsigned char PAD2_startPoll(void)
 	int pad_index = g.pads[0].portMultitap ? 4 : 1;
 	PadDataS *pad = &g.pads[pad_index];
 	int i;
+
+	nap_pad_cteni[1]++;	// NAP B317
 
 	pad->requestPadIndex = pad_index;
 	PAD2_readPort(pad, &pad->portMultitap);

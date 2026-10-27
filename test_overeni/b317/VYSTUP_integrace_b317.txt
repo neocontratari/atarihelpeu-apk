@@ -1,0 +1,34 @@
+B317 - mys PlayStation se SKUTECNYM jadrem PS1 (PCSX-ReARMed z appky, BIOS HLE, hra mys_test.exe)
+OK      jadro nastartovalo hru mys_test.exe (ps1EglBoot = 1)
+OK      mys vypnuta (hra bez zaznamu): BIOS cte port 1 kazdy snimek - standardni ovladac (ID 41), 89 cteni
+OK      port 2: standardni ovladac bez stisku (jako B316)
+OK      ps1MysStav: "0|100|0|mys_test.exe" (klic hry = jmeno souboru, protoze PS-EXE ma zastupne ID SLUS99999)
+OK      mys vypnuta: KRIZEK = tlacitko ovladace v portu 1 (BFFF), port 2 nic
+OK      KRIZEK pusten
+OK      ps1MysNastav(1, 100) -> "1|100|1|mys_test.exe"
+OK      hra vidi v portu 1 MYS PlayStation (ID 12), 11 cteni s mysi
+OK      port 2 je prazdny (BIOS: FF = nic zapojeno)
+OK      po zmene portu jadro 34 snimku hlasi "nic zapojeno" (vytazeni a zasunuti, ~32)
+OK      denik PS1: "MYS: mys v portu 1, port 2 prazdny" a "MYS: jadro - port 1 = mys PlayStation, port 2 = nic"
+OK      zapamatovano pro hru: PS1_mys_pro_hry.txt ve slozce karty ("mys_test.exe 1 100")
+OK      tah prstem 10 % x 5 % sirky obrazu: kurzor ve hre +32 / +16 (je 32 / 16), zadny klik
+OK      rychly tah 2x pres celou sirku: -640 bodu, za snimek nejvys 127 (je -640, max 127)
+OK      tuknuti (67 ms): hra vidi 1 klik levym, tlacitko 5 snimku (5), kurzor stoji; dotyk vratil bit klik L
+OK      tuknuti dvema prsty: hra vidi 1 klik pravym (5 snimku), levym ne
+OK      prst drzeny 0,6 s: stav pro stranku 1|100|7| (bit1 = leve drzi -> DRZIM LEVE TLACITKO)
+OK      hra: leve tlacitko 1x stisknuto a drzeno 9 snimku, behem toho posun +32 (vyber ramem)
+OK      KRIZEK = leve (10 snimku), KOLECKO = prave tlacitko mysi (6 snimku)
+OK      D-pad vpravo 1 s: kurzor +253 (zrychluje z 1 na 6 bodu za snimek)
+OK      mys z PC: posun -50 / +25 a leve tlacitko prisly do hry
+OK      hra cte mys 2x v jednom snimku: poprve +10 / -7, podruhe 0 / 0 (posun se precte jednou - jinak by kurzor jel 2x rychleji)
+OK      mys port 1 + ovladac port 2: KRIZEK a smer jdou ovladaci v portu 2 (BFDF), mys jen z dotyku (+32)
+OK      ovladac port 1 + mys port 2: KOLECKO na ovladaci v portu 1, mys v portu 2 (posun +16 / +32, klik)
+OK      mys vypnuta: zpet standardni ovladac v portu 1 (KRIZEK ve hre), port 2 bez stisku
+OK      vypnuta: dotyk na obraze hru nijak neovlivni
+OK      znovu spustena hra: mys v portu 1 (citlivost 150 %) od prvniho snimku - hra ovladac vubec nevidela (1|150|1|mys_test.exe)
+OK      denik: "MYS: hra mys_test.exe - mys v portu 1, port 2 prazdny, citlivost 150 % (zapamatovano pro tuto hru)"
+OK      telefonni cesta (ps1BootDoMonitoru, vlakno emulace, dotyk z jineho vlakna): mys od startu, 3 tahy = +216 (vypocet 216), 1 klik
+OK      denik: radek MYS ZDRAVI s tim, jak casto hra cte port 1 / 2: MYS ZDRAVI: mys v portu 1, citlivost 150 %: dotyku 4, posun 216 / 0 bodu, klik L 1 P 0, drzeni L 0, snimku s L 5 P 0, smerem 0, z PC zprav 0 (zmen tlacitek 0) | hra cte port 1 61x/s, port 2 61x/s
+VYSLEDEK: 30 OK, 0 CHYBA
+B316 (frontend/plugin.c z commitu B316) - mys cteni 2x v jednom snimku
+B316: 1. cteni 10 / -7, 2. cteni 10 / -7 (ID 12)

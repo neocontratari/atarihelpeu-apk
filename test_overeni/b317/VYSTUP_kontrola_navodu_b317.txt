@@ -1,0 +1,33 @@
+index.html: 351 bloku textu v B316, 359 v B317
+   B316  p: UPRAVIT ROZLOŽENÍ TLAČÍTEK, OVLÁDÁNÍ: CITLIVOST A VZHLED, PROHODIT D-PAD A AKCE (LEVÁK), NAČÍST RYCHLOU POZICI (nahraje pozici ze SAVE GAME – přesně tam, kde jsi skončil), ULOŽIT LOG A ODESLAT a DALŠÍ (BIOS, CD, LOG...).
+   B317  p: UPRAVIT ROZLOŽENÍ TLAČÍTEK, OVLÁDÁNÍ: CITLIVOST A VZHLED, PROHODIT D-PAD A AKCE (LEVÁK), NAČÍST RYCHLOU POZICI (nahraje pozici ze SAVE GAME – přesně tam, kde jsi skončil), ULOŽIT LOG A ODESLAT, MYŠ PLAYSTATION (DUNE 2000 …) a DALŠÍ (BIOS, CD, LOG...).
+   B317  h3: Myš PlayStation (Dune 2000 …)
+   B317  p: Hry, které umí myš PlayStation (Dune 2000, Command & Conquer, Warzone 2100 …), ovládáš na šířku prstem přímo po obrazu – obraz hry je touchpad jako na notebooku. Zapíná se tlačítkem MYŠ vlevo nahoře, nastavení: kolečko ⚙ → MYŠ PLAYSTATION (DUNE 2000 …).
+   B317  li: Táhni prstem po obrazu = pohyb kurzoru. Ťukni = levé tlačítko, ťukni dvěma prsty = pravé.
+   B317  li: Podrž prst na místě, až zavibruje (nahoře se ukáže DRŽÍM LEVÉ TLAČÍTKO), a táhni = výběr jednotek rámečkem.
+   B317  li: Myš v portu 1: ✕ = levé a ○ = pravé tlačítko myši (dají se i držet), D-pad = pomalý přesný posun kurzoru. Ostatní tlačítka hra s myší nevidí, proto jsou schovaná.
+   B317  li: Hry hledají myš na různých místech: MYŠ V PORTU 1 (DUNE 2000), MYŠ PORT 1 + OVLADAČ PORT 2 nebo OVLADAČ PORT 1 + MYŠ PORT 2. Rychlost kurzoru jde změnit.
+   B317  li: Volba se pamatuje pro každou hru zvlášť – příště je myš zapojená hned od zapnutí.
+   B317  p: TIP Na TV / PC s myší v portu 1: šipky = kurzor, K nebo mezerník = levé, L = pravé tlačítko myši.
+OK     index.html: v D-PAD A OVLADANI (kapitola PS1) pribylo jen "MYŠ PLAYSTATION (DUNE 2000 …)"
+OK     index.html: novy blok "Myš PlayStation (Dune 2000 …)" (nadpis, odstavec, 5 polozek, TIP)
+OK     index.html: jine zmeny textu: 0
+OK     index.html: kapitoly, odkazy a obrazky beze zmeny (93)
+OK     index.html: novy blok je v kapitole PS1
+en.html: 351 bloku textu v B316, 359 v B317
+   B316  p: EDIT BUTTON LAYOUT, CONTROLS: SENSITIVITY AND LOOK, SWAP D-PAD AND ACTIONS (LEFT-HANDED), LOAD QUICK POSITION (loads the position from SAVE GAME – exactly where you left off), SAVE AND SEND THE LOG and MORE (BIOS, CD, LOG...).
+   B317  p: EDIT BUTTON LAYOUT, CONTROLS: SENSITIVITY AND LOOK, SWAP D-PAD AND ACTIONS (LEFT-HANDED), LOAD QUICK POSITION (loads the position from SAVE GAME – exactly where you left off), SAVE AND SEND THE LOG, PLAYSTATION MOUSE (DUNE 2000 …) and MORE (BIOS, CD, LOG...
+   B317  h3: PlayStation mouse (Dune 2000 …)
+   B317  p: Games that support the PlayStation mouse (Dune 2000, Command & Conquer, Warzone 2100 …) are played in landscape with your finger right on the picture – the game picture is a touchpad like on a laptop. Switch it on with the MOUSE button at the top left, sett
+   B317  li: Drag your finger over the picture = cursor movement. Tap = left button, tap with two fingers = right.
+   B317  li: Hold your finger still until it vibrates (HOLDING THE LEFT BUTTON shows at the top) and drag = select units with a box.
+   B317  li: Mouse in port 1: ✕ = left and ○ = right mouse button (you can hold them too), D-pad = slow precise cursor movement. A game with only the mouse does not see the other buttons, so they are hidden.
+   B317  li: Games look for the mouse in different places: MOUSE IN PORT 1 (DUNE 2000), MOUSE PORT 1 + CONTROLLER PORT 2 or CONTROLLER PORT 1 + MOUSE PORT 2. The cursor speed can be changed.
+   B317  li: The choice is remembered for each game separately – next time the mouse is plugged in right from power-on.
+   B317  p: TIP On a TV / PC with the mouse in port 1: arrows = cursor, K or space = left, L = right mouse button.
+OK     en.html: v D-PAD A OVLADANI (kapitola PS1) pribylo jen "PLAYSTATION MOUSE (DUNE 2000 …)"
+OK     en.html: novy blok "PlayStation mouse (Dune 2000 …)" (nadpis, odstavec, 5 polozek, TIP)
+OK     en.html: jine zmeny textu: 0
+OK     en.html: kapitoly, odkazy a obrazky beze zmeny (93)
+OK     en.html: novy blok je v kapitole PS1
+VYSLEDEK: 0 CHYBA

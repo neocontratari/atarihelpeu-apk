@@ -1,0 +1,18 @@
+OK     knihovna napps1core nactena skutecnou tridou NativePs1CoreBridge
+OK     native metod ve tride: 27 (23 z B316 + 4 mys)
+OK     bootGameSafe (ps1BootDoMonitoru) -> PS1_HRA_OK
+OK     ps1MysStav() -> String: "0|100|0|Dune 2000.cue" (hra bez zaznamu = mys vypnuta)
+OK     ps1MysNastav(int, int) -> String: "1|120|1|Dune 2000.cue"
+OK     ps1MysDotyk(int, int, float x4) -> int: 5 (bit0 mys, bit2 prst na obraze)
+OK     tuknuti: ps1MysDotyk vratil 9 (bit3 = klik levym -> stranka zavibruje)
+OK     ps1PcMys(int, int, int) -> String: PS1:MYS
+OK     mysNastavSafe(3, 80) -> "3|80|1|Dune 2000.cue"
+OK     mysStavSafe -> 3|80|1|Dune 2000.cue
+OK     mysDotykSafe -> 5
+OK     pcMysSafe -> PS1:MYS
+OK     mysNastavSafe(0, 80): mys vypnuta -> "0|80|0|Dune 2000.cue"
+OK     mys vypnuta: pcMysSafe -> PS1:MYS_VYP
+OK     PS1_mys_pro_hry.txt ve slozce karty: "Dune 2000.cue  0  80" (falesne jadro nema ID disku -> jmeno souboru)
+OK     denik PS1: radky MYS (zapnuti, mys z PC)
+stop: PS1_STOPPED
+VYSLEDEK: 0 chyb

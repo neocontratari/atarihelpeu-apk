@@ -1,0 +1,32 @@
+== NativePs1CoreBridge (Java, javac -h) <-> nap_ps1_native.cpp (C++)
+OK     proudDalsiNative       jint(jint, jbyteArray, jint, jint)
+OK     proudLogNative         jstring()
+OK     proudOtevriNative      jint()
+OK     proudStavNative        jint()
+OK     proudZavriNative       void(jint)
+OK     ps1BootDoMonitoru      jstring(jstring, jstring, jstring)
+OK     ps1CoreInfo            jstring()
+OK     ps1Denik               jbyteArray()
+OK     ps1GrabFrame           jint(jintArray)
+OK     ps1LoadState           jstring(jstring)
+OK     ps1MemCardInfo         jstring()
+OK     ps1MysDotyk            jint(jint, jint, jfloat, jfloat, jfloat, jfloat)   <- B317 mys
+OK     ps1MysNastav           jstring(jint, jint)   <- B317 mys
+OK     ps1MysStav             jstring()   <- B317 mys
+OK     ps1PcKlavesa           jstring(jstring, jboolean)
+OK     ps1PcMys               jstring(jint, jint, jint)   <- B317 mys
+OK     ps1PullAudio           jint(jshortArray, jint)
+OK     ps1PullTvAudio         jint(jshortArray)
+OK     ps1SaveState           jstring(jstring)
+OK     ps1SetButton           void(jint, jboolean)
+OK     ps1SetDiagLogPath      void(jstring)
+OK     ps1SetDisplaySurface   void(jobject)
+OK     ps1SetInput            void(jint, jboolean)
+OK     ps1SetStick            void(jint, jint)
+OK     ps1SetTvSurface        void(jobject)
+OK     ps1Status              jstring()
+OK     ps1Stop                jstring()
+       ps1EglBoot             jen v C++ (Java ji nevola)
+       ps1EglStop             jen v C++ (Java ji nevola)
+       ps1EglTick             jen v C++ (Java ji nevola)
+VYSLEDEK: 27 native metod Javy, 0 CHYB

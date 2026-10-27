@@ -1,0 +1,33 @@
+B317 - stranka PS1 s mysi (Chromium, skutecne dotyky, logika mysi z appky)
+OK     na sirku je tlacitko MYŠ (vlevo nahore)
+OK     mys vypnuta: dotyk na obraze se mysi neposila (jako B316)
+OK     MYŠ: ps1MysNastav(1, 100) - mys v portu 1, stranka v rezimu mysi (['1,100'])
+OK     poprve se rovnou otevre napoveda MYŠ PLAYSTATION (gesta)
+OK     mys v portu 1: schovane trojuhelnik, ctverec, L1, L2, R1, R2, SELECT, START; KRIZEK, KOLECKO, D-pad zustavaji
+OK     tah: stranka poslala dolu, 15x pohyb, nahoru; sirka obrazu 732 bodu (w v kazde zprave)
+OK     tah prstem 150 x 60 bodu stranky: hra +66 / +26 (vypocet 65.5 / 26.2), zadny klik
+OK     souradnice prstu se posilaji vuci obrazu hry (x 216.2 = prst - levy okraj obrazu)
+OK     tuknuti: hra 1 klik levym (5 snimku), kurzor stoji
+OK     tuknuti dvema prsty: hra 1 klik pravym, levym ne (oba prsty s vlastnim cislem)
+OK     podrzeni 0,7 s a tah: leve tlacitko 1x stisknuto, drzeno 28 snimku (od 0,5 s do zvednuti), posun +35 (vyber ramem)
+OK     prst na KRIZKU + druhy po obrazu: KRIZEK jde jako tlacitko (['CROSS+', 'CROSS-']), mysi jen prst z obrazu
+OK     C++ hlasi leve drzi: nahore DRŽÍM LEVÉ TLAČÍTKO + vibrace 30 ms (1x), po zvednuti prstu zmizi
+OK     C++ hlasi klik levym / pravym: kratka vibrace 12 / 28 ms ([12, 28])
+OK     system dotyk zrusil: stranka posle ZRUSENO (akce 3) - nic nekliknout, vse pustit
+OK     okno ztratilo zamereni (appka do pozadi) s prstem na obraze: ZRUSENO
+OK     kolecko (na sirku D-PAD A OVLÁDÁNÍ): tlacitko MYŠ PLAYSTATION (DUNE 2000 …)
+OK     panel: zvyraznena volba MYŠ V PORTU 1, "Hra: SLES02250 – MYŠ V PORTU 1", "Rychlost: 100 %"
+OK     OVLADAČ PORT 1 + MYŠ PORT 2: ps1MysNastav(3, 100), zvyraznena, ovladac cely (nic schovaneho)
+OK     rychlost 180 %: ps1MysNastav(3, 180), "Rychlost: 180 %"
+OK     mys v portu 2 + ovladac v portu 1: vsechna tlacitka ovladace videt
+OK     MYŠ vypne (0) a zapne znovu naposledy zvoleny port (3) - uz bez napovedy, jen hlaska: "MYŠ ZAPNUTÁ (OVLADAČ PORT 1 + MYŠ PORT 2) – táhni prstem po obrazu, ťuk = klik. Nastavení: kolečko → MYŠ"
+OK     na vysku (uvodni obrazovka, nehraje se) tlacitko MYŠ neni
+OK     na vysku: nastaveni mysi je v D-PAD A OVLÁDÁNÍ
+OK     gesta a panel: zadna chyba JavaScriptu
+OK     cesky na vysku (kroky testu B314): 24 stavu stranky - texty jako B316, navic jen texty mysi
+OK     cesky i anglicky na vysku (kroky testu B314): zadna nova chyba JavaScriptu (B316: 0)
+OK     anglicky na vysku (kroky testu B314): 24 stavu bez cestiny
+OK     cesky i anglicky na sirku (mys): zadna chyba JavaScriptu
+OK     anglicky na sirku (mys): 14 stavu bez cestiny
+OK     anglicky: tlacitko MOUSE, panel, ukazatel, hlasky (vse prelozeno)
+VYSLEDEK: 31 kontrol, 0 CHYBA

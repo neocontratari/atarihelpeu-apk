@@ -6596,6 +6596,24 @@ public class MainActivity extends Activity {
             int id = ps1ButtonId(button);
             if (id >= 0) NativePs1CoreBridge.setInputSafe(id, down);
         }
+        // ===== B317: MYS PLAYSTATION (Dune 2000 ...) - Rene: "slo by napriklad u hry
+        // dune2000 pouzit i pres obrazovku mys?" Obraz hry je touchpad; co dotyk
+        // udela (posun, klik, drzeni), do ktereho portu je mys zapojena a zapamatovani
+        // pro kazdou hru - vse v C++ (nap_ps1_mys.h). Tady jen predani.
+        @JavascriptInterface
+        public int ps1MysDotyk(int akce, int id, float x, float y, float w, float h) {
+            return NativePs1CoreBridge.mysDotykSafe(akce, id, x, y, w, h);
+        }
+        @JavascriptInterface
+        public String ps1MysNastav(int rezim, int citlivost) {
+            String r = NativePs1CoreBridge.mysNastavSafe(rezim, citlivost);
+            appendNativeLog("B317 PS1_MYS_NASTAV rezim=" + rezim + " citlivost=" + citlivost + " -> " + r);
+            return r;
+        }
+        @JavascriptInterface
+        public String ps1MysStav() {
+            return NativePs1CoreBridge.mysStavSafe();
+        }
         private File ps1StateFile() {
             File saveDir = new File(getFilesDir(), "ps1_saves");
             if (!saveDir.exists()) saveDir.mkdirs();

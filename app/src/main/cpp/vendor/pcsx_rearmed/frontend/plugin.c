@@ -45,6 +45,9 @@ void PAD1_readPort(PadDataS *pad, int *is_multitap) {
 	{
 		pad->moveX = in_mouse[pad_index][0];
 		pad->moveY = in_mouse[pad_index][1];
+		// NAP B317: jako skutecna mys - posun se precte jednou (dalsi cteni ve stejnem
+		// snimku dostane 0, ne ten samy posun znovu = kurzor by jel 2x rychleji)
+		in_mouse[pad_index][0] = in_mouse[pad_index][1] = 0;
 	}
 
 	if (is_multitap)
@@ -72,6 +75,9 @@ void PAD2_readPort(PadDataS *pad, int *is_multitap) {
 	{
 		pad->moveX = in_mouse[pad_index][0];
 		pad->moveY = in_mouse[pad_index][1];
+		// NAP B317: jako skutecna mys - posun se precte jednou (dalsi cteni ve stejnem
+		// snimku dostane 0, ne ten samy posun znovu = kurzor by jel 2x rychleji)
+		in_mouse[pad_index][0] = in_mouse[pad_index][1] = 0;
 	}
 
 	if (is_multitap)

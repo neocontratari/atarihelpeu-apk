@@ -1,0 +1,88 @@
+2026-10-27 09:11:33.761  PS1 JADRO: Starting PCSX-ReARMed r26-nap-sa1 (cc 13.3.0 64bit pic ssse3 gpu=BUILTIN_GPU)
+2026-10-27 09:11:33.761  PS1 JADRO: build time: Oct 27 2026 09:11:20
+2026-10-27 09:11:33.761  PS1 JADRO: 2 cpu core(s) detected
+2026-10-27 09:11:33.763  PS1 JADRO: No BIOS files found.
+2026-10-27 09:11:33.763  PS1 JADRO: Using PIXEL_FORMAT 2
+2026-10-27 09:11:33.763  PS1 JADRO: plugin: /builtin_gpu
+2026-10-27 09:11:33.763  PS1 JADRO: plugin: /builtin_spu
+2026-10-27 09:11:33.763  PS1 JADRO: Plugins loaded.
+2026-10-27 09:11:33.763  PS1 JADRO: Loaded CD Image: PRAC/mys_test.exe (568 bytes).
+2026-10-27 09:11:33.763  PS1 JADRO: Track 01 DATA  - Start 00:02:00, Length 00:00:00
+2026-10-27 09:11:33.763  PS1 JADRO: End 00:02:00 (sector 150)
+2026-10-27 09:11:33.763  PS1 JADRO: memcard 1 is libretro-managed
+2026-10-27 09:11:33.763  PS1 JADRO: memcard 2 is libretro-managed
+2026-10-27 09:11:33.776  PS1 JADRO: HLE BIOS initialized.
+2026-10-27 09:11:33.776  PS1 JADRO: note: running with HLE BIOS, expect compatibility problems
+2026-10-27 09:11:33.776  PS1 JADRO: ----------------------------------------------------------
+2026-10-27 09:11:33.776  PS1 PAMETOVA KARTA nova (soubor zatim neni): PRAC/karta/memory_card_1.srm, 131072 B prazdna
+2026-10-27 09:11:33.776  PS1 MYS: hra mys_test.exe - vypnuta, ovladac v portu 1 (zapne se tlacitkem MYS na sirku)
+2026-10-27 09:11:35.380  PS1 MYS: mys v portu 1, port 2 prazdny (citlivost 100 %)
+2026-10-27 09:11:35.395  PS1 JADRO: port: 1  device: mouse
+2026-10-27 09:11:35.395  PS1 JADRO: port: 2  device: none
+2026-10-27 09:11:35.397  PS1 MYS: jadro - port 1 = mys PlayStation, port 2 = nic
+2026-10-27 09:11:39.134  PS1 MYS Z PC: prvni zprava z prohlizece (mys je zapnuta - jde do hry)
+2026-10-27 09:11:39.267  PS1 MYS: mys v portu 1, ovladac v portu 2 (citlivost 100 %)
+2026-10-27 09:11:39.282  PS1 JADRO: port: 2  device: standard
+2026-10-27 09:11:39.284  PS1 MYS: jadro - port 1 = mys PlayStation, port 2 = ovladac
+2026-10-27 09:11:40.186  PS1 MYS: mys v portu 2, ovladac v portu 1 (citlivost 100 %)
+2026-10-27 09:11:40.199  PS1 JADRO: port: 1  device: standard
+2026-10-27 09:11:40.199  PS1 JADRO: port: 2  device: mouse
+2026-10-27 09:11:40.201  PS1 MYS: jadro - port 1 = ovladac, port 2 = mys PlayStation
+2026-10-27 09:11:41.253  PS1 MYS: vypnuta, ovladac v portu 1 (citlivost 100 %)
+2026-10-27 09:11:41.267  PS1 JADRO: port: 2  device: standard
+2026-10-27 09:11:41.269  PS1 MYS: jadro - port 1 = ovladac, port 2 = ovladac
+2026-10-27 09:11:42.137  PS1 MYS: mys v portu 1, port 2 prazdny (citlivost 150 %)
+2026-10-27 09:11:42.151  PS1 JADRO: Starting PCSX-ReARMed r26-nap-sa1 (cc 13.3.0 64bit pic ssse3 gpu=BUILTIN_GPU)
+2026-10-27 09:11:42.151  PS1 JADRO: build time: Oct 27 2026 09:11:20
+2026-10-27 09:11:42.151  PS1 JADRO: 2 cpu core(s) detected
+2026-10-27 09:11:42.152  PS1 JADRO: No BIOS files found.
+2026-10-27 09:11:42.152  PS1 JADRO: Using PIXEL_FORMAT 2
+2026-10-27 09:11:42.152  PS1 JADRO: plugin: /builtin_gpu
+2026-10-27 09:11:42.152  PS1 JADRO: plugin: /builtin_spu
+2026-10-27 09:11:42.153  PS1 JADRO: Plugins loaded.
+2026-10-27 09:11:42.153  PS1 JADRO: Loaded CD Image: PRAC/mys_test.exe (568 bytes).
+2026-10-27 09:11:42.153  PS1 JADRO: Track 01 DATA  - Start 00:02:00, Length 00:00:00
+2026-10-27 09:11:42.153  PS1 JADRO: End 00:02:00 (sector 150)
+2026-10-27 09:11:42.153  PS1 JADRO: memcard 1 is libretro-managed
+2026-10-27 09:11:42.153  PS1 JADRO: memcard 2 is libretro-managed
+2026-10-27 09:11:42.154  PS1 JADRO: HLE BIOS initialized.
+2026-10-27 09:11:42.154  PS1 JADRO: note: running with HLE BIOS, expect compatibility problems
+2026-10-27 09:11:42.154  PS1 JADRO: ----------------------------------------------------------
+2026-10-27 09:11:42.154  PS1 PAMETOVA KARTA nova (soubor zatim neni): PRAC/karta/memory_card_1.srm, 131072 B prazdna
+2026-10-27 09:11:42.154  PS1 MYS: hra mys_test.exe - mys v portu 1, port 2 prazdny, citlivost 150 % (zapamatovano pro tuto hru)
+2026-10-27 09:11:42.171  PS1 JADRO: port: 1  device: mouse
+2026-10-27 09:11:42.171  PS1 JADRO: port: 2  device: none
+2026-10-27 09:11:42.173  PS1 MYS: jadro - port 1 = mys PlayStation, port 2 = nic
+2026-10-27 09:11:43.158  PS1 ==================== PS1 START: HRA ====================
+2026-10-27 09:11:43.158  PS1 HRA: mys_test.exe | typ .exe | 4 kB | cesta PRAC/mys_test.exe
+2026-10-27 09:11:43.158  PS1 BIOS ve slozce appky: ZADNY (jadro pojede s HLE - nahradnim BIOSem, nektere hry pak nejdou)
+2026-10-27 09:11:43.158  PS1 JADRO: Starting PCSX-ReARMed r26-nap-sa1 (cc 13.3.0 64bit pic ssse3 gpu=BUILTIN_GPU)
+2026-10-27 09:11:43.158  PS1 JADRO: build time: Oct 27 2026 09:11:20
+2026-10-27 09:11:43.158  PS1 JADRO: 2 cpu core(s) detected
+2026-10-27 09:11:43.159  PS1 JADRO: No BIOS files found.
+2026-10-27 09:11:43.159  PS1 JADRO: Using PIXEL_FORMAT 2
+2026-10-27 09:11:43.159  PS1 JADRO: plugin: /builtin_gpu
+2026-10-27 09:11:43.159  PS1 JADRO: plugin: /builtin_spu
+2026-10-27 09:11:43.159  PS1 JADRO: Plugins loaded.
+2026-10-27 09:11:43.159  PS1 JADRO: Loaded CD Image: PRAC/mys_test.exe (568 bytes).
+2026-10-27 09:11:43.159  PS1 JADRO: Track 01 DATA  - Start 00:02:00, Length 00:00:00
+2026-10-27 09:11:43.159  PS1 JADRO: End 00:02:00 (sector 150)
+2026-10-27 09:11:43.159  PS1 JADRO: memcard 1 is libretro-managed
+2026-10-27 09:11:43.159  PS1 JADRO: memcard 2 is libretro-managed
+2026-10-27 09:11:43.160  PS1 JADRO: HLE BIOS initialized.
+2026-10-27 09:11:43.160  PS1 JADRO: note: running with HLE BIOS, expect compatibility problems
+2026-10-27 09:11:43.160  PS1 JADRO: ----------------------------------------------------------
+2026-10-27 09:11:43.160  PS1 PAMETOVA KARTA nova (soubor zatim neni): PRAC/karta/memory_card_1.srm, 131072 B prazdna
+2026-10-27 09:11:43.161  PS1 MYS: hra mys_test.exe - mys v portu 1, port 2 prazdny, citlivost 150 % (zapamatovano pro tuto hru)
+2026-10-27 09:11:43.161  PS1 JADRO: BIOS HLE (vestaveny nahradni - soubor BIOSu nenalezen!) | region USA, NTSC 60 Hz | procesor interpret | disk ID "SLUS99999" nazev "SLUS_999.99" | XA NE, CD audio NE, pomaly start 1
+2026-10-27 09:11:43.161  PS1 NASTAVENI GRAFIKY: 2x (Enhanced Resolution) ZAPNUTO, bez 1x obrazu NE, uprava textur ANO | prokladani AUTO | dithering ZAPNUTO | kresleni ve vlakne NE | preskakovani snimku 0
+2026-10-27 09:11:43.161  PS1 CASOVANI: 60.000 snimku/s, zvuk jadra 44100 Hz -> reproduktor 44100 Hz | obraz zakladni 256x240, nejvic 1024x512
+2026-10-27 09:11:43.161  PS1 PAMETOVA KARTA 1: zasunuta, soubor PRAC/karta/memory_card_1.srm (CHYBI)
+2026-10-27 09:11:43.161  PS1 BEZI HRA
+2026-10-27 09:11:43.161  PS1 start trval 3 ms
+2026-10-27 09:11:43.161  PS1 JADRO: port: 1  device: mouse
+2026-10-27 09:11:43.161  PS1 JADRO: port: 2  device: none
+2026-10-27 09:11:43.163  PS1 MYS: jadro - port 1 = mys PlayStation, port 2 = nic
+2026-10-27 09:11:43.163  PS1 OBRAZ: obraz (test bez vykreslovace)
+2026-10-27 09:11:48.181  PS1 ZDRAVI 5 s: emulace 61.2 kroku/s (cil 60.00, rezerva 84 % casu) | retro_run prumer 2.6 ms, nejdele 4.6 ms | snimky 61.2/s (stejnych 61.2/s) | zvuk fronta 99 ms, vypadky 0 | obraz (test bez vykreslovace) | tlacitka nic (zmen 0, z klavesnice TV 0) | TV divaku 0
+2026-10-27 09:11:48.181  PS1 MYS ZDRAVI: mys v portu 1, citlivost 150 %: dotyku 4, posun 216 / 0 bodu, klik L 1 P 0, drzeni L 0, snimku s L 5 P 0, smerem 0, z PC zprav 0 (zmen tlacitek 0) | hra cte port 1 61x/s, port 2 61x/s

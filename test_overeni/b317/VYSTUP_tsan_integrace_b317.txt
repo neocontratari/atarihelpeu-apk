@@ -1,0 +1,3 @@
+B317 ThreadSanitizer - integrace se skutecnym jadrem (vlakno emulace + dotyky z jineho vlakna)
+VYSLEDEK: 30 OK, 0 CHYBA
+hlaseni ThreadSanitizer: 0

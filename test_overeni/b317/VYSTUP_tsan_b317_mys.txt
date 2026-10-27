@@ -1,0 +1,4 @@
+B317 - mys PlayStation: logika v C++ (nap_ps1_mys.h)
+OK      soubezne: stranka, vlakno emulace, nastaveni + soubor, mys z PC - dobehlo (38600 dotazu jadra)
+VYSLEDEK: 1 OK, 0 CHYBA
+hlaseni ThreadSanitizer: 0

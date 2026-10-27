@@ -1,0 +1,90 @@
+B317 - MYS PLAYSTATION PRO PS1 (DUNE 2000 ...)
+============================================
+
+Rene: "U PS1 - slo by napriklad u hry dune2000 pouzit i pres obrazovku mys?" ... "Ted tu mysku pro
+ps1 dune2000 :-)"
+
+Kod v appce:
+  cpp/nap_ps1_mys.h          (novy, bez Androidu) nap::Ps1Mys - cela logika mysi:
+                             - dotyk na obraze hry = touchpad: tah = posun (cela sirka obrazu = 320 bodu
+                               mysi x citlivost), tuknuti (do 0,25 s, do 3 % sirky) = klik levym (5 snimku
+                               dole, 4 nahore), dva prsty = klik pravym, prst podrzeny 0,5 s = leve DRZI
+                               (tah = vyber ramem), ZRUSENO = vse pustit; vraci KLIK_L / KLIK_P (vibrace)
+                             - rezim = kam je mys zapojena: VYP (2x ovladac, jako B316), PORT1 (mys, port 2
+                               nic - vychozi, jako radi ePSXe pro Dune 2000), PORT1_OVL2, PORT2_OVL1;
+                               zarizeni() -> retro_set_controller_port_device (mys = 0x102)
+                             - mys sama v portu 1 (ovladac nikde): KRIZEK = leve, KOLECKO = prave tlacitko,
+                               smer (D-pad, packa, sipky TV) = posun 1 -> 6 bodu za snimek (zrychleni 0,7 s);
+                               s ovladacem v druhem portu jdou vsechna tlacitka ovladaci
+                             - mys z PC (pcMys, pripraveno pro prohlizec TV: posun, tlacitka, hlidac 2,5 s)
+                             - posun v double, za snimek zaokrouhleny, nejvys 127, zbytek na dalsi snimek
+                             - pamet pro kazdou hru: PS1_mys_pro_hry.txt ve slozce karty (klic = ID disku,
+                               SLUS99999 / bez ID = jmeno souboru, bez disku "BIOS"), nejvys 500 her
+                             - denik (vezmiLog) a souhrn pro MYS ZDRAVI
+  cpp/nap_ps1_native.cpp     g_mys; nap_input_state: RETRO_DEVICE_MOUSE -> mysDotaz, JOYPAD -> padDotaz
+                             (s vypnutou mysi presne jako drive: tlacitka jen do portu 1); ps1_mys_po_startu
+                             (po kazdem startu hry / BIOSu: nactiProHru + poNacteniHry), ps1_mys_pred_krokem
+                             (pred retro_run: zmena portu + snimek), retro_set_controller_port_device slabe;
+                             ZDRAVI: "MYS ZDRAVI: ... | hra cte port 1 Nx/s, port 2 Nx/s"; JNI ps1MysDotyk,
+                             ps1MysNastav, ps1MysStav, ps1PcMys
+  vendor/pcsx_rearmed/libpcsxcore/pad.c   nap_pad_cteni[2] - kolikrat hra cetla port 1 / 2 (do deniku)
+  vendor/pcsx_rearmed/frontend/plugin.c   PAD1/PAD2_readPort: posun mysi se precte JEDNOU (jako skutecna mys;
+                             hra, ktera cte port 2x za snimek, by jinak mela kurzor 2x rychlejsi)
+  NativePs1CoreBridge.java   ps1MysDotyk / ps1MysNastav / ps1MysStav / ps1PcMys + obaly *Safe
+  MainActivity.java          AHPS1.ps1MysDotyk / ps1MysNastav / ps1MysStav (jen predani)
+  assets/emu_ps1/index.html  tlacitko MYS (na sirku vlevo nahore), dotyky na obraze -> C++ (jen se zapnutou
+                             mysi), ukazatel DRZIM LEVE TLACITKO + vibrace, panel MYS PLAYSTATION (4 rezimy,
+                             rychlost, hra, napoveda gest) z kolecka D-PAD A OVLADANI; mys v portu 1 schova
+                             trojuhelnik, ctverec, ramena, SELECT, START; zruseni dotyku pri blur / otoceni
+  assets/jazyk/en_ps1.js     anglicke texty mysi
+  assets/napoveda/index.html + en.html   blok "Mys PlayStation (Dune 2000 ...)" v kapitole PS1
+
+Spoustet z adresare test_overeni/b317 (nebo odkudkoli: bash test_overeni/b317/vse.sh).
+Potreba: g++ / gcc, clang + ld.lld + llvm-objcopy (PS-EXE pro mipsel), JAVA_HOME = JDK, hlavicky EGL /
+GLES2 / KHR v $INC, knihovny Mesa (libEGL, libGLESv2), zlib, Python 3 + Playwright + Chromium + wordfreq,
+Node.js (acorn), android.jar API 34 ($ANDROID_JAR), git (B316 = d7c85b9 pro srovnani).
+Vse najednou: PRAC=... INC=... ANDROID_JAR=... bash vse.sh                 (vystupy VYSTUP_* sem)
+
+1) Logika mysi: g++ -std=c++17 -O2 -pthread -o test_b317_mys test_b317_mys.cpp && ./test_b317_mys PRAC
+   vychozi stav = B316, porty 4 rezimu, tah / tuknuti / dvojklik / fronta kliku / dva prsty / tah + druhy prst,
+   podrzeni + tah + zruseni, KRIZEK / KOLECKO / D-pad jen s mysi samotnou (zrychleni, sikmo, citlivost),
+   s ovladacem v druhem portu tlacitka ovladaci, mys z PC + hlidac, pamet pro hru (soubor, poskozeny
+   soubor, 500 her, chyba zapisu, docasny soubor), klic hry, souhrn ZDRAVI, denik; + ThreadSanitizer
+   (-DNAP_TSAN: stranka, vlakno emulace, nastaveni se souborem, mys z PC soubezne)
+                                              -> VYSTUP_test_b317_mys.txt, VYSTUP_tsan_b317_mys.txt
+2) SKUTECNE jadro PS1:
+   bash stavba_jadra.sh PRAC d7c85b9          (jadro z appky pro PC: interpret, bez gpu_neon; + plugin.c B316)
+   python3 udelej_exe.py PRAC                 (mys_test.S -> PRAC/mys_test.exe: "hra", ktera cte ovladace pres
+                                               BIOS InitPAD / StartPAD a scita posun mysi jako hra)
+   g++ -std=c++17 -O1 -g -pthread $PS1 -o PRAC/integrace_b317 integrace_b317.cpp PRAC/jadro/*.o \
+       -l:libEGL.so.1 -l:libGLESv2.so.2 -lz -ldl
+   EGL_PLATFORM=surfaceless PRAC/integrace_b317 PRAC PRAC/mys_test.exe
+   ($PS1 = -DANDROID -I../b305/stub -I../b291/stub -I$INC -I$JAVA_HOME/include -I$JAVA_HOME/include/linux)
+   A) ps1EglBoot + ps1EglTick po snimcich (60 Hz v realnem case): mys vypnuta = ovladac 41 jako B316,
+      zapnuti -> hra vidi mys ID 12, port 2 FF, vytazeni a zasunuti ~32 snimku, denik, soubor; tah
+      (32 / 16 bodu), rychly tah -640 po 127, tuknuti, dva prsty, podrzeni + tah, KRIZEK / KOLECKO,
+      D-pad, mys z PC, cteni 2x v jednom snimku (posun jen jednou), rezimy 2 a 3, vypnuti, znovu
+      spustena hra = mys zapamatovana od prvniho snimku
+   B) ps1BootDoMonitoru + vlakno emulace (jako telefon), dotyky z jineho vlakna, MYS ZDRAVI
+   srovnani: plugin.c z B316 (--b316) - cteni 2x za snimek vrati posun 2x
+   + ThreadSanitizer        -> VYSTUP_integrace_b317.txt, VYSTUP_tsan_integrace_b317.txt, UKAZKA_denik_mys.txt
+3) Stranka PS1 (Chromium): python3 test_b317_stranka.py PRAC
+   skutecne dotyky (CDP, i vic prstu), zaznam dotyku prehrany do logiky mysi (prehraj_dotyky.cpp):
+   tah, tuknuti, dva prsty, podrzeni + tah, KRIZEK + prst na obraze; tlacitko MYS (poprve napoveda),
+   schovana tlacitka, ukazatel drzeni + vibrace, panel (rezimy, rychlost, hra), zruseni dotyku;
+   cesky = B316 + texty mysi (kroky testu B314 na vysku), anglicky bez cestiny, bez chyby JS
+                                              -> VYSTUP_test_b317_stranka.txt, VYSTUP_texty_ps1_mys_en.txt
+4) Navod: python3 kontrola_navodu_b317.py (zmenilo se jen to o mysi), ../b312/kontrola_navodu.py,
+   ../b314/kontrola_navodu_en.py, ../b314/test_b314_jazyk_navod.py
+       -> VYSTUP_kontrola_navodu_b317.txt, VYSTUP_kontrola_navodu_cz.txt / _en.txt, VYSTUP_navod_b314_chromium.txt
+5) ES5: slovnik en_ps1.js a skript stranky PS1 (acorn)               -> VYSTUP_kontrola_es5.txt
+6) Regrese: bash regrese.sh PRAC INC JAVA_HOME ANDROID_JAR
+   testy B308 na kodu B317 (denik, klavesnice z TV, zamek, ThreadSanitizer, JVM TestPodpisu, klavesnice
+   v prohlizeci, stranka PS1 - cesky Chromium; anglicky B317 = B316), JVM jvm/TestB317Mys.java (nove
+   metody -Xcheck:jni), symboly knihovny, preklad testu TV B305 / B306, javac proti android.jar, podpisy
+   JNI (kontrola_jni_ps1.py)        -> VYSTUP_regrese.txt (+ VYSTUP_regrese_b308_*, jvm/VYSTUP_*,
+                                       VYSTUP_javac_android.txt, VYSTUP_kontrola_jni_ps1.txt)
+
+Co se na PC overit neda: Dune 2000 sama (hra neni v repozitari) - kde ji hleda a jestli ji vidi, ukaze
+denik (MYS ZDRAVI: "hra cte port 1 Nx/s, port 2 Nx/s") a Reneho zkouska; skutecny dotykovy displej
+telefonu (Chromium dotyky jsou skutecne udalosti, ale ne prst) a vibrace.

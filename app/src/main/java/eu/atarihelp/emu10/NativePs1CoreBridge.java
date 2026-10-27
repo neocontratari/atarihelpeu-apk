@@ -168,4 +168,34 @@ public final class NativePs1CoreBridge {
             return b == null ? "" : new String(b, java.nio.charset.StandardCharsets.UTF_8);
         } catch (Throwable t) { return "PS1_DENIK_CALL_FAIL " + t.getMessage(); }
     }
+
+    // ===== B317: MYS PLAYSTATION (Dune 2000 ...) - cela logika v C++ (nap_ps1_mys.h) =====
+    // Dotyk na obraze hry jako touchpad: akce 0 dolu, 1 nahoru, 2 pohyb, 3 zruseno;
+    // x, y v obrazu, w, h = velikost obrazu (body stranky). Vraci stav (bit0 mys zapnuta,
+    // bit1 leve tlacitko drzi, bit2 prst na obraze, bit3 / bit4 = tenhle dotyk byl klik
+    // levym / pravym tlacitkem).
+    private static native int ps1MysDotyk(int akce, int id, float x, float y, float w, float h);
+    // rezim 0 vyp, 1 port 1, 2 port 1 + ovladac v portu 2, 3 port 2 + ovladac v portu 1;
+    // citlivost v %. Zapamatuje se pro hru. Vraci "rezim|citlivost|stav|klic hry".
+    private static native String ps1MysNastav(int rezim, int citlivost);
+    private static native String ps1MysStav();
+    // mys pocitace z prohlizece na TV / PC: posun a tlacitka (bit0 leve, bit1 prave)
+    private static native String ps1PcMys(int dx, int dy, int tlacitka);
+
+    public static int mysDotykSafe(int akce, int id, float x, float y, float w, float h) {
+        if (!loaded) return 0;
+        try { return ps1MysDotyk(akce, id, x, y, w, h); } catch (Throwable t) { return 0; }
+    }
+    public static String mysNastavSafe(int rezim, int citlivost) {
+        if (!loaded) return "";
+        try { String r = ps1MysNastav(rezim, citlivost); return r == null ? "" : r; } catch (Throwable t) { return ""; }
+    }
+    public static String mysStavSafe() {
+        if (!loaded) return "";
+        try { String r = ps1MysStav(); return r == null ? "" : r; } catch (Throwable t) { return ""; }
+    }
+    public static String pcMysSafe(int dx, int dy, int tlacitka) {
+        if (!loaded) return null;
+        try { return ps1PcMys(dx, dy, tlacitka); } catch (Throwable t) { return null; }
+    }
 }

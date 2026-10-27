@@ -1,0 +1,84 @@
+B317 - mys PlayStation: logika v C++ (nap_ps1_mys.h)
+OK      vychozi: mys vypnuta, citlivost 100 %
+OK      vypnuta: oba porty standardni ovladac (jako jadro po nacteni hry)
+OK      vypnuta: ovladac v portu 1 dostane vsech 16 tlacitek beze zmeny (KRIZEK i KOLECKO), port 2 nic
+OK      vypnuta: dotyk na obraze ani KRIZEK mys nehybou
+OK      vypnuta: jadro z mysi dostane same nuly
+OK      vypnuta a nic se nedelo: zadny radek MYS ZDRAVI
+OK      nastav(1): mys v portu 1 (zmena hlasena)
+OK      stejne nastaveni znovu: zadna zmena
+OK      spatny rezim -> vypnuta, citlivost 10 % -> 25 %
+OK      rezim -3 -> vypnuta, citlivost 9999 % -> 400 %
+OK      popisy rezimu do deniku
+OK      4 rezimy: co se zapoji do portu 1 / 2 (mys PlayStation = RETRO_DEVICE_SUBCLASS(MOUSE,0) = 0x102)
+OK      kod mysi PlayStation 0x102 (jako RETRO_DEVICE_PSE_MOUSE v libretro.c)
+OK      po nacteni hry s vypnutou mysi: porty se nemeni (zustava standardni ovladac)
+OK      zapnuti: port 1 = mys, port 2 = nic
+OK      dalsi snimek: uz nic (zapojeno jednou)
+OK      prepnuti: port 1 = ovladac, port 2 = mys
+OK      po nacteni dalsi hry se mys zapoji znovu
+OK      vypnuti: zpet oba standardni ovladac
+OK      denik: kazda zmena portu ("MYS: jadro - port 1 = mys PlayStation, port 2 = nic")
+OK      pohyb do 3 % sirky: kurzor stoji (muze to byt tuknuti)
+OK      tah 73,2 x 36,6 bodu (10 % x 5 % sirky) = posun 32 / 16 bodu mysi (je 32 / 16)
+OK      tah neni klik (zadne tlacitko)
+OK      tah pres celou sirku = 320 bodu, za snimek nejvys 127 (127 + 127 + 66)
+OK      citlivost 200 % = 64 bodu, 25 % = 8 bodu (stejny tah 10 % sirky)
+OK      400 drobnych pohybu po 0,5 bodu: celkem -187 bodu, ocekavano -187 (nic se neztratilo)
+OK      tah doleva nahoru = zaporny posun (-64 / -32)
+OK      tuknuti (0,11 s, chveni prstu): dotyk hlasi klik levym (stranka zavibruje)
+OK      tuknuti = leve tlacitko 1x dole presne 5 snimku, kurzor stoji: LLLLL..........
+OK      prst nahore az po 0,3 s: zadny klik (neni to tuknuti)
+OK      dvojite tuknuti = 2 kliky: LLLLL....LLLLL......
+OK      10 tuknuti za 50 ms: nejvys 4 kliky ve fronte (4)
+OK      tuknuti dvema prsty: klik pravym (hlaseno jednou)
+OK      dva prsty = prave tlacitko 5 snimku, leve ani posun ne: PPPPP..........
+OK      dva prsty a jeden tahne (posun 2 prsty): zadny klik, kurzor stoji
+OK      tah + kratky dotyk druhym prstem: zadny klik, tah pokracuje (87 bodu)
+OK      prst na miste 0,4 s: tlacitko jeste ne
+OK      prst na miste 0,5 s: leve tlacitko DRZI (stav bit1 pro stranku)
+OK      tah s drzenym levym = vyber ramem (posun 32 / 16, tlacitko porad dole)
+OK      prst nahoru: leve tlacitko pusteno, zadny klik navic
+OK      dotyk zrusen behem drzeni: tlacitko pusteno, zadny prst
+OK      denik: "MYS: dotyk zrusen - leve tlacitko pusteno"
+OK      zmena rezimu behem drzeni: tlacitko pusteno
+OK      mys sama v portu 1: KRIZEK drzi leve, KOLECKO prave tlacitko
+OK      mys sama v portu 1: ovladac neni zapojeny nikde (hra tlacitka nevidi)
+OK      D-pad vpravo, prvni snimek: 1 bod (presne miritko)
+OK      D-pad drzeny 0,7 s+: plna rychlost 6 bodu za snimek (60 za 10 snimku)
+OK      zrychleni linearne za 0,7 s: 120 bodu za 35 snimku (vypocet 119)
+OK      po pusteni zase pomalu; sikmo vlevo nahoru 2 snimky = -2 / -2 (plnou rychlosti by bylo -12)
+OK      nahoru + dolu naraz: vyrusi se
+OK      citlivost 50 %: smer 0,5 bodu za snimek (4 snimky = 2 body)
+OK      KRIZEK + smer naraz: tazeni s drzenym levym (vyber ramem jen tlacitky / klavesnici TV)
+OK      mys port 1 + ovladac port 2: KRIZEK / KOLECKO / smer jdou ovladaci v portu 2, mys stoji
+OK      ovladac port 1 + mys port 2: tlacitka ovladaci v portu 1, tuknuti = klik mysi v portu 2 (port 1 z mysi nic)
+OK      mys z PC s vypnutou mysi: nic
+OK      mys z PC: posun x citlivost (40 x 150 % = 60), leve tlacitko drzi
+OK      mys z PC: prave tlacitko
+OK      prohlizec se odmlcel 2,5 s: tlacitka pustena + radek v deniku
+OK      hra bez zaznamu (zadny soubor): mys vypnuta, citlivost 100 %
+OK      ulozeni pro hru SLES02250
+OK      jina hra (SCUS94163): mys vypnuta - kazda hra zvlast
+OK      znovu SLES02250 (nova instance = novy start appky): port 1, 140 %
+OK      SCUS94163: port 2, 80 %
+OK      vypnuti se taky pamatuje (zaznam prepsan, ne pridan)
+OK      soubor: hlavicka + 1 radek na hru (klic TAB rezim TAB citlivost)
+OK      poskozeny soubor: radek bez citlivosti preskocen, rezim 9 -> vypnuta, citlivost 5 / 9999 -> 100 %
+OK      nejvys 500 her v souboru (nejstarsi se zahodi): 500
+OK      bez nacteni hry (zadny klic) se nic neuklada
+OK      slozka neexistuje: ulozeni hlasi chybu (do deniku)
+OK      zapis pres docasny soubor a prejmenovani (zadny .novy nezustal)
+OK      klic hry = ID disku (SLES02250)
+OK      bez ID disku: jmeno souboru
+OK      bez disku: BIOS
+OK      zastupne ID jadra SLUS99999 (vic her ho ma): jmeno souboru
+OK      jen bezpecne znaky (TAB a | ne)
+OK      jmeno souboru i s obracenym lomitkem, bez TAB
+OK      souhrn do MYS ZDRAVI: mys v portu 1, citlivost 100 %: dotyku 2, posun 127 / 0 bodu, klik L 1 P 0, drzeni L 0, snimku s L 5 P 0, smerem 20, z PC zprav 0 (zmen tlacitek 0)
+OK      dalsi okno zacina od nuly (zapnuta mys = radek vzdy)
+OK      nova hra (poNacteniHry): souhrn zacina od nuly - nic z minule hry
+OK      vypnuta a nic: prazdny souhrn
+OK      denik mysi: nejvys 50 radku ve fronte, vyzvednuti ji vyprazdni
+OK      soubezne: stranka, vlakno emulace, nastaveni + soubor, mys z PC - dobehlo (781680 dotazu jadra)
+VYSLEDEK: 82 OK, 0 CHYBA

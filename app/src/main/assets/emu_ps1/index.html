@@ -254,6 +254,14 @@ body.tvCastActive .rgbRam{animation-play-state:paused!important;}
 .libGame .libPlay{background:linear-gradient(160deg,#fff6df,#ffd76a);color:#2a1c04;}
 .libGame .libDel{background:radial-gradient(circle at 34% 26%,rgba(90,45,45,.9),rgba(20,8,8,.95) 72%);color:#e08a8a;border:2px solid rgba(160,70,70,.6);}
 .libEmpty{text-align:center;color:#9d95c9;font:700 13px Arial,sans-serif;padding:20px 0;}
+/* B317: MYS PLAYSTATION (Dune 2000 ...) - tlacitko MYS je jen na sirku (tam se hraje),
+   ukazatel "levé tlačítko drží" (prst podrzeny na obraze) a panel s nastavenim */
+#btnMys{display:none;}
+.mysUkazDrzi{display:none;position:absolute;left:50%;top:2%;transform:translateX(-50%);z-index:45;padding:6px 12px;border-radius:999px;background:rgba(0,0,0,.84);border:1px solid rgba(255,214,112,.85);color:#ffe39a;font:900 clamp(10px,2.4vw,13px)/1.2 "Courier New",monospace;white-space:nowrap;pointer-events:none;box-shadow:0 0 16px rgba(255,214,112,.3);}
+body.mysLeveDrzi .mysUkazDrzi{display:block;}
+#mysPanel h2{color:#ffd76a;text-shadow:0 0 16px rgba(255,200,90,.7),0 2px 4px #000;}
+.panel button.mysRezim.aktivni{color:#081017;background:linear-gradient(180deg,rgba(255,235,157,.96),rgba(196,151,68,.88));border-color:rgba(255,244,194,.95);box-shadow:0 0 16px rgba(255,214,112,.4);}
+#mysHra{color:#f1d78e;}
 @media (orientation:landscape) and (max-height:760px){
  html,body{width:100%;height:100%;overflow:hidden;background:transparent;}
  body{align-items:center;}
@@ -312,6 +320,14 @@ body.tvCastActive .rgbRam{animation-play-state:paused!important;}
  #btnMirror{display:block;}
  .toast{bottom:2%;font-size:11px;padding:6px 8px;z-index:40;}
  .remoteBanner{left:3%;right:3%;top:3.5%;padding:8px 10px;font-size:12px;z-index:50;}
+ /* B317: tlacitko MYS vlevo nahore (proti kolecku nastaveni); zapnuta mys = zlate */
+ #btnMys{display:flex;align-items:center;justify-content:center;left:1.5%;top:1.5%;width:9%;height:7%;opacity:.9;color:rgba(255,255,255,.85);font:900 12px/1 "Courier New",monospace;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.34);border-radius:999px;text-shadow:0 2px 4px #000;z-index:20;}
+ #btnMys:active{background:rgba(255,215,120,.22);border-color:rgba(255,229,145,.8);}
+ body.mysZap #btnMys{opacity:1;color:#081017;background:linear-gradient(180deg,rgba(255,235,157,.96),rgba(196,151,68,.88));border-color:rgba(255,244,194,.95);text-shadow:none;box-shadow:0 0 18px rgba(255,214,112,.4);}
+ /* mys sama v portu 1: ovladac neni zapojeny - tlacitka, ktera by nic nedelala, se schovaji.
+    KRIZEK (= leve), KOLECKO (= prave tlacitko mysi) a D-pad (pomaly posun kurzoru) zustavaji. */
+ body.mysPort1 #btnTriangle,body.mysPort1 #btnSquare,body.mysPort1 #btnL1,body.mysPort1 #btnL2,
+ body.mysPort1 #btnR1,body.mysPort1 #btnR2,body.mysPort1 #btnSelect,body.mysPort1 #btnStart{display:none;}
 }
 </style>
 </head>
@@ -320,7 +336,10 @@ body.tvCastActive .rgbRam{animation-play-state:paused!important;}
   <img class="skin" src="ps1_final_screen.png" alt="PS1 PlayStation screen">
   <a id="btnBack" class="hit" href="../index.html">BACK</a>
   <button id="btnSettings" class="hit" type="button">&#9881;</button>
+  <!-- B317: mys PlayStation - zapnout / vypnout (na sirku); nastaveni v kolecku -> MYŠ -->
+  <button id="btnMys" class="hit" type="button" aria-pressed="false">MYŠ</button>
   <button id="psMonitor" class="hit" type="button">MONITOR</button>
+  <div id="mysUkazDrzi" class="mysUkazDrzi">DRŽÍM LEVÉ TLAČÍTKO</div>
   <button id="dpad" class="hit padBtn ctrlAdjustable" type="button"><span class="dpadKnob" aria-hidden="true"></span></button>
   <button id="btnTriangle" class="hit padBtn ctrlAdjustable" type="button">&#9651;</button>
   <button id="btnCircle" class="hit padBtn ctrlAdjustable" type="button">&#9675;</button>
@@ -407,6 +426,8 @@ body.tvCastActive .rgbRam{animation-play-state:paused!important;}
     <button id="btnEditLayout" type="button">UPRAVIT ROZLOŽENÍ TLAČÍTEK</button>
     <button id="btnCtrlSettings" type="button">OVLÁDÁNÍ: CITLIVOST A VZHLED</button>
     <button id="btnMirror" type="button">PROHODIT D-PAD A AKCE (LEVÁK)</button>
+    <!-- B317: mys PlayStation (Dune 2000 ...) - kam je zapojena, rychlost, napoveda gest -->
+    <button id="btnMysNastaveni" type="button">MYŠ PLAYSTATION (DUNE 2000 …)</button>
     <!-- BUILD2SB50: Rene - "kdyz by save game po nacteni nabehl presne
          do toho mista, jak to ted dela Sega - bonus pro ty, co hraji
          o pauze v praci." ps1QuickLoad() uz cely existoval (Java i JS,
@@ -491,6 +512,31 @@ body.tvCastActive .rgbRam{animation-play-state:paused!important;}
 
     <button id="ctrlReset" type="button" class="secondary">VÝCHOZÍ NASTAVENÍ OVLÁDÁNÍ</button>
     <button id="ctrlClose" type="button" class="zavrit">ZAVŘÍT</button>
+  </div>
+</div>
+<!-- B317: Rene - "slo by napriklad u hry dune2000 pouzit i pres obrazovku mys?"
+     Mys PlayStation: obraz hry je touchpad. Kam je mys zapojena (hry ji hledaji
+     ruzne), rychlost kurzoru a napoveda gest. Vse se pamatuje pro kazdou hru (C++). -->
+<div id="mysPanel" class="panel" aria-hidden="true">
+  <div class="box">
+    <h2>MYŠ PLAYSTATION</h2>
+    <p>Pro hry s myší PlayStation – Dune 2000, Command &amp; Conquer, Warzone 2100 … Obraz hry funguje jako touchpad na notebooku.</p>
+    <p id="mysHra" class="ctrlVal"></p>
+    <button id="mysRezim0" class="mysRezim secondary" data-rezim="0" type="button">VYPNUTÁ – JEN OVLADAČ</button>
+    <button id="mysRezim1" class="mysRezim secondary" data-rezim="1" type="button">MYŠ V PORTU 1 (DUNE 2000)</button>
+    <button id="mysRezim2" class="mysRezim secondary" data-rezim="2" type="button">MYŠ PORT 1 + OVLADAČ PORT 2</button>
+    <button id="mysRezim3" class="mysRezim secondary" data-rezim="3" type="button">OVLADAČ PORT 1 + MYŠ PORT 2</button>
+    <p>Hry hledají myš na různých místech. Když hra kurzor nevidí, zkus další volbu.</p>
+    <p><b style="color:#5ef0b0;">Rychlost kurzoru</b> — jak daleko kurzor dojede, když táhneš prstem nebo držíš D-pad.</p>
+    <input id="mysCitlivost" type="range" min="25" max="400" step="5" value="100">
+    <p id="mysCitlivostVal" class="ctrlVal"></p>
+    <p><b>Táhni prstem po obrazu</b> = pohyb kurzoru.</p>
+    <p><b>Ťukni</b> = levé tlačítko (vybrat, potvrdit).</p>
+    <p><b>Ťukni dvěma prsty</b> = pravé tlačítko (zrušit).</p>
+    <p><b>Podrž prst na místě</b> (zavibruje, nahoře se ukáže DRŽÍM LEVÉ TLAČÍTKO) a táhni = levé tlačítko drží – výběr jednotek rámečkem.</p>
+    <p><b>Myš v portu 1:</b> ✕ = levé a ○ = pravé tlačítko (dají se i držet), D-pad = pomalý přesný posun kurzoru. Ostatní tlačítka hra s myší nevidí, proto jsou schovaná.</p>
+    <p>Volba se pamatuje pro každou hru zvlášť. Když hra myš nevidí ani v jiném portu, spusť hru znovu (CD ISO) – myš je pak zapojená od zapnutí.</p>
+    <button id="mysZavrit" type="button" class="zavrit">ZAVŘÍT</button>
   </div>
 </div>
 <script>
@@ -1113,6 +1159,126 @@ function bindDpad(el){
   el.addEventListener('touchstart',touchStart,{passive:false});el.addEventListener('touchmove',touchMove,{passive:false});el.addEventListener('touchend',touchEnd,{passive:false});el.addEventListener('touchcancel',touchEnd,{passive:false});
   el.addEventListener('mousedown',mouseStart,true);el.addEventListener('mousemove',mouseMove,true);el.addEventListener('mouseup',mouseEnd,true);el.addEventListener('mouseleave',mouseEnd,true);
 }
+/* ===== B317: MYS PLAYSTATION (Dune 2000 ...) =====
+   Rene: "slo by napriklad u hry dune2000 pouzit i pres obrazovku mys?"
+   Obraz hry (#psMonitor) je touchpad. Kazdy dotyk jde do C++ (AHPS1.ps1MysDotyk),
+   ktere samo rozhodne, co to je: tah = posun kurzoru, tuknuti = levy klik, tuknuti
+   dvema prsty = pravy klik, prst podrzeny = leve tlacitko drzi. Do ktereho portu je
+   mys zapojena a zapamatovani pro kazdou hru je take v C++ (nap_ps1_mys.h).
+   Tady jen predani dotyku a vzhled: tlacitko MYS, panel, schovani tlacitek, ktera
+   hra s mysi samotnou v portu 1 nevidi, ukazatel drzeni. */
+var MYS={rezim:0,citlivost:100,stav:0,klic:'',prsty:{},pocetPrstu:0,tik:null,drzelo:false};
+var MYS_REZIMY=['VYPNUTÁ','MYŠ V PORTU 1','MYŠ PORT 1 + OVLADAČ PORT 2','OVLADAČ PORT 1 + MYŠ PORT 2'];
+var MYS_VSE=['UP','DOWN','LEFT','RIGHT','CROSS','CIRCLE','SQUARE','TRIANGLE','L1','L2','R1','R2','START','SELECT'];
+function mysVibruj(ms){if(!ctrlSettings.haptic)return;try{if(window.AHPS1&&window.AHPS1.ps1Vibrate)window.AHPS1.ps1Vibrate(ms);}catch(_){}}
+/* "rezim|citlivost|stav|klic hry" z C++ */
+function mysCtiStav(t){
+  t=String(t||'');var c=t.split('|');
+  if(c.length<4||!/^\d+$/.test(c[0]))return false;
+  MYS.rezim=parseInt(c[0],10)||0;MYS.citlivost=parseInt(c[1],10)||100;MYS.stav=parseInt(c[2],10)||0;
+  MYS.klic=c.slice(3).join('|');
+  return true;
+}
+function mysObnov(){
+  var zap=MYS.rezim>0;
+  document.body.classList.toggle('mysZap',zap);
+  document.body.classList.toggle('mysPort1',MYS.rezim===1);
+  var drzi=zap&&!!(MYS.stav&2);
+  if(drzi!==MYS.drzelo){
+    MYS.drzelo=drzi;document.body.classList.toggle('mysLeveDrzi',drzi);
+    if(drzi)mysVibruj(30);
+  }
+  var b=$('btnMys');if(b)b.setAttribute('aria-pressed',zap?'true':'false');
+  mysPanelObnov();
+}
+function mysZjisti(){
+  try{if(window.AHPS1&&window.AHPS1.ps1MysStav&&mysCtiStav(window.AHPS1.ps1MysStav()))mysObnov();}catch(_){}
+}
+/* prsty na obraze pustit (zmena rezimu, otoceni, appka na pozadi) - nic nekliknout */
+function mysZrusPrsty(){
+  for(var id in MYS.prsty){try{window.AHPS1.ps1MysDotyk(3,parseInt(id,10),0,0,1,1);}catch(_){}}
+  MYS.prsty={};MYS.pocetPrstu=0;
+  if(MYS.tik){clearInterval(MYS.tik);MYS.tik=null;}
+}
+function mysNastav(rezim,citlivost,proc){
+  var predtim=MYS.rezim,r='';
+  try{if(window.AHPS1&&window.AHPS1.ps1MysNastav)r=String(window.AHPS1.ps1MysNastav(rezim,citlivost)||'');}catch(_){}
+  if(!mysCtiStav(r)){toast('MYŠ: jádro PS1 neodpovídá',3000);return false;}
+  if(MYS.rezim!==predtim){
+    // drzena tlacitka pustit - ted patri jinam (mysi / ovladaci)
+    releaseButtons(MYS_VSE);
+    mysZrusPrsty();
+    if(MYS.rezim>0){try{localStorage.setItem('napPs1MysRezim',String(MYS.rezim));}catch(_){}}
+  }
+  jsLog('MYS_NASTAV '+(proc||'')+' rezim='+MYS.rezim+' citlivost='+MYS.citlivost+' hra='+(MYS.klic||'-'));
+  mysObnov();
+  return true;
+}
+/* tlacitko MYS (na sirku): zapnout (naposledy zvoleny port) / vypnout */
+function mysPrepni(){
+  if(MYS.rezim>0){if(mysNastav(0,MYS.citlivost,'tlacitko MYS'))toast('MYŠ VYPNUTÁ – zase ovladač',2400);return;}
+  var r=1;try{r=parseInt(localStorage.getItem('napPs1MysRezim'),10)||1;}catch(_){}
+  if(r<1||r>3)r=1;
+  if(!mysNastav(r,MYS.citlivost,'tlacitko MYS')||MYS.rezim===0)return;
+  var poprve=false;try{poprve=!localStorage.getItem('napPs1MysNapoveda');localStorage.setItem('napPs1MysNapoveda','1');}catch(_){}
+  if(poprve)showMysPanel();   // poprve rovnou napoveda gest
+  else toast('MYŠ ZAPNUTÁ ('+MYS_REZIMY[MYS.rezim]+') – táhni prstem po obrazu, ťuk = klik. Nastavení: kolečko → MYŠ',5200);
+}
+function mysPanelObnov(){
+  var p=$('mysPanel');if(!p||!p.classList.contains('open'))return;
+  var bt=p.querySelectorAll('.mysRezim');
+  for(var i=0;i<bt.length;i++)bt[i].classList.toggle('aktivni',parseInt(bt[i].getAttribute('data-rezim'),10)===MYS.rezim);
+  var s=$('mysCitlivost');if(s&&!s.__napTahne)s.value=MYS.citlivost;
+  var v=$('mysCitlivostVal');if(v)v.textContent='Rychlost: '+MYS.citlivost+' %';
+  var h=$('mysHra');
+  if(h)h.textContent=(MYS.klic?'Hra: '+MYS.klic:'Hra zatím neběží')+' – '+MYS_REZIMY[MYS.rezim<0||MYS.rezim>3?0:MYS.rezim];
+}
+function showMysPanel(){napPlochaHide();var p=$('mysPanel');if(p){p.classList.add('open');p.setAttribute('aria-hidden','false');}mysZjisti();mysPanelObnov();}
+function closeMysPanel(){napPlochaShow();var p=$('mysPanel');if(p){p.classList.remove('open');p.setAttribute('aria-hidden','true');}}
+/* dotyky na obraze hry -> C++ (jen kdyz je mys zapnuta; jinak se nic nemeni) */
+function bindMysMonitor(mon){
+  function posli(akce,t){
+    var r=mon.getBoundingClientRect(),v=0;
+    try{v=window.AHPS1.ps1MysDotyk(akce,t.identifier,t.clientX-r.left,t.clientY-r.top,r.width,r.height)|0;}catch(_){}
+    return v;
+  }
+  function start(ev){
+    if(MYS.rezim<=0||layoutEditActive)return;
+    ev.preventDefault();
+    var l=ev.changedTouches;
+    for(var i=0;i<l.length;i++){
+      var t=l[i];if(MYS.prsty[t.identifier])continue;
+      MYS.prsty[t.identifier]=1;MYS.pocetPrstu++;
+      MYS.stav=posli(0,t)&7;
+    }
+    // podrzeny prst (leve tlacitko drzi) se pozna i bez pohybu - stav z C++ kazdych 0,1 s
+    if(!MYS.tik)MYS.tik=setInterval(mysZjisti,100);
+  }
+  function pohyb(ev){
+    if(!MYS.pocetPrstu)return;
+    ev.preventDefault();
+    var l=ev.changedTouches;
+    for(var i=0;i<l.length;i++){if(MYS.prsty[l[i].identifier])posli(2,l[i]);}
+  }
+  function konec(ev){
+    if(!MYS.pocetPrstu)return;
+    ev.preventDefault();
+    var akce=ev.type==='touchcancel'?3:1,l=ev.changedTouches;
+    for(var i=0;i<l.length;i++){
+      var t=l[i];if(!MYS.prsty[t.identifier])continue;
+      delete MYS.prsty[t.identifier];MYS.pocetPrstu--;
+      var v=posli(akce,t);
+      if(v&16)mysVibruj(28);else if(v&8)mysVibruj(12);   // klik pravym / levym
+      MYS.stav=v&7;
+    }
+    if(MYS.pocetPrstu<=0){MYS.pocetPrstu=0;MYS.prsty={};if(MYS.tik){clearInterval(MYS.tik);MYS.tik=null;}}
+    mysObnov();
+  }
+  mon.addEventListener('touchstart',start,{passive:false});
+  mon.addEventListener('touchmove',pohyb,{passive:false});
+  mon.addEventListener('touchend',konec,{passive:false});
+  mon.addEventListener('touchcancel',konec,{passive:false});
+}
 /* ===== BUILD2SB2: JS log posilany i do /8765/log, ne jen do LOG[] tady ve
    strance (ten vidi jen uzivatel v PS1 TEST LOG panelu). Bez tohohle
    Rene v /8765/log nevidel VUBEC nic z toho, co strana s rozlozenim
@@ -1598,6 +1764,24 @@ bindLockHold($('btnR1'),'R1');
 bindLockHold($('btnR2'),'R2');
 bindHold($('btnSelect'),'SELECT');
 bindHold($('btnStart'),'START');
+/* B317: mys PlayStation */
+bindMysMonitor($('psMonitor'));
+$('btnMys').addEventListener('click',function(e){e.preventDefault();mysPrepni();},true);
+$('btnMysNastaveni').addEventListener('click',function(e){e.preventDefault();closeHelp();closeDpadMenu();showMysPanel();},true);
+$('mysZavrit').addEventListener('click',function(e){e.preventDefault();closeMysPanel();},true);
+(function(){
+  var bt=document.querySelectorAll('#mysPanel .mysRezim');
+  for(var i=0;i<bt.length;i++)(function(b){
+    b.addEventListener('click',function(e){e.preventDefault();mysNastav(parseInt(b.getAttribute('data-rezim'),10)||0,MYS.citlivost,'panel');},true);
+  })(bt[i]);
+})();
+$('mysCitlivost').addEventListener('input',function(e){e.target.__napTahne=true;var v=$('mysCitlivostVal');if(v)v.textContent='Rychlost: '+e.target.value+' %';},true);
+$('mysCitlivost').addEventListener('change',function(e){e.target.__napTahne=false;mysNastav(MYS.rezim,parseInt(e.target.value,10)||100,'rychlost');},true);
+window.addEventListener('blur',function(e){if(e.target===window)mysZrusPrsty();});
+document.addEventListener('visibilitychange',function(){if(document.hidden)mysZrusPrsty();});
+window.addEventListener('orientationchange',mysZrusPrsty,true);
+mysZjisti();
+setInterval(mysZjisti,1000);   // hra s zapamatovanou mysi nabehla -> tlacitko MYS a ovladac se srovnaji samy
 $('helpClose').addEventListener('click',function(e){e.preventDefault();closeHelp();},true);
 $('dpadMenuClose').addEventListener('click',function(e){e.preventDefault();closeDpadMenu();},true);
 $('dpadMenuMore').addEventListener('click',function(e){e.preventDefault();closeDpadMenu();showHelp();},true);

@@ -1,0 +1,142 @@
+B317 - anglicke texty stranky PS1 (vsechny stavy, i mys), pro kontrolu ocima
+BACK
+MOUSE
+MONITOR
+HOLDING THE LEFT BUTTON
+L1
+L2
+R1
+R2
+SELECT
+START
+RESET
+MEMORY CARD
+CD ISO
+LOAD GAME
+SAVE GAME
+PS1 DOWNLOAD
+Waiting...
+PS1 BUILD2RZ
+Drag a button wherever you like.
+IN GROUPS
+DEFAULT
+DONE
+PS1 — PlayStation 1
+CD / ISO
+opens a local PS1 file from the phone.
+opens your PS1 page on AtariHelp.eu with Google Drive links.
+Drive can return .zip/.bin/.iso/.img/.pbp/.chd; .7z is not supported.
+The first start of a Drive game downloads and unpacks the ZIP into the cache; later starts use the ready local file.
+saves the exact position.
+LOAD QUICK POSITION
+(in the D-PAD AND CONTROLS panel) loads it again - exactly where you left off.
+CORE STATE:
+The PS1 core is connected; the log shows boot, audio and remote download.
+PS1 TEST LOG
+PS1 GOOGLE DRIVE
+PS1 DIRECT URL
+PS1 CACHE PATH
+DELETE PS1 CACHE
+TV WEB CAST
+D-PAD AND CONTROLS
+SAVE AND SEND THE LOG
+COPY LOG
+CLOSE
+EDIT BUTTON LAYOUT
+CONTROLS: SENSITIVITY AND LOOK
+SWAP D-PAD AND ACTIONS (LEFT-HANDED)
+PLAYSTATION MOUSE (DUNE 2000 …)
+MORE (BIOS, CD, LOG...)
+CHOOSE A GAME (CD/ISO)
+Like putting a disc into the console. Games downloaded to the phone - tap a game to start it, the bin deletes it.
+REFRESH THE LIST
+PICK A FILE ON THE PHONE MANUALLY
+DELETE GAME
+What exactly do you want to delete?
+JUST THE GAME (the saved position stays)
+THE GAME AND THE SAVED POSITION
+CANCEL
+A real PS1 card - one, always inserted, shared by all games and the BIOS (see B218). The core takes care of saving by itself, here you just see the state.
+REFRESH STATE
+CONTROLS — pro settings
+D-pad sensitivity
+— how far from the center your finger has to move before a direction switches on. Lower = more sensitive (switches sooner), higher = you have to move further to the edge.
+Sensitivity: 42 %
+Button transparency
+— how much of the game you see through the controller.
+Transparency: 100 %
+See-through controller (quick choice - some want to see through it, some don’t)
+Button size
+— Triangle/Circle/Cross/Square, shoulders, Select/Start.
+Size: 100 %
+D-pad size
+— just the round pad, on its own.
+D-pad size: 100 %
+Vibrate when a button is pressed
+DEFAULT CONTROL SETTINGS
+PLAYSTATION MOUSE
+For games with the PlayStation mouse – Dune 2000, Command & Conquer, Warzone 2100 … The game picture works like a laptop touchpad.
+OFF – CONTROLLER ONLY
+MOUSE IN PORT 1 (DUNE 2000)
+MOUSE PORT 1 + CONTROLLER PORT 2
+CONTROLLER PORT 1 + MOUSE PORT 2
+Games look for the mouse in different places. If the game does not see the cursor, try the next option.
+Cursor speed
+— how far the cursor travels when you drag your finger or hold the D-pad.
+Drag your finger over the picture
+= cursor movement.
+Tap
+= left button (select, confirm).
+Tap with two fingers
+= right button (cancel).
+Hold your finger still
+(it vibrates and HOLDING THE LEFT BUTTON shows at the top) and drag = the left button is held – select units with a box.
+Mouse in port 1:
+✕ = left and ○ = right button (you can hold them too), D-pad = slow precise cursor movement. A game with only the mouse does not see the other buttons, so they are hidden.
+The choice is remembered for each game separately. If the game does not see the mouse in another port either, start the game again (CD ISO) – the mouse is then plugged in from power-on.
+aria-label=PS1 PlayStation
+alt=PS1 PlayStation screen
+Controls reset to default
+Crash Bandicoot
+500.0 MB
+saved game
+Doom
+70.0 MB
+aria-label=Start
+aria-label=Delete
+No downloaded game yet. Download one via LOAD GAME.
+✓ The core provides the real card memory (128 kB).
+✓ The card is saved on storage (131072 bytes).
+✓ The last write went fine.
+✗ The core does not provide the card yet - load/start a game first.
+The card has no file on storage yet - it is saved on the first write.
+✗ The last write FAILED.
+Cannot tell - the core is not running yet.
+No write has been tried in this session yet.
+Edit layout: portrait - rearrange and tap DONE
+Drag a button wherever you like. You can also go back to the default.
+Group: grab any button of a group (D-pad alone, actions, shoulders, bottom bar) and the whole group moves.
+ONE BY ONE
+Layout reset to default (portrait)
+Layout saved (portrait)
+SAVE STATE saved
+SAVE STATE loaded
+PS1 cache: /data/user/0/eu.atarihelp.emu10/cache/ps1
+PS1_CACHE_CLEARED
+[dialog] confirm:Delete the downloaded PS1 games/cache from the phone?
+TV WEB CAST: open on the TV http://192.168.1.50:8765/
+[dialog] prompt:On the TV open this address in a browser / the AirScreen browser:
+LOG copied to the clipboard
+LOG SAVED (Downloads/AtariHelp) - choose how to send it
+RESETTING (BIOS WITHOUT CD)…
+1 s
+Game: SLES02250 – MOUSE IN PORT 1
+Speed: 100 %
+MOUSE OFF – controller again
+MOUSE ON (MOUSE IN PORT 1) – drag your finger over the picture, tap = click. Settings: gear → PLAYSTATION MOUSE
+Game: SLES02250 – CONTROLLER PORT 1 + MOUSE PORT 2
+Game: SLES02250 – MOUSE PORT 1 + CONTROLLER PORT 2
+Speed: 55 %
+Game: SLES02250 – OFF
+No game running yet – MOUSE IN PORT 1
+MOUSE: the PS1 core does not answer

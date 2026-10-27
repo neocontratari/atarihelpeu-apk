@@ -32,6 +32,7 @@
 #include <SLES/OpenSLES_Android.h>
 #include "tvproud/nap_tv_proud.h"        // B305: PS1 na TV / PC cela v C++
 #include "tvproud/nap_tv_proud_jpeg.h"
+#include "nap_ps1_mys.h"                // B317: mys PlayStation (dotyk jako touchpad, mys z PC)
 #include <signal.h>   // A10: zachytavac padu (sigaction)
 #include <fcntl.h>    // A10: open() - zapis padu do log souboru (async-signal-safe)
 #include <unistd.h>   // A10: write()/close()
@@ -331,6 +332,9 @@ extern "C" {
   void retro_set_audio_sample_batch(retro_audio_sample_batch_t);
   void retro_set_input_poll(retro_input_poll_t);
   void retro_set_input_state(retro_input_state_t);
+  // B317: mys PlayStation do portu. Slabe (jako CdromId nize): v appce je to libretro.c,
+  // starsi testy na PC (falesne jadro bez portu) se tak prelozi beze zmeny.
+  void retro_set_controller_port_device(unsigned port, unsigned device) __attribute__((weak));
   void retro_init(void);
   void retro_deinit(void);
   unsigned retro_api_version(void);
@@ -959,11 +963,53 @@ static void ps1_klavesy_hlidac(void) {   // vlakno emulace, kazdy krok
   }
 }
 
+// =====================================================================
+//  B317: MYS PLAYSTATION - Rene: "slo by napriklad u hry dune2000 pouzit
+//  i pres obrazovku mys?" Vsechno o mysi (dotyk jako touchpad, mys z PC,
+//  KRIZEK / KOLECKO jako tlacitka mysi, do ktereho portu, zapamatovani
+//  pro kazdou hru) je v nap_ps1_mys.h - tady jen napojeni na jadro.
+// =====================================================================
+static nap::Ps1Mys g_mys;
+extern "C" {
+  extern char CdromId[] __attribute__((weak));              // ID disku (libpcsxcore/misc.c), napr. SLES02250
+  extern unsigned int nap_pad_cteni[2] __attribute__((weak)); // kolikrat hra cetla port 1 / 2 (libpcsxcore/pad.c)
+}
+static const char *ps1_id_disku(void) { const char *volatile p = CdromId; return p; }
+static std::string ps1_mys_soubor(void) { return g_savedir.empty() ? std::string() : g_savedir + "/PS1_mys_pro_hry.txt"; }
+static void ps1_mys_denik(void) { for (const std::string &r : g_mys.vezmiLog()) ps1_denik("%s", r.c_str()); }
+// po startu hry / BIOSu: zapamatovana mys pro tuhle hru (podle ID disku); porty
+// nastavi vlakno emulace pred prvnim krokem - hra tak mys vidi uz od zapnuti
+static void ps1_mys_po_startu(const std::string &hra) {
+  // bez disku (BIOS) zustava v jadre ID minule hry - klic je pak "BIOS"
+  const std::string klic = hra.empty() ? std::string("BIOS") : nap::Ps1Mys::klicHry(ps1_id_disku(), hra);
+  const bool zapamatovano = g_mys.nactiProHru(ps1_mys_soubor(), klic);
+  g_mys.poNacteniHry();
+  if (g_mys.zapnuta())
+    ps1_denik("MYS: hra %s - %s, citlivost %d %%%s", klic.c_str(), nap::Ps1Mys::popisRezimu(g_mys.rezim()), g_mys.citlivost(),
+              zapamatovano ? " (zapamatovano pro tuto hru)" : "");
+  else
+    ps1_denik("MYS: hra %s - %s (zapne se tlacitkem MYS na sirku)", klic.c_str(), nap::Ps1Mys::popisRezimu(g_mys.rezim()));
+  ps1_mys_denik();
+}
+// kazdy krok emulace PRED retro_run (pod zamkem jadra): zmena portu (mys / ovladac)
+// a co mys v tomhle snimku hlasi
+static void ps1_mys_pred_krokem(void) {
+  unsigned dev[2];
+  if (g_mys.zmenaPortu(dev)) {
+    void (*const zapoj)(unsigned, unsigned) = retro_set_controller_port_device;
+    if (zapoj) { zapoj(0, dev[0]); zapoj(1, dev[1]); }
+    else ps1_denik("MYS: jadro neumi menit porty (retro_set_controller_port_device chybi) - mys nepujde");
+  }
+  g_mys.snimek(ps1_ms_ted(), g_input_bits.load(std::memory_order_relaxed) | g_klav_bits.load(std::memory_order_relaxed));
+}
+
 static int16_t nap_input_state(unsigned port, unsigned device, unsigned, unsigned id) {
   // BUILD2SA4: RetroPad -> PS1 core. device 1 = RETRO_DEVICE_JOYPAD.
-  if (port != 0 || device != 1 || id >= 16) return 0;
-  const uint32_t b = g_input_bits.load(std::memory_order_relaxed) | g_klav_bits.load(std::memory_order_relaxed);
-  return (b & (1u << id)) ? 1 : 0;
+  // B317: device 2 = RETRO_DEVICE_MOUSE (mys PlayStation). S vypnutou mysi presne jako
+  // drive: tlacitka jen do portu 1, ostatni porty nic.
+  if (device == nap::Ps1Mys::RD_MOUSE) return g_mys.mysDotaz(port, id);
+  if (device != nap::Ps1Mys::RD_JOYPAD) return 0;
+  return g_mys.padDotaz(port, id, g_input_bits.load(std::memory_order_relaxed) | g_klav_bits.load(std::memory_order_relaxed));
 }
 
 /** B308: klavesa z prohlizece (TV / PC). Vraci text pro prohlizec. */
@@ -1000,6 +1046,51 @@ Java_eu_atarihelp_emu10_NativePs1CoreBridge_ps1PcKlavesa(JNIEnv *env, jclass, js
   if (n < 12) ps1_denik("TV KLAVESNICE: %s %s -> %s", code.c_str(), dolu ? "dolu" : "nahoru", PS1_TLACITKA[id]);
   else if (n == 12) ps1_denik("TV KLAVESNICE: dalsi stisky jen v radcich TLACITKA a v souctu ZDRAVI");
   return env->NewStringUTF((std::string("PS1:") + PS1_TLACITKA[id]).c_str());
+}
+
+// =====================================================================
+//  B317: MYS - JNI (stranka PS1 pres AHPS1, prohlizec TV / PC pres /mys)
+// =====================================================================
+/** Dotyk na obraze hry (touchpad). akce 0 dolu, 1 nahoru, 2 pohyb, 3 zruseno;
+ *  x, y = poloha prstu v obrazu, w, h = velikost obrazu (body stranky).
+ *  Vraci stav: bit0 mys zapnuta, bit1 leve tlacitko drzi, bit2 prst na obraze,
+ *  bit3 tenhle dotyk byl klik levym, bit4 klik pravym (stranka zavibruje). */
+extern "C" JNIEXPORT jint JNICALL
+Java_eu_atarihelp_emu10_NativePs1CoreBridge_ps1MysDotyk(JNIEnv *, jclass, jint akce, jint id, jfloat x, jfloat y, jfloat w, jfloat h) {
+  const int udalost = g_mys.dotyk((int)akce, (int)id, (float)x, (float)y, (float)w, (float)h, ps1_ms_ted());
+  return (jint)(g_mys.stavBity() | (udalost << 3));
+}
+static std::string ps1_mys_stav_text(void) {
+  char b[200];
+  snprintf(b, sizeof(b), "%d|%d|%d|%s", g_mys.rezim(), g_mys.citlivost(), g_mys.stavBity(), g_mys.klic().c_str());
+  return b;
+}
+/** Rezim (0 vyp, 1 port 1, 2 port 1 + ovladac v portu 2, 3 port 2 + ovladac v portu 1)
+ *  a citlivost v % - zapamatuje se pro tuto hru. Vraci stav jako ps1MysStav. */
+extern "C" JNIEXPORT jstring JNICALL
+Java_eu_atarihelp_emu10_NativePs1CoreBridge_ps1MysNastav(JNIEnv *env, jclass, jint rezim, jint citlivost) {
+  if (g_mys.nastav((int)rezim, (int)citlivost)) {
+    const std::string soubor = ps1_mys_soubor();
+    if (!g_mys.klic().empty() && !g_mys.ulozProHru(soubor))
+      ps1_denik("MYS: nastaveni se nepodarilo ulozit do %s", soubor.empty() ? "(slozka karty neni)" : soubor.c_str());
+  }
+  ps1_mys_denik();
+  return env->NewStringUTF(ps1_mys_stav_text().c_str());
+}
+/** "rezim|citlivost|stavBity|klic hry" */
+extern "C" JNIEXPORT jstring JNICALL
+Java_eu_atarihelp_emu10_NativePs1CoreBridge_ps1MysStav(JNIEnv *env, jclass) {
+  return env->NewStringUTF(ps1_mys_stav_text().c_str());
+}
+/** Mys pocitace z prohlizece na TV / PC: posun (body) a tlacitka (bit0 leve, bit1 prave). */
+extern "C" JNIEXPORT jstring JNICALL
+Java_eu_atarihelp_emu10_NativePs1CoreBridge_ps1PcMys(JNIEnv *env, jclass, jint dx, jint dy, jint tlacitka) {
+  static std::atomic<int> zprav{0};
+  const bool zap = g_mys.zapnuta();
+  g_mys.pcMys((int)dx, (int)dy, (int)tlacitka, ps1_ms_ted());
+  if (zprav.fetch_add(1) == 0)
+    ps1_denik("MYS Z PC: prvni zprava z prohlizece (%s)", zap ? "mys je zapnuta - jde do hry" : "mys je VYPNUTA - zapni ji na telefonu tlacitkem MYS");
+  return env->NewStringUTF(zap ? "PS1:MYS" : "PS1:MYS_VYP");
 }
 
 /** B308: denik PS1 (poslednich 800 radku) pro stranku PS1 a LOG appky. UTF-8 bajty. */
@@ -1403,6 +1494,7 @@ Java_eu_atarihelp_emu10_NativePs1CoreBridge_ps1EglBoot(JNIEnv* env, jclass,
     g_loaded.store(true);
     nap_srm_set_path(game);
     nap_srm_load();
+    ps1_mys_po_startu(game);   // B317
 
     retro_system_av_info av; memset(&av, 0, sizeof(av));
     retro_get_system_av_info(&av);
@@ -1416,7 +1508,9 @@ Java_eu_atarihelp_emu10_NativePs1CoreBridge_ps1EglBoot(JNIEnv* env, jclass,
 extern "C" JNIEXPORT void JNICALL
 Java_eu_atarihelp_emu10_NativePs1CoreBridge_ps1EglTick(JNIEnv*, jclass) {
     if (!g_loaded.load()) return;
+    ps1_mys_pred_krokem();   // B317
     retro_run();
+    ps1_mys_denik();         // B317: hlasky mysi (zmena portu ...) do deniku
     if (g_gles_ready) nap_gles_sync_display_settings();
 }
 
@@ -1972,6 +2066,7 @@ extern "C" int nap_ps1_egl_boot_c(const char* sys, const char* game) {
     g_loaded.store(true);
     nap_srm_set_path(game ? game : "");
     nap_srm_load();
+    ps1_mys_po_startu(game ? game : "");   // B317
     retro_system_av_info av; memset(&av, 0, sizeof(av));
     retro_get_system_av_info(&av);
     g_fps = av.timing.fps > 1 ? av.timing.fps : 60.0;
@@ -2012,6 +2107,8 @@ static void nap_core_thread_fn(void) {
     unsigned otisk = 0xFFFFFFFFu, tlacitkaMinule = g_input_bits.load() | g_klav_bits.load(), tlacStisk = 0, tlacPust = 0;
     unsigned tlacZacatek = tlacitkaMinule;   // co bylo drzeno na zacatku okna (poradi + / - v radku TLACITKA)
     int zmenObrazu = 0, zamlcenoObrazu = 0, radkuTlacitek = 0, zamlcenoTlacitek = 0, zmenTlacitek = 0;
+    unsigned cteniPortuOd[2] = {0, 0};      // B317: kolikrat hra cetla port 1 / 2 (kde hleda mys)
+    { unsigned int *volatile pc = nap_pad_cteni; if (pc) { cteniPortuOd[0] = pc[0]; cteniPortuOd[1] = pc[1]; } }
     char popis[600];
     while (g_core_run.load(std::memory_order_relaxed)) {
         if (!g_loaded.load()) { usleep(2000); continue; }
@@ -2029,8 +2126,10 @@ static void nap_core_thread_fn(void) {
             // zamek - drive ale retro_run zamek NEBRALO, takze se pozice mohla ukladat
             // UPROSTRED kroku emulace z jineho vlakna (rozbita pozice, nebo pad).
             std::lock_guard<std::mutex> core(g_core_mutex);
+            ps1_mys_pred_krokem();        // B317: porty a mys pro tenhle snimek
             retro_run();
         }
+        ps1_mys_denik();
         {
             const double ms = std::chrono::duration<double, std::milli>(hodiny::now() - runOd).count();
             runSoucet += ms;
@@ -2102,6 +2201,20 @@ static void nap_core_thread_fn(void) {
                           ps1_tlacitka_text(g_input_bits.load() | g_klav_bits.load()).c_str(), zmenTlacitek,
                           zamlcenoTlacitek ? ", cast nezapsana" : "", g_klav_v_okne.exchange(0), g_ps1Proud.klientu(),
                           zamlcenoObrazu ? " | dalsi zmeny obrazu nezapsany" : "");
+                {   // B317: mys - co se s ni delo a jak casto hra cte porty 1 a 2
+                  const std::string m = g_mys.souhrn();
+                  if (!m.empty()) {
+                    char porty[160] = "";
+                    unsigned int *volatile pc = nap_pad_cteni;
+                    if (pc) {
+                      snprintf(porty, sizeof(porty), " | hra cte port 1 %.0fx/s, port 2 %.0fx/s",
+                               (pc[0] - cteniPortuOd[0]) / okno, (pc[1] - cteniPortuOd[1]) / okno);
+                    }
+                    ps1_denik("MYS ZDRAVI: %s%s", m.c_str(), porty);
+                  }
+                  unsigned int *volatile pc = nap_pad_cteni;
+                  if (pc) { cteniPortuOd[0] = pc[0]; cteniPortuOd[1] = pc[1]; }
+                }
                 oknoOd = ted; kroku = 0; runSoucet = runMax = cekaniMs = 0.0;
                 snimkyOd = sn; duplOd = du; vypadkyOd = vy; tenkeOd = te;
                 zmenObrazu = zamlcenoObrazu = radkuTlacitek = zamlcenoTlacitek = zmenTlacitek = 0;
@@ -2253,6 +2366,7 @@ Java_eu_atarihelp_emu10_NativePs1CoreBridge_ps1BootDoMonitoru(JNIEnv *env, jclas
   // funguje presne tak, jako by karta byla porad zasunuta.
   nap_srm_set_path(gamePath);
   nap_srm_load();
+  ps1_mys_po_startu(gamePath);             // B317: mys zapamatovana pro tuto hru
 
   retro_system_av_info av; memset(&av, 0, sizeof(av));
   retro_get_system_av_info(&av);
