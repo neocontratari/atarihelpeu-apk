@@ -44,6 +44,9 @@ public final class NativePs1CoreBridge {
     // C++ zabali kazdy snimek (JPEG jen zmenenych casti, puvodni rozliseni
     // hry) i zvuk do jednoho paketu, Java (/ps1.stream) jen posila bajty.
     private static native int proudOtevriNative();
+    /** B319: prohlizec, ktery umi casti B319 (stranka WEB TV si je rekla v adrese proudu):
+     *  volby bit0 posun obrazu (kopie v canvasu prohlizece), bit1 2x zvetseny obraz v puvodnim rozliseni */
+    private static native int proudOtevri2Native(int volby);
     /** 4 B delka + paket; 0 = nic noveho, zaporne = male pole (-n), MIN_VALUE = chyba */
     private static native int proudDalsiNative(int id, byte[] out, int cekejMs, int zapisMs);
     private static native void proudZavriNative(int id);
@@ -55,6 +58,12 @@ public final class NativePs1CoreBridge {
     public static int proudOtevriSafe() {
         if (!loaded) return 0;
         try { return proudOtevriNative(); } catch (Throwable t) { return 0; }
+    }
+    /** B319: volby 0 = jako drive (proudOtevriSafe) */
+    public static int proudOtevri2Safe(int volby) {
+        if (!loaded) return 0;
+        if (volby == 0) return proudOtevriSafe();
+        try { return proudOtevri2Native(volby); } catch (Throwable t) { return proudOtevriSafe(); }
     }
     public static int proudDalsiSafe(int id, byte[] out, int cekejMs, int zapisMs) {
         if (!loaded) return Integer.MIN_VALUE;

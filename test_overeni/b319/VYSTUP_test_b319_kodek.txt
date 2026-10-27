@@ -1,0 +1,34 @@
+B319 - PS1 na TV / PC: posun obrazu (kopie v prohlizeci) a 2x zvetseny obraz v puvodnim rozliseni
+       (Hub + KodekJpeg z appky, prohlizec v C++ podle stranky WEB TV B319)
+
+   A) Dune-like 736x480 (2x), 250 snimku hry, vynechano 10:
+      posun mapy: drive 67.9 kB/snimek, B319 17.2 kB/snimek (25 %); kopie v 154 z 154 snimku posunu
+      mapa stoji: drive 31.2 kB/snimek, B319 5.7 kB/snimek
+      pri 20 snimcich hry / s: drive 11.12 Mbit/s, B319 2.82 Mbit/s (jen obraz, bez zvuku)
+      vernost: drive PSNR prumer 30.37 dB (nejhur 29.68), nejhorsi ctverec 20.2; B319 prumer 30.80 dB (nejhur 30.27), nejhorsi ctverec 10.1
+      kodovani pri posunu: drive 2.71 ms/snimek, B319 1.67 ms/snimek (nejdele 9.1 ms)
+      casti: JPEG 975, z toho v polovicnim rozliseni 975; kopii 160 (43.2 Mbodu)
+   log: B306 TV PROUD PS1: prohlizec 1 pripojen (celkem 1) - obraz a zvuk primo z C++ (JPEG po castech), kazdy snimek, zvuk 44100 Hz v tomtez paketu | B319: posun + polovicni
+   log: B306 TV PROUD PS1: prohlizec 1 odpojen po 3 s - 260 paketu (79.5/s), 3.3 MB celkem, JPEG kvalita 76 (max 76, snizeno 0x), kodovani prumer 0.7 ms max 8.2 ms (pasu 1), castecnych 973, zjemneni 1, beze zmeny 19 z 260, B313: obdelniku 975 (snimku s vic castmi 239), zjemneni za pohybu 0, B319: posun obrazu 160 x (zkouseno 160, ctvercu 16x16 zkopirovano 164491), casti v polovicnim rozliseni 975 z 975, zvuk preskoku 0, paketu jen se zvukem 0 (zbyva 0)
+OK     A1) pakety jdou rozebrat jako ve strance B319 (paketu 1154, dalsich casti 894), dalsi casti s priznakem 8 a bez zvuku
+OK     A2) obraz v prohlizeci = snimek po kazdem paketu: nejhorsi ctverec 16x16 10.1 (drive 20.2), nejhorsi PSNR 30.27 dB (drive 29.68)
+OK     A2b) vernost jako drive: prumer 30.80 dB (drive 30.37)
+OK     A3) posun mapy: kopie v 154 z 154 snimku, dat 25 % proti drivejsku (<= 30 %)
+OK     A4) i kdyz prohlizec vynechal snimek (posun 2x vetsi), kopie jde - log: posun obrazu
+OK     A5) 2x zvetseny obraz jde v polovicnim rozliseni: 975 z 975 casti
+OK     A6) mapa stoji (jednotky, kurzor): 5.7 kB/snimek, drive 31.2
+OK     A7) po zastaveni se obraz zjemni jako drive: 40.65 dB (drive 39.07)
+OK     A12) kodovani pri posunu mapy ne pomalejsi nez drive: 1.67 ms (drive 2.71 ms)
+   B) 1x 368x240: drive 19.5 kB/snimek, B319 17.2 kB/snimek, kopii 39, polovicnich 0, nejhorsi ctverec 12.4 (drive 12.4)
+OK     B8) 1x: kopie ano (39), polovicni rozliseni ne, obraz spravne, dat mene
+   C) 3D 640x480: drive 91.9 kB/snimek, B319 91.9 kB/snimek, kopii 0, polovicnich 0; PSNR 24.87 / 24.87 dB; kodovani 3.73 / 3.70 ms
+   log: B306 TV PROUD PS1: prohlizec 1 pripojen (celkem 1) - obraz a zvuk primo z C++ (JPEG po castech), kazdy snimek, zvuk 44100 Hz v tomtez paketu | B319: posun + polovicni
+   log: B306 TV PROUD PS1: prohlizec 1 odpojen po 2 s - 90 paketu (39.6/s), 8.1 MB celkem, JPEG kvalita 76 (max 76, snizeno 0x), kodovani prumer 3.0 ms max 6.8 ms (pasu 2), castecnych 0, zjemneni 0, beze zmeny 0 z 90, B313: obdelniku 90 (snimku s vic castmi 0), zjemneni za pohybu 0, B319: posun obrazu 0 x (zkouseno 89, ctvercu 16x16 zkopirovano 0), casti v polovicnim rozliseni 0 z 90, zvuk preskoku 0, paketu jen se zvukem 0 (zbyva 0)
+OK     C9) 3D hra: zadna kopie, zadne polovicni rozliseni, data a vernost jako drive
+OK     C9b) 3D hra: kodovani skoro stejne rychle (hledani posunu jen obcas): 3.70 ms (drive 3.73 ms), log 'zkouseno' 89
+   D) vzor + strih: kopii 12, nejhorsi ctverec 9.8 (drive 18.4), nejhorsi PSNR 30.32 dB (drive 18.68)
+OK     D10) opakujici se vzor a strih sceny: obraz porad spravne (nejhorsi ctverec 9.8, drive 18.4)
+   E) 736x480 -> 320x240 -> 736x480 -> 257x193: chyb 0, nejhorsi ctverec 32.0 (drive 32.0), kopii 23, polovicnich 69
+OK     E11) zmena rozliseni a lichy rozmer: obraz porad spravne (nejhorsi ctverec 32.0, drive 32.0)
+
+VYSLEDEK: 14 OK, 0 CHYBA

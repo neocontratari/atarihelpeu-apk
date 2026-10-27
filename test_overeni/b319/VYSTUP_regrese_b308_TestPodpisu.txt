@@ -1,0 +1,19 @@
+OK     knihovna napps1core nactena skutecnou tridou NativePs1CoreBridge
+native metod ve tride: 29
+OK     bootGameSafe (ps1BootDoMonitoru) -> PS1_HRA_OK
+OK     ps1PcKlavesa(String, boolean) -> String: PS1:KRIZEK
+OK     ps1Denik() -> byte[] (1973 B)
+OK     pcKlavesaSafe (MainActivity /klavesa)
+OK     pcKlavesaSafe PustVse
+OK     pcKlavesaSafe(null) nespadne
+OK     denikSafe (AHPS1.ps1Denik, LOG appky): start, CUE, klavesnice
+OK     saveStateSafe -> PS1_STATE_SAVE_OK bytes=4096 path=...
+OK     loadStateSafe -> PS1_STATE_LOAD_OK bytes=4096 path=...
+OK     statusSafe (hra bezi -> running=YES) -> PS1_RUN running=YES frames=24 dupes=0 re
+OK     memCardInfoSafe
+OK     stopSafe
+OK     statusSafe po stopSafe -> running=NO
+OK     bootBiosSafe -> PS1_BIOS_OK
+OK     denik: konec hry a start BIOSu
+denik: 38 radku, 4212 B
+VYSLEDEK: nove native metody B308 (ps1PcKlavesa, ps1Denik) i obaly sedi, 0 chyb

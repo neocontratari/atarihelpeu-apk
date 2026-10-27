@@ -1,0 +1,29 @@
+B319 - regrese: kodeky a Hub proudu (B305 / B313), PS1 (B308, JVM, JNI, javac), mys B318, stranka WEB TV starsich testu se strankou B319
+OK     B305 kodeky (Sega indexy bez ztraty, PS1 JPEG po castech: PSNR, stojici obraz, kvalita podle site, rozmery) s hlavickami B319  -- VYSLEDEK: 35 kontrol, 0 chyb
+OK     B305 rozbocovac ve vlaknech (jadro 60 / s, zvuk, rychly a pomaly prohlizec) s hlavickami B319  -- VYSLEDEK: 16 kontrol, 0 chyb
+OK     B305 koder JPEG na vic jadrech (pasy 1 / 2 / 3, bajt po bajtu stejne) s B319 (barvy 4:4:4 volitelne)  -- VYSLEDEK: OK
+OK     B305 koder JPEG na vic jadrech pod ThreadSanitizerem  -- hlaseni ThreadSanitizer: 0, VYSLEDEK: OK
+OK     B313 kodek hlavniho menu na TV (vic obdelniku, zjemneni za pohybu, glReadPixels) s hlavickami B319  -- VYSLEDEK: 11 OK, 0 CHYBA
+OK     preklad ps1_harness.cpp (B308) s nap_ps1_native.cpp B319, -Wl,--no-undefined  -- varovani: 0, chyb: 0
+OK     B308 denik PS1 + klavesnice z TV v C++ + zamek kolem retro_run (test_ps1_denik.py)  -- VYSLEDEK: 63 kontrol, 0 CHYB
+OK     B308 ThreadSanitizer: vlakno emulace, zvuk, klavesy z prohlizece, denik, SAVE / LOAD, dotyk (tsan_denik.cpp)  -- hlaseni ThreadSanitizer: 0
+OK     B308 JVM TestPodpisu (-Xcheck:jni): skutecna trida NativePs1CoreBridge B319  -- VYSLEDEK: nove native metody B308 (ps1PcKlavesa, ps1Denik) i obaly sedi, 0 chyb
+OK     B308 klavesnice PC v TV prohlizeci -> PS1 (Chromium, stranka z MainActivity.java B319)  -- VYSLEDEK: 17 kontrol, 0 CHYB
+OK     B308 stranka PS1: nahravani hry, banner, LOG s denikem (Chromium cesky)  -- VYSLEDEK: 23 kontrol, 0 CHYB
+OK     JVM TestB319Proud (-Xcheck:jni): proudOtevri2Native(int) primo i pres obal, proud z bezici hry B319 i staremu prohlizeci, log Hubu  -- VYSLEDEK: 0 chyb
+OK     JVM TestB318Mys (-Xcheck:jni) na kodu B319: mys PS1 (B317 / B318) beze zmeny  -- VYSLEDEK: 0 chyb
+OK     kazda native metoda NativePs1CoreBridge ma v knihovne svou funkci (nm)  -- 29 OK, 0 CHYB
+OK     B305 tv_ps1.cpp (proud PS1 na TV) s nap_ps1_native.cpp B319: preklad + link  -- 
+OK     B306 tv_ps1_6.cpp s nap_ps1_native.cpp B319: preklad + link  -- 
+OK     javac proti android.jar (cela appka)  -- trid prelozeno: 76 VYSLEDEK: 0 chyb prekladu 
+OK     podpisy JNI: NativePs1CoreBridge (javac -h) = nap_ps1_native.cpp (jmeno, navratovy typ, typy parametru)  -- VYSLEDEK: 29 native metod Javy, 0 CHYB
+OK     B315 zvuk na TV / PC v dalsich hrach (menu -> Atari -> Sega -> PS1 -> MP3 ...), stranka B319  -- VYSLEDEK: 20 kontrol, 0 CHYBA
+OK     B313 TV / PC: prepnuti proudu po odchodu z menu (409 + X-Nap-Proud), stranka B319  -- VYSLEDEK: 3 kontrol, 0 CHYBA
+OK     B314 stranka WEB TV: texty cesky ve vsech stavech = B313, anglicky bez cestiny, bez chyby JS (HTML a) zamerne jine od B315)  -- VYSLEDEK: 29 kontrol, 1 CHYBA, jinych chyb nez HTML a): 0
+OK     B302 klavesnice PC do Atari se strankou B319  -- VYSLEDEK: 23 kontrol, 0 chyb
+OK     B303 Atari na TV (proud z C++, zvuk, Ctrl+V) se strankou B319  -- VYSLEDEK: 23 kontrol, 0 chyb
+OK     B306 Sega, PS1, demo na TV bez autoplay (zvuk, F5, klavesa, zadrhavajici sit), knihovny: sega=soucasny ps1=soucasny intro=z_B306  -- VYSLEDEK: 37 kontrol, 0 chyb
+OK     B313 / B318 SKUTECNE menu na PC (Mesa): vse jako drive, radek MENU 'TV: nikdo se nediva' / 'TV: stara cesta pres Javu'  -- VYSLEDEK: 15 OK, 0 CHYBA; radku TV nikdo 4, stara cesta 1
+OK     B318 logika mysi PS1 (nap_ps1_mys.h): lano, zrychleni, rozlozeni podle hry, gesta, PC, pamet  -- VYSLEDEK: 83 OK, 0 CHYBA
+OK     B318 SKUTECNE jadro PS1 (PCSX z appky, BIOS HLE) + nap_ps1_native.cpp B319: mys v hre, ktera kresli / cte kazdy 3. snimek  -- VYSLEDEK: 36 OK, 0 CHYBA
+VYSLEDEK: 27 OK, 0 CHYBA

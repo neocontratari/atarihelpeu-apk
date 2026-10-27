@@ -28,14 +28,28 @@
 //  - qVelkaZmena: pri listovani (meni se vic nez 40 % obrazu) nizsi kvalita - mene dat,
 //    plynulejsi pohyb; qZpetMs: kvalita po zpomaleni site stoupa rychleji.
 //
+// B319 (Rene: "mam pocit, ze doslo ke zpomaleni pri prenosu LAN"; log B318: Dune 2000 na PC
+// 48-57 snimku/s misto 59 - pri posunu mapy se menil cely obraz 736x480 20x za sekundu,
+// ~35 kB na snimek, az 6 Mbit/s, Wi-Fi nestihala). Dve volby, ktere umi stranka WEB TV
+// od B319 (dohodne je adresou proudu, starsi stranka je nedostane - nap_ps1_native.cpp):
+//  - posun: kdyz se velka cast obrazu posunula (mapa), prohlizec ji zkopiruje ve svem
+//    canvasu (cast "kopie", zadna data obrazu) a JPEG jde jen to, co je opravdu nove
+//    (pruh na kraji, jednotky, kurzor),
+//  - polovicni: cast, ktera je presne 2x zvetsena (2x Enhanced Resolution u 2D her - kazde
+//    2x2 body stejne), jde v polovicnim rozliseni (barvy 4:4:4, kvalita +10 - stejna vernost,
+//    ~50-60 % dat) a prohlizec ji nakresli 2x bez vyhlazeni = presne totez.
+//
 // CAST OBRAZU V PAKETU (verze 3):
 //   u16 x, u16 y, u16 w, u16 h   obdelnik, ktery se meni (w = 0: beze zmeny)
-//   u8  kvalita
+//   u8  kvalita                  B319: bit7 = JPEG v polovicnim rozliseni (w/2 x h/2), kreslit 2x;
+//                                0xFF = KOPIE: obdelnik w x h se zkopiruje z canvasu z mista
+//                                (zdroj x, zdroj y) na (x, y) - delka 4, data u16 zdroj x, u16 zdroj y
 //   u32 delka JPEG, pak JPEG (baseline, ctverce zarovnane na 16)
 #pragma once
 #include <algorithm>
 #include <cstdint>
 #include <cstdio>
+#include <cstdlib>
 #include <cstring>
 #include <string>
 #include <vector>
@@ -84,9 +98,17 @@ struct KodekJpeg {
   // B313: dalsi casti tehoz snimku - Hub je posle jako dalsi pakety (priznak 8, bez zvuku)
   size_t dalsiN = 0;
   std::vector<std::vector<uint8_t>> dalsi;
+  // B319: volby, ktere umi stranka WEB TV od B319 (nastavKodekPs1 - jen kdyz si je stranka rekla)
+  static constexpr uint8_t KV_KOPIE = 0xFF;        // cast = kopie obdelniku v canvasu prohlizece
+  static constexpr uint8_t KV_POLOVICNI = 0x80;    // priznak v bajtu kvality: JPEG v polovicnim rozliseni
+  static constexpr int POSUN_R = 64;               // nejvetsi hledany posun (bodu) mezi dvema poslanymi snimky
+  static constexpr int POSUN_VZORKU = 48;          // vzorku (8 bodu v radku) ze zmenenych ctvercu
+  bool posun = false;                    // posun obrazu = kopie v prohlizeci + JPEG jen noveho
+  bool polovicni = false;                // presne 2x zvetsene casti v polovicnim rozliseni
   // statistika (do logu)
   long long klicovych = 0, snimku = 0, beze = 0, zjemneni = 0, snizeni = 0, castecnych = 0;
   long long obdelniku = 0, zjemneniZaPohybu = 0, vicecastnych = 0;   // B313
+  long long posunu = 0, posunZkousek = 0, posunCtvercu = 0, polovicnich = 0;   // B319
   double kodMsSoucet = 0, kodMsMax = 0;
   long long kodN = 0;
 
@@ -102,6 +124,11 @@ struct KodekJpeg {
     std::string s = b;
     if (viceObdelniku || jemneBloky) {
       snprintf(b, sizeof(b), ", B313: obdelniku %lld (snimku s vic castmi %lld), zjemneni za pohybu %lld", obdelniku, vicecastnych, zjemneniZaPohybu);
+      s += b;
+    }
+    if (posun || polovicni) {
+      snprintf(b, sizeof(b), ", B319: posun obrazu %lld x (zkouseno %lld, ctvercu 16x16 zkopirovano %lld), casti v polovicnim rozliseni %lld z %lld",
+               posunu, posunZkousek, posunCtvercu, polovicnich, obdelniku);
       s += b;
     }
     return s;
@@ -121,6 +148,7 @@ struct KodekJpeg {
       qMax = qStrop > 0 ? qStrop : maxKvalita(W, H);
       if (q <= 0 || q > qMax) q = qMax;
       klicovych++;
+      posunPosl_ = false;                  // B319
     }
     // kvalita podle site: Java hlasi, jak dlouho cekal zapis predchoziho paketu
     zapis = zapis * 0.8 + std::max(0, zapisMs) * 0.2;
@@ -136,18 +164,7 @@ struct KodekJpeg {
       zapisStatistiku();
       return 1u;
     }
-    zmena.assign((size_t)bw * bh, 0);
-    bool neco = false;
-    for (int y = 0; y < H; y++) {
-      const uint32_t *a = F + (size_t)y * W, *b = &pred[(size_t)y * W];
-      if (std::memcmp(a, b, (size_t)W * 4) == 0) continue;
-      uint8_t *zr = &zmena[(size_t)(y / 16) * bw];
-      for (int bx = 0; bx < bw; bx++) {
-        if (zr[bx]) continue;
-        const int xa = bx * 16, nx = std::min(16, W - xa);
-        if (std::memcmp(a + xa, b + xa, (size_t)nx * 4)) { zr[bx] = 1; neco = true; }
-      }
-    }
+    const bool neco = spoctiZmeny(F);
     if (!neco) {
       // cely obraz stoji: po chvilce jeste jednou ve vysoke kvalite (jako drive)
       if (++klid < KLID_SNIMKU) { beze++; prazdna(out); return 4u; }
@@ -160,6 +177,12 @@ struct KodekJpeg {
       return 0u;
     }
     klid = 0;
+    // B319: posun obrazu (mapa ve hre) - prohlizec ho zkopiruje ve svem canvasu, JPEG pak jen to,
+    // co je opravdu nove (pruh na kraji, jednotky, kurzor)
+    Obd ko;
+    int vx = 0, vy = 0;
+    const bool kop = posun && najdiPosun(F, ko, vx, vy);
+    if (kop) spoctiZmeny(F);
     // B313: casti, ktere uz chvili stoji a prohlizec je ma v horsi kvalite, se zjemni hned
     // (menu: konzole na karte se toci porad, zbytek obrazovky stoji). Po kouscich (nejvys
     // ctvrtina obrazu za snimek) a jen kdyz sit stiha - at se neucpe.
@@ -185,10 +208,13 @@ struct KodekJpeg {
       for (const Obd &o : obdZm) plocha += o.plocha();
       if (plocha * 10 > (long long)bw * bh * 4) kvZmen = std::max(Q_MIN, std::min(q, qVelkaZmena - (qMax - q)));
     }
-    // poradi: nejdriv zjemneni, pak zmeny (oboje z tehoz snimku - prekryv nevadi)
+    // poradi: (B319) kopie, nejdriv zjemneni, pak zmeny (oboje z tehoz snimku - prekryv nevadi)
     size_t k = 0;
-    for (const Obd &o : obdJem) obdelnik(F, o, Q_KLID, k++ == 0 ? out : dalsiCast(k - 2));
-    for (const Obd &o : obdZm) obdelnik(F, o, kvZmen, k++ == 0 ? out : dalsiCast(k - 2));
+    auto cil = [&]() -> std::vector<uint8_t> & { return k++ == 0 ? out : dalsiCast(k - 2); };
+    if (kop) kopie(cil(), ko, vx, vy);
+    for (const Obd &o : obdJem) obdelnik(F, o, Q_KLID, cil());
+    for (const Obd &o : obdZm) obdelnik(F, o, kvZmen, cil());
+    if (k == 0) prazdna(out);                    // (nenastane - aspon jeden ctverec se zmenil)
     dalsiN = k > 0 ? k - 1 : 0;
     if (dalsiN > 0) vicecastnych++;
     zapisStatistiku();
@@ -197,6 +223,198 @@ struct KodekJpeg {
 
  private:
   double kodSnimku_ = 0;
+  // B319
+  struct Hlas { int dx, dy, n; };
+  std::vector<Hlas> hlasy_;
+  bool posunPosl_ = false;                 // naposledy pouzity posun (zkusi se jako prvni)
+  int posunPoslX_ = 0, posunPoslY_ = 0;
+  int posunNeuspech_ = 0;                  // kolikrat po sobe se posun nenasel
+  std::vector<uint8_t> kvalPred_;
+  std::vector<uint32_t> poslanoPred_, polBuf_;
+
+  // ctverce 16x16, ktere se oproti minule poslanemu snimku (pred) zmenily
+  bool spoctiZmeny(const uint32_t *F) {
+    zmena.assign((size_t)bw * bh, 0);
+    bool neco = false;
+    for (int y = 0; y < H; y++) {
+      const uint32_t *a = F + (size_t)y * W, *b = &pred[(size_t)y * W];
+      if (std::memcmp(a, b, (size_t)W * 4) == 0) continue;
+      uint8_t *zr = &zmena[(size_t)(y / 16) * bw];
+      for (int bx = 0; bx < bw; bx++) {
+        if (zr[bx]) continue;
+        const int xa = bx * 16, nx = std::min(16, W - xa);
+        if (std::memcmp(a + xa, b + xa, (size_t)nx * 4)) { zr[bx] = 1; neco = true; }
+      }
+    }
+    return neco;
+  }
+
+  // B319: ctverec (bx, by) noveho snimku = minuly snimek posunuty o (vx, vy)? (zdroj musi byt v obrazu)
+  bool stejnyPoPosunu(const uint32_t *F, int bx, int by, int vx, int vy) const {
+    const int px0 = bx * 16, py0 = by * 16, px1 = std::min(W, px0 + 16), py1 = std::min(H, py0 + 16);
+    const int sx0 = px0 - vx, sy0 = py0 - vy;
+    if (sx0 < 0 || sy0 < 0 || sx0 + (px1 - px0) > W || sy0 + (py1 - py0) > H) return false;
+    for (int y = py0; y < py1; y++)
+      if (std::memcmp(F + (size_t)y * W + px0, &pred[(size_t)(y - vy) * W + sx0], (size_t)(px1 - px0) * 4) != 0) return false;
+    return true;
+  }
+
+  // B319: POSUN OBRAZU. Zmenila se velka cast obrazu (posun mapy ve hre) - o kolik se obsah posunul?
+  // Vzorky (8 bodu v radku, aspon 3 ruzne barvy) ze zmenenych ctvercu se hledaji v minulem snimku
+  // (+-POSUN_R bodu), kazdy jednoznacny nalez hlasuje. Vitezny vektor se overi bod po bodu: ctverce,
+  // ktere jsou po posunu PRESNE stejne, prohlizec zkopiruje (obdelnik kolem nich). Kopie se provede
+  // i tady v pred (+ kvalita a stari ctvercu jdou s obsahem) - zmeny se pak spocitaji znovu.
+  // Vraci obdelnik ve ctvercich (ko) a vektor: obsah z (x, y) je ted na (x + vx, y + vy).
+  bool najdiPosun(const uint32_t *F, Obd &ko, int &vx, int &vy) {
+    int zmen = 0;
+    for (uint8_t z : zmena) zmen += z;
+    if (zmen < std::max(24, (bw * bh) / 10)) return false;
+    posunZkousek++;
+    // nejdriv minuly posun (a jeho 2x, 3x - prohlizec mezitim snimek vynechal): mapa se posouva
+    // porad stejne, overeni je levne a hledani se usetri
+    if (posunPosl_) {
+      for (int nas = 1; nas <= 3; nas++) {
+        const int cx = posunPoslX_ * nas, cy = posunPoslY_ * nas;
+        if (std::abs(cx) >= W || std::abs(cy) >= H) break;
+        if (pouzijPosun(F, cx, cy, zmen, ko)) { vx = cx; vy = cy; posunNeuspech_ = 0; return true; }
+      }
+    }
+    // hra, ktera se neposouva (3D - meni se vse jinak): po 5 neuspesich hledat jen kazdy 8. snimek
+    if (posunNeuspech_ >= 5 && (cislo & 7) != 0) return false;
+    const bool ok = hledejPosun(F, zmen, ko, vx, vy);
+    posunNeuspech_ = ok ? 0 : posunNeuspech_ + 1;
+    return ok;
+  }
+
+  // B319: hlasovani vzorku (viz najdiPosun)
+  bool hledejPosun(const uint32_t *F, int zmen, Obd &ko, int &vx, int &vy) {
+    hlasy_.clear();
+    const int krok = std::max(1, zmen / POSUN_VZORKU);
+    int poradi = 0, vzorku = 0, sNalezem = 0;
+    static const int RADKY[4] = {5, 11, 2, 14};
+    for (int by = 0; by < bh && vzorku < POSUN_VZORKU; by++)
+      for (int bx = 0; bx < bw && vzorku < POSUN_VZORKU; bx++) {
+        if (!zmena[(size_t)by * bw + bx]) continue;
+        if (poradi++ % krok) continue;
+        const int x = bx * 16 + 4;
+        if (x + 8 > W) continue;
+        int y = -1;
+        for (int r : RADKY) {
+          const int yy = by * 16 + r;
+          if (yy >= H) continue;
+          const uint32_t *s = F + (size_t)yy * W + x;
+          int ruznych = 1;
+          for (int i = 1; i < 8 && ruznych < 3; i++) {
+            bool nova = true;
+            for (int j = 0; j < i; j++) if (s[i] == s[j]) { nova = false; break; }
+            if (nova) ruznych++;
+          }
+          if (ruznych >= 3) { y = yy; break; }
+        }
+        if (y < 0) continue;                       // jednolita plocha - je "vsude", nehlasuje
+        vzorku++;
+        const uint32_t *s = F + (size_t)y * W + x;
+        int nalezu = 0, ndx[4] = {0, 0, 0, 0}, ndy[4] = {0, 0, 0, 0};
+        const int dxMin = std::max(-POSUN_R, x + 8 - W), dxMax = std::min(POSUN_R, x);
+        for (int dy = -POSUN_R; dy <= POSUN_R && nalezu <= 4; dy++) {
+          const int sy = y - dy;
+          if (sy < 0 || sy >= H) continue;
+          const uint32_t *r = &pred[(size_t)sy * W];
+          for (int dx = dxMin; dx <= dxMax; dx++) {
+            const uint32_t *q = r + (x - dx);
+            if (q[0] != s[0] || q[7] != s[7] || std::memcmp(q + 1, s + 1, 6 * 4) != 0) continue;
+            if (dx == 0 && dy == 0) continue;     // tenhle kousek se nehnul
+            if (nalezu < 4) { ndx[nalezu] = dx; ndy[nalezu] = dy; }
+            if (++nalezu > 4) break;
+          }
+        }
+        if (nalezu == 0 || nalezu > 4) continue;   // nic, nebo nejednoznacne (opakujici se vzor)
+        sNalezem++;
+        for (int i = 0; i < nalezu; i++) {
+          bool bylo = false;
+          for (Hlas &h : hlasy_)
+            if (h.dx == ndx[i] && h.dy == ndy[i]) { h.n++; bylo = true; break; }
+          if (!bylo) hlasy_.push_back({ndx[i], ndy[i], 1});
+        }
+      }
+    if (hlasy_.empty()) return false;
+    const Hlas *nej = &hlasy_[0];
+    for (const Hlas &h : hlasy_) if (h.n > nej->n) nej = &h;
+    if (nej->n < 4 || nej->n * 10 < sNalezem * 3) return false;
+    if (!pouzijPosun(F, nej->dx, nej->dy, zmen, ko)) return false;
+    vx = nej->dx; vy = nej->dy;
+    return true;
+  }
+
+  // B319: overeni posunu (vx, vy) bod po bodu a kdyz se vyplati, kopie i tady v pred
+  bool pouzijPosun(const uint32_t *F, int vx, int vy, int zmen, Obd &ko) {
+    // ktere zmenene ctverce jsou po posunu presne stejne
+    int x0 = bw, y0 = bh, x1 = 0, y1 = 0, uspora = 0;
+    for (int by = 0; by < bh; by++)
+      for (int bx = 0; bx < bw; bx++) {
+        if (!zmena[(size_t)by * bw + bx] || !stejnyPoPosunu(F, bx, by, vx, vy)) continue;
+        uspora++;
+        x0 = std::min(x0, bx); y0 = std::min(y0, by); x1 = std::max(x1, bx + 1); y1 = std::max(y1, by + 1);
+      }
+    if (uspora < std::max(8, zmen / 4)) return false;
+    // nezmenene ctverce uvnitr kopie musi po ni zustat stejne (jinak by se museli poslat znovu)
+    int skoda = 0;
+    for (int by = y0; by < y1; by++)
+      for (int bx = x0; bx < x1; bx++)
+        if (!zmena[(size_t)by * bw + bx] && !stejnyPoPosunu(F, bx, by, vx, vy)) skoda++;
+    if (skoda * 4 > uspora) return false;
+    ko.x0 = x0; ko.y0 = y0; ko.x1 = x1; ko.y1 = y1;
+    // kopie i tady (stejne jako v canvasu prohlizece): radky v poradi, ktere neprepise zdroj
+    const int X0 = x0 * 16, Y0 = y0 * 16, X1 = std::min(W, x1 * 16), Y1 = std::min(H, y1 * 16);
+    const size_t sirka = (size_t)(X1 - X0) * 4;
+    if (vy > 0) {
+      for (int y = Y1 - 1; y >= Y0; y--) std::memmove(&pred[(size_t)y * W + X0], &pred[(size_t)(y - vy) * W + X0 - vx], sirka);
+    } else {
+      for (int y = Y0; y < Y1; y++) std::memmove(&pred[(size_t)y * W + X0], &pred[(size_t)(y - vy) * W + X0 - vx], sirka);
+    }
+    // kvalita a stari ctverce jdou s obsahem: ctverec po posunu = nejhorsi z (az 4) zdrojovych
+    kvalPred_ = kval;
+    poslanoPred_ = poslano;
+    for (int by = y0; by < y1; by++)
+      for (int bx = x0; bx < x1; bx++) {
+        const int sx0 = bx * 16 - vx, sy0 = by * 16 - vy;
+        const int sx1 = std::min(W, bx * 16 + 16) - 1 - vx, sy1 = std::min(H, by * 16 + 16) - 1 - vy;
+        int kv = 255;
+        uint32_t ps = 0xFFFFFFFFu;
+        for (int sby = sy0 / 16; sby <= sy1 / 16; sby++)
+          for (int sbx = sx0 / 16; sbx <= sx1 / 16; sbx++) {
+            const size_t j = (size_t)sby * bw + sbx;
+            kv = std::min(kv, (int)kvalPred_[j]);
+            ps = std::min(ps, poslanoPred_[j]);
+          }
+        kval[(size_t)by * bw + bx] = (uint8_t)kv;
+        poslano[(size_t)by * bw + bx] = ps;
+      }
+    posunu++;
+    posunCtvercu += uspora;
+    posunPosl_ = true; posunPoslX_ = vx; posunPoslY_ = vy;
+    return true;
+  }
+
+  // B319: cast "kopie" - prohlizec zkopiruje obdelnik ve svem canvasu (zdroj = cil - posun)
+  void kopie(std::vector<uint8_t> &cil, const Obd &ko, int vx, int vy) {
+    const int X0 = ko.x0 * 16, Y0 = ko.y0 * 16, X1 = std::min(W, ko.x1 * 16), Y1 = std::min(H, ko.y1 * 16);
+    p16(cil, (unsigned)X0); p16(cil, (unsigned)Y0); p16(cil, (unsigned)(X1 - X0)); p16(cil, (unsigned)(Y1 - Y0));
+    p8(cil, KV_KOPIE);
+    p32(cil, 4u);
+    p16(cil, (unsigned)(X0 - vx)); p16(cil, (unsigned)(Y0 - vy));
+  }
+
+  // B319: je obdelnik presne 2x zvetseny (kazde 2x2 body stejne)? - 2D hra v 2x Enhanced Resolution
+  static bool zdvojeny(const uint32_t *F, size_t stride, int w, int h) {
+    for (int y = 0; y < h; y += 2) {
+      const uint32_t *a = F + (size_t)y * stride;
+      if (std::memcmp(a, a + stride, (size_t)w * 4) != 0) return false;
+      for (int x = 0; x < w; x += 2)
+        if (a[x] != a[x + 1]) return false;
+    }
+    return true;
+  }
 
   std::vector<uint8_t> &dalsiCast(size_t i) {
     if (dalsi.size() <= i) dalsi.resize(i + 1);
@@ -292,16 +510,36 @@ struct KodekJpeg {
     const int rw = x1 - x0, rh = y1 - y0;
     if (rw <= 0 || rh <= 0) { prazdna(cil); return; }
     if (x0 > 0 || y0 > 0 || x1 < W || y1 < H) castecnych++;
-    const size_t plocha = (size_t)rw * rh;
-    // 512x480, 640x480: 2 jadra (ne vic - emulace PS1 jich potrebuje par sama);
-    // B313: menu 1280x720 (bez emulace) az maxCasti
-    casti = plocha <= 110000 ? 1 : (plocha <= 520000 ? 2 : std::max(2, maxCasti));
+    // B319: presne 2x zvetsena cast (2D hra v 2x Enhanced Resolution) jde v polovicnim rozliseni -
+    // barvy v plnem rozliseni (4:4:4) a kvalita +10: stejna vernost jako drive, ~50-60 % dat.
+    // Prohlizec ji nakresli 2x bez vyhlazeni = presne zdvojene body jako drive.
+    const bool pol = polovicni && !(rw & 1) && !(rh & 1) && zdvojeny(F + (size_t)y0 * W + x0, (size_t)W, rw, rh);
+    int kvJ = kv;
     jpg.clear();
     const double t0 = tedMsPresne();
-    enc.koduj(F + (size_t)y0 * W + x0, (size_t)W, rw, rh, kv, jpg, casti);
+    if (pol) {
+      const int hw = rw / 2, hh = rh / 2;
+      polBuf_.resize((size_t)hw * hh);
+      for (int y = 0; y < hh; y++) {
+        const uint32_t *s = F + (size_t)(y0 + 2 * y) * W + x0;
+        uint32_t *d = &polBuf_[(size_t)y * hw];
+        for (int x = 0; x < hw; x++) d[x] = s[2 * x];
+      }
+      // stejna vernost jako cely obraz (mereno na zrnite mape, test_overeni/b319): 76 -> 86, zjemneni 94 -> 97
+      kvJ = kv >= Q_KLID ? std::min(100, kv + 3) : std::min(90, kv + 10);
+      casti = (size_t)hw * hh <= 110000 ? 1 : 2;
+      enc.koduj(polBuf_.data(), (size_t)hw, hw, hh, kvJ, jpg, casti, true);
+      polovicnich++;
+    } else {
+      const size_t plocha = (size_t)rw * rh;
+      // 512x480, 640x480: 2 jadra (ne vic - emulace PS1 jich potrebuje par sama);
+      // B313: menu 1280x720 (bez emulace) az maxCasti
+      casti = plocha <= 110000 ? 1 : (plocha <= 520000 ? 2 : std::max(2, maxCasti));
+      enc.koduj(F + (size_t)y0 * W + x0, (size_t)W, rw, rh, kv, jpg, casti);
+    }
     kodSnimku_ += tedMsPresne() - t0;
     p16(cil, (unsigned)x0); p16(cil, (unsigned)y0); p16(cil, (unsigned)rw); p16(cil, (unsigned)rh);
-    p8(cil, (unsigned)kv);
+    p8(cil, (unsigned)(pol ? (kvJ | KV_POLOVICNI) : kv));   // kval ctvercu (nize) zustava kv - stejna vernost
     p32(cil, (uint32_t)jpg.size());
     cil.insert(cil.end(), jpg.begin(), jpg.end());
     for (int y = y0; y < y1; y++) std::memcpy(&pred[(size_t)y * W + x0], F + (size_t)y * W + x0, (size_t)rw * 4);
@@ -313,6 +551,16 @@ struct KodekJpeg {
     obdelniku++;
   }
 };
+
+// B319: volby PS1 pro stranku WEB TV B319 (adresa proudu ?v=319, nap_ps1_native.cpp proudOtevri2):
+// posun obrazu, polovicni rozliseni zdvojenych casti a zmeny jako vic obdelniku (po posunu mapy zbyva
+// pruh na kraji a jednotky - jeden obdelnik kolem vseho by byl skoro cely obraz).
+static constexpr int VOLBA_POSUN = 1, VOLBA_POLOVICNI = 2;
+inline void nastavKodekPs1(KodekJpeg &k, int volby) {
+  k.posun = (volby & VOLBA_POSUN) != 0;
+  k.polovicni = (volby & VOLBA_POLOVICNI) != 0;
+  if (k.posun || k.polovicni) k.viceObdelniku = true;
+}
 
 // B313: kodek pro hlavni menu na TV (nap_menu_gl.cpp i testy - jedno misto): 4 pasy (menu
 // nema emulaci), strop 85 (konzole na karte), pri listovani 75, vic obdelniku, zjemneni
@@ -327,6 +575,7 @@ inline void nastavKodekMenu(KodekJpeg &k) {
 }
 
 // Prectene casti obrazu verze 3 (pro testy na PC; JPEG si rozbali test sam).
+// B319: kvalita 0xFF = kopie (jpeg ukazuje na u16 zdroj x, u16 zdroj y), bit7 = JPEG v polovicnim rozliseni.
 struct CastJpeg {
   unsigned x = 0, y = 0, w = 0, h = 0, kvalita = 0;
   const uint8_t *jpeg = nullptr;

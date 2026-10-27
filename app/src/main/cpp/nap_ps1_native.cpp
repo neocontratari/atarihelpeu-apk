@@ -2471,6 +2471,20 @@ Java_eu_atarihelp_emu10_NativePs1CoreBridge_proudOtevriNative(JNIEnv *, jclass) 
   return (jint)g_ps1Proud.otevri();
 }
 
+/** B319 (Rene: "mam pocit, ze doslo ke zpomaleni pri prenosu LAN"): prohlizec se strankou WEB TV
+ *  od B319 umi dalsi casti - volby bit0 posun obrazu (mapa ve hre = kopie v jeho canvasu, JPEG jen
+ *  noveho pruhu), bit1 presne 2x zvetseny obraz (2D hra v 2x Enhanced Resolution) v puvodnim
+ *  rozliseni. Starsi stranka (bez ?v= v adrese) dostane proud jako drive (proudOtevriNative). */
+extern "C" JNIEXPORT jint JNICALL
+Java_eu_atarihelp_emu10_NativePs1CoreBridge_proudOtevri2Native(JNIEnv *, jclass, jint volby) {
+  static std::once_flag jednou;
+  std::call_once(jednou, [] {
+    g_ps1Proud.nastavVolby([](nap::proud::KodekJpeg &k, int v) { nap::proud::nastavKodekPs1(k, v); },
+                           "posun obrazu = kopie v prohlizeci, 2x zvetseny obraz 2D her v puvodnim rozliseni, zmeny po obdelnicich");
+  });
+  return (jint)g_ps1Proud.otevri((int)volby & (nap::proud::VOLBA_POSUN | nap::proud::VOLBA_POLOVICNI));
+}
+
 /** Ceka (nejvys cekejMs) na novy snimek a zabali ho do out: 4 B delka + paket.
  *  zapisMs = jak dlouho trval zapis minuleho paketu do site (rizeni kvality JPEG).
  *  Vraci pocet bajtu, 0 = nic noveho, zaporne = out je male (potreba -n bajtu,

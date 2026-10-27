@@ -1,0 +1,7 @@
+B319 - Hub ve vlaknech: jadro 60 snimku / s (posun mapy 2x), zvuk, prohlizec B319 a stary soubezne (ThreadSanitizer)
+OK     1) oba prohlizece: vsechny pakety jdou rozebrat
+OK     2) po chvili klidu maji oba prohlizece posledni snimek (B319 40.64 dB, stary 39.00 dB)
+OK     3) kopie a polovicni rozliseni jen prohlizec B319 (kopii 79), stary nic
+OK     4) B319 poslal mene dat nez stary (1124 kB proti 4218 kB)
+VYSLEDEK: 4 OK, 0 CHYBA
+hlaseni ThreadSanitizer: 0

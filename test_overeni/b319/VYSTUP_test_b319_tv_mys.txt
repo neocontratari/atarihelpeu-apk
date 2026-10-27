@@ -1,0 +1,40 @@
+B319 - mys pocitace -> mys PlayStation v prohlizeci (TV / PC): nejvys ~30 zprav / s (+ B318: stara cesta az podle /status)
+stranka WEB TV z MainActivity.java (46698 znaku), B317 z 2f8fff4 (40310 znaku)
+OK     1) PS1 s proudem z C++: prohlizec bere /ps1.stream (0.06 s po nacteni) a starou cestu (MJPEG / JPEG / zvuk /audio.raw z Javy) vubec neotevrel
+OK        obraz hry (368x240) v canvasu siroky 1280 bodu stranky
+OK     2) /status ps1mys=1: napoveda nahore "MYS PS1: KLIKNI DO OBRAZU - KURZOR HRY OVLADA MYS POCITACE (ESC = PUSTIT)"
+OK        do logu appky: "B318 MYS PC: na telefonu je PS1 s mysi PlayStation ..."
+OK        klik do obrazu: zamek ukazatele (1), cela obrazovka zapnuta (1), ne vypnuta (0) - mys zachycena
+OK        napoveda: "MYS PS1 ZACHYCENA - POHYB A TLACITKA JDOU DO HRY (ESC = PUSTIT)"
+OK        po zachyceni hned zprava /mys (tlacitka pustena) - appka vi, ze prohlizec zije
+OK        pohyb mysi 300 / -120 bodu stranky -> /mys 23438 / -9375 (1/100000 sirky obrazu, vypocet 23438 / -9375) v 5 zpravach
+OK        v C++ = 75.0 bodu mysi PS1 pri 100 % (cela sirka obrazu = 320 jako prst na telefonu)
+OK        leve dolu / nahoru, prave dolu / nahoru -> /mys b = [1, 0, 2, 0]
+OK        kliky do hry nevypinaji ani nezapinaji celou obrazovku (zadost 1, konec 0)
+OK     2b) B319: stale pohyb 1,5 s (133 udalosti mysi): 46 zprav /mys = 31 / s (B318 az 60 / s, kazda nove spojeni), nejkratsi mezera 31 ms, soucet presne (41562 / 10391)
+OK     2b) tlacitko uprostred pohybu jde hned (zprava s b=1 za 2 ms, nemusi cekat na dalsich 33 ms)
+OK        leve drzene 3,2 s bez pohybu: 3 zprav s b=1 (mezery [1.11, 1.35] s) - C++ (hlida 2,5 s) tlacitko nepusti
+OK        pohyb mysi pri hre: panel OBRAZ (jas, kontrast) se neukazuje (opacity 0)
+OK        Esc (pusteni zamku) pri drzenem tlacitku: /mys b=0 (tlacitko ve hre pusteno), mys pustena
+OK        napoveda: "MYS PS1 PUSTENA - KLIKNI DO OBRAZU A ZASE OVLADAS HRU"
+OK        do logu appky: "B318 MYS PC: mys zachycena (zamek ukazatele)" a "... mys pustena"
+OK        mys na telefonu vypnuta (/status ps1mys=0): zamek ukazatele uvolnen sam ([False, 2, False])
+OK        bez mysi PS1: klik zase prepina celou obrazovku (zadosti o celou obrazovku 3), mys se nezachyti (2)
+OK        bez mysi PS1 zadna napoveda mysi
+OK        za celou dobu ani jednou stara cesta (MJPEG / JPEG / H.264) - Java nemusela nic snimat
+OK        zadna chyba JavaScriptu ([])
+OK     1b) stranka B317: MJPEG z Javy otevrena hned po nacteni (za 0.08 s) - odtud "TV Java" v logu menu
+OK     1b) B317: klik jen prepnul celou obrazovku, mys pocitace nesla do hry vubec (zamek 0)
+OK     3) obrazovka bez proudu z C++: MJPEG az po prvnim /status (status 0.09 s, MJPEG 0.11 s)
+OK        zadna chyba JavaScriptu ([])
+OK     3) /status vrati chybu (500): hned MJPEG (0.08 s po nacteni)
+OK     3) /status neodpovida vubec (zaseknuty server): MJPEG po 2,5 s jako drive (2.52 s po nacteni)
+OK        zadna chyba JavaScriptu ([])
+OK     2) prohlizec zamek odmitne: "PROHLIZEC NEDOVOLIL ZACHYTIT MYS - KLIKNI DO OBRAZU ZNOVU", do hry nic
+OK        zadna chyba JavaScriptu ([])
+   anglicky: "PS1 MOUSE: CLICK INTO THE PICTURE - THE COMPUTER MOUSE MOVES THE GAME CURSOR (ESC = RELEASE)" | "PS1 MOUSE CAPTURED - MOVEMENT AND BUTTONS GO TO THE GAME (ESC = RELEASE)" | "PS1 MOUSE RELEASED - CLICK INTO THE PICTURE TO CONTROL THE GAME AGAIN" | "THE BROWSER DID NOT ALLOW CAPTURING THE MOUSE - CLICK INTO THE PICTURE AGAIN"
+OK     4) anglicky: vsech 6 hlasek mysi ze stranky ve slovniku en_tv.js (napr. "THE PS1 MOUSE IS OFF ON THE PHONE - TURN IT ON WITH THE MOUSE BUTTON")
+OK     4) anglicky: napovedy mysi prelozene, zadna cestina
+OK        zadna chyba JavaScriptu ([])
+OK     4) cesky: stranka WEB TV = B318 + jen B319 (15 zmen: v=319 v adrese proudu, kopie a JPEG v polovicnim rozliseni, log, mys nejvys po 33 ms)
+VYSLEDEK: 36 kontrol, 0 CHYBA

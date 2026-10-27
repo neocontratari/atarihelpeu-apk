@@ -1,0 +1,21 @@
+OK     knihovna napps1core nactena skutecnou tridou NativePs1CoreBridge
+OK     native metod ve tride: 29 (23 z B316 + 4 mys B317 + ps1MysZrychleni B318 + proudOtevri2Native B319)
+OK     bootGameSafe (ps1BootDoMonitoru) -> PS1_HRA_OK
+OK     ps1MysStav() -> String: "0|100|32|Dune 2000.cue" (hra bez zaznamu = mys vypnuta, bit5 = zrychleni zapnuto)
+OK     ps1MysNastav(int, int) -> String: "1|120|33|Dune 2000.cue"
+OK     B318 ps1MysZrychleni(int) -> String: "1|120|1|Dune 2000.cue" (bit5 dole = vypnuto)
+OK     ps1MysDotyk(int, int, float x4) -> int: 5 (bit0 mys, bit2 prst na obraze)
+OK     tuknuti: ps1MysDotyk vratil 9 (bit3 = klik levym -> stranka zavibruje)
+OK     ps1PcMys(int, int, int) -> String: PS1:MYS (posun v 1/100000 sirky obrazu)
+OK     mysNastavSafe(3, 80) -> "3|80|1|Dune 2000.cue"
+OK     B318 mysZrychleniSafe(1) -> "3|80|33|Dune 2000.cue" (zrychleni zase zapnuto)
+OK     B318 mysZrychleniSafe(0) -> "3|80|1|Dune 2000.cue"
+OK     mysStavSafe -> 3|80|1|Dune 2000.cue
+OK     mysDotykSafe -> 5
+OK     pcMysSafe -> PS1:MYS
+OK     mysNastavSafe(0, 80): mys vypnuta -> "0|80|0|Dune 2000.cue"
+OK     mys vypnuta: pcMysSafe -> PS1:MYS_VYP
+OK     PS1_mys_pro_hry.txt ve slozce karty: "Dune 2000.cue  0  80  0" (B318: + zrychleni; falesne jadro nema ID disku -> jmeno souboru)
+OK     denik PS1: radky MYS (zapnuti, mys z PC, B318 zrychleni)
+stop: PS1_STOPPED
+VYSLEDEK: 0 chyb

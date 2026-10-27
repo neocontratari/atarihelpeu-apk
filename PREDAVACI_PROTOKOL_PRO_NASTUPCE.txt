@@ -3284,3 +3284,73 @@
        nemeni (jen o snimek pozdeji).
 
 ===============================================================================
+
+   B319: PRENOS PS1 NA TV / PC LEHCI - POSUN OBRAZU, 2x OBRAZ V PUVODNIM
+     ROZLISENI, MYS Z PC JEDNIM SPOJENIM.
+     Rene (log B318): "je to mnohem mnohem lepsi - ale mam pocit ze doslo ke
+     spomaleni pri prenosu LAN". Log: telefon emuloval 60/s, ale na PC jen
+     48-57 paketu/s (B317 57-59), zvuk ~0,2 s za obrazem, JPEG kvalita
+     snizena az 54x; posun mapy v Dune 2000 = cely obraz 736x480 20x / s,
+     6-16 kB / paket, az 6,3 Mbit/s (B317 do 2,3); mys z PC ~25 zprav / s,
+     kazda nove TCP spojeni (Connection: close). Kod proudu se od B313
+     nezmenil - zpomaleni = vic dat (posun mapy) nez Wi-Fi unese.
+     - nap_tv_proud_jpeg.h (KodekJpeg): volby posun / polovicni (nastavKodekPs1,
+       VOLBA_POSUN 1, VOLBA_POLOVICNI 2, + viceObdelniku). POSUN: kdyz se
+       zmenilo >= 10 % ctvercu 16x16 (aspon 24), najdiPosun: nejdriv minuly
+       vektor a jeho 2x / 3x (vynechane snimky), jinak hledejPosun - 48 vzorku
+       (8 bodu v radku, aspon 3 barvy) ze zmenenych ctvercu, hledani v pred
+       +-POSUN_R 64, jednoznacne nalezy (<= 4) hlasuji, vitez >= 4 hlasy a
+       >= 30 % vzorku s nalezem; pouzijPosun overi bod po bodu (stejnyPoPosunu),
+       obdelnik kolem kopirovatelnych zmenenych ctvercu, prijme kdyz uspora >=
+       max(8, 25 % zmen) a skoda (nezmenene ctverce uvnitr, ktere by kopie
+       rozbila) <= 25 % uspory; kopie i v pred (memmove v poradi radku),
+       kval / poslano jdou s obsahem (min ze zdrojovych ctvercu), zmeny se
+       spocitaji znovu (spoctiZmeny). Po 5 neuspesich (3D hra) hledani jen
+       kazdy 8. snimek. Cast KOPIE = kvalita 0xFF, delka 4, u16 zdroj x, y;
+       jde jako prvni cast snimku (dalsi casti priznak 8). POLOVICNI: obdelnik
+       sude sirky a vysky, presne zdvojeny (zdvojeny(): radek y+1 = y, a[x] =
+       a[x+1]) -> JPEG w/2 x h/2, barvy 4:4:4 (JpegEnc::koduj plneBarvy),
+       kvalita kv+10 (max 90), zjemneni 94 -> 97 (namereno: stejna vernost),
+       bajt kvality | 0x80; kval ctvercu = kv. Log: info() ", B319: posun
+       obrazu N x (zkouseno, ctvercu zkopirovano), casti v polovicnim
+       rozliseni a z b". Hub: otevri(volby), nastavVolby(f, popis) (log
+       pripojeni "| B319: ..."), radky logu b[1100].
+     - nap_ps1_native.cpp: JNI proudOtevri2Native(volby) (call_once
+       nastavVolby). Java NativePs1CoreBridge 29 native, proudOtevri2Safe(volby)
+       (0 / chyba -> proudOtevriSafe). MainActivity: /ps1.stream?v=319 ->
+       volby 3 (napTvWebJadroProud(..., volby), napTvProudOtevri(druh, volby)).
+       Stranka TV: fetch('/'+d+'.stream?v=319&t=...'), apObraz3 kv 255 =
+       kopie do fronty ap.jq ({k:1}), apJdalsi provadi kopie v poradi s JPEG
+       (apKopie pres pomocny canvas ap.kc), apJpeg nezahazuje pres kopii, JPEG
+       s bitem 128 kreslit drawImage(img,x,y,w,h) s imageSmoothingEnabled
+       (i webkit / moz) false; log "B319: kopii (posun obrazu) x/s, JPEG v
+       polovicnim rozliseni n". Stara stranka (bez v=) dostane proud jako drive.
+     - Server TV (napTvWebHandleClient): obsluha pozadavku vytazena do
+       napTvWebObsluz(...) -> vraci drzet; /mys, /status, /clientlog: drzet =
+       napTvWebDrzetSpojeni(req) (HTTP/1.1 bez Connection: close), smycka cte
+       dalsi pozadavek (napTvWebCtiPozadavek - hlavicka po prazdny radek,
+       setSoTimeout NAP_TV_DRZ_SPOJENI_MS 5000), cokoli jineho -> jako drive a
+       zavrit. napTvWebMys(..., drzet) -> hlavicka close = !drzet. Skript mysi:
+       MEZERA 33 ms (pohyb nejvys ~30 / s, planuj podle pm.posl), tlacitko /
+       "jsem tu" hned (pm.tl = tlacitko cekajici za letici zpravou).
+     - TESTY test_overeni/b319 (vse.sh): test_b319_kodek.cpp (hra_mapa.h =
+       2D strategie jako Dune 368x240 / 2x, prohlizec_b319.h = stranka v C++:
+       posun 4x mene dat, kopie v kazdem snimku posunu, polovicni vsechny
+       casti, vernost >= drive, 1x, 3D bez kopii, vzory, rozmery), test_b319_hub
+       (vlakna + TSan, B319 a stary prohlizec soubezne), test_b319_prohlizec.py
+       (Chromium, skutecna stranka, proud gen_proud_b319 - canvas = snimek v 11
+       bodech, 2x2 body stejne, stara stranka B318 dostane stary proud),
+       test_b319_tv_mys.py (B318 test mysi + tempo 30 / s + stranka = B318 + 15
+       zmen), test_b319_spojeni.py (SKUTECNE napTvWebHandleClient,
+       napTvWebCtiPozadavek, napTvWebDrzetSpojeni, napTvWebHeader v JVM +
+       Chromium: 180 zprav mysi 2 spojeni), jvm/TestB319Proud.java,
+       kontrola_jni_ps1.py (29), regrese.sh (kodeky B305 / B313, B308, JVM,
+       javac, B315 / B313 / B314 / B302 / B303 / B306, menu, mys B318 + jadro).
+     - DALSI KROK (Reneho log): radky "B306 TV PROUD PS1 ... B319: posun obrazu
+       N x ..., casti v polovicnim rozliseni a z b" a "PROHLIZEC PS1: ... B319:
+       kopii x/s". Kdyz "casti v polovicnim rozliseni 0" - Dune v 2x neni
+       presne zdvojena (napr. dithering na 2x) -> zvazit zdvojeni s toleranci
+       nebo posun mrizky o 1 bod. Kdyz "posun obrazu 0 x" pri posunu mapy -
+       mapa se neposouva presne (animace) -> rozsirit hledani.
+
+===============================================================================

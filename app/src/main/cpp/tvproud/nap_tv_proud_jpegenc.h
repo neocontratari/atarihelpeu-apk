@@ -39,9 +39,13 @@ class JpegEnc {
 
   // Zakoduje obdelnik w x h ze snimku F (radek = stride bodu) do out (pripoji).
   // casti > 1 = pasy soubezne (pomocna vlakna se vytvori jednou a cekaji).
-  void koduj(const uint32_t *F, size_t stride, int w, int h, int kvalita, std::vector<uint8_t> &out, int casti = 1) {
+  // plneBarvy (B319): barvy v plnem rozliseni i pod kvalitou 91 - obraz poslany v polovicnim
+  // rozliseni (2x zvetsena 2D hra) ma pak barvy stejne ostre jako drive cely.
+  void koduj(const uint32_t *F, size_t stride, int w, int h, int kvalita, std::vector<uint8_t> &out, int casti = 1,
+             bool plneBarvy = false) {
     if (w <= 0 || h <= 0) return;
     pripravTabulky(kvalita);
+    sub_ = std::max(1, std::min(100, kvalita)) <= 90 && !plneBarvy;   // jako stb: nad 90 barvy v plnem rozliseni
     const int mcu = sub_ ? 16 : 8;
     const int mcuX = (w + mcu - 1) / mcu, mcuY = (h + mcu - 1) / mcu;
     casti = std::max(1, std::min(casti, mcuY));

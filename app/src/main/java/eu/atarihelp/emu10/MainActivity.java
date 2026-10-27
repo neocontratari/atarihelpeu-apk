@@ -2928,7 +2928,8 @@ public class MainActivity extends Activity {
     // ale mys pocitace do hry nesla - nebyla hotova. Prohlizec (klik do obrazu = zamek ukazatele) posila
     // /mys?dx=&dy=&b= : posun v 1/100000 sirky obrazu v prohlizeci, tlacitka bit0 leve, bit1 prave.
     // Vse ostatni (miritko, citlivost pro hru, hlidac 2,5 s, kam je mys zapojena) dela C++.
-    private void napTvWebMys(String fullPath, java.io.OutputStream out) throws Exception {
+    // B319: drzet = spojeni zustava (keep-alive) - dalsi zpravy mysi jdou timtez spojenim
+    private void napTvWebMys(String fullPath, java.io.OutputStream out, boolean drzet) throws Exception {
         String odp;
         if (!isPs1OwnerUrl(napTvWebCurrentUrl)) {
             odp = "NE_PS1";
@@ -2940,7 +2941,7 @@ public class MainActivity extends Activity {
             odp = r == null ? "PS1_NEBEZI" : r;
         }
         byte[] body = odp.getBytes("UTF-8");
-        napTvWebHeader(out, "200 OK", "text/plain; charset=utf-8", body.length, true);
+        napTvWebHeader(out, "200 OK", "text/plain; charset=utf-8", body.length, !drzet);
         out.write(body);
     }
 
@@ -3090,11 +3091,12 @@ public class MainActivity extends Activity {
     }
 
     // B306: jedno misto pro Segu, PS1 a uvodni demo (proud z C++)
-    private int napTvProudOtevri(String druh) {
+    // B319: volby (jen PS1) = co stranka umi navic: bit0 kopie pri posunu obrazu, bit1 polovicni rozliseni
+    private int napTvProudOtevri(String druh, int volby) {
         if ("SEGA".equals(druh)) return NativeSegaCoreBridge.proudOtevriSafe();
         if ("INTRO".equals(druh)) return NativeIntroBridge.proudOtevriSafe();
         if ("MENU".equals(druh)) return NativeMenuBridge.proudOtevriSafe();
-        return NativePs1CoreBridge.proudOtevriSafe();
+        return NativePs1CoreBridge.proudOtevri2Safe(volby);
     }
     private int napTvProudDalsi(String druh, int id, byte[] b, int zapisMs) {
         if ("SEGA".equals(druh)) return NativeSegaCoreBridge.proudDalsiSafe(id, b, 250, zapisMs);
@@ -3116,6 +3118,10 @@ public class MainActivity extends Activity {
     }
 
     private void napTvWebJadroProud(OutputStream out, Socket sock, final String druh) throws IOException {
+        napTvWebJadroProud(out, sock, druh, 0);
+    }
+
+    private void napTvWebJadroProud(OutputStream out, Socket sock, final String druh, final int volby) throws IOException {
         if (!napTvJadroNaObrazovce(druh)) { napTvProudNeniTu(out, druh); return; }   // B313
         String h = "HTTP/1.1 200 OK\r\n"
                 + "Content-Type: application/octet-stream\r\n"
@@ -3134,7 +3140,7 @@ public class MainActivity extends Activity {
         // nahromadit sekundy obrazu (zpozdeni) - radsi se snimky preskoci
         try { sock.setSendBufferSize(64 * 1024); } catch (Throwable ignored) {}
         int id0;
-        try { id0 = napTvProudOtevri(druh); } catch (Throwable t) { id0 = 0; }
+        try { id0 = napTvProudOtevri(druh, volby); } catch (Throwable t) { id0 = 0; }
         final int id = id0;
         if (id <= 0) return;
         final java.util.concurrent.atomic.AtomicInteger klientu = sega ? napTvSegaProudKlientu
@@ -3698,6 +3704,9 @@ public class MainActivity extends Activity {
         return String.valueOf(napTvWebQualityTier);
     }
 
+    // B319: jak dlouho appka drzi spojeni mysi z PC, kdyz nic neprijde (pak ho zavre)
+    private static final int NAP_TV_DRZ_SPOJENI_MS = 5000;
+
     private void napTvWebHandleClient(Socket s) {
         try {
             s.setTcpNoDelay(true);
@@ -3705,6 +3714,52 @@ public class MainActivity extends Activity {
             OutputStream out = s.getOutputStream();
             byte[] buf = new byte[1200];
             int n = in.read(buf);
+            // B319 (Rene: "mam pocit, ze doslo ke zpomaleni pri prenosu LAN"): mys z PC posilala
+            // ~25 zprav za sekundu a kazda otevrela nove spojeni (navic paketu pres Wi-Fi vedle obrazu).
+            // Ted spojeni po /mys, /status a /clientlog zustava (keep-alive) a dalsi zpravy jdou jim;
+            // cokoli jineho timtez spojenim se obslouzi jako drive a spojeni se zavre.
+            boolean dal = napTvWebObsluz(s, in, out, buf, n);
+            while (dal && napTvWebRunning) {
+                s.setSoTimeout(NAP_TV_DRZ_SPOJENI_MS);
+                n = napTvWebCtiPozadavek(in, buf);
+                if (n <= 0) break;
+                s.setSoTimeout(0);
+                dal = napTvWebObsluz(s, in, out, buf, n);
+            }
+        } catch (Throwable ignored) {
+        } finally {
+            try { s.close(); } catch (Throwable ignored) {}
+        }
+    }
+
+    // B319: dalsi pozadavek na drzenem spojeni - hlavicka az po prazdny radek (GET bez tela).
+    // Vraci pocet bajtu, -1 = spojeni zavrene. Cekani hlida setSoTimeout (vyjimka = konec).
+    static int napTvWebCtiPozadavek(InputStream in, byte[] buf) throws IOException {
+        int n = 0;
+        while (n < buf.length) {
+            final int r = in.read(buf, n, buf.length - n);
+            if (r <= 0) return n > 0 ? n : -1;
+            n += r;
+            for (int i = Math.max(3, n - r - 3); i < n; i++)
+                if (buf[i - 3] == '\r' && buf[i - 2] == '\n' && buf[i - 1] == '\r' && buf[i] == '\n') return n;
+        }
+        return n;
+    }
+
+    // B319: smi spojeni zustat? HTTP/1.1 bez "Connection: close"
+    static boolean napTvWebDrzetSpojeni(String req) {
+        if (req == null) return false;
+        final int konecRadku = req.indexOf('\r');
+        final String prvni = konecRadku > 0 ? req.substring(0, konecRadku) : req;
+        if (!prvni.endsWith("HTTP/1.1")) return false;
+        final String mala = req.toLowerCase(java.util.Locale.ROOT);
+        return mala.indexOf("\nconnection: close") < 0 && mala.indexOf("\nconnection:close") < 0;
+    }
+
+    /** Jeden pozadavek prohlizece (buf, n = co uz je prectene). B319: vraci true = spojeni zustava
+     *  (jen /mys, /status a /clientlog - dalsi zprava pujde timtez spojenim). */
+    private boolean napTvWebObsluz(Socket s, InputStream in, OutputStream out, byte[] buf, int n) throws Exception {
+            boolean drzet = false;
             String req = n > 0 ? new String(buf, 0, n, "ISO-8859-1") : "";
             String path = "/";
             int a = req.indexOf(' '), b = a < 0 ? -1 : req.indexOf(' ', a + 1);
@@ -3727,7 +3782,9 @@ public class MainActivity extends Activity {
                 napTvWebJadroProud(out, s, "SEGA");
             } else if ("/ps1.stream".equals(path)) {
                 // B305: PS1 na TV/PC - obraz a zvuk primo z C++
-                napTvWebJadroProud(out, s, "PS1");
+                // B319: stranka od B319 (v=319) umi kopii pri posunu obrazu a JPEG v polovicnim
+                // rozliseni (2x zvetsena 2D hra) - mene dat pres Wi-Fi (Dune 2000: posun mapy)
+                napTvWebJadroProud(out, s, "PS1", napTvWebQueryLong(fullPath, "v", 0) >= 319 ? 3 : 0);
             } else if ("/menu.stream".equals(path)) {
                 // B311: hlavni menu na TV/PC - obraz primo z C++
                 napTvWebJadroProud(out, s, "MENU");
@@ -3758,6 +3815,7 @@ public class MainActivity extends Activity {
                 byte[] ok = "ok".getBytes("UTF-8");
                 napTvWebHeader(out, "200 OK", "text/plain; charset=utf-8", ok.length, false);
                 out.write(ok);
+                drzet = napTvWebDrzetSpojeni(req);   // B319: hlavicka uz rika keep-alive - spojeni zustava
             } else if ("/audio.raw".equals(path)) {
                 napTvWebWriteAudioRaw(out, napTvWebQueryLong(fullPath, "after", -1));
             } else if ("/klavesa".equals(path)) {
@@ -3772,7 +3830,9 @@ public class MainActivity extends Activity {
                 napTvWebKlavesy(fullPath, out);
             } else if ("/mys".equals(path)) {
                 // B318: mys pocitace z prohlizece na TV / PC -> mys PlayStation (C++ nap_ps1_mys.h)
-                napTvWebMys(fullPath, out);
+                // B319: spojeni zustava - dalsi zpravy mysi jdou timtez spojenim
+                drzet = napTvWebDrzetSpojeni(req);
+                napTvWebMys(fullPath, out, drzet);
             } else if ("/quality".equals(path)) {
                 long t = napTvWebQueryLong(fullPath, "tier", napTvWebQualityTier);
                 byte[] body = ("tier=" + napTvWebSetQualityTier(t)).getBytes("UTF-8");
@@ -3831,6 +3891,9 @@ public class MainActivity extends Activity {
                         + " url=" + curUrl3 + "\n").getBytes("UTF-8");
                 napTvWebHeader(out, "200 OK", "text/plain; charset=utf-8", body.length, false);
                 out.write(body);
+                // B319: stranka se pta kazdou sekundu - hlavicka uz rika keep-alive, spojeni zustava
+                // (jinak by /status kazdou sekundu "sebral" spojeni mysi a appka ho zavrela)
+                drzet = napTvWebDrzetSpojeni(req);
             } else if ("/vyhlazeni".equals(path)) {
                 // Prepinac vyladeni obrazu pred kompresi. Volá ho tlacitko
                 // v prohlizeci, at si Rene muze porovnat oba stavy.
@@ -3876,10 +3939,7 @@ public class MainActivity extends Activity {
                 out.write(body);
             }
             out.flush();
-        } catch (Throwable ignored) {
-        } finally {
-            try { s.close(); } catch (Throwable ignored) {}
-        }
+            return drzet;
     }
 
     private void napTvWebHeader(OutputStream out, String status, String type, int len, boolean close) throws IOException {
@@ -4079,6 +4139,8 @@ public class MainActivity extends Activity {
                 + "var ap={on:false,chce:false,rd:null,cv:null,cx:null,img:null,u32:null,idx:null,pal:new Uint32Array(256),W:0,H:0,buf:null,nA:0,pak:0,chyb:0,pod:0,"
                 + "zv:0,zah:0,cil:0.06,tPak:0,mez:0,okno:0,tl:0,pl:0,podl:0,zahl:0,"
                 + "druh:'',ver:0,gen:0,ox:0,oy:0,ow:0,oh:0,px:4,py:3,rozm:'',lz:null,radky:null,ky0:1e9,ky1:-1,kv:false,jq:[],jbusy:false,jpg:0,jzah:0,jl:0,jzl:0,"
+                // B319: kopie (posun obrazu) a JPEG v polovicnim rozliseni - pocty do logu, pomocny canvas pro kopii
+                + "kop:0,kopl:0,pol:0,poll:0,kc:null,"
                 // B306: zvuk - nF = kde (ve vzorcich AudioContextu) zacne dalsi kus, rs* = prevzorkovani,
                 // mins = nejmensi rezerva za kazdou vterinu, r = jemne zrychleni / zpomaleni
                 + "nF:0,rsFs:0,rsPos:0,rsP:new Float32Array(6),rsX:null,mins:[],lbM:1e9,lbT:0,r:1,rMin:1,rMax:1,uber:0,dPosl:0,fade:true,"
@@ -4112,7 +4174,8 @@ public class MainActivity extends Activity {
                 + "ap.cv.style.imageRendering=napV?'auto':'pixelated';ap.tPak=0;"
                 + "ap.cv.style.display='';napF();apRozmer();"
                 // (spojeni z drivejsiho pokusu, ktere se otevre az po prepnuti Sega -> PS1, se hned zavre)
-                + "var g0=ap.gen;fetch('/'+d+'.stream?'+Date.now(),{cache:'no-store'}).then(function(r){if(!ap.on||g0!==ap.gen){try{r.body.cancel();}catch(e){}return;}"
+                // B319: v=319 = stranka umi kopii (posun obrazu) a JPEG v polovicnim rozliseni - jen pak je PS1 posila
+                + "var g0=ap.gen;fetch('/'+d+'.stream?v=319&t='+Date.now(),{cache:'no-store'}).then(function(r){if(!ap.on||g0!==ap.gen){try{r.body.cancel();}catch(e){}return;}"
                 // B313: proud, ktery zrovna neni na obrazovce (409) - server rekne, co tam je (X-Nap-Proud),
                 // a prohlizec se hned prepne (drive to zkousel dokola, u Reneho 25 s po odchodu z menu do Atari)
                 + "if(r.status!==200){var np=r.headers.get('X-Nap-Proud')||'';clog('B313 proud '+d+' na obrazovce neni, server rika: '+(np||'?'));"
@@ -4195,18 +4258,33 @@ public class MainActivity extends Activity {
                 + "for(y=ap.ky0;y<=ap.ky1;y++){if(!rd[y])continue;rd[y]=0;a=y*W;e=a+W;for(i=a;i<e;i++)u32[i]=pal[b[N+i]];}"
                 + "ap.cx.putImageData(ap.img,0,0,0,ap.ky0,W,ap.ky1-ap.ky0+1);ap.ky0=1e9;ap.ky1=-1;}"
                 // ---- verze 3: PS1 - JPEG obdelniku, ktery se zmenil (x, y, w, h, kvalita, delka, JPEG) ----
-                + "function apObraz3(p,dv,o){var x=dv.getUint16(o,true),y=dv.getUint16(o+2,true),w=dv.getUint16(o+4,true),h=dv.getUint16(o+6,true),dl=dv.getUint32(o+9,true);o+=13;"
+                // B319 (Rene: "mam pocit, ze doslo ke zpomaleni pri prenosu LAN" - pri posunu mapy v Dune
+                // 2000 se posilal cely obraz 20x za sekundu): kvalita 255 = KOPIE - obdelnik w x h se
+                // zkopiruje z canvasu (zdroj x, zdroj y = 4 B dat); kvalita s bitem 128 = JPEG v polovicnim
+                // rozliseni (2x zvetsena 2D hra) - nakreslit 2x bez vyhlazeni. Server je posila jen strance,
+                // ktera si o ne rekla (v=319 v adrese proudu).
+                + "function apObraz3(p,dv,o){var x=dv.getUint16(o,true),y=dv.getUint16(o+2,true),w=dv.getUint16(o+4,true),h=dv.getUint16(o+6,true),kv=p[o+8],dl=dv.getUint32(o+9,true);o+=13;"
                 + "if(o+dl>p.length)return -1;"
-                + "if(w>0&&dl>0)apJpeg(p.slice(o,o+dl),x,y,w,h);"
+                + "if(kv===255){if(dl!==4||x+w>ap.W||y+h>ap.H)return -1;var sx=dv.getUint16(o,true),sy=dv.getUint16(o+2,true);if(sx+w>ap.W||sy+h>ap.H)return -1;"
+                + "ap.jq.push({k:1,sx:sx,sy:sy,x:x,y:y,w:w,h:h});apJdalsi();}"
+                + "else if(w>0&&dl>0)apJpeg(p.slice(o,o+dl),x,y,w,h,(kv&128)?1:0);"
                 + "return o+dl;}"
                 // rozbaluje se jeden JPEG po druhem (poradi!); cekajici snimek, ktery novejsi
                 // cely prekryje, se zahodi - pomaly prohlizec nehromadi zpozdeni
-                + "function apJpeg(j,x,y,w,h){var q=ap.jq;"
-                + "for(var i=q.length-1;i>=0;i--){var f=q[i];if(f.x>=x&&f.y>=y&&f.x+f.w<=x+w&&f.y+f.h<=y+h){q.splice(i,1);ap.jzah++;}}"
-                + "q.push({j:j,x:x,y:y,w:w,h:h});apJdalsi();}"
-                + "function apJdalsi(){if(ap.jbusy||!ap.jq.length)return;var f=ap.jq.shift(),gen=ap.gen;ap.jbusy=true;"
+                // (B319: ne pres kopii - ta muze brat obraz prave z toho snimku)
+                + "function apJpeg(j,x,y,w,h,pol){var q=ap.jq;"
+                + "for(var i=q.length-1;i>=0;i--){var f=q[i];if(f.k)break;if(f.x>=x&&f.y>=y&&f.x+f.w<=x+w&&f.y+f.h<=y+h){q.splice(i,1);ap.jzah++;}}"
+                + "q.push({j:j,x:x,y:y,w:w,h:h,p:pol});apJdalsi();}"
+                // B319: kopie pres pomocny canvas (zdroj a cil se prekryvaji - posun o par bodu)
+                + "function apKopie(c){try{var t=ap.kc;if(!t)t=ap.kc=document.createElement('canvas');if(t.width<c.w)t.width=c.w;if(t.height<c.h)t.height=c.h;"
+                + "var tx=t.getContext('2d');tx.clearRect(0,0,c.w,c.h);tx.drawImage(ap.cv,c.sx,c.sy,c.w,c.h,0,0,c.w,c.h);"
+                + "ap.cx.drawImage(t,0,0,c.w,c.h,c.x,c.y,c.w,c.h);ap.kop++;}catch(e){ap.chyb++;}}"
+                + "function apJdalsi(){while(!ap.jbusy&&ap.jq.length&&ap.jq[0].k)apKopie(ap.jq.shift());"
+                + "if(ap.jbusy||!ap.jq.length)return;var f=ap.jq.shift(),gen=ap.gen;ap.jbusy=true;"
                 + "var hotovo=function(img){if(gen!==ap.gen){if(img&&img.close)try{img.close();}catch(e){}return;}ap.jbusy=false;"
-                + "if(img){try{ap.cx.drawImage(img,f.x,f.y);}catch(e){}ap.jpg++;if(img.close)try{img.close();}catch(e){}}apJdalsi();};"
+                + "if(img){try{if(f.p){var cx=ap.cx;cx.imageSmoothingEnabled=false;cx.webkitImageSmoothingEnabled=false;cx.mozImageSmoothingEnabled=false;"
+                + "cx.drawImage(img,f.x,f.y,f.w,f.h);ap.pol++;}else ap.cx.drawImage(img,f.x,f.y);}catch(e){}"
+                + "ap.jpg++;if(img.close)try{img.close();}catch(e){}}apJdalsi();};"
                 + "var blob=new Blob([f.j],{type:'image/jpeg'});"
                 + "if(window.createImageBitmap){createImageBitmap(blob).then(hotovo,function(){ap.chyb++;hotovo(null);});}"
                 + "else{var u=URL.createObjectURL(blob),im=new Image();im.onload=function(){URL.revokeObjectURL(u);hotovo(im);};im.onerror=function(){URL.revokeObjectURL(u);ap.chyb++;hotovo(null);};im.src=u;}}"
@@ -4270,7 +4348,8 @@ public class MainActivity extends Activity {
                 // kazdych 30 s do logu appky, jak proud v prohlizeci jede (diagnostika zpozdeni)
                 + "setInterval(function(){if(!ap.on){rawHlas();return;}var t=Date.now(),s=(t-ap.tl)/1000;"   // B315: bez proudu hlasi starou cestu
                 + "if(ap.tl&&s>0)clog((ap.druh==='atari'?'B303 PROHLIZEC: ':'B306 PROHLIZEC '+ap.druh.toUpperCase()+': ')+(Math.round((ap.pak-ap.pl)/s*10)/10)+' snimku/s'"
-                + "+(ap.ver===3?', JPEG '+(Math.round((ap.jpg-ap.jl)/s*10)/10)+'/s (prekrytych zahozeno '+(ap.jzah-ap.jzl)+')':'')"
+                + "+(ap.ver===3?', JPEG '+(Math.round((ap.jpg-ap.jl)/s*10)/10)+'/s (prekrytych zahozeno '+(ap.jzah-ap.jzl)+')'"
+                + "+(ap.kop>ap.kopl||ap.pol>ap.poll?', B319: kopii (posun obrazu) '+(Math.round((ap.kop-ap.kopl)/s*10)/10)+'/s, JPEG v polovicnim rozliseni '+(ap.pol-ap.poll):''):'')"
                 + "+', zvuk '+(aon&&ac&&ac.state==='running'?'hraje, napred '"
                 + "+(ap.lcnt?Math.round(ap.lsum/ap.lcnt*1000):0)+' ms (min '+(ap.lmin<1e8?Math.round(ap.lmin*1000):0)+', pri rozjezdu '+Math.round(ap.cil*1000)+')'"
                 + "+', zvuk za obrazem ~'+(ap.vcnt?Math.round(ap.vsum/ap.vcnt):0)+' ms'"
@@ -4281,7 +4360,7 @@ public class MainActivity extends Activity {
                 + "+', zahozeno '+(ap.zah-ap.zahl)+', chyb '+ap.chyb+', okno '+window.innerWidth+'x'+window.innerHeight"
                 + "+(ap.ver>1?', obraz '+ap.W+'x'+ap.H+(napFill?' vyplnit':' cely 4:3'):'')"
                 + "+', vystup '+zvMerText());"   // B315: co opravdu slo do reproduktoru (driv jen "zvuk hraje" podle stavu AudioContextu)
-                + "ap.tl=t;ap.pl=ap.pak;ap.podl=ap.pod;ap.zahl=ap.zah;ap.jl=ap.jpg;ap.jzl=ap.jzah;"
+                + "ap.tl=t;ap.pl=ap.pak;ap.podl=ap.pod;ap.zahl=ap.zah;ap.jl=ap.jpg;ap.jzl=ap.jzah;ap.kopl=ap.kop;ap.poll=ap.pol;"
                 + "ap.zahSl=ap.zahS;ap.lsum=0;ap.lcnt=0;ap.lmin=1e9;ap.vsum=0;ap.vcnt=0;ap.rMin=ap.r;ap.rMax=ap.r;},30000);"
                 + "setInterval(pollFps,1000);"
                 + "})();</script>"
@@ -4518,7 +4597,10 @@ public class MainActivity extends Activity {
                 + "<script>(function(){'use strict';"
                 + "function tr(s){try{return (window.NapJazyk&&NapJazyk.en())?NapJazyk.tr(s):s;}catch(e){return s;}}"
                 + "function clog(m){try{fetch('/clientlog?m='+encodeURIComponent(m));}catch(e){}}"
-                + "var pm={lock:false,dx:0,dy:0,b:0,leti:false,znovu:false,posl:0,t:0,hl:null,hlT:0,zprav:0};window.napPm=pm;"
+                + "var pm={lock:false,dx:0,dy:0,b:0,leti:false,znovu:false,tl:false,posl:0,t:0,hl:null,hlT:0,zprav:0};window.napPm=pm;"
+                // B319: pohyb nejvys ~30 zprav za sekundu (hra kresli 20-60x / s a C++ posun rozlozi do snimku) -
+                // v B318 jich slo ~25 / s a kazda otevrela nove spojeni; ted jdou jednim spojenim (appka ho drzi)
+                + "var MEZERA=33;"
                 + "var NAPOVEDA='MYS PS1: KLIKNI DO OBRAZU - KURZOR HRY OVLADA MYS POCITACE (ESC = PUSTIT)';"
                 + "function zamceno(){return !!(document.pointerLockElement||document.mozPointerLockElement);}"
                 // sirka obrazu hry v prohlizeci (proud z C++ kresli do canvasu), jinak 3/4 okna (4:3 na 16:9)
@@ -4530,16 +4612,18 @@ public class MainActivity extends Activity {
                 + "document.body.appendChild(pm.hl);}clearTimeout(pm.hlT);if(!t){pm.hl.style.display='none';return;}"
                 + "pm.hl.textContent=tr(t);pm.hl.style.display='';pm.hlT=setTimeout(function(){pm.hl.style.display='none';},ms||6000);}"
                 // jedna zprava naraz; co se mezitim nahromadi, jde v dalsi (posun se scita, nic se neztrati)
-                + "function posli(hned){if(pm.leti){pm.znovu=true;return;}var dx=Math.round(pm.dx),dy=Math.round(pm.dy);if(!dx&&!dy&&!hned)return;"
+                // hned = tlacitko / "jsem tu" (jde hned); pohyb nejdriv MEZERA ms po minule zprave
+                + "function posli(hned){if(pm.leti){pm.znovu=true;if(hned)pm.tl=true;return;}var dx=Math.round(pm.dx),dy=Math.round(pm.dy);if(!dx&&!dy&&!hned)return;"
+                + "if(!hned&&Date.now()-pm.posl<MEZERA){planuj();return;}"
                 + "pm.dx-=dx;pm.dy-=dy;pm.leti=true;pm.posl=Date.now();var x=new XMLHttpRequest();"
                 + "x.open('GET','/mys?dx='+dx+'&dy='+dy+'&b='+pm.b+'&t='+pm.posl,true);x.timeout=3000;"
                 + "x.onload=function(){pm.leti=false;var r=x.responseText||'';"
                 + "if(++pm.zprav===1)clog('B318 MYS PC: prvni zprava - odpoved appky '+r);"
                 + "if(r.indexOf('PS1:MYS_VYP')===0)hint('MYS PS1 JE NA TELEFONU VYPNUTA - ZAPNI JI TLACITKEM MYS',4000);"
-                + "if(pm.znovu){pm.znovu=false;posli(true);}};"
-                + "x.onerror=x.ontimeout=function(){pm.leti=false;if(pm.znovu){pm.znovu=false;setTimeout(function(){posli(true);},200);}};"
+                + "if(pm.znovu){pm.znovu=false;var t=pm.tl;pm.tl=false;if(t)posli(true);else planuj();}};"
+                + "x.onerror=x.ontimeout=function(){pm.leti=false;if(pm.znovu){pm.znovu=false;pm.tl=false;setTimeout(function(){posli(true);},200);}};"
                 + "try{x.send();}catch(e){pm.leti=false;}}"
-                + "function planuj(){if(!pm.t)pm.t=setTimeout(function(){pm.t=0;posli(false);},16);}"
+                + "function planuj(){if(pm.t)return;var d=MEZERA-(Date.now()-pm.posl);pm.t=setTimeout(function(){pm.t=0;posli(false);},d>1?d:1);}"
                 + "function zamkni(){try{var el=document.documentElement;"
                 + "if(!(document.fullscreenElement||document.webkitFullscreenElement)){var f=el.requestFullscreen||el.webkitRequestFullscreen;"
                 + "if(f){var p0=f.call(el);if(p0&&p0.catch)p0.catch(function(){});}}"

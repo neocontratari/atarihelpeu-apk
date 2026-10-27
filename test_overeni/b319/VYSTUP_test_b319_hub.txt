@@ -1,0 +1,14 @@
+B319 - Hub ve vlaknech: jadro 60 snimku / s (posun mapy 2x), zvuk, prohlizec B319 a stary soubezne
+
+   log: B306 TV PROUD PS1: prohlizec 1 pripojen (celkem 1) - obraz a zvuk primo z C++ (JPEG po castech), kazdy snimek, zvuk 44100 Hz v tomtez paketu | B319: test
+   log: B306 TV PROUD PS1: prohlizec 2 pripojen (celkem 2) - obraz a zvuk primo z C++ (JPEG po castech), kazdy snimek, zvuk 44100 Hz v tomtez paketu
+   log: B306 TV PROUD PS1: prohlizec 1 odpojen po 17 s - 897 paketu (53.9/s), 2.8 MB celkem, JPEG kvalita 45 (max 76, snizeno 10x), kodovani prumer 0.2 ms max 7.0 ms (pasu 1), castecnych 1347, zjemneni 1, beze zmeny 596 z 897, B313: obdelniku 1349 (snimku s vic castmi 299), zjemneni za pohybu 0, B319: posun obrazu 299 x (zkouseno 299, ctvercu 16x16 zkopirovano 313511), casti v polovicnim rozliseni 1349 z 1349, zvuk preskoku 0, paketu jen se zvukem 1 (zbyva 1)
+   log: B306 TV PROUD PS1: prohlizec 2 odpojen po 17 s - 898 paketu (54.0/s), 16.6 MB celkem, JPEG kvalita 48 (max 76, snizeno 8x), kodovani prumer 2.8 ms max 7.5 ms (pasu 2), castecnych 299, zjemneni 1, beze zmeny 597 z 898, zvuk preskoku 0, paketu jen se zvukem 1 (zbyva 0)
+   prohlizec B319 : paketu 897, 2.98 MB, kopii 299, polovicnich 1349, chyb 0; posledni snimek PSNR 40.60 dB, nejhorsi ctverec 2.2
+   prohlizec stary: paketu 898, 17.38 MB, kopii 0, polovicnich 0, chyb 0; posledni snimek PSNR 38.90 dB, nejhorsi ctverec 3.2
+OK     1) oba prohlizece: vsechny pakety jdou rozebrat
+OK     2) po chvili klidu maji oba prohlizece posledni snimek (B319 40.59 dB, stary 38.89 dB)
+OK     3) kopie a polovicni rozliseni jen prohlizec B319 (kopii 299), stary nic
+OK     4) B319 poslal mene dat nez stary (2908 kB proti 16968 kB)
+
+VYSLEDEK: 4 OK, 0 CHYBA

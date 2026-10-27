@@ -1,0 +1,14 @@
+OK     knihovna napps1core nactena skutecnou tridou NativePs1CoreBridge
+OK     native metod ve tride: 29 (28 z B318 + proudOtevri2Native B319)
+OK     bootGameSafe (ps1BootDoMonitoru) -> PS1_HRA_OK
+OK     proudOtevri2Native(int) -> int, private static native (jako ostatni proud*Native)
+OK     prohlizece: B319 primo 1, stary 2, B319 pres obal 3, obal s volbami 0 = stary 4
+OK     proud z bezici hry chodi vsem (paketu verze 3: 5 / 5 / 5 / 5)
+OK     log Hubu: prohlizec s volbami B319 "... | B319: posun obrazu = kopie v prohlizeci, ...", stary bez B319
+   B306 TV PROUD PS1: prohlizec 1 pripojen (celkem 1) - obraz a zvuk primo z C++ (JPEG po castech), kazdy snimek, zvuk 44100 Hz v tomtez paketu | B319: posun obrazu = kopie v prohlizeci, 2x zvetseny obraz 2D her v puvodnim rozliseni, zmeny po obdelnicich
+   B306 TV PROUD PS1: prohlizec 2 pripojen (celkem 2) - obraz a zvuk primo z C++ (JPEG po castech), kazdy snimek, zvuk 44100 Hz v tomtez paketu
+   B306 TV PROUD PS1: prohlizec 3 pripojen (celkem 3) - obraz a zvuk primo z C++ (JPEG po castech), kazdy snimek, zvuk 44100 Hz v tomtez paketu | B319: posun obrazu = kopie v prohlizeci, 2x zvetseny obraz 2D her v puvodnim rozliseni, zmeny po obdelnicich
+   B306 TV PROUD PS1: prohlizec 4 pripojen (celkem 4) - obraz a zvuk primo z C++ (JPEG po castech), kazdy snimek, zvuk 44100 Hz v tomtez paketu
+OK     odpojeni: souhrn prohlizece B319 s radkem "B319: posun obrazu ... x, casti v polovicnim rozliseni ..."
+stop: PS1_STOPPED
+VYSLEDEK: 0 chyb

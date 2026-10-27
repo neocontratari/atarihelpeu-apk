@@ -1,0 +1,63 @@
+B319 - PRENOS PS1 NA TV / PC LEHCI: POSUN OBRAZU (KOPIE V PROHLIZECI), 2x ZVETSENY OBRAZ V PUVODNIM
+ROZLISENI, MYS Z PC JEDNIM SPOJENIM - overeni na PC
+=======================================================================================================
+
+Rene (log B318): "je to mnohem mnohem lepsi - ale mam pocit ze doslo ke spomaleni pri prenosu LAN".
+Log: telefon emuloval 60 snimku/s, na PC jen 48-57 (B317 57-59), zvuk ~0,2 s za obrazem. Pri posunu
+mapy v Dune 2000 se menil cely obraz 736x480 20x za sekundu (az 6 Mbit/s, B317 do 2,3) a mys z PC
+posilala ~25 zprav / s, kazdou novym spojenim.
+
+Kod v appce:
+  app/src/main/cpp/tvproud/nap_tv_proud_jpeg.h   KodekJpeg: posun (najdiPosun / hledejPosun /
+                                                 pouzijPosun, cast KOPIE 0xFF), polovicni (zdvojeny,
+                                                 JPEG w/2 x h/2 4:4:4, bit 0x80), nastavKodekPs1
+  app/src/main/cpp/tvproud/nap_tv_proud_jpegenc.h koduj(..., plneBarvy)
+  app/src/main/cpp/tvproud/nap_tv_proud.h        Hub::otevri(volby), nastavVolby
+  app/src/main/cpp/nap_ps1_native.cpp            JNI proudOtevri2Native(volby)
+  NativePs1CoreBridge.java                       proudOtevri2Native / proudOtevri2Safe (29 native)
+  MainActivity.java                              /ps1.stream?v=319 -> volby 3; stranka TV (apObraz3,
+                                                 apKopie, apJdalsi, polovicni JPEG 2x bez vyhlazeni,
+                                                 log), skript mysi (MEZERA 33 ms); server:
+                                                 napTvWebHandleClient (smycka), napTvWebObsluz,
+                                                 napTvWebCtiPozadavek, napTvWebDrzetSpojeni
+
+VSE NAJEDNOU:
+  PRAC=/tmp/nap_b319 INC=<hlavicky EGL/GLES2/KHR> ANDROID_JAR=<android-34.jar> \
+  PNG320=<snimky 320x240> PNG640=<snimky 640x480> bash test_overeni/b319/vse.sh
+  (PNG320 / PNG640: ../b305/JAK_SPUSTIT.txt krok 0; regrese mysi B318 se skutecnym jadrem si jadro
+   prelozi do PRAC/jadro - ../b318/stavba_jadra.sh, PS-EXE ../b318/udelej_exe.py)
+
+JEDNOTLIVE (z adresare test_overeni/b319, T="-I../../app/src/main/cpp/tvproud -I../../app/src/main/cpp/vendor/stb -I."):
+
+1) Kodek (Hub + KodekJpeg z appky), "prohlizec" v C++ = stranka B319 (prohlizec_b319.h), synteticka
+   2D strategie jako Dune 2000 (hra_mapa.h: 368x240, mapa 296x240 + panel, 2x = kazdy bod 2x2):
+     g++ -std=c++17 -O2 -pthread $T -o test_b319_kodek test_b319_kodek.cpp && ./test_b319_kodek
+   -> VYSTUP_test_b319_kodek.txt (stejne snimky drive / B319: data, kopie, polovicni rozliseni,
+      vernost po kazdem paketu, zjemneni, 1x, 3D hra, vzory, strih, rozmery, rychlost)
+
+1b) Hub ve vlaknech (jadro 60 / s, zvuk, prohlizec B319 a stary soubezne, nahodna "sit"):
+     g++ -std=c++17 -O2 -pthread $T -o test_b319_hub test_b319_hub.cpp && ./test_b319_hub
+     ThreadSanitizer: -O1 -g -fsanitize=thread, spustit s NAP_TSAN=1  -> VYSTUP_tsan_b319_hub.txt
+
+2) Stranka WEB TV v Chromiu (Playwright) se SKUTECNYM proudem z kodeku:
+     g++ -std=c++17 -O2 -pthread $T -o gen_proud_b319 gen_proud_b319.cpp
+     gen_proud_b319 PRAC/proud_v3 3 ; gen_proud_b319 PRAC/proud_v0 0
+     python3 test_b319_prohlizec.py PRAC          -> VYSTUP_test_b319_prohlizec.txt
+   (stranka z MainActivity.java; server jako Java: v >= 319 -> proud B319; kontrolni body: canvas
+    = snimek hry; stara stranka B318 z gitu e465b07 dostane proud jako drive)
+
+3) Mys pocitace na strance WEB TV (vse z B318 + nejvys ~30 zprav / s, tlacitka hned, stranka = B318
+   + presne zmeny B319):
+     python3 test_b319_tv_mys.py                  -> VYSTUP_test_b319_tv_mys.txt
+   skripty stranky: acorn (ES2017, skript mysi ES5) -> VYSTUP_kontrola_skriptu_tv.txt
+
+4) Mys z PC jednim spojenim - SKUTECNY kod serveru z MainActivity (napTvWebHandleClient,
+   napTvWebCtiPozadavek, napTvWebDrzetSpojeni, napTvWebHeader) v JVM + Chromium:
+     python3 test_b319_spojeni.py PRAC/spojeni    -> VYSTUP_test_b319_spojeni.txt
+
+5) Regrese: bash regrese.sh PRAC INC JAVA_HOME ANDROID_JAR PNG320 PNG640  -> VYSTUP_regrese.txt
+   kodeky a Hub B305 + kodek menu B313 s hlavickami B319, testy PS1 B308 na kodu B319, JVM
+   (TestPodpisu, TestB318Mys s 29 native, jvm/TestB319Proud.java - proudOtevri2Native -Xcheck:jni),
+   symboly, preklad B305 / B306, javac proti android.jar, podpisy JNI (kontrola_jni_ps1.py),
+   stranka WEB TV v testech B315 / B313 / B314 / B302 / B303 / B306, SKUTECNE menu (B313),
+   mys B318 (logika + SKUTECNE jadro PCSX s nap_ps1_native.cpp B319).

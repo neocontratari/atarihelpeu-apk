@@ -169,25 +169,35 @@ class Hub {
     std::lock_guard<std::mutex> l(m_);
     nastaveniKodeku_ = std::move(f);
   }
+  // B319: volby, ktere si prohlizec rekl (stranka WEB TV B319: posun obrazu, polovicni rozliseni) -
+  // f je nastavi kodeku tohoto prohlizece, popis jde do logu
+  void nastavVolby(std::function<void(Kodek &, int)> f, const char *popis) {
+    std::lock_guard<std::mutex> l(m_);
+    nastaveniVoleb_ = std::move(f);
+    popisVoleb_ = popis ? popis : "";
+  }
 
   // ---- prohlizec ----
-  int otevri() {
+  int otevri(int volby = 0) {
     int id, celkem;
+    bool sVolbami = false;
+    std::string popis;
     {
       std::lock_guard<std::mutex> l(m_);
       id = dalsiId_++;
       auto k = std::make_shared<Klient>();
       k->id = id;
       if (nastaveniKodeku_) nastaveniKodeku_(k->kodek);
+      if (volby && nastaveniVoleb_) { nastaveniVoleb_(k->kodek, volby); sVolbami = true; popis = popisVoleb_; }
       k->seq = seq_;                    // ceka na cerstvy snimek (stary muze byt z jine hry)
       k->startMs = k->logMs = tedMs();
       klienti_[id] = k;
       celkem = (int)klienti_.size();
       pocet_.store(celkem, std::memory_order_release);
     }
-    char b[300];
-    snprintf(b, sizeof(b), "B306 TV PROUD %s: prohlizec %d pripojen (celkem %d) - obraz a zvuk primo z C++ (%s), kazdy snimek, zvuk %d Hz v tomtez paketu",
-             jmeno_, id, celkem, Kodek::nazev(), vzorkovani_);
+    char b[420];
+    snprintf(b, sizeof(b), "B306 TV PROUD %s: prohlizec %d pripojen (celkem %d) - obraz a zvuk primo z C++ (%s), kazdy snimek, zvuk %d Hz v tomtez paketu%s%s",
+             jmeno_, id, celkem, Kodek::nazev(), vzorkovani_, sVolbami ? " | B319: " : "", sVolbami ? popis.c_str() : "");
     log(b);
     return id;
   }
@@ -318,7 +328,7 @@ class Hub {
     if (ted - k.logMs >= 30000) {
       const double s = (ted - k.logMs) / 1000.0;
       const long long zmen = k.logPaketu - k.logBeze;
-      char b[700];
+      char b[1100];
       snprintf(b, sizeof(b), "B306 TV PROUD %s: prohlizec %d - %.1f paketu/s (%.1f snimku/s se zmenou), %.2f Mbit/s, prumer %.1f kB na snimek, %dx%d, "
                "baleni prumer %.2f ms max %.1f ms, zvuk %.0f vzorku/s (preskoku %lld, paketu jen se zvukem %lld), %s",
                jmeno_, k.id, k.logPaketu / s, zmen / s, k.logBajtu * 8.0 / 1e6 / s, k.logBajtu / 1024.0 / std::max(1LL, k.logPaketu), W, H,
@@ -350,7 +360,7 @@ class Hub {
       pocet_.store(celkem, std::memory_order_release);
     }
     const double s = std::max(0.001, (tedMs() - k->startMs) / 1000.0);
-    char b[760];
+    char b[1100];
     snprintf(b, sizeof(b), "B306 TV PROUD %s: prohlizec %d odpojen po %.0f s - %lld paketu (%.1f/s), %.1f MB celkem, %s, zvuk preskoku %lld, paketu jen se zvukem %lld (zbyva %d)",
              jmeno_, k->id, s, k->paketu, k->paketu / s, k->bajtu / 1048576.0, k->kodek.info().c_str(), k->zvukSkoku, k->jenZvuk, celkem);
     log(b);
@@ -420,6 +430,8 @@ class Hub {
   unsigned long long zvZapis_ = 0;
   std::map<int, std::shared_ptr<Klient>> klienti_;
   std::function<void(Kodek &)> nastaveniKodeku_;   // B313
+  std::function<void(Kodek &, int)> nastaveniVoleb_;   // B319
+  std::string popisVoleb_;                              // B319
   int dalsiId_ = 1;
   std::atomic<int> pocet_{0};
   std::atomic<long long> posledniMs_{0};

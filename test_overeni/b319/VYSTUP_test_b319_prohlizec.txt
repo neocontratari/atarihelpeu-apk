@@ -1,0 +1,26 @@
+B319 - stranka WEB TV v Chromiu: proud PS1 s kopii (posun obrazu) a JPEG v polovicnim rozliseni
+stranka z MainActivity.java (46698 znaku), B318 z e465b07 (45465 znaku); proud B319 2.17 MB, drive 9.09 MB (152 snimku 736x480)
+OK     1) stranka B319 si rekne o proud s kopii a polovicnim rozlisenim: /ps1.stream?v=319&t=1793127179961
+   snimek   0: PSNR 30.62 dB, nejhorsi ctverec 9.7, 2x2 stejne 100.0 % (paketu 1)
+   snimek  12: PSNR 30.58 dB, nejhorsi ctverec 9.7, 2x2 stejne 100.0 % (paketu 13)
+   snimek  25: PSNR 30.39 dB, nejhorsi ctverec 9.8, 2x2 stejne 100.0 % (paketu 26)
+   snimek  38: PSNR 30.28 dB, nejhorsi ctverec 9.8, 2x2 stejne 100.0 % (paketu 39)
+   snimek  52: PSNR 30.35 dB, nejhorsi ctverec 9.9, 2x2 stejne 100.0 % (paketu 53)
+   snimek  66: PSNR 30.38 dB, nejhorsi ctverec 9.7, 2x2 stejne 100.0 % (paketu 67)
+   snimek  80: PSNR 30.60 dB, nejhorsi ctverec 9.7, 2x2 stejne 100.0 % (paketu 81)
+   snimek  95: PSNR 30.53 dB, nejhorsi ctverec 9.2, 2x2 stejne 100.0 % (paketu 96)
+   snimek 110: PSNR 30.34 dB, nejhorsi ctverec 9.7, 2x2 stejne 100.0 % (paketu 111)
+   snimek 125: PSNR 30.32 dB, nejhorsi ctverec 9.8, 2x2 stejne 100.0 % (paketu 126)
+   snimek 151: PSNR 30.41 dB, nejhorsi ctverec 9.8, 2x2 stejne 100.0 % (paketu 152)
+OK     2) obraz v canvasu = snimek hry ve 11 kontrolnich bodech (uprostred posunu, kopie + JPEG v poradi): vse spravne
+OK     3) kopii nakresleno 114, JPEG v polovicnim rozliseni 640 (z 640) - 2x2 body v canvasu stejne v 100.0 % (bez vyhlazeni)
+OK     4) dat pro stejnych 152 snimku: B319 2.17 MB, drive 9.09 MB (24 %)
+OK     6) zadna chyba JavaScriptu (zadna), chyb v datech 0, proud se neotviral znovu
+   log prohlizece: B306 PROHLIZEC PS1: 5.1 snimku/s, JPEG 21.3/s (prekrytych zahozeno 0), B319: kopii (posun obrazu) 3.8/s, JPEG v polovicnim rozliseni 640, zvuk hraje, napred 0 ms (min 0, pri rozjezdu 300), zvuk za obrazem ~0 ms, rychlost 0..+0 %, 0->44100 Hz, podteceni 0, zahozeno 0, chyb 0, okno 1280x720, obraz 736x480 vyplnit, vystup TICHO (zesileni proud 1, stara cesta 1)
+OK     6) log prohlizece do appky (kazdych 30 s): "... B319: kopii (posun obrazu) x/s, JPEG v polovicnim rozliseni n ..."
+   B318 snimek   0: PSNR 30.42 dB, nejhorsi ctverec 12.7
+   B318 snimek  40: PSNR 29.68 dB, nejhorsi ctverec 12.6
+   B318 snimek  80: PSNR 30.39 dB, nejhorsi ctverec 12.0
+   B318 snimek 151: PSNR 29.93 dB, nejhorsi ctverec 11.3
+OK     5) stara stranka B318 (/ps1.stream?1793127210534) dostane proud jako drive a obraz je spravne
+VYSLEDEK: 7 kontrol, 0 CHYBA

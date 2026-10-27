@@ -1,0 +1,12 @@
+B319 - mys z PC jednim spojenim: skutecny kod serveru z MainActivity.java (napTvWebHandleClient 1154 znaku, napTvWebCtiPozadavek, napTvWebDrzetSpojeni, napTvWebHeader, 5000 ms)
+OK     preklad v JVM (javac): bez chyby
+OK     1a) 3 zpravy /mys jednim spojenim (odpovedi s Connection: keep-alive), 4. zprava s hlavickou po kouskach taky - spojeni porad otevrene
+OK     1b) /status timtez spojenim: odpoved jako drive, spojeni zustava
+OK     1b) jiny pozadavek timtez spojenim: odpoved jako drive, pak spojeni zavrene
+OK     1c) /mys s Connection: close - odpoved a spojeni zavrene (jako B318)
+OK     1d) HTTP/1.0 (stary prohlizec) - spojeni se zavre jako drive
+OK     1e) 5 s ticha: appka spojeni zavre sama (za 5004 ms) - vlakno se vrati do zasoby
+   prohlizec: PROHLIZEC spojeni 3 zprav_mys 180 spojeni_s_mysi 2 nejvic_na_spojeni 150 aktivnich_vlaken 0 (zprav 180, odpovedi PS1:MYS 180, chyb 0, /status 11, 12.1 s)
+OK     2) Chromium: 180 zprav /mys (jako stranka WEB TV, ~30 / s, uprostred 6 s pauza) - vsechny odpovedi PS1:MYS, zadna chyba
+OK     2) na 180 zprav mysi bylo potreba jen 2 spojeni (nejvic 150 zprav jednim) - B318: 180 spojeni
+VYSLEDEK: 9 kontrol, 0 CHYBA
