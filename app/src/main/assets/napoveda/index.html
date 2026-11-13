@@ -276,6 +276,7 @@ body.hleda .rychle,body.hleda #obsahStitek,body.hleda #obsah{display:none;}
   <div class="blok">
     <h3>První spuštění</h3>
     <ul>
+      <li>Poprvé se appka <b>aktivuje</b>. Když jsi ji stáhl se svým osobním kódem ze stránky serveru N&amp;P, spáruje se s telefonem sama. Jinak napiš kód <span class="t">NAP-XXXX-XXXX</span> od správce N&amp;P a klepni na <span class="nw"><span class="t">POTVRDIT KÓD</span>.</span> Jeden kód patří jednomu telefonu – přeposlaná appka na jiném telefonu nefunguje.</li>
       <li>Když v telefonu chybí Sonic the Hedgehog (Sega) nebo BIOS pro PlayStation, appka se nejdřív zeptá, jestli je má stáhnout z atarihelp.eu: <span class="t">STAHNOUT</span> / <span class="nw"><span class="t">TED NE</span>.</span> Bez nich appka funguje dál.</li>
       <li>Pak se přehraje úvodní film. Přeskočíš ho tlačítkem <span class="t">SKIP ›</span> nebo tlačítkem ZPĚT na telefonu. Znovu ho pustíš v <a href="#options" data-skok="options">OPTIONS</a> → <span class="nw"><span class="t">PUSTIT INTRO</span>.</span></li>
       <li>Nakonec naskočí hlavní menu – karty přiletí na své místo.</li>
@@ -359,7 +360,7 @@ body.hleda .rychle,body.hleda #obsahStitek,body.hleda #obsah{display:none;}
   <div class="blok">
     <h3>Servisní tlačítka (úplně dole)</h3>
     <dl class="tab">
-      <dt>NET / HRY</dt><dd>Hry z atarihelp.eu – Galactic Chase, Moon Patrol, Pac-Man, Donkey Kong, River Raid, Bruce Lee, Montezuma's Revenge, Reného Pitt-Kitt a další. Klepneš na hru, stáhne se a spustí. Tlačítko <span class="t">WEB</span> otevře web s hrami.</dd>
+      <dt>NET / HRY</dt><dd>Otevře <span class="t">N&amp;P HRY</span> – hry pro Atari ze serveru N&amp;P, s obaly a hledáním. Klepneš na hru, stáhne se a spustí.</dd>
       <dt>XEX / MOBIL</dt><dd>Spustí hru z telefonu – soubor XEX nebo cartridge CAR (obojí i zabalené v ZIP). Cartridge se zasune do slotu a Atari se s ní zapne (překryje BASIC, jako skutečná cartridge). Ve slotu zůstává i po vypnutí a zapnutí, jiný program (XEX, ATR, TXT) ji vytáhne. Když je cartridge ve slotu, nabídne <span class="t">VYSUNOUT CARTRIDGE</span> (Atari znovu s BASICem) a <span class="t">VYBRAT JINÝ SOUBOR</span>.</dd>
       <dt>ATR / DISK</dt><dd>Disketa ATR (i v ZIP) do mechaniky D1: a start z diskety (podržený <span class="t">OPTION</span> = BASIC vypnutý). Disketa v mechanice zůstává i po vypnutí a zapnutí – jako u skutečné mechaniky. Když v D1: disketa je, nabídne <span class="t">VYSUNOUT DISKETU</span> (Atari znovu s BASICem), <span class="t">VYMĚNIT DISKETU BEZ RESTARTU</span> (hra chce další disketu nebo druhou stranu) a <span class="t">VLOŽIT JINOU DISKETU A NABOOTOVAT</span>.</dd>
       <dt>TURBO / BASIC</dt><dd>Nahraje Turbo-BASIC XL 1.5.</dd>
@@ -415,12 +416,12 @@ body.hleda .rychle,body.hleda #obsahStitek,body.hleda #obsah{display:none;}
   <div class="blok">
     <h3>Na výšku – konzole</h3>
     <dl class="tab">
-      <dt>SBIRKA</dt><dd>Klepnutí = sbírka her na atarihelp.eu: klepneš na hru, stáhne se a hraje. Pak se appka zeptá „Uložit … do telefonu?“ – <span class="t">ULOŽIT</span> ji přidá do MOJE HRY. Podržení (0,7 s) = výkon <span class="t">HIGH QUALITY</span> / <span class="nw"><span class="t">LOW PERFORMANCE</span>.</span></dd>
+      <dt>SBIRKA</dt><dd>Klepnutí = <span class="t">N&amp;P HRY</span> s hrami pro Segu ze serveru N&amp;P: klepneš na hru, stáhne se a hraje. Pak se appka zeptá „Uložit … do telefonu?“ – <span class="t">ULOŽIT</span> ji přidá do MOJE HRY. Podržení (0,7 s) = výkon <span class="t">HIGH QUALITY</span> / <span class="nw"><span class="t">LOW PERFORMANCE</span>.</span></dd>
       <dt>HRY</dt><dd><span class="t">MOJE HRY</span> – hry uložené v telefonu. Klepnutím hru spustíš, koš ji smaže (<span class="t">JEN HRU (uložená pozice zůstane)</span> nebo <span class="nw"><span class="t">HRU I ULOŽENOU POZICI</span>).</span> <span class="nw"><span class="t">VYBRAT SOUBOR RUČNĚ V TELEFONU</span>,</span> <span class="nw"><span class="t">OBNOVIT SEZNAM</span>.</span></dd>
       <dt>CARTRIDGE</dt><dd>Slot na konzoli – vybereš ROM z telefonu (.gen, .bin, .md, .smd, .zip).</dd>
       <dt>ULOZENE</dt><dd><span class="t">ULOŽENÉ POZICE</span> – hry s uloženou pozicí. Klepnutím pozici načteš.</dd>
       <dt>NAVODY</dt><dd>Technické informace o emulátoru.</dd>
-      <dt>WEB</dt><dd>Otevře atarihelp.eu.</dd>
+      <dt>WEB</dt><dd>Otevře web atarihelp.eu v prohlížeči telefonu.</dd>
       <dt>MENU</dt><dd>Zpět do hlavního menu.</dd>
     </dl>
     <p>Ovladač na obrázku konzole: D-pad, <span class="t">A</span> <span class="t">B</span> <span class="t">C</span> a <span class="nw"><span class="t">START</span>.</span></p>
@@ -449,7 +450,7 @@ body.hleda .rychle,body.hleda #obsahStitek,body.hleda #obsah{display:none;}
   <div class="blok">
     <h3>Tlačítka</h3>
     <dl class="tab">
-      <dt>LOAD GAME</dt><dd>Otevře PS1 stránku na atarihelp.eu s odkazy na Google Drive. Klepneš na hru – při prvním spuštění se stáhne a rozbalí, příště se spustí rovnou z telefonu.</dd>
+      <dt>LOAD GAME</dt><dd>Otevře <span class="t">N&amp;P HRY</span> s hrami pro PlayStation ze serveru N&amp;P. Klepneš na hru – při prvním spuštění se stáhne a rozbalí, příště se spustí rovnou z telefonu.</dd>
       <dt>CD ISO</dt><dd>Knihovna <span class="t">VYBRAT HRU (CD/ISO)</span> – hry v telefonu, <span class="nw"><span class="t">VYBRAT SOUBOR RUČNĚ V TELEFONU</span>,</span> mazání her.</dd>
       <dt>SAVE GAME</dt><dd>Uloží přesnou pozici ve hře.</dd>
       <dt>MEMORY CARD</dt><dd><span class="t">PAMĚŤOVÁ KARTA</span> – stav paměťové karty. Hry si na ni ukládají samy (jako na skutečnou kartu).</dd>
@@ -610,13 +611,15 @@ body.hleda .rychle,body.hleda #obsahStitek,body.hleda #obsah{display:none;}
     <img class="kap-obr" src="../menu/karta_web.jpg" alt="" loading="lazy">
     <div><div class="kap-cislo">KAPITOLA 07</div><h2>ATARIHELP.EU</h2><p class="kap-pod">OFICIÁLNÍ WEB</p></div>
   </header>
-  <p class="uvod">Karta <span class="t">ATARIHELP.EU</span> otevře web atarihelp.eu přímo v appce: hry, návody a novinky.</p>
+  <p class="uvod">Karta <span class="t">ATARIHELP.EU</span> otevře web atarihelp.eu v prohlížeči telefonu: návody a novinky. Hry jsou na serveru N&amp;P přímo v emulátorech.</p>
   <div class="blok">
-    <h3>Hry z webu</h3>
+    <h3>Hry ze serveru N&amp;P</h3>
     <ul>
-      <li>Na hru stačí klepnout – appka ji stáhne a spustí ve správném emulátoru: hra pro Atari (XEX, ATR, CAR, ZIP) v <a href="#atari" data-skok="atari">Atari 130XE</a>, hra pro Segu v <a href="#sega" data-skok="sega">Sega Mega Drive</a>, hra pro PlayStation (i odkaz na Google Drive) v <a href="#ps1" data-skok="ps1">PS1</a>.</li>
-      <li>Hra pro Segu nebo PS1 se spustí, jen když je ta konzole už odemčená – zámky platí i pro hry z webu. Jinak appka nic nestahuje a napíše, kolik ještě chybí (<span class="t">SEGA JE ZAMČENÁ</span> / <span class="nw"><span class="t">PS1 JE ZAMČENÁ</span>)</span> – viz <a href="#odemykani" data-skok="odemykani">Odemykání</a>.</li>
-      <li>Zpátky do menu tlačítkem ZPĚT na telefonu.</li>
+      <li>Hry otevřeš v emulátoru: <a href="#atari" data-skok="atari">Atari 130XE</a> → <span class="t">NET / HRY</span>, <a href="#sega" data-skok="sega">Sega Mega Drive</a> → <span class="t">SBIRKA</span>, <a href="#ps1" data-skok="ps1">PS1</a> → <span class="nw"><span class="t">LOAD GAME</span>.</span></li>
+      <li>Otevře se <span class="t">N&amp;P HRY</span>: obaly her, nahoře <span class="t">ATARI</span> <span class="t">SEGA</span> <span class="t">PS1</span> a hledání. Na hru stačí klepnout – appka ji stáhne ze serveru a spustí ve správném emulátoru.</li>
+      <li>Bez internetu ukáže naposledy načtený seznam her. Stahovat jde, až bude server zase dostupný – seznam obnovíš tlačítkem <span class="nw"><span class="t">↻</span>.</span></li>
+      <li>Hra pro Segu nebo PS1 se spustí, jen když je ta konzole už odemčená – zámky platí i pro hry ze serveru. Jinak appka nic nestahuje a napíše, kolik ještě chybí (<span class="t">SEGA JE ZAMČENÁ</span> / <span class="nw"><span class="t">PS1 JE ZAMČENÁ</span>)</span> – viz <a href="#odemykani" data-skok="odemykani">Odemykání</a>.</li>
+      <li>Zpátky do emulátoru tlačítkem <span class="nw"><span class="t">◀ ZPĚT</span>.</span></li>
     </ul>
   </div>
   <nav class="kap-paticka"><a class="tl tl2" href="#obsah" data-skok="obsah">&#9650; OBSAH</a><a class="tl" href="../index.html">&#9664; ZPĚT DO MENU</a></nav>
@@ -639,7 +642,7 @@ body.hleda .rychle,body.hleda #obsahStitek,body.hleda #obsah{display:none;}
       <dt>SPUSTIT WEB TV</dt><dd>Obraz a zvuk appky do prohlížeče na televizi nebo počítači. Hned pod tlačítkem se ukáže adresa pro prohlížeč a tlačítko se přepne na <span class="t">WEB TV BĚŽÍ</span>. Adresa tam zůstane, dokud OPTIONS nezavřeš – viz <a href="#tv" data-skok="tv">WEB TV a PC</a>.</dd>
       <dt>PUSTIT INTRO</dt><dd>Úvodní film znovu.</dd>
       <dt>STÁHNOUT HRY A BIOS</dt><dd>Z atarihelp.eu stáhne Sonic the Hedgehog (Sega, asi 0,5 MB) a BIOS pro PlayStation (asi 1 MB). Appka se nejdřív zeptá. Soubory zůstanou v telefonu a fungují i bez internetu.</dd>
-      <dt>AKTUALIZOVAT APLIKACI</dt><dd>Zjistí na atarihelp.eu novou verzi a nabídne <span class="t">AKTUALIZOVAT</span> / <span class="nw"><span class="t">TED NE</span>.</span> Stáhne se rovnou do instalace – v telefonu nezůstane žádný soubor. Poprvé se telefon zeptá, jestli instalaci z appky povolíš.</dd>
+      <dt>AKTUALIZOVAT APLIKACI</dt><dd>Zjistí na serveru N&amp;P novou verzi a nabídne <span class="t">AKTUALIZOVAT</span> / <span class="nw"><span class="t">TED NE</span>.</span> Stáhne se rovnou do instalace – v telefonu nezůstane žádný soubor a uložené hry zůstanou. Když je venku nová verze, appka ji nabídne i sama. Poprvé se telefon zeptá, jestli instalaci z appky povolíš.</dd>
       <dt>TV POKUS</dt><dd><span class="t">OBOJÍ</span> / <span class="t">JEN ZVUK</span> / <span class="t">JEN OBRAZ</span> – zkouška přenosu na TV, když se něco seká. Normálně nech <span class="nw"><span class="t">OBOJÍ</span>.</span></dd>
     </dl>
   </div>
@@ -719,7 +722,7 @@ body.hleda .rychle,body.hleda #obsahStitek,body.hleda #obsah{display:none;}
   </div>
   <div class="blok">
     <h3>Zámky platí všude</h3>
-    <p>Zamčenou konzoli neotevře ani hra z webu atarihelp.eu (odkaz, stažený soubor, odkaz na Google Drive) – appka ji nestáhne, nespustí a napíše proč, třeba <span class="nw"><span class="t">SEGA JE ZAMČENÁ</span>:</span> „Napiš v Atari ještě 37 řádků programu…“ Stejně tak se neotevře stránka emulátoru jinou cestou – appka se vrátí do hlavního menu.</p>
+    <p>Zamčenou konzoli neotevře ani hra ze serveru N&amp;P nebo z webu (odkaz, stažený soubor) – appka ji nestáhne, nespustí a napíše proč, třeba <span class="nw"><span class="t">SEGA JE ZAMČENÁ</span>:</span> „Napiš v Atari ještě 37 řádků programu…“ Stejně tak se neotevře stránka emulátoru jinou cestou – appka se vrátí do hlavního menu.</p>
   </div>
   <p class="tip"><b>KOLIK JEŠTĚ?</b> Klepni v menu na zamčenou kartu – pod kartami se ukáže, kolik řádků nebo minut ještě chybí.</p>
   <nav class="kap-paticka"><a class="tl tl2" href="#obsah" data-skok="obsah">&#9650; OBSAH</a><a class="tl" href="../index.html">&#9664; ZPĚT DO MENU</a></nav>
@@ -782,17 +785,19 @@ body.hleda .rychle,body.hleda #obsahStitek,body.hleda #obsah{display:none;}
     <div><div class="kap-cislo">KAPITOLA 13</div><h2>ČASTÉ OTÁZKY</h2><p class="kap-pod">RYCHLÉ ODPOVĚDI</p></div>
   </header>
   <details><summary>Karta SEGA nebo PS1 je zamčená. Co s tím?</summary><div><p>Sega se otevře po 50 napsaných řádcích programu v Atari, PS1 po 30 minutách hraní na Seze. Kolik ještě chybí, uvidíš po klepnutí na zamčenou kartu. Podrobně: <a href="#odemykani" data-skok="odemykani">Odemykání</a>.</p></div></details>
-  <details><summary>Hra z webu se nespustila, appka píše, že je Sega / PS1 zamčená.</summary><div><p>Zámky platí i pro hry z atarihelp.eu. Až konzoli odemkneš, stejná hra z webu se spustí. Podrobně: <a href="#odemykani" data-skok="odemykani">Odemykání</a>.</p></div></details>
+  <details><summary>Hra ze serveru se nespustila, appka píše, že je Sega / PS1 zamčená.</summary><div><p>Zámky platí i pro hry ze serveru N&amp;P. Až konzoli odemkneš, stejná hra se spustí. Podrobně: <a href="#odemykani" data-skok="odemykani">Odemykání</a>.</p></div></details>
   <details><summary>Jak si nahraju vlastní mixtape?</summary><div><p>V MP3 přehrávači pusť skladby (třeba <span class="t">▶ HRAT VSECHNY OBLIBENE</span>) a zmáčkni <span class="nw"><span class="t">RECORD</span>.</span> Nahrávka se uloží do <span class="cesta">Download/AtariHelp/Mixtape</span>. Podrobně: <a href="#mp3" data-skok="mp3">MP3 přehrávač</a>.</p></div></details>
   <details><summary>Na televizi není zvuk.</summary><div><p>Klikni kamkoli do obrazu v prohlížeči (nebo zmáčkni klávesu). Prohlížeče pouští zvuk až po kliknutí – a po obnovení stránky znovu.</p></div></details>
   <details><summary>Adresa WEB TV se v prohlížeči neotevře.</summary><div><p>Telefon i TV / PC musí být ve stejné <span class="nw">Wi-Fi</span>. Adresu napiš přesně, i s číslem za dvojtečkou (třeba <span class="cesta">:8765</span>). Některé sítě (hlavně <span class="nw">Wi-Fi</span> pro hosty) zařízení mezi sebou nepustí – zkus domácí síť.</p></div></details>
   <details><summary>Obraz na TV se trhá nebo zvuk praská.</summary><div><p>V <a href="#options" data-skok="options">OPTIONS</a> přepni <span class="t">RUČNĚ</span> a zkus nižší <span class="t">KVALITA OBRAZU (WEB TV)</span> a pro zvuk <span class="t">LOW</span> (nejjistější). Pomůže i telefon blíž k routeru.</p></div></details>
   <details><summary>PS1 hra nejde spustit.</summary><div><p>Zkontroluj formát: .bin, .cue, .iso, .img, .pbp, .chd nebo .zip (.7z appka neumí). PS1 potřebuje BIOS – appka ho stáhne sama, nebo <a href="#options" data-skok="options">OPTIONS</a> → <span class="nw"><span class="t">STÁHNOUT HRY A BIOS</span>.</span> Když to pořád nejde, pošli log (<a href="#log" data-skok="log">Log a chyby</a>).</p></div></details>
   <details><summary>Kde najdu svoje hry, pozice a kazety?</summary><div><p>Ve složce <span class="cesta">Download/AtariHelp</span> – přehled je v kapitole <a href="#soubory" data-skok="soubory">Soubory v telefonu</a>.</p></div></details>
-  <details><summary>Přijdu o něco, když appku odinstaluju?</summary><div><p>Hry, uložené pozice, paměťová karta PS1 a kazety Atari zůstanou v Download/AtariHelp. Smaže se postup odemykání (Sega a PS1 budou zase zamčené), nastavení appky a zvolený jazyk.</p></div></details>
+  <details><summary>Přijdu o něco, když appku odinstaluju?</summary><div><p>Hry, uložené pozice, paměťová karta PS1 a kazety Atari zůstanou v Download/AtariHelp. Smaže se postup odemykání (Sega a PS1 budou zase zamčené), nastavení appky, zvolený jazyk a spárování – po nové instalaci appku aktivuješ stejným kódem.</p></div></details>
+  <details><summary>Appka chce kód, nebo píše „Tahle kopie aplikace patří jinému telefonu“.</summary><div><p>Appka patří jednomu telefonu. Napiš svůj osobní kód <span class="t">NAP-XXXX-XXXX</span> od správce N&amp;P. Na nový telefon ti kód uvolní správce N&amp;P.</p></div></details>
+  <details><summary>Appka píše „Server N&amp;P je nedostupný“.</summary><div><p>Zkontroluj internet a klepni na <span class="nw"><span class="t">ZKUSIT ZNOVU</span>.</span> Když to nepomůže, server je zrovna vypnutý – zkus to později. Spárovaný telefon hraje dál i bez serveru, jen nové hry se nestáhnou.</p></div></details>
   <details><summary>Přehrávač nenajde moje písničky.</summary><div><p>Když se appka zeptá na přístup k hudbě, povol ho (když jsi to odmítl, povol ho v nastavení telefonu u aplikace). Pak <span class="nw"><span class="t">OBNOVIT SEZNAM V MOBILU</span>,</span> nebo vyber soubory sám přes <span class="nw"><span class="t">VYBRAT SYSTEMOVE</span>.</span> Přehrávač hraje MP3 a WAV.</p></div></details>
   <details><summary>Jak dostanu do Atari program z počítače?</summary><div><p>Zapni WEB TV, na PC otevři adresu, spusť Atari 130XE a dej <kbd>Ctrl</kbd> + <kbd>V</kbd> (nebo přetáhni TXT soubor do prohlížeče). V telefonu jde totéž přes <span class="nw"><span class="t">BASIC/TBXL TXT</span>.</span></p></div></details>
-  <details><summary>Hra z NET / HRY se nestáhne.</summary><div><p>Zkontroluj internet a zkus to za chvíli znovu. Hru můžeš spustit i ze souboru v telefonu přes <span class="nw"><span class="t">XEX / MOBIL</span>.</span></p></div></details>
+  <details><summary>Hra z NET / HRY se nestáhne.</summary><div><p>Zkontroluj internet a v N&amp;P HRY obnov seznam tlačítkem <span class="nw"><span class="t">↻</span>.</span> Když server N&amp;P zrovna neběží, zkus to později. Hru můžeš spustit i ze souboru v telefonu přes <span class="nw"><span class="t">XEX / MOBIL</span>.</span></p></div></details>
   <details><summary>Ovladač na displeji mi nesedí.</summary><div><p>Na šířku kolečko <span class="t">&#9881;</span> → <span class="nw"><span class="t">D-PAD A OVLÁDÁNÍ</span>:</span> tlačítka přetáhneš, kam chceš, nastavíš citlivost, velikost i průhlednost a pro leváky je prohodíš. Funguje to u Atari, Segy i PS1.</p></div></details>
   <details><summary>Jak aktualizuju appku?</summary><div><p><a href="#options" data-skok="options">OPTIONS</a> → <span class="nw"><span class="t">AKTUALIZOVAT APLIKACI</span>.</span> Telefon se ještě zeptá, jestli instalaci povolíš.</p></div></details>
   <details><summary>Chci znovu vidět úvodní film.</summary><div><p><a href="#options" data-skok="options">OPTIONS</a> → <span class="nw"><span class="t">PUSTIT INTRO</span>.</span> Přeskočíš ho tlačítkem <span class="t">SKIP ›</span> nebo ZPĚT.</p></div></details>
@@ -803,7 +808,7 @@ body.hleda .rychle,body.hleda #obsahStitek,body.hleda #obsah{display:none;}
 <footer class="zapati">
   N&amp;P VISION · RETRO UNIVERSE
   <span class="podpis">René Frank</span>
-  ATARIHELP.EU · B314
+  ATARIHELP.EU · B321
 </footer>
 </main>
 

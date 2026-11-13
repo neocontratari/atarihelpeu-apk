@@ -1,0 +1,32 @@
+B321 - regrese (starsi testy na kodu B321; s B320 = srovnani se stejnymi testy na commitu 54df992)
+
+== b311/kontrola_odkazu.py: VYSLEDEK: 0 chyb
+   B320: VYSLEDEK: 0 chyb
+== b311/kontrola_navodu.py: VYSLEDEK: 182 nazvu, 0 CHYBA (nazev v navodu, ktery v appce neni)
+   B320: VYSLEDEK: 174 nazvu, 0 CHYBA (nazev v navodu, ktery v appce neni)
+== b314/kontrola_navodu_en.py: VYSLEDEK: 176 nazvu tlacitek, 0 CHYBA
+   B320: VYSLEDEK: 169 nazvu tlacitek, 0 CHYBA
+== b320/test_b320_stranky.py: VYSLEDEK: 13 kontrol, 0 CHYB
+   B320: VYSLEDEK: 13 kontrol, 0 CHYB
+== b314/test_b314_jazyk_navod.py: VYSLEDEK: 34 kontrol, 2 CHYBA
+   B320: VYSLEDEK: 34 kontrol, 2 CHYBA
+   stejna jako na B320: CHYBA  2) klepnuti v obsahu na OPTIONS: stranka dojede na kapitolu, historie 2 -> 2, adresa beze zmeny
+   stejna jako na B320: CHYBA  5) cesky navod: texty jako v B313, zmeneno jen zamerne 
+== b314/test_b314_jazyk_stranky.py sega ps1: VYSLEDEK: 6 kontrol, 1 CHYBA
+   B320: VYSLEDEK: 6 kontrol, 1 CHYBA
+   stejna jako na B320: CHYBA  ps1 a) cesky: 24 stavu stranky - texty jako v B313
+== b314/test_b314_jazyk_menu.py: VYSLEDEK: 9 kontrol, 1 CHYBA
+   B320: VYSLEDEK: 9 kontrol, 2 CHYBA
+   stejna jako na B320: CHYBA  1) cesky: vsech 20 stavu stranky ma stejne texty jako B313 (jen radek JAZYK · LANGUAGE navic)
+== b311/test_b311_menu.py: 
+   B320: 
+   stejna jako na B320: CHYBA  A1) zaloha: 7 karet z menu/karty.txt ve spravnem poradi: ATARI 130XE | SEGA MEGA DRIVE | PS1 | MP3 PLAYER | JUKEBOX | ATARIHELP.EU | 
+   stejna jako na B320: CHYBA  A5) na zacatku ATARI 130XE: "Atari 130XE with VBXE graphics, all in C" / ▶ START
+   stejna jako na B320: CHYBA  A6) sipka vpravo -> SEGA zamcena: "LOCKED · Type 45 more program lines on the Atari (numbered lines – the" / 🔒 LOCKED
+   stejna jako na B320: CHYBA  A7) klepnuti na zamcenou SEGU: nic se nespusti, zprava "LOCKED / Type 45 more program lines on the Atari (numbered lines – they cou
+   stejna jako na B320: CHYBA  A8) tecka HELP -> karta HELP (▶ OPEN GUIDE)
+== javac --release 17 -cp android.jar (API 34), cela appka: 0 chyb, trid 92
+
+Zamerne zmeny B321, ktere starsi testy (porovnani textu s B313) hlasi jako rozdil: karta ATARI 130XE v menu
+('hry ze serveru N&P'), navod CZ / EN (aktivace, N&P HRY, web v prohlizeci, aktualizace ze serveru).
+VYSLEDEK: 0 testu s NOVOU chybou proti B320

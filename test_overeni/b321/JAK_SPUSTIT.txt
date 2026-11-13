@@ -1,0 +1,28 @@
+B321 - HRY ZE SERVERU N&P (N&P HRY), AKTIVACE TELEFONU, KLIC V APK, NOVY PODPISOVY KLIC - overeni na PC
+==========================================================================================================
+
+Rene: "chci mit apku osetrenou tak, aby ji nikdo nemohl preposlat a aby stazeni her fungovalo".
+Server N&P v10 (C#, Reneho PC) neni v tomhle verejnem repozitari - jeho zdrojak a testy ma Rene
+(NapServer_v10.zip). Test 1) ho potrebuje.
+
+1) Tridy appky (NapServerKlient, NapApkKlic, NapJson) proti SKUTECNEMU jadru serveru v10:
+     mcs -langversion:5 -target:exe -main:NapStudioServerV6.NapTestHost -r:System.Windows.Forms.dll \
+         -r:System.Drawing.dll -out:NapTest.exe NapServer.cs NapTestHost.cs        (mono-devel)
+     javac -d out ../../app/src/main/java/eu/atarihelp/emu10/{NapJson,NapServerKlient,NapApkKlic}.java \
+         jvm/TestB321Server.java
+     java -cp out TestB321Server NapTest.exe <APK podepsane v2/v3> <pracovni slozka>   -> 28 OK
+   (parovani klicem z APK i kodem, podepsane dotazy, stahovani + Range, spatne hodiny v telefonu,
+    preposlana appka, blokace, uvolneni kodu, server nedostupny, User-Agent appky v logu serveru)
+
+2) Stranky aktivace a N&P HRY presne z assets v Chromiu (Playwright, falesny most AHHRY):
+     python3 test_b321_stranky.py                                    -> VYSTUP_test_b321_stranky.txt
+   (potrebuje ../b314/jazyk_harness.py a pip wordfreq)
+
+3) Klic N&P do APK jako server (kontrola skutecneho APK - dela ji i CI):
+     python3 vloz_klic.py app-debug.apk s_klicem.apk && apksigner verify --min-sdk-version 24 s_klicem.apk
+     javac -d k ../../app/src/main/java/eu/atarihelp/emu10/NapApkKlic.java jvm/NapApkKlicTest.java
+     java -cp k NapApkKlicTest s_klicem.apk
+
+4) Regrese (starsi testy, kterych se B321 dotyka) a srovnani s B320:
+     git worktree add /tmp/b320 54df992
+     bash regrese.sh <android-34.jar> /tmp/b320                        -> VYSTUP_regrese.txt

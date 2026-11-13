@@ -539,7 +539,7 @@ function jazykUkaz(){
     toast(r==='en'?'LANGUAGE: ENGLISH':'JAZYK: ČEŠTINA',1600);
   },true);
 });
-if(window.NapJazyk) NapJazyk.priZmene(function(){ postav(); ukazVybranou(vybrana); try{ servisUkaz(); }catch(e){} });
+if(window.NapJazyk) NapJazyk.priZmene(function(){ postav(); ukazVybranou(vybrana); try{ servisUkaz(); }catch(e){} try{ ovlObnov(); }catch(e){} });   // B321: i napoveda HERNI OVLADAC (B320 zustala cesky)
 jazykUkaz();
 log('ready: karusel karet (B311), OPTIONS, C++ menu '+(document.documentElement.className.indexOf('nativni')>=0?'ANO':'ne')+', jazyk '+(window.NapJazyk?NapJazyk.kod():'cs'));
 })();

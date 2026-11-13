@@ -3453,3 +3453,92 @@
        nastaveni az po Reneho potvrzeni.
 
 ===============================================================================
+
+   B321: HRY ZE SERVERU N&P (RENEHO PC) - N&P HRY; APPKU NIKDO NEPREPOSLE
+     (OSOBNI KODY, KLIC V APK, PAROVANI TELEFONU, PODEPSANE DOTAZY); NOVY
+     SOUKROMY PODPISOVY KLIC S ROTACI; AKTUALIZACE ZE SERVERU. (13. 11. 2026)
+     Rene: "chci mit apku osetrenou tak, aby ji nikdo nemohl preposlat a aby
+     stazeni her fungovalo ... bud muj server, nebo Wedos ... od tebe cekam
+     reseni" (termin 20. 11.). Hry z WEDOS stranek v okne appky = 503.
+     - SERVER v10 (C#, Windows, HttpListener :8080, WinForms): ZDROJAK NENI
+       V TOMHLE VEREJNEM REPOZITARI (zamerne). Rene ho ma (NapServer_v10.zip,
+       poslano 13. 11.; NapServer.cs + exe + prelozit.bat + NAVOD). Puvodni
+       Reneho v9 mel v kodu 2 klice (validKeys) - NIKDE je neopakovat.
+       Soubory na serveru (kody.txt, zarizeni.txt = tokeny) nikdy nezverejnit.
+       Protokol (hlavicka NapServer.cs): POST /api/v1/sparuj (zarizeni =
+       ANDROID_ID, model, android, verze, tajemstvi = klic z APK, kod) -> token
+       64 hex; ostatni /api/v1/* jen s X-NaP-Zarizeni, X-NaP-Cas (unix, +-600 s),
+       X-NaP-Podpis = hex HMAC-SHA256(token, zarizeni\ncas\nMETODA\nRawUrl);
+       401 nesparovano|cas|podpis (+ server_cas), 403 zablokovano. /api/v1/stav
+       (zprava, min_verze, apk_sha256, apk_verze + apk_nazev z AndroidManifest
+       APK), /hry, /hra?id= (Range, ETag, If-Range, HEAD), /obal?id=, /apk.
+       Kod NAP-XXXX-XXXX (abeceda bez 0 O 1 I), stavy NOVY / IP_SCHVALENA (zadan
+       na /aktivace, IP + okno apk_okno_minut pro /apk?kod=) / SPAROVANO /
+       ZABLOKOVANO; UVOLNIT = kod znovu NOVY, telefon pryc, novy klic APK.
+       Pravidla parovani: kod nebo klic -> kod; kod tohoto telefonu = novy token
+       (preinstalace), kod jineho telefonu = kod_pouzit (s klicem z APK = log
+       "PREPOSLANA APPKA"), telefon s jinym kodem = jiny_kod.
+     - KLIC V APK: server pri /apk?kod= (a /api/v1/apk) vlozi do APK Signing
+       Block dvojici ID 0x4E615056, hodnota "nap=1\ntajemstvi=<32 hex>\n
+       apk_sha256=<puvodni APK>\n". Zaznamy ZIP a centralni adresar beze zmeny,
+       vypln (verity, 0x42726577) prepocitana jako apksigner (blok nasobek
+       4096) -> podpisy v1/v2/v3 plati (apksigner verify; jako Walle/VasDolly).
+       APK bez v2/v3 -> posle se beze zmeny (appka chce kod). Appka cte klic
+       NapApkKlic.hodnoty(getApplicationInfo().sourceDir). Python port
+       test_overeni/b321/vloz_klic.py = bajt po bajtu jako C# (overeno).
+     - APPKA: NapServerKlient (ciste Java: parovani, podpis, srovnani hodin
+       podle server_cas - posun v prefs, 401 -> zapomen token, 403 -> blok),
+       NapJson (maly parser), NapApkKlic. MainActivity: napServerInit (prefs
+       "nap_server", ANDROID_ID, nahradni nahodne id), most AHHRY (jen strankam
+       file:///android_asset/hry/: stav, aktivuj, over, pokracuj, nastavServer,
+       seznam, spust, zpet, web; odpovedi do JS jako JSON.parse(retezec)),
+       zamek: nesparovany / zablokovany telefon -> jen hry/aktivace.html (a
+       napoveda) - start (spustIntro) i onPageStarted; podpis vsech stahovani
+       v configureGameHttpConnection (server N&P = jeNasUrl), napChybaStahovani
+       (401/403/404 srozumitelne + zpracujChybuStahovani), obaly
+       https://nap.hry/obal/<id> v shouldInterceptRequest (cache 7 dni),
+       PS1 mezipamet "nap_<id>", guessDownloadName bere filename*=UTF-8''.
+       Vstupy: AHNet.openGames / openGamesWeb / openPs1Games, NET/HRY (Atari),
+       Sega SBIRKA (COLLECTION_URL), PS1 PS1_GOOGLE_PAGE -> hry/index.html
+       ?system=...; web atarihelp.eu (karta menu, WEB tlacitka,
+       openRawExternalBrowserUrl) = Intent do prohlizece. Spusteni: atari
+       downloadAndRun, sega downloadAndRunSega(Archive), ps1
+       downloadAndRunPs1Remote - beze zmeny, jen URL serveru N&P.
+       napOverStav (start, po aktivaci, navrat po 30 min): zprava -> toast,
+       apk_verze > versionCode -> NapAktualizace.nabidniZeServeru.
+       NapAktualizace: zdroj server (stav + /api/v1/apk primo do
+       PackageInstaller), WEDOS jen zaloha. OPRAVA: STATUS_PENDING_USER_ACTION
+       se drive nikdy neotevrel (onNewIntent chybel) -> napInstalace.
+       build.gradle: versionCode 364 "EMU10-B321-SERVER", debuggable false.
+       OPTIONS: napoveda HERNI OVLADAC se po prepnuti jazyka za chodu
+       prelozi (chyba B320).
+     - PODPIS: novy klic N&P (EC P-256, PKCS12, alias nap) - Rene ma zalohu
+       NAP_PODPIS_TAJNE.txt (1. radek heslo, zbytek base64), GitHub tajemstvi
+       NAP_PODPIS (nastavuje Rene - proxy tohoto prostredi k Actions secrets
+       nepusti). Rodokmen app/nap_rodokmen.bin (debug "CN=AH EGL Render Debug"
+       -> "CN=N&P Vision AtariHelp", stary klic bez rollback). CI (build.yml):
+       apksigner 34 sign --lineage ... --rotation-min-sdk-version 28,
+       Android 7-8 dal v2 debug klic. Bez tajemstvi jen varovani. KROK ZA
+       NEJAKY CAS: az bude tajemstvi nastavene a B321 rozdane, MUSI byt
+       povinne (jinak by build jen s debug klicem na Androidu 9+ nesel
+       nainstalovat pres rotovanou verzi) - pridat do build.yml kontrolu
+       (napr. soubor app/nap_podpis_povinny -> bez tajemstvi build selze).
+       CI kontrola na skutecnem APK: aapt2 badging, apksigner verify, vlozeni
+       klice (vloz_klic.py) + verify + NapApkKlicTest.
+     - TESTY: test_overeni/b321 (JAK_SPUSTIT.txt): jvm/TestB321Server.java
+       (skutecne tridy appky proti jadru serveru v10 pod mono - potrebuje
+       NapServer.cs + NapTestHost.cs, 28 OK), test_b321_stranky.py (Chromium,
+       aktivace + N&P HRY, falesny AHHRY, 39 OK), regrese.sh (starsi testy
+       + srovnani s B320 54df992 pres git worktree: 0 novych chyb; padajici
+       uz na B320: b314 navod 2) a 5), b314 stranky ps1 a), b314 menu 1),
+       b311 menu A1 A5-A8 - jazyk prohlizece / texty proti B313). Testy
+       serveru (149 kontrol, apksigner + aapt) jsou u serveru (soukrome).
+     - DALSI KROK: Rene - server v10, tajemstvi NAP_PODPIS ("klic je tam" ->
+       spustit build a zkontrolovat v logu "Android 9 a novejsi (v3)" =
+       CN=N&P Vision AtariHelp), APK do C:\ApkaServer, kod sobe, /aktivace v
+       telefonu. Streda: spolecny test na telefonu (instalace pres B320 s
+       rotaci, aktivace klicem, stahovani her pres internet, aktualizace).
+       Pozdeji https pres domenu (hry.atarihelp.eu), stranka PS1 na WEDOS ma
+       9 obrazku s odkazem na Sonic ZIP (Reneho web).
+
+===============================================================================

@@ -1,0 +1,40 @@
+B321 - tridy appky (NapServerKlient, NapApkKlic, NapJson) proti jadru serveru N&P v10 (mono, testovaci rezim)
+
+== J1 NapJson
+OK     J1 JSON: unicode, uvozovky, pole, cisla, vnoreni
+OK     J1 JSON: neplatny text = null
+OK     J1 JSON: uvoz() a zpet
+OK     J1 normalizujServer
+== J2 kod na webu, APK s klicem, trida NapApkKlic
+OK     J2 kod prijat na webu
+OK     J2 NapApkKlic precte klic ze stazeneho APK
+OK     J2 NapApkKlic: APK bez klice = prazdne
+== J3 parovani klientem appky
+OK     J3 pred parovanim: nesparovano
+OK     J3 nesparovany telefon: server 401 nesparovano
+OK     J3 sparuj klicem z APK = OK, token ulozen, kod zamaskovany
+OK     J3 log appky bez tokenu
+== J4 podepsane dotazy
+OK     J4 stav: ok, telefon, verze APK
+OK     J4 seznam her: 2 hry
+OK     J4 stazeni hry podepsanym spojenim
+OK     J4 navazani stahovani (Range) podepsanym spojenim
+OK     J4 podepis() do ciziho spojeni (jako configureGameHttpConnection)
+OK     J4 jeNasUrl
+== J5 spatne hodiny v telefonu
+OK     J5 hodiny o 2000 s mimo: appka se srovna a dotaz projde
+OK     J5 log: hodiny srovnany
+== J6 preposlana appka
+OK     J6 stejny klic na jinem telefonu = kod_pouzit, nesparovano
+OK     J6 spatny kod = spatny_kod
+== J7 blokace a uvolneni
+OK     J7 zablokovany: 403 a appka si to pamatuje
+OK     J7 odblokovany: zase funguje
+OK     J7 uvolneny kod: 401 a appka token zapomene
+OK     J7 znovu sparovat zadanym kodem (malymi pismeny)
+== J8 server vidi appku
+OK     J8 log serveru: Appka N&P (User-Agent NapVision)
+OK     J8 log serveru: PREPOSLANA APPKA s modelem
+OK     J8 server nedostupny = kod 0, ne pad
+
+VYSLEDEK: 28 OK, 0 CHYBA
