@@ -8368,6 +8368,7 @@ public class MainActivity extends Activity {
                 NativeMenuBridge.ukazSafe(0);
             }
             menuNativniVHtml(true);
+            napNabidniCekajici();   // B321: nova verze appky na serveru N&P
             return true;
         } catch (Throwable t) {
             appendNativeLog("B311 MENU_CHYBA_UKAZ " + safeMsg(t));
@@ -10562,6 +10563,15 @@ public class MainActivity extends Activity {
     private long napStavCas = 0;
     private String napPosledniZprava = "";
     private int napNabidnutaVerze = 0;
+    private int napCekajiciVerze = 0, napCekajiciMoje = 0;
+    private String napCekajiciNazev = "";
+
+    /** B321: nova verze appky na serveru N&P - nabidnout, az je videt menu (a ne uvodni demo). */
+    private void napNabidniCekajici() {
+        if (napCekajiciVerze <= 0 || napCekajiciVerze == napNabidnutaVerze || demoPlocha != null || napZamceno()) return;
+        napNabidnutaVerze = napCekajiciVerze;
+        NapAktualizace.nabidniZeServeru(this, napCekajiciVerze, napCekajiciNazev, napCekajiciMoje, z -> appendNativeLog("B321 " + z));
+    }
 
     private void napServerInit() {
         try {
@@ -10758,9 +10768,11 @@ public class MainActivity extends Activity {
                         napPosledniZprava = zprava;
                         android.widget.Toast.makeText(MainActivity.this, "N&P: " + zprava, android.widget.Toast.LENGTH_LONG).show();
                     }
-                    if (nova > mojeF && nova != napNabidnutaVerze) {
-                        napNabidnutaVerze = nova;
-                        NapAktualizace.nabidniZeServeru(MainActivity.this, nova, nazev, mojeF, z -> appendNativeLog("B321 " + z));
+                    if (nova > mojeF) {   // nabidnout az nad menu - ne pres intro nebo rozehranou hru
+                        napCekajiciVerze = nova;
+                        napCekajiciNazev = nazev;
+                        napCekajiciMoje = mojeF;
+                        if (web != null && jeMenuUrl(web.getUrl())) napNabidniCekajici();
                     }
                 } catch (Throwable ignored) {}
             });
@@ -11598,6 +11610,7 @@ public class MainActivity extends Activity {
                 }
                 // B311: hlavni nabidka nactena -> nad ni C++ menu (karusel karet)
                 if (jeMenuUrl(url) && !menuSkryteProOptions && !napZamceno()) menuUkaz("stranka menu");
+                if (jeMenuUrl(url)) napNabidniCekajici();   // B321: i kdyz je menu v HTML (bez C++)
                 // B320: hra s hernim ovladacem - poprve kratka zprava, jak vratit dotykove ovladani
                 if (isPs1OwnerUrl(url) || isSegaNativeOwnerUrl(url)) ui.postDelayed(MainActivity.this::ovladacNapoveda, 1500);
             }
@@ -13063,7 +13076,9 @@ public class MainActivity extends Activity {
                 configureGameHttpConnection(c, downloadUrl);
                 try { c.setConnectTimeout(22000); } catch (Throwable ignored) {}
                 try { c.setReadTimeout(70000); } catch (Throwable ignored) {}
-                try { c.setRequestProperty("User-Agent", ATARIHELP_BROWSER_UA); } catch (Throwable ignored) {}
+                if (napServer == null || !napServer.jeNasUrl(downloadUrl)) {   // B321: server N&P ma User-Agent appky
+                    try { c.setRequestProperty("User-Agent", ATARIHELP_BROWSER_UA); } catch (Throwable ignored) {}
+                }
                 try { c.setRequestProperty("Accept", "application/octet-stream,application/x-cd-image,application/x-chd,*/*"); } catch (Throwable ignored) {}
                 c.connect();
                 int code = c.getResponseCode();
