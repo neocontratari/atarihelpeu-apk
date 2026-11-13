@@ -1,0 +1,35 @@
+B320 - regrese: kodeky a Hub proudu (B305 / B313), PS1 (B308, JVM, JNI, javac), mys B318, stranka WEB TV starsich testu se strankou B320, testy B319 na kodu B320
+OK     B305 kodeky (Sega indexy bez ztraty, PS1 JPEG po castech: PSNR, stojici obraz, kvalita podle site, rozmery) s hlavickami B320  -- VYSLEDEK: 35 kontrol, 0 chyb
+OK     B305 rozbocovac ve vlaknech (jadro 60 / s, zvuk, rychly a pomaly prohlizec) s hlavickami B320  -- VYSLEDEK: 16 kontrol, 0 chyb
+OK     B305 koder JPEG na vic jadrech (pasy 1 / 2 / 3, bajt po bajtu stejne) s B320 (barvy 4:4:4 volitelne)  -- VYSLEDEK: OK
+OK     B305 koder JPEG na vic jadrech pod ThreadSanitizerem  -- hlaseni ThreadSanitizer: 0, VYSLEDEK: OK
+OK     B313 kodek hlavniho menu na TV (vic obdelniku, zjemneni za pohybu, glReadPixels) s hlavickami B320  -- VYSLEDEK: 11 OK, 0 CHYBA
+OK     preklad ps1_harness.cpp (B308) s nap_ps1_native.cpp B320, -Wl,--no-undefined  -- varovani: 0, chyb: 0
+OK     B308 denik PS1 + klavesnice z TV v C++ + zamek kolem retro_run (test_ps1_denik.py; ZDRAVI B320 navic ', z ovladace N')  -- VYSLEDEK: 63 kontrol, 0 CHYB
+OK     B308 ThreadSanitizer: vlakno emulace, zvuk, klavesy z prohlizece, denik, SAVE / LOAD, dotyk (tsan_denik.cpp)  -- hlaseni ThreadSanitizer: 0
+OK     B308 JVM TestPodpisu (-Xcheck:jni): skutecna trida NativePs1CoreBridge B320  -- VYSLEDEK: nove native metody B308 (ps1PcKlavesa, ps1Denik) i obaly sedi, 0 chyb
+OK     B308 klavesnice PC v TV prohlizeci -> PS1 (Chromium, stranka z MainActivity.java B320)  -- VYSLEDEK: 17 kontrol, 0 CHYB
+OK     B308 stranka PS1: nahravani hry, banner, LOG s denikem (Chromium cesky)  -- VYSLEDEK: 23 kontrol, 0 CHYB
+OK     JVM TestB319Proud (-Xcheck:jni) na kodu B320: proudOtevri2Native(int) primo i pres obal, proud z bezici hry i staremu prohlizeci, log Hubu (B320: tolerance ditheringu)  -- VYSLEDEK: 0 chyb
+OK     JVM TestB318Mys (-Xcheck:jni) na kodu B320: mys PS1 (B317 / B318) beze zmeny  -- VYSLEDEK: 0 chyb
+OK     kazda native metoda NativePs1CoreBridge ma v knihovne svou funkci (nm)  -- 32 OK, 0 CHYB
+OK     B305 tv_ps1.cpp (proud PS1 na TV) s nap_ps1_native.cpp B320: preklad + link  -- 
+OK     B306 tv_ps1_6.cpp s nap_ps1_native.cpp B320: preklad + link  -- 
+OK     javac proti android.jar (cela appka)  -- trid prelozeno: 84 VYSLEDEK: 0 chyb prekladu 
+OK     podpisy JNI: NativePs1CoreBridge / NativeSegaCoreBridge / NativeAtariCoreBridge (javac -h) = C++ (jmeno, navratovy typ, typy parametru)  -- VYSLEDEK: 102 native metod Javy ve 3 mostech, 0 CHYB
+OK     B315 zvuk na TV / PC v dalsich hrach (menu -> Atari -> Sega -> PS1 -> MP3 ...), stranka B320  -- VYSLEDEK: 20 kontrol, 0 CHYBA
+OK     B313 TV / PC: prepnuti proudu po odchodu z menu (409 + X-Nap-Proud), stranka B320  -- VYSLEDEK: 3 kontrol, 0 CHYBA
+OK     B314 stranka WEB TV: texty cesky ve vsech stavech = B313, anglicky bez cestiny, bez chyby JS (HTML a) zamerne jine od B315)  -- VYSLEDEK: 29 kontrol, 1 CHYBA, jinych chyb nez HTML a): 0
+OK     B302 klavesnice PC do Atari se strankou B320  -- VYSLEDEK: 23 kontrol, 0 chyb
+OK     B303 Atari na TV (proud z C++, zvuk, Ctrl+V) se strankou B320  -- VYSLEDEK: 23 kontrol, 0 chyb
+OK     B306 Sega, PS1, demo na TV bez autoplay (zvuk, F5, klavesa, zadrhavajici sit), knihovny: sega=soucasny ps1=soucasny intro=CHYBI  -- VYSLEDEK: 37 kontrol, 0 chyb
+OK     B313 / B318 SKUTECNE menu na PC (Mesa): vse jako drive, radek MENU 'TV: nikdo se nediva' / 'TV: stara cesta pres Javu'  -- VYSLEDEK: 15 OK, 0 CHYBA; radku TV nikdo 4, stara cesta 1
+OK     B318 logika mysi PS1 (nap_ps1_mys.h): lano, zrychleni, rozlozeni podle hry, gesta, PC, pamet  -- VYSLEDEK: 83 OK, 0 CHYBA
+OK     B318 SKUTECNE jadro PS1 (PCSX z appky, BIOS HLE) + nap_ps1_native.cpp B320: mys v hre, ktera kresli / cte kazdy 3. snimek  -- VYSLEDEK: 36 OK, 0 CHYBA
+OK     B319 kodek (posun obrazu, polovicni rozliseni, 3D hra, vzory, rozmery) na kodeku B320  -- VYSLEDEK: 14 OK, 0 CHYBA
+OK     B319 Hub ve vlaknech (jadro 60 / s, zvuk, prohlizec B319 a stary soubezne) na kodu B320  -- VYSLEDEK: 4 OK, 0 CHYBA
+OK     B319 Hub pod ThreadSanitizerem na kodu B320  -- hlaseni ThreadSanitizer: 0, VYSLEDEK: 4 OK, 0 CHYBA
+OK     B319 stranka WEB TV v Chromiu (proud B319: kopie + JPEG v polovicnim rozliseni, canvas = snimek hry; stara stranka B318), stranka B320  -- VYSLEDEK: 7 kontrol, 0 CHYBA
+OK     B319 mys pocitace na strance WEB TV (nejvys ~30 zprav / s, tlacitka hned, vse z B318), stranka B320 = B318 + B319 + jen 3 zmeny B320  -- VYSLEDEK: 36 kontrol, 0 CHYBA
+OK     B319 mys z PC jednim spojenim: SKUTECNY kod serveru z MainActivity B320 v JVM + Chromium  -- VYSLEDEK: 9 kontrol, 0 CHYBA
+VYSLEDEK: 33 OK, 0 CHYBA

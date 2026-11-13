@@ -1,0 +1,111 @@
+B320 - HERNI OVLADAC (RETROID POCKET 6 NASLEPO, BLUETOOTH / USB GAMEPAD) PRO PS1, SEGU, ATARI A MENU;
+PS1 NA TV / PC S DITHERINGEM (DUNE 2000); STRANKA WEB TV SE PO AKTUALIZACI APPKY OBNOVI SAMA - overeni na PC
+=========================================================================================================
+
+Rene: "proste to riskni ... je to pro nas vyzva Retroid pocket naslepo". Uzivatel z fora: "jestli to pujde
+na Retro Pocket 6 s tim, ze by se na obrazovce po pripojeni stahnul nas d-pad a najelo to na origo
+tlacitka". Retroid nemame - vse je overene na PC se SKUTECNYM kodem appky (jadra PS1 / Sega / Atari,
+stranky, Java tridy), ne na zarizeni.
+Log B319 (Dune 2000 po F5): "posun obrazu" zkousen 322x, nalezen 0x; polovicni rozliseni jen 304 casti
+z 1137; "dithering ZAPNUTO".
+
+Kod v appce:
+  app/src/main/cpp/nap_ovladac.h                  NOVY: co tlacitko ovladace udela (spolecne PS1 / Sega /
+                                                  Atari): klavesa Androidu -> logicke tlacitko podle MISTA
+                                                  (A spodni, B prave, X leve, Y horni), osy (HAT, packy
+                                                  s mrtvou zonou 0,20 a hysterezi 0,50 / 0,35, analogove
+                                                  spouste), ps1Bity / segaBity / atariBity, packaRychlost
+  app/src/main/cpp/nap_ps1_native.cpp             JNI ps1OvladacKlavesa / ps1OvladacOsy / ps1OvladacPust,
+                                                  bity do nap_input_state (OR s dotykem a klavesnici TV),
+                                                  packy do mysi, denik "OVLADAC: ...", ZDRAVI "z ovladace N"
+  app/src/main/cpp/nap_ps1_mys.h                  packy(): analogova packa = mys PlayStation (prava vzdy,
+                                                  s mysi samotnou v portu 1 i leva), souhrn "packou N"
+  app/src/main/cpp/nap_sega_native_proof.cpp      JNI ovladacKlavesa / ovladacOsy / ovladacPust, nap_vstup
+                                                  (dotyk NEBO ovladac) pro clownmdemu
+  app/src/main/cpp/atari/nap_atari_native.cpp     JNI devOvladac*Native, maska ovladace + klavesnice
+                                                  telefonu (soucet), devCtl "ovladac:0/1/2", devTouch 0x2000
+  app/src/main/cpp/atari/nap_atari_device.h       ovladacRezim, ctlSkryte, dotykNaOvladani (D-pad na sirku)
+  app/src/main/cpp/tvproud/nap_tv_proud_jpeg.h    KodekJpeg: tolerance ditheringu (TOLERANCE_PS1 10):
+                                                  hledejPosunTol, tol_ (prohlizec ma ctverec z kopie
+                                                  s toleranci), zmeny s toleranci jen v tol_, zjemneni po
+                                                  zastaveni presne, rozdelSkupinu (skupina ve tvaru L)
+  NapOvladac.java                                 NOVY: pozna ovladac (InputManager, log jmena / tlacitek /
+                                                  os), rozlozeni os (Xbox / DualShock / Z-RZ spouste),
+                                                  schovani dotykoveho ovladani (AUTOMATICKY / VZDY DOTYK /
+                                                  SKRYT DOTYK, SharedPreferences "nap_ovladac")
+  MainActivity.java                               dispatchKeyEvent / dispatchGenericMotionEvent (ovladac
+                                                  driv nez WebView), menu ovladacem, AHOVL (stranky), Atari
+                                                  "ovladac:N", klavesnice PS1 opravena; WEB TV: NAP_VERZE,
+                                                  /status " verze=", napVerze() v pollFps
+  NativePs1CoreBridge (32 native), NativeSegaCoreBridge, NativeAtariCoreBridge, AtariDeviceView
+                                                  (AKCE_OVLADAC_DOTYK), AndroidManifest (configChanges)
+  assets/emu_ps1/index.html, emu_sega/index.html  napOvladacStav / ovlDotyk, CSS body.napOvladac(Vzdy)
+  assets/index.html, jazyk/en_menu.js             OPTIONS -> HERNI OVLADAC (AHOVL.rezim / nastavRezim)
+
+VSE NAJEDNOU:
+  PRAC=/tmp/nap_b320 INC=<hlavicky EGL/GLES2/KHR, napr. /usr/include z libegl-dev + libgles-dev> \
+  ANDROID_JAR=<android-34.jar> PNG320=<snimky 320x240> PNG640=<snimky 640x480> bash test_overeni/b320/vse.sh
+  (PNG320 / PNG640: ../b305/JAK_SPUSTIT.txt krok 0 = ../b304/demo_snimky; jadro PS1 si testy prelozi do
+   PRAC/jadro (../b318/stavba_jadra.sh), vykreslovac do PRAC/vykreslovac (stavba_vykreslovace.sh),
+   PS-EXE udelej_mapu.py a ../b318/udelej_exe.py - clang + ld.lld pro mipsel)
+
+JEDNOTLIVE (z adresare test_overeni/b320):
+
+1) Kodek s ditheringem (Hub + KodekJpeg z appky, prohlizec = stranka B319 v C++ ../b319/prohlizec_b319.h):
+   umela Dune (../b319/hra_mapa.h) s terenem kreslenym jako gpu_neon (textura x 0x70 + mrizka ditheringu
+   4x4 v bodech 2x obrazu, 5 bitu), 3D hra s ditheringem, hra bez ditheringu, 1x:
+     g++ -std=c++17 -O2 -pthread -I../../app/src/main/cpp/tvproud -I../../app/src/main/cpp/vendor/stb -I../b319 \
+         -o test_b320_kodek test_b320_kodek.cpp && ./test_b320_kodek          -> VYSTUP_test_b320_kodek.txt
+
+2) SKUTECNY vykreslovac PS1 (gpulib + gpu_neon z appky, SIMD varianta = na PC SSE) + jadro PCSX-ReARMed
+   + nap_ps1_native.cpp (volby jadra jako v telefonu: 2x Enhanced Resolution, dithering jadra):
+     bash ../b318/stavba_jadra.sh PRAC ; bash stavba_vykreslovace.sh PRAC ; python3 udelej_mapu.py PRAC
+     g++ -std=c++17 -O2 -g -pthread $PS1 -I../../app/src/main/cpp/vendor/stb -o PRAC/integrace_b320_gpu \
+         integrace_b320_gpu.cpp PRAC/jadro/*.o PRAC/vykreslovac/*.o -l:libEGL.so.1 -l:libGLESv2.so.2 -lz -ldl
+     EGL_PLATFORM=surfaceless PRAC/integrace_b320_gpu PRAC PRAC/mapa_dune.exe   -> VYSTUP_integrace_b320_gpu.txt
+   ($PS1 = -DANDROID -I../b305/stub -I../b291/stub -I$INC -I$JAVA_HOME/include -I$JAVA_HOME/include/linux)
+   mapa_dune.c (+ start.S, mapa_dune.ld): "hra" pro PlayStation - mapa jako polygony s texturou a
+   ditheringem (rezim 0) nebo jako sprity (rezim 1), jednotky, kurzor, panel, 20 obrazu za sekundu,
+   posun mapy vsemi smery (1, 2, 3 body, sikmo). Overuje R1-R4 (co gpu_neon opravdu kresli) a K1-K8
+   (B319 vs B320 na tech snimcich, obraz v prohlizeci = snimek z jadra).
+
+3) Logika ovladace (nap_ovladac.h + nap_ps1_mys.h, cisty C++):
+     g++ -std=c++17 -O2 -Wall -Wextra -pthread -I../../app/src/main/cpp -o test_b320_ovladac test_b320_ovladac.cpp
+     ./test_b320_ovladac ../..                                               -> VYSTUP_test_b320_ovladac.txt
+   (cte ze zdrojaku ps1ButtonId stranky, g_input Segy a mapovani B319 z gitu 0f80608 - oprava C3)
+
+4) Ovladac v PS1 se SKUTECNYM jadrem (hra ../b318 mys_test.S cte port 1 / 2) + ThreadSanitizer:
+     g++ -std=c++17 -O1 -g -pthread $PS1 -o PRAC/integrace_b320_ovladac integrace_b320_ovladac.cpp PRAC/jadro/*.o \
+         -l:libEGL.so.1 -l:libGLESv2.so.2 -lz -ldl
+     EGL_PLATFORM=surfaceless PRAC/integrace_b320_ovladac PRAC PRAC/mys_test.exe -> VYSTUP_integrace_b320_ovladac.txt
+     totez s -fsanitize=thread, spustit s NAP_TSAN=1                         -> VYSTUP_tsan_b320_ovladac.txt
+
+5) Ovladac v Atari 130XE (skutecny nap_atari_native.cpp, displej 2400x1080 na sirku, D-pad schovany):
+     g++ -std=c++17 -O2 -pthread -I../b291/stub -I$JAVA_HOME/include -I$JAVA_HOME/include/linux \
+         -I../../app/src/main/cpp/atari -o test_b320_atari_ovladac test_b320_atari_ovladac.cpp
+     ./test_b320_atari_ovladac                                              -> VYSTUP_test_b320_atari_ovladac.txt
+
+6) Ovladac na Seze (skutecny nap_sega_native_proof.cpp + jadro clownmdemu - objekty viz vse.sh):
+     g++ ... -o test_b320_sega_ovladac test_b320_sega_ovladac.cpp PRAC/clown/*.o -> VYSTUP_test_b320_sega_ovladac.txt
+
+7) JVM (javac proti android.jar): NapOvladac (rozpoznani ovladace, rozlozeni os Xbox / DualShock / RX-RY,
+   schovani, rezimy) + skutecna trida NativePs1CoreBridge s nap_ps1_native.cpp (../b308/ps1_harness.cpp),
+   -Xcheck:jni; mosty Segy a Atari bez knihovny:                            -> jvm/VYSTUP_TestB320Ovladac.txt
+   (radek "terminate called" na konci behu = vlakno zvukove karty v nahrade OpenSL testu B308, ne appka)
+
+8) Stranky PS1, Sega a OPTIONS presne z assets v Chromiu (Playwright, mosty AHOVL / AHPS1 / AHSega jako
+   v appce):  python3 test_b320_stranky.py                                   -> VYSTUP_test_b320_stranky.txt
+
+9) Stranka WEB TV z MainActivity: obnovi se sama po aktualizaci appky (/status verze=):
+     python3 test_b320_tv_verze.py                                           -> VYSTUP_test_b320_tv_verze.txt
+
+10) Regrese: bash regrese.sh PRAC INC JAVA_HOME ANDROID_JAR PNG320 PNG640    -> VYSTUP_regrese.txt
+   vse z regrese B319 na kodu B320 (kodeky B305 / B313, B308, JVM 32 native, symboly, B305 / B306 preklad,
+   javac cele appky, podpisy JNI vsech 3 mostu - kontrola_jni.py -> VYSTUP_kontrola_jni.txt, stranka WEB TV
+   v testech B315 / B313 / B314 / B302 / B303 / B306, SKUTECNE menu B313, mys B318 + jadro) + testy B319
+   na kodu B320 (kodek, Hub + TSan, stranka WEB TV s proudem B319, mys z PC, jedno spojeni).
+   Zamerne zmeny B320, ktere starsi testy neznaji (regrese jim upravi ocekavani, git soubory vrati):
+     - ../b308/test_ps1_denik.py: radek ZDRAVI ma navic ", z ovladace N" (herni ovladac),
+     - ../b319/test_b319_tv_mys.py kontrola 4): stranka WEB TV = B318 + zmeny B319 + presne 3 zmeny B320
+       (NAP_VERZE na zacatku stranky, funkce napVerze, "if(napVerze(t))return;" v pollFps) -
+       uprav_b319_tv_mys.py.

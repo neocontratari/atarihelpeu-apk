@@ -1,0 +1,15 @@
+OK      jadro nastartovalo hru mys_test.exe (ps1EglBoot = 1)
+OK      mys vypnuta: v portu 1 standardni ovladac (ID 41), nic stisknuto
+OK      1a) mys vypnuta: 16 z 16 tlacitek ovladace = spravne tlacitko PlayStation v portu 1 (A KRIZEK, B KOLECKO, X CTVEREC, Y TROJUHELNIK, L1 R1 L2 R2, START, SELECT, krizek), po pusteni nic
+OK      1b) vic naraz: uhlopricka + A + R1 = NAHORU+VPRAVO+R1+KRIZEK, A pusteno -> NAHORU+VPRAVO+R1; ZPET (4) neni tlacitko hry (vraci 0 - Android ji zpracuje jako drive)
+OK      2a) leva packa 0,9 = vpravo, zpet na 0,4 porad vpravo (hystereze), 0,1 nic; krizek HAT = DOLU+VLEVO; analogova spoust 0,8 = L2; prava packa bez mysi nic
+OK      2b) dotyk na strance (START) + ovladac (A) soucasne: hra vidi START+KRIZEK; pusteni ovladace dotyk nepusti
+OK      3) ovladac odpojen uprostred stisku (VLEVO+R2+KRIZEK): ps1OvladacPust - hra uz nic drzeneho nevidi
+OK      4) mys PlayStation zapnuta v portu 1: hra ji vidi (ID 12) po 35 snimcich
+OK      4a) mys v portu 1: prava packa naplno 1 s -> kurzor ve hre +360 bodu (6 za snimek, ~1 sirka obrazu), Y 0
+OK      4b) leva packa 0,6 nahoru (po mrtve zone 0,5): kurzor -45 (vypocet -45), zadne tlacitko - smer leve packy ridi kurzor, ne krizek
+OK      4c) A = leve tlacitko mysi (8 snimku), B = prave (5 snimku), krizek vpravo 0,5 s = kurzor +82
+OK      5) mys v portu 1 + ovladac v portu 2: A a leva packa = ovladac v portu 2 (VPRAVO+KRIZEK), mys neklika, prava packa 0,7 = kurzor +69 (vypocet 70)
+OK      6) denik PS1: "OVLADAC: klavesa 96 dolu -> A(spodni) -> PS1 KRIZEK", "... 97 dolu -> B(prave) -> PS1 KOLECKO"
+OK      3b) A drzene pri konci hry: po dalsim startu hry nic nedrzi (nic, logicka 1 -> 0)
+VYSLEDEK: 14 OK, 0 CHYBA

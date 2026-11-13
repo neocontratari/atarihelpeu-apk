@@ -328,6 +328,17 @@ body.mysLeveDrzi .mysUkazDrzi{display:block;}
     KRIZEK (= leve), KOLECKO (= prave tlacitko mysi) a D-pad (pomaly posun kurzoru) zustavaji. */
  body.mysPort1 #btnTriangle,body.mysPort1 #btnSquare,body.mysPort1 #btnL1,body.mysPort1 #btnL2,
  body.mysPort1 #btnR1,body.mysPort1 #btnR2,body.mysPort1 #btnSelect,body.mysPort1 #btnStart{display:none;}
+ /* B320: hraje HERNI OVLADAC (Retroid Pocket 6, gamepad) - dotykove ovladani schovane (pruhledne);
+    dotyk na misto tlacitka ho zase ukaze a tlacitko zaroven funguje. Ozubene kolecko a MYS zustavaji.
+    Vzdy schovane (OPTIONS -> HERNI OVLADAC: SKRYT DOTYK) - ovladani vubec neni. Pri uprave rozlozeni
+    tlacitek je videt vzdy. */
+ #dpad,.padBtn,#btnL1,#btnL2,#btnR1,#btnR2,#btnSelect,#btnStart{transition:opacity .35s;}
+ body.napOvladac #dpad:not(.layoutEdit),body.napOvladac .padBtn:not(.layoutEdit),body.napOvladac #btnL1:not(.layoutEdit),
+ body.napOvladac #btnL2:not(.layoutEdit),body.napOvladac #btnR1:not(.layoutEdit),body.napOvladac #btnR2:not(.layoutEdit),
+ body.napOvladac #btnSelect:not(.layoutEdit),body.napOvladac #btnStart:not(.layoutEdit){opacity:0!important;}
+ body.napOvladacVzdy #dpad:not(.layoutEdit),body.napOvladacVzdy .padBtn:not(.layoutEdit),body.napOvladacVzdy #btnL1:not(.layoutEdit),
+ body.napOvladacVzdy #btnL2:not(.layoutEdit),body.napOvladacVzdy #btnR1:not(.layoutEdit),body.napOvladacVzdy #btnR2:not(.layoutEdit),
+ body.napOvladacVzdy #btnSelect:not(.layoutEdit),body.napOvladacVzdy #btnStart:not(.layoutEdit){display:none!important;}
 }
 </style>
 </head>
@@ -1865,6 +1876,35 @@ $('logSave').addEventListener('click',function(e){e.preventDefault();
 $('logCopy').addEventListener('click',function(e){e.preventDefault();var v=$('ps1LogView');if(!v)return;v.value=plnyLog(true);try{v.focus();v.select();document.execCommand('copy');toast('LOG zkopirovan do schranky',1800);}catch(err){toast('Kopirovani selhalo - oznac text rucne',2400);}},true);
 $('fileInput').addEventListener('change',function(e){var f=e.target&&e.target.files&&e.target.files[0];if(f){analyzeFile(f,(e.target.__napReason||'PICKER'));}},true);
 $('fileInput').setAttribute('accept','.bin,.cue,.iso,.img,.pbp,.chd,.zip,application/zip,application/octet-stream');
+/* ===== B320: HERNI OVLADAC (Retroid Pocket 6 vestaveny, Bluetooth / USB gamepad) =====
+   Uzivatel z fora: "po pripojeni by se na obrazovce stahnul nas d-pad a najelo to na origo
+   tlacitka". Java (NapOvladac) rekne stav: 0 = dotykove ovladani videt, 1 = schovane (hraje
+   ovladac - dotyk na misto tlacitka ho ukaze), 2 = schovane vzdy (OPTIONS). Tlacitka ovladace
+   jdou primo do C++ (nap_ovladac.h) - stranka o nich nic nevi. */
+var OVL={stav:0,jmeno:''};
+var OVL_PRVKY=['dpad','btnTriangle','btnCircle','btnCross','btnSquare','btnL1','btnL2','btnR1','btnR2','btnSelect','btnStart'];
+window.napOvladacStav=function(st,jm){
+  st=parseInt(st,10)||0;
+  if(st<0||st>2)st=0;
+  var bylo=OVL.stav;
+  OVL.stav=st;
+  if(jm!=null)OVL.jmeno=String(jm);
+  document.body.classList.toggle('napOvladac',st===1);
+  document.body.classList.toggle('napOvladacVzdy',st===2);
+  if(bylo!==st)jsLog('OVLADAC stav '+st+(OVL.jmeno?' ('+OVL.jmeno+')':''));
+};
+function ovlDotyk(){
+  if(OVL.stav!==1)return;
+  // dotyk na schovane tlacitko: ovladani ukazat (tlacitko samo zaroven funguje - jeho obsluha bezi dal)
+  window.napOvladacStav(0);
+  try{if(window.AHOVL&&window.AHOVL.dotyk)window.AHOVL.dotyk('PS1');}catch(_){}
+}
+OVL_PRVKY.forEach(function(id){
+  var el=$(id);if(!el)return;
+  el.addEventListener('touchstart',ovlDotyk,{passive:true,capture:true});
+  el.addEventListener('pointerdown',ovlDotyk,true);
+});
+try{if(window.AHOVL&&window.AHOVL.stav){var ovs=String(window.AHOVL.stav()).split('|');window.napOvladacStav(ovs[0],ovs.slice(1).join('|'));}}catch(_){}
 log('POZN: cerny monitor pred bootem je spravne; obraz se rozsviti az po realnem PS1 bootu.');
 ensurePs1ScreenAndPoll();
 log(BUILD+' ready: LOAD GAME otevre PS1 Google Drive stranku '+PS1_GOOGLE_PAGE+'; cache je v Downloads/AtariHelp/PS1, BOOT_OK banner se hned schova.');

@@ -139,6 +139,15 @@ body{background:radial-gradient(120% 70% at 50% 40%,#1c1006 0%,#0a0603 45%,#0302
     <button id="stAktual" type="button">AKTUALIZOVAT APLIKACI</button>
     <button id="stTvPokus" type="button">TV POKUS: OBOJÍ</button>
 
+    <!-- B320: HERNI OVLADAC (Retroid Pocket 6, Bluetooth / USB gamepad) - dotykova tlacitka ve hrach, kdyz hraje ovladac -->
+    <div class="stlabel2">HERNÍ OVLADAČ</div>
+    <div class="qrow" id="stOvladac">
+      <button id="stOvlAuto" type="button">AUTOMATICKY</button>
+      <button id="stOvlDotyk" type="button">VŽDY DOTYK</button>
+      <button id="stOvlSkryt" type="button">SKRÝT DOTYK</button>
+    </div>
+    <div class="sthint" id="stOvlHint"></div>
+
     <!-- B312: SERVIS (jen pro Reneho) - pole pro servisni kod a servisni tlacitka, normalne skryte -->
     <div id="stServisKod" style="display:none">
       <div class="stlabel2">SERVIS</div>
@@ -349,7 +358,32 @@ function tvAdresaObnov(){
   try{ tvAdresaUkaz((window.AHTVWEB&&typeof window.AHTVWEB.status==='function')?tvAdresaZ(window.AHTVWEB.status()):''); }catch(e){}
 }
 function openSettings(){if(!sp)return;sp.classList.add('open');sp.setAttribute('aria-hidden','false');sp.scrollTop=0;napQualityRefresh();tvAdresaObnov();
+  try{ ovlObnov(); }catch(e){}
   try{ $('stServisKod').style.display='none'; servisUkaz(); }catch(e){}}
+// B320: HERNI OVLADAC (Retroid Pocket 6, Bluetooth / USB gamepad) - co s dotykovymi tlacitky ve hrach:
+// AUTOMATICKY = schovaji se, kdyz hraje ovladac (tuknuti na jejich misto je vrati), VZDY DOTYK, SKRYT DOTYK
+var OVL_TL=[['stOvlAuto',0],['stOvlDotyk',1],['stOvlSkryt',2]];
+function ovlObnov(){
+  var r=0, jm='';
+  try{ if(window.AHOVL){ r=AHOVL.rezim()|0; jm=String(AHOVL.jmeno()||''); } }catch(e){}
+  OVL_TL.forEach(function(p){ var el=$(p[0]); if(el){ if(p[1]===r) el.classList.add('active'); else el.classList.remove('active'); } });
+  var h=$('stOvlHint'); if(!h) return;
+  if(r===1) h.textContent=J('Dotyková tlačítka zůstávají vždy – ovladač hraje i tak','Touch buttons always stay – the controller works anyway');
+  else if(r===2) h.textContent=J('Dotyková tlačítka ve hrách nejsou – hraje jen ovladač','No touch buttons in games – controller only');
+  else h.textContent=jm?J('Ovladač: '+jm+' – dotyková tlačítka se ve hře schovají, ťuknutím na jejich místo se vrátí',
+                          'Controller: '+jm+' – touch buttons hide in games, tap their place to bring them back')
+                      :J('Žádný ovladač – po připojení (Retroid, Bluetooth, USB) se dotyková tlačítka ve hře schovají',
+                          'No controller – once one is connected (Retroid, Bluetooth, USB) the touch buttons hide in games');
+}
+OVL_TL.forEach(function(p){
+  var el=$(p[0]); if(!el) return;
+  el.addEventListener('click',function(e){
+    e.preventDefault();e.stopPropagation();
+    try{ if(window.AHOVL) AHOVL.nastavRezim(p[1]); }catch(err){}
+    log('SETTINGS_OVLADAC rezim='+p[1]);
+    setTimeout(ovlObnov,150);
+  },true);
+});
 // zavreni: C++ menu se vrati (Java AHINTRO.menuZpet). Kdyz zrovna sviti zprava (adresa WEB TV),
 // menu pocka, az zhasne - jinak by ji hned zakrylo.
 function closeSettings(){

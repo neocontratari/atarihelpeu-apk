@@ -33,6 +33,7 @@
 #include "tvproud/nap_tv_proud.h"        // B305: PS1 na TV / PC cela v C++
 #include "tvproud/nap_tv_proud_jpeg.h"
 #include "nap_ps1_mys.h"                // B317: mys PlayStation (dotyk jako touchpad, mys z PC)
+#include "nap_ovladac.h"                // B320: herni ovladac (Retroid Pocket 6, gamepad)
 #include <signal.h>   // A10: zachytavac padu (sigaction)
 #include <fcntl.h>    // A10: open() - zapis padu do log souboru (async-signal-safe)
 #include <unistd.h>   // A10: write()/close()
@@ -977,6 +978,52 @@ extern "C" {
 static const char *ps1_id_disku(void) { const char *volatile p = CdromId; return p; }
 static std::string ps1_mys_soubor(void) { return g_savedir.empty() ? std::string() : g_savedir + "/PS1_mys_pro_hry.txt"; }
 static void ps1_mys_denik(void) { for (const std::string &r : g_mys.vezmiLog()) ps1_denik("%s", r.c_str()); }
+
+// =====================================================================
+//
+//  B320: HERNI OVLADAC (Retroid Pocket 6 vestaveny, Bluetooth / USB gamepad)
+//  Java (NapOvladac, MainActivity.dispatchKeyEvent) zadne cislo tlacitka nema,
+//  jen pozna, ze udalost je z ovladace, a preda kod klavesy Androidu a osy.
+//  Co tlacitko udela, je v nap_ovladac.h (spolecne pro PS1, Segu a Atari):
+//  spodni = KRIZEK, prave = KOLECKO, leve = CTVEREC, horni = TROJUHELNIK
+//  (misto jako na ovladaci PlayStation), L1 R1 L2 R2 L3 R3, START, SELECT,
+//  krizek HAT a leva packa = smer, prava packa (s mysi samotnou v portu 1
+//  i leva) = mys PlayStation (Dune 2000). Do B319 byla v Jave spatna cisla: B = CTVEREC,
+//  X = SELECT, Y = START, START = TROJUHELNIK; zadny skutecny ovladac to
+//  nehlasil, protoze s nim nikdo nehral - ted je to podle mista na ovladaci.
+//  Stisky jdou do hry spolu s dotykem a klavesnici TV (OR); mys (nap_ps1_mys.h)
+//  z nich bere SMER a tlacitka mysi stejne jako z dotyku.
+//  (Vlakno UI Javy pise stav pod zamkem, vlakno emulace cte jen atomicke bity.)
+// =====================================================================
+static std::mutex g_ovl_m;
+static nap::ovladac::Stav g_ovl_stav;                   // pod g_ovl_m (vlakno UI Javy)
+static std::atomic<uint32_t> g_ovl_logicke{0};          // logicka tlacitka vcetne smeru z leve packy
+static std::atomic<uint32_t> g_ovl_bez_packy{0};        // ... bez smeru z leve packy (ta pak ridi mys)
+static std::atomic<uint32_t> g_ovl_snimek{0};           // PS1 bity pro tenhle krok (pocita vlakno emulace)
+static std::atomic<int> g_ovl_udalosti{0}, g_ovl_v_okne{0};
+
+// po zmene stavu (pod g_ovl_m): bity pro vlakno emulace, packy mysi
+static void ps1_ovladac_zverejni_locked(void) {
+  g_ovl_logicke.store(g_ovl_stav.vse(true), std::memory_order_relaxed);
+  g_ovl_bez_packy.store(g_ovl_stav.vse(false), std::memory_order_relaxed);
+  g_mys.packy(g_ovl_stav.lx, g_ovl_stav.ly, g_ovl_stav.rx, g_ovl_stav.ry);
+}
+// vse pustit (ovladac odpojen, start / konec hry)
+static void ps1_ovladac_pust(void) {
+  std::lock_guard<std::mutex> l(g_ovl_m);
+  nap::ovladac::pustVse(g_ovl_stav);
+  ps1_ovladac_zverejni_locked();
+  g_ovl_snimek.store(0, std::memory_order_relaxed);
+}
+// vlakno emulace, kazdy krok pred retro_run: PS1 bity ovladace pro tenhle snimek
+// (s mysi samotnou v portu 1 leva packa neni smer - ridi kurzor analogove)
+static uint32_t ps1_ovladac_pro_snimek(void) {
+  const bool mysSama = g_mys.rezim() == nap::Ps1Mys::PORT1;
+  const uint32_t b = nap::ovladac::ps1Bity(mysSama ? g_ovl_bez_packy.load(std::memory_order_relaxed)
+                                                   : g_ovl_logicke.load(std::memory_order_relaxed));
+  g_ovl_snimek.store(b, std::memory_order_relaxed);
+  return b;
+}
 // po startu hry / BIOSu: zapamatovana mys pro tuhle hru (podle ID disku); porty
 // nastavi vlakno emulace pred prvnim krokem - hra tak mys vidi uz od zapnuti
 static void ps1_mys_po_startu(const std::string &hra) {
@@ -1000,7 +1047,8 @@ static void ps1_mys_pred_krokem(void) {
     if (zapoj) { zapoj(0, dev[0]); zapoj(1, dev[1]); }
     else ps1_denik("MYS: jadro neumi menit porty (retro_set_controller_port_device chybi) - mys nepujde");
   }
-  g_mys.snimek(ps1_ms_ted(), g_input_bits.load(std::memory_order_relaxed) | g_klav_bits.load(std::memory_order_relaxed));
+  const uint32_t ovl = ps1_ovladac_pro_snimek();   // B320: herni ovladac
+  g_mys.snimek(ps1_ms_ted(), g_input_bits.load(std::memory_order_relaxed) | g_klav_bits.load(std::memory_order_relaxed) | ovl);
 }
 // B318: po retro_run - nakreslila hra novy obraz? (jadro posle nap_video NULL = stejny obraz.)
 // Mys z toho pozna, jak casto hra kresli (Dune 2000 kazdy 3. snimek) a posun rozlozi do tolika snimku.
@@ -1014,7 +1062,50 @@ static int16_t nap_input_state(unsigned port, unsigned device, unsigned, unsigne
   // drive: tlacitka jen do portu 1, ostatni porty nic.
   if (device == nap::Ps1Mys::RD_MOUSE) return g_mys.mysDotaz(port, id);
   if (device != nap::Ps1Mys::RD_JOYPAD) return 0;
-  return g_mys.padDotaz(port, id, g_input_bits.load(std::memory_order_relaxed) | g_klav_bits.load(std::memory_order_relaxed));
+  return g_mys.padDotaz(port, id, g_input_bits.load(std::memory_order_relaxed) | g_klav_bits.load(std::memory_order_relaxed) |
+                                      g_ovl_snimek.load(std::memory_order_relaxed));   // B320: + herni ovladac
+}
+
+// =====================================================================
+//  B320: HERNI OVLADAC - JNI (Java NapOvladac / MainActivity)
+// =====================================================================
+/** Klavesa z herniho ovladace (KeyEvent.KEYCODE_*). Vraci logicka tlacitka
+ *  (nap_ovladac.h T_*), 0 = neni klavesa ovladace (Java ji pusti dal). */
+extern "C" JNIEXPORT jint JNICALL
+Java_eu_atarihelp_emu10_NativePs1CoreBridge_ps1OvladacKlavesa(JNIEnv *, jclass, jint keyCode, jboolean dolu) {
+  uint32_t t;
+  {
+    std::lock_guard<std::mutex> l(g_ovl_m);
+    t = nap::ovladac::klavesa(g_ovl_stav, keyCode, dolu == JNI_TRUE);
+    if (t) ps1_ovladac_zverejni_locked();
+  }
+  if (t) {
+    g_ovl_v_okne.fetch_add(1, std::memory_order_relaxed);
+    const int n = g_ovl_udalosti.fetch_add(1, std::memory_order_relaxed);
+    if (n < 10)
+      ps1_denik("OVLADAC: klavesa %d %s -> %s -> PS1 %s", (int)keyCode, dolu ? "dolu" : "nahoru",
+                nap::ovladac::jmena(t).c_str(), ps1_tlacitka_text(nap::ovladac::ps1Bity(t)).c_str());
+    else if (n == 10) ps1_denik("OVLADAC: dalsi stisky jen v radcich TLACITKA a v souctu ZDRAVI");
+  }
+  return (jint)t;
+}
+/** Osy herniho ovladace: 8 cisel (nap_ovladac.h O_*: leva packa x y, prava x y,
+ *  krizek HAT x y, spoust L2 R2) a maska M_* (co ovladac ma). */
+extern "C" JNIEXPORT void JNICALL
+Java_eu_atarihelp_emu10_NativePs1CoreBridge_ps1OvladacOsy(JNIEnv *env, jclass, jfloatArray josy, jint maska) {
+  float o[nap::ovladac::O_POCET] = {0};
+  if (josy) {
+    const jsize n = env->GetArrayLength(josy);
+    env->GetFloatArrayRegion(josy, 0, n < nap::ovladac::O_POCET ? n : nap::ovladac::O_POCET, o);
+  }
+  std::lock_guard<std::mutex> l(g_ovl_m);
+  nap::ovladac::osy(g_ovl_stav, o, maska);
+  ps1_ovladac_zverejni_locked();
+}
+/** Vse pustit (ovladac odpojen, odchod ze hry). */
+extern "C" JNIEXPORT void JNICALL
+Java_eu_atarihelp_emu10_NativePs1CoreBridge_ps1OvladacPust(JNIEnv *, jclass) {
+  ps1_ovladac_pust();
 }
 
 /** B308: klavesa z prohlizece (TV / PC). Vraci text pro prohlizec. */
@@ -1489,6 +1580,7 @@ Java_eu_atarihelp_emu10_NativePs1CoreBridge_ps1EglBoot(JNIEnv* env, jclass,
     if (g_loaded.exchange(false)) { nap_srm_save_if_dirty("dalsi start"); retro_unload_game(); retro_deinit(); }
     g_sysdir = sys;
     g_input_bits.store(0);
+    ps1_ovladac_pust();   // B320
     g_boot_error.clear();
 
     // gpu-gles EGL kontext MUSI vzniknout na TOMHLE (eglrender) vlakne
@@ -2065,6 +2157,7 @@ extern "C" int nap_ps1_egl_boot_c(const char* sys, const char* game) {
     g_sysdir = sys ? sys : "";
     g_input_bits.store(0);
     g_klav_bits.store(0); g_klav_udalosti.store(0); g_klav_v_okne.store(0); g_klav_neznamych.store(0);
+    ps1_ovladac_pust(); g_ovl_udalosti.store(0); g_ovl_v_okne.store(0);   // B320: herni ovladac
     g_boot_error.clear();
     ps1_denik_start(game ? game : "", g_sysdir);   // B308: denik
     g_gles_ready = nap_gles_egl_init();
@@ -2125,7 +2218,7 @@ static void nap_core_thread_fn(void) {
     uint64_t vypadkyOd = g_zvuk_vypadky.load();
     unsigned tenkeOd = nap_ps1_b308_tenkych ? nap_ps1_b308_tenkych() : 0;
     double runSoucet = 0.0, runMax = 0.0;
-    unsigned otisk = 0xFFFFFFFFu, tlacitkaMinule = g_input_bits.load() | g_klav_bits.load(), tlacStisk = 0, tlacPust = 0;
+    unsigned otisk = 0xFFFFFFFFu, tlacitkaMinule = g_input_bits.load() | g_klav_bits.load() | g_ovl_snimek.load(), tlacStisk = 0, tlacPust = 0;
     unsigned tlacZacatek = tlacitkaMinule;   // co bylo drzeno na zacatku okna (poradi + / - v radku TLACITKA)
     int zmenObrazu = 0, zamlcenoObrazu = 0, radkuTlacitek = 0, zamlcenoTlacitek = 0, zmenTlacitek = 0;
     unsigned cteniPortuOd[2] = {0, 0};      // B317: kolikrat hra cetla port 1 / 2 (kde hleda mys)
@@ -2172,7 +2265,8 @@ static void nap_core_thread_fn(void) {
         // tlacitka: co se zmacklo / pustilo (spojene po 0,3 s, max 20 radku za okno)
         ps1_klavesy_hlidac();             // klavesnice z TV: prohlizec se odmlcel -> pustit
         {
-            const unsigned b = g_input_bits.load(std::memory_order_relaxed) | g_klav_bits.load(std::memory_order_relaxed);
+            const unsigned b = g_input_bits.load(std::memory_order_relaxed) | g_klav_bits.load(std::memory_order_relaxed) |
+                               g_ovl_snimek.load(std::memory_order_relaxed);   // B320: + herni ovladac
             if (b != tlacitkaMinule) {
                 tlacStisk |= b & ~tlacitkaMinule;
                 tlacPust |= tlacitkaMinule & ~b;
@@ -2217,12 +2311,12 @@ static void nap_core_thread_fn(void) {
                 if (te != tenkeOd) snprintf(doom, sizeof(doom), " | oprava Doomu: %u tenkych trojuhelniku ve 2x", te - tenkeOd);
                 ps1_denik("ZDRAVI %.0f s: emulace %.1f kroku/s (cil %.2f, rezerva %.0f %% casu) | "
                           "retro_run prumer %.1f ms, nejdele %.1f ms | snimky %.1f/s (stejnych %.1f/s) | zvuk fronta %d ms, "
-                          "vypadky %llu | %s%s | tlacitka %s (zmen %d%s, z klavesnice TV %d) | TV divaku %d%s",
+                          "vypadky %llu | %s%s | tlacitka %s (zmen %d%s, z klavesnice TV %d, z ovladace %d) | TV divaku %d%s",
                           odStartu, kroku / okno, g_fps, cekaniMs / (okno * 10.0),
                           kroku ? runSoucet / kroku : 0.0, runMax, (sn - snimkyOd) / okno, (du - duplOd) / okno,
                           nap_audio_level_ms(), (unsigned long long)(vy - vypadkyOd), popis, doom,
-                          ps1_tlacitka_text(g_input_bits.load() | g_klav_bits.load()).c_str(), zmenTlacitek,
-                          zamlcenoTlacitek ? ", cast nezapsana" : "", g_klav_v_okne.exchange(0), g_ps1Proud.klientu(),
+                          ps1_tlacitka_text(g_input_bits.load() | g_klav_bits.load() | g_ovl_snimek.load()).c_str(), zmenTlacitek,
+                          zamlcenoTlacitek ? ", cast nezapsana" : "", g_klav_v_okne.exchange(0), g_ovl_v_okne.exchange(0), g_ps1Proud.klientu(),
                           zamlcenoObrazu ? " | dalsi zmeny obrazu nezapsany" : "");
                 {   // B317: mys - co se s ni delo a jak casto hra cte porty 1 a 2
                   const std::string m = g_mys.souhrn();
@@ -2457,6 +2551,7 @@ Java_eu_atarihelp_emu10_NativePs1CoreBridge_ps1Stop(JNIEnv *env, jclass) {
   if (g_loaded.exchange(false)) { nap_srm_save_if_dirty("stop"); retro_unload_game(); retro_deinit(); }
   nap_audio_clear();
   g_input_bits.store(0);
+  ps1_ovladac_pust();   // B320
   ps1_denik("==================== PS1 KONEC po %.0f s, snimku %llu ====================",
             (ps1_ms_ted() - g_denik_start_ms.load()) / 1000.0, (unsigned long long)g_frames.load());
   return env->NewStringUTF("PS1_STOPPED");
@@ -2480,7 +2575,8 @@ Java_eu_atarihelp_emu10_NativePs1CoreBridge_proudOtevri2Native(JNIEnv *, jclass,
   static std::once_flag jednou;
   std::call_once(jednou, [] {
     g_ps1Proud.nastavVolby([](nap::proud::KodekJpeg &k, int v) { nap::proud::nastavKodekPs1(k, v); },
-                           "posun obrazu = kopie v prohlizeci, 2x zvetseny obraz 2D her v puvodnim rozliseni, zmeny po obdelnicich");
+                           "posun obrazu = kopie v prohlizeci, 2x zvetseny obraz 2D her v puvodnim rozliseni, zmeny po obdelnicich, "
+                           "B320: s toleranci ditheringu PS1 (+-1 odstin)");
   });
   return (jint)g_ps1Proud.otevri((int)volby & (nap::proud::VOLBA_POSUN | nap::proud::VOLBA_POLOVICNI));
 }

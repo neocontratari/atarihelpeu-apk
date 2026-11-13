@@ -1,0 +1,28 @@
+B308: stranka PS1 v Chromiu - nahravani hry podle skutecneho stavu, banner, LOG s denikem
+   monitor [22, 104, 390, 409], banner [29, 428, 383, 505]
+OK     na vysku je banner stahovani POD monitorem (neprekryva obraz hry ani nadpis)
+   nahravaci okno: NAHRÁVÁM HRU…Doom (USA)0 s
+OK     po klepnuti na hru je v monitoru nahravaci okno (jmeno hry, cas)
+OK     appka dostala pokyn spustit hru
+OK     obraz jadra (nativni plocha) je behem nahravani schovany - okno neni pod nim a stary obraz nezustava
+OK     po 1,1 s (hra jeste nebezi) okno porad je - zadny pevny odpocet
+OK     okno zmizelo, az appka hlasila, ze hra OPRAVDU bezi (za 1.8 s, start trval 1,5 s)
+OK     obraz jadra je zase videt
+OK     pri uspechu zadna zbytecna hlaska
+OK     start trvajici 12 s: okno je v 11. sekunde porad videt (NAHRÁVÁM HRU…Doom (USA)11 s)
+OK     po dlouhem startu obraz zpet
+OK     chyba startu: okno pryc a hlaska proc (HRA SE NESPUSTILA: jadro hru nespustilo (PS1_HRA_FAIL jadro) - podrobn)
+OK     po chybe obraz zpet (BIOS)
+OK     vyber souboru / Drive: nahravaci okno se zaplo samo (stav PS1_REMOTE_BOOTING)
+OK     ...a zmizelo po startu
+OK     start rychlejsi nez kontrola stavu: okno se hned zavre, nezustane viset
+OK     RESET: okno "RESETUJI" v monitoru
+OK     RESET: okno zmizi, jakmile BIOS nabehne (0.8 s, drive vzdy 8 s)
+OK     ULOZIT LOG: log stranky + denik PS1 z C++ (start, zdravi) v jednom souboru
+OK     KOPIROVAT LOG: totez v okne logu
+OK     na vysku zadna chyba JavaScriptu []
+OK     na sirku: nahravaci okno + obraz jadra schovany
+OK     na sirku: po startu okno pryc, hra videt (nezakryva ji 10 s jako drive)
+OK     na sirku zadna chyba JavaScriptu []
+
+VYSLEDEK: 23 kontrol, 0 CHYB

@@ -36,11 +36,23 @@
 // B305: Sega na TV / PC cela v C++ (jako Atari 130XE v B303)
 #include "tvproud/nap_tv_proud.h"
 #include "tvproud/nap_tv_proud_index.h"
+#include "nap_ovladac.h"   // B320: herni ovladac (Retroid Pocket 6, gamepad)
 
 #define NAP_LOG_TAG "NAP_SEGA_NATIVE_PROOF"
 #define NAPLOG(...) __android_log_print(ANDROID_LOG_INFO, NAP_LOG_TAG, __VA_ARGS__)
 
 static bool g_input[8] = {false,false,false,false,false,false,false,false};
+// B320: herni ovladac (Retroid Pocket 6, Bluetooth / USB) - Java ho jen pozna; co tlacitko udela,
+// je v nap_ovladac.h: leve = A, spodni = B, prave = C (A B C v rade zleva, jako Genesis Plus GX
+// v RetroArchu), START; krizek a leva packa = smer. Bity jako g_input (0 U, 1 D, 2 L, 3 R,
+// 4 A, 5 B, 6 C, 7 START) - jadro dostane dotyk NEBO ovladac (nap_vstup).
+static std::mutex g_ovl_m;
+static nap::ovladac::Stav g_ovl_stav;              // pod g_ovl_m (vlakno UI Javy)
+static std::atomic<uint32_t> g_ovl_bity{0};        // bity 0-7 jako g_input
+static std::atomic<int> g_ovl_udalosti{0};
+static inline bool nap_vstup(int i) {
+    return g_input[i] || ((g_ovl_bity.load(std::memory_order_relaxed) >> i) & 1u);
+}
 static uint32_t g_lastRomHash = 0;
 static uint16_t g_lastChecksumStored = 0;
 static uint16_t g_lastChecksumCalc = 0;
@@ -739,14 +751,15 @@ static cc_bool nap_real_input_requested(void *user_data, cc_u8f player_id, Clown
     (void)user_data;
     if (player_id != 0) return cc_false;
     switch (button_id) {
-        case CLOWNMDEMU_BUTTON_UP: return g_input[0] ? cc_true : cc_false;
-        case CLOWNMDEMU_BUTTON_DOWN: return g_input[1] ? cc_true : cc_false;
-        case CLOWNMDEMU_BUTTON_LEFT: return g_input[2] ? cc_true : cc_false;
-        case CLOWNMDEMU_BUTTON_RIGHT: return g_input[3] ? cc_true : cc_false;
-        case CLOWNMDEMU_BUTTON_A: return g_input[4] ? cc_true : cc_false;
-        case CLOWNMDEMU_BUTTON_B: return g_input[5] ? cc_true : cc_false;
-        case CLOWNMDEMU_BUTTON_C: return g_input[6] ? cc_true : cc_false;
-        case CLOWNMDEMU_BUTTON_START: return g_input[7] ? cc_true : cc_false;
+        // B320: dotyk (g_input) + herni ovladac (g_ovl_bity)
+        case CLOWNMDEMU_BUTTON_UP: return nap_vstup(0) ? cc_true : cc_false;
+        case CLOWNMDEMU_BUTTON_DOWN: return nap_vstup(1) ? cc_true : cc_false;
+        case CLOWNMDEMU_BUTTON_LEFT: return nap_vstup(2) ? cc_true : cc_false;
+        case CLOWNMDEMU_BUTTON_RIGHT: return nap_vstup(3) ? cc_true : cc_false;
+        case CLOWNMDEMU_BUTTON_A: return nap_vstup(4) ? cc_true : cc_false;
+        case CLOWNMDEMU_BUTTON_B: return nap_vstup(5) ? cc_true : cc_false;
+        case CLOWNMDEMU_BUTTON_C: return nap_vstup(6) ? cc_true : cc_false;
+        case CLOWNMDEMU_BUTTON_START: return nap_vstup(7) ? cc_true : cc_false;
         default: return cc_false;
     }
 }
@@ -1656,6 +1669,41 @@ Java_eu_atarihelp_emu10_NativeSegaCoreBridge_inputStatus(JNIEnv* env, jclass) {
     return Java_eu_atarihelp_emu10_NativeSegaProofActivity_nativeGetInputStatus(env, nullptr);
 }
 
+// ===== B320: HERNI OVLADAC - JNI (Java NapOvladac / MainActivity) =====
+/** Klavesa z herniho ovladace (KeyEvent.KEYCODE_*). Vraci logicka tlacitka
+ *  (nap_ovladac.h T_*), 0 = neni klavesa ovladace (Java ji pusti dal). */
+extern "C" JNIEXPORT jint JNICALL
+Java_eu_atarihelp_emu10_NativeSegaCoreBridge_ovladacKlavesa(JNIEnv*, jclass, jint keyCode, jboolean dolu) {
+    std::lock_guard<std::mutex> l(g_ovl_m);
+    const uint32_t t = nap::ovladac::klavesa(g_ovl_stav, keyCode, dolu == JNI_TRUE);
+    if (t) {
+        g_ovl_bity.store(nap::ovladac::segaBity(g_ovl_stav.vse()), std::memory_order_relaxed);
+        if (g_ovl_udalosti.fetch_add(1, std::memory_order_relaxed) < 10)
+            NAPLOG("B320 OVLADAC klavesa %d %s -> %s -> Sega bity 0x%02x", (int)keyCode, dolu ? "dolu" : "nahoru",
+                   nap::ovladac::jmena(t).c_str(), (unsigned)nap::ovladac::segaBity(t));
+    }
+    return (jint)t;
+}
+/** Osy: leva packa x y, prava x y, krizek HAT x y, spoust L2 R2 + maska (nap_ovladac.h). */
+extern "C" JNIEXPORT void JNICALL
+Java_eu_atarihelp_emu10_NativeSegaCoreBridge_ovladacOsy(JNIEnv* env, jclass, jfloatArray josy, jint maska) {
+    float o[nap::ovladac::O_POCET] = {0};
+    if (josy) {
+        const jsize n = env->GetArrayLength(josy);
+        env->GetFloatArrayRegion(josy, 0, n < nap::ovladac::O_POCET ? n : nap::ovladac::O_POCET, o);
+    }
+    std::lock_guard<std::mutex> l(g_ovl_m);
+    nap::ovladac::osy(g_ovl_stav, o, maska);
+    g_ovl_bity.store(nap::ovladac::segaBity(g_ovl_stav.vse()), std::memory_order_relaxed);
+}
+/** Vse pustit (ovladac odpojen, odchod ze Segy). */
+extern "C" JNIEXPORT void JNICALL
+Java_eu_atarihelp_emu10_NativeSegaCoreBridge_ovladacPust(JNIEnv*, jclass) {
+    std::lock_guard<std::mutex> l(g_ovl_m);
+    nap::ovladac::pustVse(g_ovl_stav);
+    g_ovl_bity.store(0, std::memory_order_relaxed);
+}
+
 extern "C" JNIEXPORT void JNICALL
 Java_eu_atarihelp_emu10_NativeSegaCoreBridge_makeAudioTone(JNIEnv* env, jclass, jshortArray pcmOut, jint sampleRate, jdouble hz) {
     Java_eu_atarihelp_emu10_NativeSegaProofActivity_nativeMakeAudioTone(env, nullptr, pcmOut, sampleRate, hz);
@@ -1705,6 +1753,7 @@ Java_eu_atarihelp_emu10_NativeSegaCoreBridge_shutdown(JNIEnv* env, jclass) {
 #if NAP_SEGA_VENDOR_CORE_PRESENT
     nap_real_stop_worker();
     for (int i = 0; i < 8; ++i) g_input[i] = false;
+    { std::lock_guard<std::mutex> l(g_ovl_m); nap::ovladac::pustVse(g_ovl_stav); g_ovl_bity.store(0); }   // B320
     nap_audio_clear();
     {
         std::lock_guard<std::mutex> lock(g_real_mutex);
@@ -1715,6 +1764,7 @@ Java_eu_atarihelp_emu10_NativeSegaCoreBridge_shutdown(JNIEnv* env, jclass) {
     return env->NewStringUTF("NATIVE_SHUTDOWN_OK_RV_QT_CPP_ONLY worker=STOPPED audio=CLEARED input=RELEASED");
 #else
     for (int i = 0; i < 8; ++i) g_input[i] = false;
+    { std::lock_guard<std::mutex> l(g_ovl_m); nap::ovladac::pustVse(g_ovl_stav); g_ovl_bity.store(0); }   // B320
     return env->NewStringUTF("NATIVE_SHUTDOWN_OK_RV_QT_CPP_ONLY noVendor input=RELEASED");
 #endif
 }

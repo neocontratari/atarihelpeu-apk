@@ -3354,3 +3354,102 @@
        mapa se neposouva presne (animace) -> rozsirit hledani.
 
 ===============================================================================
+
+   B320: HERNI OVLADAC (RETROID POCKET 6 NASLEPO, BLUETOOTH / USB GAMEPAD) PRO
+     PS1, SEGU, ATARI A MENU; PS1 NA TV / PC S DITHERINGEM (DUNE 2000);
+     STRANKA WEB TV SE PO AKTUALIZACI APPKY OBNOVI SAMA.
+     Rene: "proste to riskni ... Retroid pocket naslepo". Forum: "po pripojeni
+     by se na obrazovce stahnul nas d-pad a najelo to na origo tlacitka".
+     Log B319 (Dune 2000 po F5): posun obrazu zkousen 322x, nalezen 0x;
+     polovicni rozliseni 304 casti z 1137; "dithering ZAPNUTO".
+     - OVLADAC: nap_ovladac.h (NOVY, spolecny C++ pro PS1 / Segu / Atari):
+       klavesa Androidu -> logicke tlacitko T_* podle MISTA (A spodni, B prave,
+       X leve, Y horni, C / Z, L1-R3, START, SELECT, MODE, krizek vcetne
+       uhlopricek 268-271, DPAD_CENTER = A), osy(): HAT, leva packa = smer
+       (mrtva zona 0,20, hystereze 0,50 / 0,35), spouste L2 / R2 analogove
+       (hystereze), packy lx ly rx ry pro mys; NaN = 0. ps1Bity (RetroPad:
+       A KRIZEK 0, X CTVEREC 1, SELECT/MODE 2, START 3, smer 4-7, B KOLECKO 8,
+       Y TROJUHELNIK 9, L1-R2 10-13, L3/R3 14/15, C = KRIZEK, Z = KOLECKO),
+       segaBity (leve A, spodni B, prave C, L1 A, R1 C), atariBity (FIRE
+       A/B/L1/R1, X MEZERA, Y RETURN, START, SELECT, OPTION L2/R2/MODE),
+       packaRychlost(m, citlivost) = 6 * m^2 * sqrt(c) bodu / snimek.
+       Java NapOvladac (NOVY): InputManager listener, poznej() = ovladac
+       (GAMEPAD / JOYSTICK s A + B nebo packa + A, ne virtualni / klavesnice),
+       vse do logu ("B320 OVLADAC ..." jmeno, zdroje, tlacitka, osy poprve),
+       Rozlozeni os (prava packa Z/RZ nebo RX/RY, spouste LTRIGGER/BRAKE,
+       RTRIGGER/GAS nebo Z/RZ 0..1), Schovani (REZIM_AUTO / DOTYK / SKRYT,
+       UI_VIDET / SKRYTO / SKRYTO_VZDY; SharedPreferences "nap_ovladac").
+       MainActivity: dispatchKeyEvent / dispatchGenericMotionEvent PRED
+       WebView (ovladacKam: PS1 / Sega / Atari / menu / nic) -> JNI
+       ps1Ovladac* (NativePs1CoreBridge 32 native), Sega ovladac*,
+       Atari devOvladac*Native; ovlPouzit* (most Segy nacita knihovnu bez
+       try - pousti se jen kdyz Sega ovladac dostala); menu: L / R / L1 / R1
+       listuji, A / START / CENTER spusti, L2 / R2 zacatek / konec, SELECT / Y
+       OPTIONS, B / X / nahoru / dolu spotrebovat (B by appku dal do pozadi);
+       stranky (OPTIONS, HELP) jako drive. AHOVL (stav, dotyk, rezim,
+       nastavRezim, jmeno); napOvladacStav(stav, jmeno) do stranek; Atari
+       devCtl "ovladac:N"; Toast napoveda poprve. KLAVESNICE PS1 opravena
+       (do B319 spatna cisla RetroPad; ted jako klavesnice PC na TV B308).
+       Mapovani ovladace B319 v Jave bylo spatne (B CTVEREC, X SELECT,
+       Y START, SELECT KOLECKO, START TROJUHELNIK) - pryc.
+       PS1 C++: g_ovl_* (mutex + atomicke bity), ps1_ovladac_pro_snimek (mys
+       samotna v portu 1 -> leva packa neni smer), OR s dotykem a klavesnici
+       TV v nap_input_state / g_mys.snimek, pusteni pri boot / dalsi start /
+       stop, denik "OVLADAC: klavesa ..." (10x), ZDRAVI "z ovladace N".
+       nap_ps1_mys.h: packy() - prava packa vzdy, s mysi samotnou v portu 1
+       i leva (vic vychylena), Okno snimkuPacka ("packou N").
+       Sega: nap_vstup(i) = g_input[i] || g_ovl_bity. Atari: maska ovladace +
+       maska klavesnice telefonu (soucet, padPosliLocked), Device ovladacRezim
+       / ctlSkryte / dotykNaOvladani (rezim 1 dotyk na prvek ukaze, bit 0x2000
+       z devTouch -> AtariDeviceView AKCE_OVLADAC_DOTYK -> NapOvladac.dotyk;
+       rezim 2 dotyk na ovladani nic; v uprave rozlozeni vzdy videt).
+       Stranky emu_ps1 / emu_sega: CSS body.napOvladac (opacity 0) /
+       napOvladacVzdy (display none) jen na sirku a :not(.layoutEdit);
+       ovlDotyk (PS1 touchstart / pointerdown na prvcich, Sega z
+       multitouch update). OPTIONS (index.html): HERNI OVLADAC - AUTOMATICKY /
+       VZDY DOTYK / SKRYT DOTYK + napoveda se jmenem (en_menu.js).
+       Manifest: configChanges + keyboard|navigation|smallestScreenSize|uiMode
+       (pripojeni ovladace jinak restartuje aktivitu = konec hry).
+     - DITHERING (nap_tv_proud_jpeg.h): mrizka ditheringu gpu_neon je pevne na
+       obrazovce -> po posunu o lichy pocet bodu hry jine body (+-1 odstin).
+       Overeno na SKUTECNEM gpu_neon (test integrace_b320_gpu + mapa_dune.c
+       PS-EXE): polygony s texturou ve 2x maji mrizku texelu posunutou o bod
+       -> polovicni rozliseni u nich nejde (jen sprity). KodekJpeg.tolerance
+       (nastavKodekPs1: TOLERANCE_PS1 10 = 1 odstin 5 bitu): najdiPosun nejdriv
+       presne (B319), pak hledejPosunTol (vzorek 8 bodu ve 2 radcich s hranou
+       > 2T+4, hlasuje pro vsechny posuny, kde sedi, nejvys 6; nejlepsi 2 se
+       overi). pouzijPosun: ctverce shodne jen s toleranci -> tol_ = 1 (pred =
+       co ma prohlizec), spoctiZmeny je v tol_ bere jako nezmenene, dokud se
+       nelisi o vic nez T (chyba se nescita); klid -> tol_ ctverce zjemnit
+       presne (tolZjemneno); obdelnik maze tol_; keyframe tol_ = 0.
+       rozdelSkupinu: skupina zmen ve tvaru L (sikmy posun: pruh nahore
+       i vlevo) se rozdeli na obdelniky (drive jeden pres cely obraz). Log
+       info() b[512]: ", B320: tolerance ditheringu 10 - posunu nalezenych jen
+       s toleranci N, ..., po zastaveni zpresneno ctvercu N, skupin L
+       rozdeleno N". Hra bez ditheringu = B319 (rovny posun bajt po bajtu).
+     - WEB TV: stranka window.NAP_VERZE=0/*NAP_VERZE*/ (Java dosadi
+       versionCode - zdrojak stranky zustava text pro testy), /status "
+       verze=" + napTvVerze(); pollFps -> napVerze(t): jina verze -> reload
+       (sessionStorage napObnova, nejvys 1x za 30 s), log "B320 STRANKA: ...".
+     - TESTY test_overeni/b320 (vse.sh, JAK_SPUSTIT.txt): test_b320_kodek
+       (12), integrace_b320_gpu (skutecny gpulib + gpu_neon + jadro + nap_ps1_
+       native.cpp, mapa_dune.exe; 15: B320 posun 108/108, dat 17 %, B319 0/55
+       pri jine fazi), test_b320_ovladac (20), integrace_b320_ovladac (14 +
+       TSan 0), test_b320_atari_ovladac (14), test_b320_sega_ovladac (5),
+       jvm/TestB320Ovladac (20), test_b320_stranky.py (13), test_b320_tv_verze
+       (6), regrese.sh (vse z B319 + testy B319 na kodu B320, kontrola_jni.py
+       = podpisy JNI 3 mostu, 102 native). Starsi testy s ocekavanim upravenym
+       regresi (git vrati): b308/test_ps1_denik.py (ZDRAVI + ", z ovladace N"),
+       b319/test_b319_tv_mys.py kontrola 4) (stranka = B318 + B319 + 3 zmeny
+       B320 - uprav_b319_tv_mys.py). Na PC: android.jar API 34 z GitHubu
+       Sable/android-platforms (raw.githubusercontent.com), hlavicky EGL / GLES
+       apt libegl-dev libgles-dev.
+     - POZOR (proces): po ztrate kontejneru byla prace B320 obnovena z prepisu
+       a znovu overena - stejna cisla vsech testu. Commitovat brzo.
+     - DALSI KROK: log z Retroidu (forum) - radky "B320 OVLADAC" (jmeno,
+       zdroje, osy poprve, klavesy): sedi rozlozeni os (Z/RZ vs RX/RY, spouste),
+       schova se D-pad? Dune na TV: radek "B320: tolerance ditheringu 10 -
+       posunu nalezenych jen s toleranci N" > 0 pri posunu mapy. Novy vzhled
+       nastaveni az po Reneho potvrzeni.
+
+===============================================================================

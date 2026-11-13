@@ -1,0 +1,4 @@
+OK     A) /status po odchodu z menu rika atari: prohlizec otevre /atari.stream za 0.5 s
+OK     B) /status porad rika menu (jako u Reneho): 409 + X-Nap-Proud: atari -> /atari.stream za 0.5 s, /menu.stream po prepnuti 2x (drive kazdou vterinu porad)
+OK     C) server bez hlavicky X-Nap-Proud: prohlizec nespadne (zadna chyba JavaScriptu)
+VYSLEDEK: 3 kontrol, 0 CHYBA

@@ -54,6 +54,7 @@
 #include "nap_atari_runtime.h"
 #include "nap_atari_pc_klavesnice.h"   // B302: klavesnice pocitace (prohlizec na TV/PC) -> Atari
 #include "nap_atari_tv_proud.h"         // B303: obraz a zvuk na TV/PC primo z C++ (male zpozdeni)
+#include "../nap_ovladac.h"              // B320: herni ovladac (Retroid Pocket 6, gamepad)
 #include <memory>
 #include <string>
 #include <thread>
@@ -1540,10 +1541,17 @@ Java_eu_atarihelp_emu10_NativeAtariCoreBridge_devTouchNative(JNIEnv *, jclass, j
     std::lock_guard<std::mutex> l(g_mEv);
     for (int i = 0; i < n; i++) g_evQ.push_back(ev[i]);
   }
-  bool vibrace = false;
-  { std::lock_guard<std::mutex> dl(g_mDev); nap::dev::Device &d = devGet(); vibrace = d.hapticReq; d.hapticReq = false; }
-  if (akce != 3 || n > 0) pokeRender();
-  return svc | (vibrace ? 0x1000 : 0);              // B297: bit 0x1000 = Java kratce zavibruje
+  bool vibrace = false, odkryto = false;
+  {
+    std::lock_guard<std::mutex> dl(g_mDev);
+    nap::dev::Device &d = devGet();
+    vibrace = d.hapticReq; d.hapticReq = false;
+    odkryto = d.ovladacOdkryto; d.ovladacOdkryto = false;     // B320
+  }
+  if (odkryto) devLog("B320 OVLADAC: dotyk na schovane tlacitko - dotykove ovladani zase videt");
+  if (akce != 3 || n > 0 || odkryto) pokeRender();
+  // B297: bit 0x1000 = Java kratce zavibruje; B320: bit 0x2000 = dotyk ukazal schovane ovladani
+  return svc | (vibrace ? 0x1000 : 0) | (odkryto ? 0x2000 : 0);
 }
 
 /** B297: ovladani na sirku (D-pad a tlacitka jako u Segy).
@@ -1565,6 +1573,25 @@ Java_eu_atarihelp_emu10_NativeAtariCoreBridge_devCtlNative(JNIEnv *env, jclass, 
       pokeRender();
     }
     return env->NewStringUTF(en ? "en" : "cs");
+  }
+  // B320: "ovladac:0/1/2" - herni ovladac (Retroid Pocket 6, gamepad): 0 dotykove ovladani
+  // na sirku videt, 1 schovane (dotyk na tlacitko ho ukaze), 2 schovane vzdy. Vraci rezim.
+  if (cmd.rfind("ovladac:", 0) == 0) {
+    const int r = std::atoi(cmd.c_str() + 8);
+    int bylo, je;
+    {
+      std::lock_guard<std::mutex> dl(g_mDev);
+      nap::dev::Device &d = devGet();
+      bylo = d.ovladacRezim;
+      d.nastavOvladac(r);
+      je = d.ovladacRezim;
+    }
+    if (je != bylo) {
+      static const char *const R[3] = {"videt", "schovane (hraje herni ovladac, dotyk ho ukaze)", "schovane vzdy"};
+      devLog(std::string("B320 OVLADAC: dotykove ovladani na sirku ") + R[je]);
+      pokeRender();
+    }
+    return env->NewStringUTF(std::to_string(je).c_str());
   }
   // B310: "postup" = hotove davky napsanych radku programu pro postup hrace ("12,7",
   // "" = zadna) - vyzvedne je Java (NapPostup) a tim se smazou. Bez logu (vola se casto).
@@ -1664,10 +1691,69 @@ Java_eu_atarihelp_emu10_NativeAtariCoreBridge_devCtlNative(JNIEnv *env, jclass, 
 /** B296: herni ovladac / klavesnice telefonu -> joystick 1 a konzole.
  *  maska: bit0 nahoru, 1 dolu, 2 vlevo, 3 vpravo, 4 FIRE, 5 START, 6 SELECT, 7 OPTION,
  *  8 klavesa MEZERA, 9 klavesa RETURN. */
+// B320: herni ovladac (nap_ovladac.h atariBity) a klavesnice telefonu (Java devPad) maji kazdy
+// svou masku - do stroje jde jejich soucet (jedno druhemu nic nepusti)
+static std::mutex g_ovl_m;
+static nap::ovladac::Stav g_ovl_stav;      // pod g_ovl_m
+static uint32_t g_ovl_maska = 0, g_padJava = 0, g_padPoslano = 0xFFFFFFFFu;   // pod g_ovl_m
+static int g_ovl_udalosti = 0;             // pod g_ovl_m
+static void padPosliLocked(bool vzdy) {
+  const uint32_t m = (g_ovl_maska | g_padJava) & 0x3FF;
+  if (!vzdy && m == g_padPoslano) return;
+  g_padPoslano = m;
+  nap::dev::Ev e; e.t = nap::dev::Ev::PAD; e.v = (int)m;
+  std::lock_guard<std::mutex> l(g_mEv); g_evQ.push_back(e);
+}
+
 extern "C" JNIEXPORT void JNICALL
 Java_eu_atarihelp_emu10_NativeAtariCoreBridge_devPadNative(JNIEnv *, jclass, jint maska) {
-  nap::dev::Ev e; e.t = nap::dev::Ev::PAD; e.v = maska & 0x3FF;
-  { std::lock_guard<std::mutex> l(g_mEv); g_evQ.push_back(e); }
+  std::lock_guard<std::mutex> o(g_ovl_m);
+  g_padJava = (uint32_t)maska & 0x3FF;
+  padPosliLocked(true);
+}
+
+/** B320: klavesa z herniho ovladace (KeyEvent.KEYCODE_*) -> joystick 1, konzole, MEZERA / RETURN
+ *  (nap_ovladac.h atariBity). Vraci logicka tlacitka, 0 = neni klavesa ovladace. */
+extern "C" JNIEXPORT jint JNICALL
+Java_eu_atarihelp_emu10_NativeAtariCoreBridge_devOvladacKlavesaNative(JNIEnv *, jclass, jint keyCode, jboolean dolu) {
+  uint32_t t;
+  int n;
+  {
+    std::lock_guard<std::mutex> o(g_ovl_m);
+    t = nap::ovladac::klavesa(g_ovl_stav, keyCode, dolu == JNI_TRUE);
+    if (!t) return 0;
+    g_ovl_maska = nap::ovladac::atariBity(g_ovl_stav.vse());
+    padPosliLocked(false);
+    n = g_ovl_udalosti++;
+  }
+  if (n < 10) {
+    char b[200];
+    std::snprintf(b, sizeof(b), "B320 OVLADAC: klavesa %d %s -> %s -> Atari maska 0x%03x", (int)keyCode, dolu ? "dolu" : "nahoru",
+                  nap::ovladac::jmena(t).c_str(), (unsigned)nap::ovladac::atariBity(t));
+    devLog(b);
+  }
+  return (jint)t;
+}
+/** B320: osy herniho ovladace (leva packa, krizek HAT = smer; spouste L2 / R2 = OPTION). */
+extern "C" JNIEXPORT void JNICALL
+Java_eu_atarihelp_emu10_NativeAtariCoreBridge_devOvladacOsyNative(JNIEnv *env, jclass, jfloatArray josy, jint maska) {
+  float v[nap::ovladac::O_POCET] = {0};
+  if (josy) {
+    const jsize n = env->GetArrayLength(josy);
+    env->GetFloatArrayRegion(josy, 0, n < nap::ovladac::O_POCET ? n : nap::ovladac::O_POCET, v);
+  }
+  std::lock_guard<std::mutex> o(g_ovl_m);
+  nap::ovladac::osy(g_ovl_stav, v, maska);
+  g_ovl_maska = nap::ovladac::atariBity(g_ovl_stav.vse());
+  padPosliLocked(false);
+}
+/** B320: vse z ovladace pustit (ovladac odpojen, odchod z Atari). */
+extern "C" JNIEXPORT void JNICALL
+Java_eu_atarihelp_emu10_NativeAtariCoreBridge_devOvladacPustNative(JNIEnv *, jclass) {
+  std::lock_guard<std::mutex> o(g_ovl_m);
+  nap::ovladac::pustVse(g_ovl_stav);
+  g_ovl_maska = 0;
+  padPosliLocked(false);
 }
 
 /** B302: klavesa z prohlizece na TV/PC (web viewer appky). code = e.code (misto

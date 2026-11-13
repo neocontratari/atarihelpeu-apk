@@ -57,11 +57,15 @@ final class AtariDeviceView extends SurfaceView implements SurfaceHolder.Callbac
 
     /** B297: kod pro MainActivity - kratka vibrace pri stisku tlacitka na sirku. */
     static final int AKCE_VIBRACE = 100;
+    /** B320: dotyk na misto schovaneho D-padu / tlacitek (hral herni ovladac) - ovladani je zase videt. */
+    static final int AKCE_OVLADAC_DOTYK = 101;
 
-    /** B297: vysledek z C++ - bit 0x1000 = zavibrovat, zbytek = servisni akce. */
+    /** B297: vysledek z C++ - bit 0x1000 = zavibrovat, B320: bit 0x2000 = dotyk ukazal schovane
+     *  ovladani (hral herni ovladac), zbytek = servisni akce. */
     private void vysledek(int r, boolean akceDovolena) {
         if (akce == null) return;
         if ((r & 0x1000) != 0) akce.naServisniAkci(AKCE_VIBRACE);
+        if ((r & 0x2000) != 0) akce.naServisniAkci(AKCE_OVLADAC_DOTYK);
         final int kod = r & 0xFFF;
         if (akceDovolena && kod != 0) akce.naServisniAkci(kod);
     }

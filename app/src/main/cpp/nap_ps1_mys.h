@@ -57,6 +57,13 @@
 //   - denik: kazdy tah (doba, draha prstu, rychlost, zrychleni, kolik bodu
 //     dostala hra), v MYS ZDRAVI tuknuti / tahy / vyhlazeni / oriznuti
 //
+//  B320 (Retroid Pocket 6 / herni ovladac): ANALOGOVA PACKA = MYS. Packa
+//  vychylena = kurzor jede rychlosti podle vychylky (krivka na druhou -
+//  kousek od stredu jemne, naplno ~1 sirka obrazu za sekundu; nap_ovladac.h
+//  packaRychlost). Prava packa vzdy, kdyz je mys zapnuta; s mysi samotnou
+//  v portu 1 (Dune 2000) i leva (ovladac neni zapojeny, jeho smer by jinak
+//  jen pomalu posouval kurzor) - plati ta, ktera je vic vychylena.
+//
 //  Vsechno cisty C++, bez Androidu - testuje se na PC (test_overeni/b318).
 //
 //  Vlakna: dotyk() / pcMys() / nastav() vola Java (vlakno mostu WebView,
@@ -77,6 +84,7 @@
 #include <mutex>
 #include <string>
 #include <vector>
+#include "nap_ovladac.h"   // B320: packaRychlost (analogova packa jako mys)
 
 namespace nap {
 
@@ -320,6 +328,15 @@ class Ps1Mys {
   }
 
   // ----------------------------------------------------------------
+  //  B320: packy herniho ovladace (po mrtve zone, -1..1; Java -> nap_ovladac.h).
+  //  Plati, dokud neprijde dalsi zmena - kurzor jede kazdy snimek (snimek()).
+  // ----------------------------------------------------------------
+  void packy(float lx, float ly, float rx, float ry) {
+    std::lock_guard<std::mutex> l(m_);
+    packaLX_ = lx; packaLY_ = ly; packaPX_ = rx; packaPY_ = ry;
+  }
+
+  // ----------------------------------------------------------------
   //  kazdy krok emulace pred retro_run: co jadro uvidi v tomhle snimku.
   //  padBity = tlacitka ovladace (dotyk, herni ovladac, klavesnice TV)
   // ----------------------------------------------------------------
@@ -347,6 +364,18 @@ class Ps1Mys {
       okno_.snimkuSmer++;
     } else {
       smerOd_ = -1;
+    }
+    // B320: analogova packa herniho ovladace - rychlost podle vychylky. Prava vzdy, s mysi
+    // samotnou v portu 1 i leva (ovladac neni zapojeny) - ta, ktera je vic vychylena.
+    {
+      float px = packaPX_, py = packaPY_;
+      if (rezim_ == PORT1 && std::hypot(packaLX_, packaLY_) > std::hypot(px, py)) { px = packaLX_; py = packaLY_; }
+      const float m = std::hypot(px, py);
+      if (m > 1e-4f) {
+        const float v = ovladac::packaRychlost(m, citlivost_);
+        pridej_(px / m * v, py / m * v);
+        okno_.snimkuPacka++;
+      }
     }
     // B318: co prislo od minuleho snimku, rozlozit rovnomerne do N snimku (N = jak casto hra kresli)
     const int n = vyhlazeniN_();
@@ -547,10 +576,10 @@ class Ps1Mys {
     else std::snprintf(hra, sizeof(hra), "hra nekresli nic noveho");
     char b[640];
     std::snprintf(b, sizeof(b), "mys %s, citlivost %d %%, zrychleni %s, vyhlazeni %d snimky (%s): dotyku %d (tuknuti %d, %s, drzeni L %d), "
-                  "posun %ld / %ld bodu (oriznuto snimku %d), klik L %d P %d, snimku s L %d P %d, smerem %d, z PC zprav %d (zmen tlacitek %d)",
+                  "posun %ld / %ld bodu (oriznuto snimku %d), klik L %d P %d, snimku s L %d P %d, smerem %d, packou %d, z PC zprav %d (zmen tlacitek %d)",
                   rezim_ == VYP ? "vypnuta" : (rezim_ == PORT2_OVL1 ? "v portu 2" : "v portu 1"), citlivost_, zr, vyhlazeniN_(), hra,
                   okno_.dotyku, okno_.tuknuti, tahy, okno_.drzeni, okno_.bodyX, okno_.bodyY, okno_.oriznuto, okno_.klikL, okno_.klikP,
-                  okno_.snimkuL, okno_.snimkuP, okno_.snimkuSmer, okno_.pcZprav, okno_.pcTlacitek);
+                  okno_.snimkuL, okno_.snimkuP, okno_.snimkuSmer, okno_.snimkuPacka, okno_.pcZprav, okno_.pcTlacitek);
     okno_ = Okno();
     return b;
   }
@@ -570,11 +599,12 @@ class Ps1Mys {
   struct Zaznam { std::string klic; int rezim; int citlivost; int zrychleni; };
   struct Okno {
     int dotyku = 0, tuknuti = 0, tahu = 0, klikL = 0, klikP = 0, drzeni = 0, drzeniKonec = 0, snimkuL = 0, snimkuP = 0, snimkuSmer = 0;
+    int snimkuPacka = 0;   // B320: snimku, kdy kurzor jel analogovou packou ovladace
     int pcZprav = 0, pcTlacitek = 0, oriznuto = 0, snimku = 0, obrazu = 0;
     long bodyX = 0, bodyY = 0;
     long long tahMs = 0;
     double gMin = 1e9, gMax = 0;
-    bool prazdne() const { return !dotyku && !klikL && !klikP && !drzeni && !pcZprav && !bodyX && !bodyY && !snimkuL && !snimkuP && !snimkuSmer; }
+    bool prazdne() const { return !dotyku && !klikL && !klikP && !drzeni && !pcZprav && !bodyX && !bodyY && !snimkuL && !snimkuP && !snimkuSmer && !snimkuPacka; }
   };
   static const int MAXP = 4;
 
@@ -600,6 +630,7 @@ class Ps1Mys {
   int pcTlac_ = 0;
   long long pcCas_ = 0;
   long long smerOd_ = -1;   // od kdy je drzen smer (zrychleni), -1 = nedrzi
+  float packaLX_ = 0, packaLY_ = 0, packaPX_ = 0, packaPY_ = 0;   // B320: packy ovladace (po mrtve zone)
   // jak casto hra kresli: perioda_ = snimku mezi obrazy (vyhlazena), odObrazu_ = snimku od posledniho,
   // vyhlN_ = do kolika snimku se posun rozklada (vynuceno_ > 0 jen v testech)
   double perioda_ = 1.0;

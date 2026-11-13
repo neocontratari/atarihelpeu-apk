@@ -27,10 +27,13 @@
         android:requestLegacyExternalStorage="true"
         android:theme="@android:style/Theme.NoTitleBar">
 
+        <!-- B320: herni ovladac (Retroid Pocket 6, Bluetooth / USB gamepad) - pripojeni nebo odpojeni
+             ovladace meni konfiguraci (keyboard, navigation), Retroid i velikost / rezim displeje.
+             Bez tohohle by Android aktivitu zrusil a vytvoril znovu = rozehrana hra by skoncila. -->
         <activity
             android:name="eu.atarihelp.emu10.MainActivity"
             android:exported="true"
-            android:configChanges="orientation|screenSize|keyboardHidden|screenLayout">
+            android:configChanges="orientation|screenSize|keyboardHidden|screenLayout|keyboard|navigation|smallestScreenSize|uiMode">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
