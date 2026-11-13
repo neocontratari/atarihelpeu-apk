@@ -1,0 +1,7 @@
+B320 - regrese: kodeky a Hub proudu (B305 / B313), PS1 (B308, JVM, JNI, javac), mys B318, stranka WEB TV starsich testu se strankou B320, testy B319 na kodu B320
+OK     B305 kodeky (Sega indexy bez ztraty, PS1 JPEG po castech: PSNR, stojici obraz, kvalita podle site, rozmery) s hlavickami B320  -- VYSLEDEK: 35 kontrol, 0 chyb
+OK     B305 rozbocovac ve vlaknech (jadro 60 / s, zvuk, rychly a pomaly prohlizec) s hlavickami B320  -- VYSLEDEK: 16 kontrol, 0 chyb
+OK     B305 koder JPEG na vic jadrech (pasy 1 / 2 / 3, bajt po bajtu stejne) s B320 (barvy 4:4:4 volitelne)  -- VYSLEDEK: OK
+OK     B305 koder JPEG na vic jadrech pod ThreadSanitizerem  -- hlaseni ThreadSanitizer: 0, VYSLEDEK: OK
+OK     B313 kodek hlavniho menu na TV (vic obdelniku, zjemneni za pohybu, glReadPixels) s hlavickami B320  -- VYSLEDEK: 11 OK, 0 CHYBA
+OK     preklad ps1_harness.cpp (B308) s nap_ps1_native.cpp B320, -Wl,--no-undefined  -- varovani: 0, chyb: 0

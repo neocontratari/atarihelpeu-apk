@@ -1,0 +1,36 @@
+B320 - PS1 na TV / PC: posun obrazu a polovicni rozliseni i s ditheringem PS1 (Dune 2000)
+       (Hub + KodekJpeg z appky, prohlizec v C++ podle stranky WEB TV B319 - stranka se nemeni)
+
+   A) Dune s ditheringem 736x480 (2x), 220 obrazu hry:
+      doprava 1 bod    kopie: B319  0 z 29, B320 29 z 29   (jina faze ditheringu)
+      dolu 1           kopie: B319  0 z 29, B320 29 z 29   (jina faze ditheringu)
+      sikmo 1,1        kopie: B319 21 z 24, B320 24 z 24
+      doleva 3         kopie: B319  0 z 24, B320 24 z 24   (jina faze ditheringu)
+      nahoru 2         kopie: B319 23 z 24, B320 24 z 24
+      sikmo 3,-1       kopie: B319 24 z 24, B320 24 z 24
+      doprava 4        kopie: B319 24 z 24, B320 24 z 24
+      posun mapy: drive 59.1 kB/obraz, B319 45.3 kB, B320 6.8 kB (12 % drivejska)
+      pri 20 obrazech / s: drive 9.69 Mbit/s, B319 7.41 Mbit/s, B320 1.12 Mbit/s
+      mapa stoji: drive 27.4 kB, B319 7.5 kB, B320 5.8 kB
+      vernost PSNR prumer / nejhur / nejhorsi ctverec: drive 30.58 / 29.90 / 14.2, B319 30.60 / 29.92 / 14.2, B320 30.58 / 30.16 / 10.5
+      polovicni rozliseni: B319 24 z 574 casti, B320 1208 z 1208
+      kodovani pri posunu: drive 3.13 ms, B319 2.81 ms, B320 2.15 ms (nejdele 9.9 ms)
+   log: B306 TV PROUD PS1: prohlizec 1 pripojen (celkem 1) - obraz a zvuk primo z C++ (JPEG po castech), kazdy snimek, zvuk 44100 Hz v tomtez paketu | B319: B320 tolerance ditheringu
+   log: B306 TV PROUD PS1: prohlizec 1 odpojen po 6 s - 240 paketu (40.9/s), 1.5 MB celkem, JPEG kvalita 76 (max 76, snizeno 0x), kodovani prumer 0.2 ms max 4.9 ms (pasu 1), castecnych 1206, zjemneni 1, beze zmeny 19 z 240, B313: obdelniku 1208 (snimku s vic castmi 219), zjemneni za pohybu 0, B319: posun obrazu 185 x (zkouseno 185, ctvercu 16x16 zkopirovano 192781), casti v polovicnim rozliseni 1208 z 1208, B320: tolerance ditheringu 10 - posunu nalezenych jen s toleranci 1 (hledano 1 x, malo hlasu 0, neovereno 0), shodnych jen s toleranci: ctvercu 100079, casti v polovicnim 1184, po zastaveni zpresneno ctvercu 71, skupin L rozdeleno 79, zvuk preskoku 0, paketu jen se zvukem 0 (zbyva 0)
+OK     A0) vsechny pakety jdou rozebrat jako ve strance B319 (B320 1412 paketu)
+OK     A1) chyba z logu B319 zopakovana: pri jine fazi ditheringu najde presne porovnani kopii jen v 0 z 82 obrazu posunu
+OK     A2) B320 (tolerance ditheringu) najde posun v 178 z 178 obrazu, v kazde fazi aspon 100 % - i liche posuny
+OK     A3) obraz v prohlizeci = snimek po kazdem paketu: nejhorsi ctverec 10.5 (drive 14.2), PSNR prumer 30.58 dB (drive 30.58), nejhur 30.16 (drive 29.90)
+OK     A4) dat pri posunu mapy: B320 11 % drivejska (<= 40 %), 15 % B319 (<= 60 %)
+OK     A5) 2x obraz s ditheringem v polovicnim rozliseni: 1208 z 1208 casti (B319 24 z 574)
+OK     A6) po zastaveni se obraz zjemni jako drive: 36.96 dB (drive 37.53), nejhorsi ctverec 3.5 (drive 3.5) - i kusy z kopie s toleranci
+OK     A7) log Hubu: "B320: tolerance ditheringu 10 - posunu nalezenych jen s toleranci ..., shodnych jen s toleranci: ctvercu ..."
+   B) 3D s ditheringem 640x480: drive 114.7 kB, B320 114.7 kB; kopii 0, polovicnich 0; PSNR 22.09 / 22.09 dB; kodovani 3.64 / 4.14 ms
+OK     B8) 3D hra s ditheringem: zadna kopie, zadne polovicni rozliseni, data a vernost jako drive
+OK     B9) 3D hra: kodovani skoro stejne rychle: 4.14 ms (drive 3.64 ms)
+   C) umela Dune BEZ ditheringu (B319): 160 paketu, lisi se 42 (bez sikmeho posunu 117 z 120 stejnych); kopii B319 119, B320 119; dat B319 12.1 kB, B320 5.3 kB; nejhorsi ctverec 10.1 / 10.1
+OK     C10) hra bez ditheringu: posun jako B319 (kopii 119), rovny posun skoro vzdy bajt po bajtu stejne (117 z 120), sikmy mene dat: celkem 43 % B319, vernost stejna
+   D) Dune s ditheringem 368x240 (bez Enhanced Resolution): kopie B319 0 z 144, B320 144 z 144; dat drive 29.8 kB, B320 9.0 kB; nejhorsi ctverec 14.1 (drive 13.7)
+OK     D11) puvodni rozliseni s ditheringem: posun v 144 z 144 obrazu (B319 0), dat 30 % drivejska, nejhorsi ctverec 14.1 (drive 13.7)
+
+VYSLEDEK: 12 OK, 0 CHYBA

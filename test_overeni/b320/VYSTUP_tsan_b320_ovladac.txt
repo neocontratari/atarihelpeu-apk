@@ -1,0 +1,5 @@
+OK      jadro nastartovalo hru mys_test.exe (ps1EglBoot = 1)
+OK      mys vypnuta: v portu 1 standardni ovladac (ID 41), nic stisknuto
+OK      TSan: 4 s udalosti ovladace z vlakna UI soubezne s emulaci, po pusteni nic nedrzi
+VYSLEDEK: 3 OK, 0 CHYBA
+hlaseni ThreadSanitizer: 0

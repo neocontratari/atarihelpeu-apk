@@ -1,0 +1,22 @@
+B320 - herni ovladac v JVM: NapOvladac (ciste casti) + NativePs1CoreBridge se skutecnym nap_ps1_native.cpp
+OK     A1) herni tlacitka: BUTTON_A .. MODE, BUTTON_1 .. 16; ZPET, Enter a sipky ne
+OK     A2) udalost z ovladace: herni tlacitko vzdy; sipka jen ze zdroje GAMEPAD / JOYSTICK nebo ze zarizeni, ktere je ovladac (sipky klavesnice jdou jako drive); Enter ne
+OK     A3) herni ovladac: GAMEPAD / JOYSTICK s tlacitky A a B (nebo packa + A); virtualni, klavesnice a "gamepad" telefonu bez tlacitek NE (dotyk zustava)
+OK     A4) Xbox / 8BitDo: prava packa Z/RZ, spouste LTRIGGER+BRAKE / RTRIGGER+GAS, krizek HAT - leva packa X/Y, krizek HAT, prava packa Z/RZ, spoust L2 LTRIGGER+BRAKE, R2 RTRIGGER+GAS
+OK     A5) DualShock 4: prava packa Z/RZ (RX/RY jsou tam taky - prednost ma Z/RZ), spouste LTRIGGER / RTRIGGER - leva packa X/Y, krizek HAT, prava packa Z/RZ, spoust L2 LTRIGGER, R2 RTRIGGER
+OK     A6) ovladac s pravou packou na RX/RY a spoustemi na Z/RZ (0..1): spravne rozpoznano - leva packa X/Y, krizek HAT, prava packa RX/RY, spoust L2 Z, R2 RZ
+OK     A7) jednoduchy ovladac (jen leva packa, tlacitka): maska jen leva packa - leva packa X/Y, krizek klavesy, prava packa ne, spoust L2 ne (jen tlacitko), R2 ne (jen tlacitko)
+OK     A8) osy -> 8 cisel pro C++: packy, spoust BRAKE v klidu (-1) = 0, GAS 0,6; maska 14
+OK     A9) spoust BRAKE naplno = 1; pohyb() = zamerny pohyb (packa / spoust pres polovinu), klid ne
+OK     A10) AUTOMATICKY: ovladac hraje -> schovano; dalsi stisk nic nemeni; dotyk na misto tlacitka -> videt; dalsi stisk -> zase schovano; odpojen -> videt
+OK     A11) OPTIONS: VZDY DOTYK = videt i kdyz ovladac hraje; SKRYT DOTYK = schovano vzdy (dotyk nic); AUTOMATICKY s pripojenym ovladacem = schovano, bez = videt; nesmysl = AUTOMATICKY
+OK     A12) texty do logu: rezimy, zdroje (GAMEPAD JOYSTICK (0x01000411)), osy
+OK     B1) knihovna napps1core nactena skutecnou tridou NativePs1CoreBridge
+OK     B2) native metod ve tride: 32 (29 z B319 + ps1OvladacKlavesa / ps1OvladacOsy / ps1OvladacPust B320)
+OK     B3) podpisy: int ps1OvladacKlavesa(int, boolean), void ps1OvladacOsy(float[], int), void ps1OvladacPust() - private static native
+OK     B4) bootGameSafe -> PS1_HRA_OK
+OK     B5) ovladacKlavesaSafe za behu hry: A -> 1 (T_A), B -> 2 (T_B), ZPET -> 0; ovladacOsySafe (i kratke pole a null) a ovladacPustSafe bez chyby JNI
+OK     B6) denik PS1: "OVLADAC: klavesa 96 dolu -> A(spodni) -> PS1 KRIZEK"
+OK     C1) most Atari bez knihovny: devOvladac*Safe vraci 0 a nespadne
+OK     C2) most Segy bez knihovny: trida se nenacte (System.loadLibrary bez try) - proto ji MainActivity vola jen v Seze a pri odpojeni ovladace jen kdyz Sega ovladac dostala (ovlPouzitSega); ExceptionInInitializerError zachycena
+VYSLEDEK: 20 OK, 0 chyb

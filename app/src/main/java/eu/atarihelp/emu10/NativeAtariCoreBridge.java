@@ -120,11 +120,9 @@ public final class NativeAtariCoreBridge {
     // B297: ovladani na sirku (D-pad a tlacitka jako u Segy): "get", "set:<nastaveni>",
     //  "edit", "mirror", "reset", "done", "stav" -> vraci nastaveni (pro SharedPreferences)
     private static native String  devCtlNative(String prikaz);
-    // B320: herni ovladac (Retroid Pocket 6, Bluetooth / USB gamepad) - Java jen pozna ovladac,
-    //  co tlacitko udela, rozhoduje C++ (nap_ovladac.h atariBity: spodni / prave / L1 / R1 = FIRE,
-    //  leve = MEZERA, horni = RETURN, START, SELECT, L2 / R2 / MODE = OPTION; krizek a packa = smer).
-    //  Klavesa (KeyEvent.KEYCODE_*): vraci logicka tlacitka, 0 = neni klavesa ovladace.
-    //  Osy: leva packa x y, prava x y, krizek HAT x y, spoust L2 R2; maska = co ovladac ma.
+    // B320: herni ovladac (Retroid Pocket 6, gamepad) - co tlacitko udela, rozhoduje C++ (nap_ovladac.h
+    //  atariBity). Klavesa (KeyEvent.KEYCODE_*) vraci logicka tlacitka, 0 = neni klavesa ovladace;
+    //  osy: leva packa x y, prava x y, krizek HAT x y, spoust L2 R2; maska = co ovladac ma.
     private static native int     devOvladacKlavesaNative(int keyCode, boolean dolu);
     private static native void    devOvladacOsyNative(float[] osy, int maska);
     private static native void    devOvladacPustNative();

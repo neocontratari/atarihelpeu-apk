@@ -1,0 +1,69 @@
+2026-11-13 15:42:02.081  PS1 JADRO: Starting PCSX-ReARMed r26-nap-sa1 (cc 13.3.0 64bit pic ssse3 gpu=BUILTIN_GPU)
+2026-11-13 15:42:02.081  PS1 JADRO: build time: Nov 13 2026 15:33:45
+2026-11-13 15:42:02.081  PS1 JADRO: 2 cpu core(s) detected
+2026-11-13 15:42:02.083  PS1 JADRO: No BIOS files found.
+2026-11-13 15:42:02.083  PS1 JADRO: Using PIXEL_FORMAT 2
+2026-11-13 15:42:02.083  PS1 JADRO: plugin: /builtin_gpu
+2026-11-13 15:42:02.083  PS1 JADRO: plugin: /builtin_spu
+2026-11-13 15:42:02.083  PS1 JADRO: Plugins loaded.
+2026-11-13 15:42:02.083  PS1 JADRO: Loaded CD Image: PRAC/mapa_dune.exe (4696 bytes).
+2026-11-13 15:42:02.083  PS1 JADRO: Track 01 DATA  - Start 00:02:00, Length 00:00:01
+2026-11-13 15:42:02.083  PS1 JADRO: End 00:02:01 (sector 151)
+2026-11-13 15:42:02.083  PS1 JADRO: memcard 1 is libretro-managed
+2026-11-13 15:42:02.083  PS1 JADRO: memcard 2 is libretro-managed
+2026-11-13 15:42:02.084  PS1 JADRO: HLE BIOS initialized.
+2026-11-13 15:42:02.084  PS1 JADRO: note: running with HLE BIOS, expect compatibility problems
+2026-11-13 15:42:02.084  PS1 JADRO: ----------------------------------------------------------
+2026-11-13 15:42:02.084  PS1 PAMETOVA KARTA nova (soubor zatim neni): PRAC/karta_b320/memory_card_1.srm, 131072 B prazdna
+2026-11-13 15:42:02.085  PS1 MYS: hra mapa_dune.exe - vypnuta, ovladac v portu 1 (zapne se tlacitkem MYS na sirku)
+B320 - PS1 na TV / PC se SKUTECNYM vykreslovacem: jadro PCSX-ReARMed + gpu_neon z appky (2x Enhanced Resolution),
+       nap_ps1_native.cpp (volby jadra jako telefon), hra mapa_dune.exe (Dune jako 2D strategie, 20 obrazu / s)
+OK     jadro nastartovalo hru mapa_dune.exe (ps1EglBoot = 1, vykreslovac: gpu_neon pres nap_most.c jako v telefonu)
+OK     hra bezi (po 2 snimcich jadra), kresli: 11 obrazu za 30 snimku (20 / s)
+OK     obraz z jadra 736x480 = 368x240 hry ve 2x Enhanced Resolution (jako Dune 2000 v logu B318 / B319)
+   (vykreslovac: obraz 368x240 (viditelne 368x240), 15 bit, NTSC, prokladani NE, z VRAM x=0 y=0 | 2x ANO; dithering jadra: ZAPNUTO)
+   == rezim 0: mapa jako POLYGONY s texturou, modulaci a DITHERINGEM (E1 bit 9) ==
+      doprava 1 bod  kopie: B319  0 z 19, B320 19 z 19   (jina faze ditheringu)
+      dolu 1         kopie: B319  0 z 19, B320 19 z 19   (jina faze ditheringu)
+      sikmo 1,1      kopie: B319  8 z 14, B320 14 z 14
+      doleva 3       kopie: B319  0 z 14, B320 14 z 14   (jina faze ditheringu)
+      nahoru 2       kopie: B319 14 z 14, B320 14 z 14
+      sikmo 3,-1     kopie: B319 14 z 14, B320 14 z 14
+      doprava 4      kopie: B319 14 z 14, B320 14 z 14
+      skutecny obraz (vyhled na mapu 592x480): bloku 2x2 se 4 stejnymi body 1.5 %, lisicich se nejvys o 1 odstin 10.3 %, s mrizkou posunutou o bod 89.0 %
+      obraz po posunu = minuly obraz posunuty: pri stejne fazi ditheringu presne 99.5 % bodu (do 1 odstinu 99.5 %), pri jine fazi presne 63.6 % (do 1 odstinu 99.3 %)
+      drive pri posunu mapy:  76.2 kB / obraz hry (12.48 Mbit/s pri 20 obrazech / s), kopie v 0 obrazech, PSNR prumer 30.13 nejhur 29.98 dB, nejhorsi ctverec 16.5
+      B319  pri posunu mapy:  59.6 kB / obraz hry (9.77 Mbit/s pri 20 obrazech / s), kopie v 50 obrazech, PSNR prumer 30.15 nejhur 29.99 dB, nejhorsi ctverec 16.6
+      B320  pri posunu mapy:  13.3 kB / obraz hry (2.18 Mbit/s pri 20 obrazech / s), kopie v 108 obrazech, PSNR prumer 30.19 nejhur 30.06 dB, nejhorsi ctverec 16.6
+      polovicni rozliseni: B319 29 z 322 casti, B320 19 z 734; po zastaveni PSNR: drive 37.06, B319 37.06, B320 37.06 dB
+      log B320: B306 TV PROUD PS1: prohlizec 1 pripojen (celkem 1) - obraz a zvuk primo z C++ (JPEG po castech), kazdy snimek, zvuk 44100 Hz v tomtez paketu | B319: B320 jako appka
+      log B320: B306 TV PROUD PS1: prohlizec 1 odpojen po 5 s - 437 paketu (84.8/s), 1.9 MB celkem, JPEG kvalita 76 (max 76, snizeno 0x), kodovani prumer 0.6 ms max 9.7 ms (pasu 2), castecnych 732, zjemneni 1, beze zmeny 310 z 437, B313: obdelniku 734 (snimku s vic castmi 125), zjemneni za pohybu 0, B319: posun obrazu 115 x (zkouseno 115, ctvercu 16x16 zkopirovano 117956), casti v polovicnim rozliseni 19 z 734, B320: tolerance ditheringu 10 - posunu nalezenych jen s toleranci 2 (hledano 2 x, malo hlasu 0, neovereno 0), shodnych jen s toleranci: ctvercu 68593, casti v polovicnim 0, po zastaveni zpresneno ctvercu 400, skupin L rozdeleno 69, zvuk preskoku 0, paketu jen se zvukem 0 (zbyva 0)
+   == rezim 1: mapa jako SPRITY (obdelniky s texturou - PS1 je neditheruje) ==
+      doprava 1 bod  kopie: B319 19 z 19, B320 19 z 19   (jina faze ditheringu)
+      dolu 1         kopie: B319 19 z 19, B320 19 z 19   (jina faze ditheringu)
+      sikmo 1,1      kopie: B319 14 z 14, B320 14 z 14
+      doleva 3       kopie: B319 14 z 14, B320 14 z 14   (jina faze ditheringu)
+      nahoru 2       kopie: B319 14 z 14, B320 14 z 14
+      sikmo 3,-1     kopie: B319 14 z 14, B320 14 z 14
+      doprava 4      kopie: B319 14 z 14, B320 14 z 14
+      skutecny obraz (vyhled na mapu 592x480): bloku 2x2 se 4 stejnymi body 100.0 %, lisicich se nejvys o 1 odstin 100.0 %, s mrizkou posunutou o bod 5.9 %
+      obraz po posunu = minuly obraz posunuty: pri stejne fazi ditheringu presne 99.4 % bodu (do 1 odstinu 99.4 %), pri jine fazi presne 99.5 % (do 1 odstinu 99.5 %)
+      drive pri posunu mapy:  78.8 kB / obraz hry (12.92 Mbit/s pri 20 obrazech / s), kopie v 0 obrazech, PSNR prumer 30.53 nejhur 30.39 dB, nejhorsi ctverec 17.1
+      B319  pri posunu mapy:  16.6 kB / obraz hry (2.73 Mbit/s pri 20 obrazech / s), kopie v 108 obrazech, PSNR prumer 31.20 nejhur 31.00 dB, nejhorsi ctverec 9.9
+      B320  pri posunu mapy:   7.8 kB / obraz hry (1.28 Mbit/s pri 20 obrazech / s), kopie v 108 obrazech, PSNR prumer 31.26 nejhur 31.10 dB, nejhorsi ctverec 9.9
+      polovicni rozliseni: B319 578 z 578 casti, B320 729 z 729; po zastaveni PSNR: drive 39.15, B319 41.69, B320 41.69 dB
+      log B320: B306 TV PROUD PS1: prohlizec 1 pripojen (celkem 1) - obraz a zvuk primo z C++ (JPEG po castech), kazdy snimek, zvuk 44100 Hz v tomtez paketu | B319: B320 jako appka
+      log B320: B306 TV PROUD PS1: prohlizec 1 odpojen po 4 s - 438 paketu (102.3/s), 1.1 MB celkem, JPEG kvalita 76 (max 76, snizeno 0x), kodovani prumer 0.2 ms max 3.2 ms (pasu 1), castecnych 727, zjemneni 1, beze zmeny 311 z 438, B313: obdelniku 729 (snimku s vic castmi 125), zjemneni za pohybu 0, B319: posun obrazu 115 x (zkouseno 115, ctvercu 16x16 zkopirovano 119717), casti v polovicnim rozliseni 729 z 729, B320: tolerance ditheringu 10 - posunu nalezenych jen s toleranci 0 (hledano 0 x, malo hlasu 0, neovereno 0), shodnych jen s toleranci: ctvercu 0, casti v polovicnim 0, po zastaveni zpresneno ctvercu 0, skupin L rozdeleno 62, zvuk preskoku 0, paketu jen se zvukem 0 (zbyva 0)
+OK     R1) sprity (bez ditheringu) ve 2x: 100.0 % bloku 2x2 ma 4 stejne body - presne 2x zvetseny obraz (B319 polovicni rozliseni plati)
+OK     R2) polygony s texturou ve 2x: jen 1.5 % bloku 2x2 ma 4 stejne body (do 1 odstinu 10.3 %) - body textury jsou ve 2x obrazu posunute o bod (mrizka 2x2 od (1,1): 89.0 % do 1 odstinu) a lisi se ditheringem; polovicni rozliseni tu (B319 i B320) nejde - proto v logu B319 jen 304 z 1137 casti
+OK     R3) dithering je pevne na obrazovce: po posunu mapy o lichy pocet bodu hry je presne stejnych jen 63.6 % bodu (kopie B319 potrebuje cele ctverce 16x16 presne), do 1 odstinu 99.3 %; pri stejne fazi 99.5 % presne
+OK     R4) sprity: obraz po posunu = minuly posunuty presne (99.5 / 99.4 % bodu)
+OK     K1) chyba z logu B319 na skutecnem vykreslovaci: presne porovnani pri jine fazi ditheringu najde kopii jen v 0 z 55 obrazu
+OK     K2) B320 na polygonech s ditheringem najde posun v 108 obrazech posunu (z 108 hodnocenych), v kazde fazi aspon 100 %
+OK     K3) dat pri posunu mapy (dithering): B320 17 % drivejska, B319 78 %
+OK     K4) obraz v prohlizeci jako drive: nejhorsi ctverec 16.6 (drive 16.5), PSNR nejhur 30.06 dB (drive 29.98)
+OK     K5) polovicni rozliseni: sprity 729 z 729 casti; polygony jen 19 z 734 (tam, kde to opravdu sedi - obraz spravne, K4)
+OK     K6) po zastaveni se obraz zjemni jako drive: dithering 37.06 dB (drive 37.06), sprity 41.69 dB (drive 39.15)
+OK     K7) sprity bez ditheringu: B319 i B320 posun najdou (108 / 108), B320 dat 47 % B319
+OK     K8) vsechny pakety vsech tri kodeku jdou rozebrat jako ve strance B319
+VYSLEDEK: 15 OK, 0 CHYBA
