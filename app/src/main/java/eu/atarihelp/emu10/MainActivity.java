@@ -63,7 +63,9 @@ import android.webkit.WebViewClient;
 import android.webkit.WebResourceRequest;
 import android.webkit.WebResourceError;
 import android.webkit.WebResourceResponse;
+import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
+import java.io.FileInputStream;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.InputStream;
@@ -7783,6 +7785,8 @@ public class MainActivity extends Activity {
         if (c == null) return;
         try { c.setConnectTimeout(20000); } catch (Throwable ignored) {}
         try { c.setReadTimeout(45000); } catch (Throwable ignored) {}
+        // B321: server her N&P - kazdy dotaz podepsany tokenem telefonu (bez nej server nic neda)
+        if (napServer != null && napServer.jeNasUrl(url)) { napServer.podepis(c); return; }
         // B298: Rene "nahravani z netu nekdy jde a nekdy ne" - v logu
         // "Trust anchor for certification path not found" jen obcas (WEDOS ochrana,
         // 2 IP). Kdyz server neposle mezilehly certifikat, dohleda se jako v
@@ -7885,7 +7889,7 @@ public class MainActivity extends Activity {
         configureGameHttpConnection(c, url);
         c.connect();
         int code = c.getResponseCode();
-        if (code < 200 || code >= 400) throw new IOException("HTTP " + code + " " + c.getResponseMessage());
+        if (code < 200 || code >= 400) throw napChybaStahovani(c, url, code);   // B321: srozumitelne pro server N&P
         FetchResult out = new FetchResult();
         out.data = readStreamLimited(c.getInputStream(), maxBytes);
         out.contentType = c.getContentType();
@@ -8467,6 +8471,13 @@ public class MainActivity extends Activity {
                 if ("nastaveni".equals(a) || "options".equals(a)) menuOtevriOptions();
                 else if ("intro".equals(a)) { menuSkryj("intro z karty"); if (!demoSpust("karta menu")) menuUkaz("intro nejde"); }
                 else appendNativeLog("B311 MENU karta " + id + ": neznama akce " + a);
+                return;
+            }
+            // B321: web atarihelp.eu jen v prohlizeci telefonu (WEDOS appku v okne odmita - 503).
+            // Hry jsou ze serveru N&P primo v emulatorech.
+            if ((cil.startsWith("http://") || cil.startsWith("https://")) && isProviderBlockedUrl(cil)) {
+                NativeMenuBridge.ukazSafe(0);
+                napOtevriVProhlizeci(cil, "karta menu " + id);
                 return;
             }
             menuSkryj("karta " + id);
@@ -10540,22 +10551,384 @@ public class MainActivity extends Activity {
     // puvodnim JPEG preview (viz orientation guard v emu_ps1/index.html),
     // beze zmeny chovani/rizika.
 
+    // ===================================================================================
+    //  B321: SERVER HER N&P (Reneho PC) - aktivace telefonu, knihovna her, podepsane stahovani
+    // ===================================================================================
+    private static final String NAP_HRY_URL = "file:///android_asset/hry/index.html";
+    private static final String NAP_AKTIVACE_URL = "file:///android_asset/hry/aktivace.html";
+    private NapServerKlient napServer;
+    private volatile String napAktualniUrl = "";
+    private volatile String napTajemstviApk = null;
+    private long napStavCas = 0;
+    private String napPosledniZprava = "";
+    private int napNabidnutaVerze = 0;
+
+    private void napServerInit() {
+        try {
+            final android.content.SharedPreferences sp = getSharedPreferences("nap_server", MODE_PRIVATE);
+            NapServerKlient.Uloziste u = new NapServerKlient.Uloziste() {
+                @Override public String cti(String k, String v) { return sp.getString(k, v); }
+                @Override public void zapis(String k, String v) {
+                    if (v == null) sp.edit().remove(k).commit(); else sp.edit().putString(k, v).commit();
+                }
+            };
+            String id = null;
+            try { id = android.provider.Settings.Secure.getString(getContentResolver(), android.provider.Settings.Secure.ANDROID_ID); } catch (Throwable ignored) {}
+            if (id == null || !id.matches("[0-9a-fA-F]{8,64}") || "9774d56d682e549c".equals(id)) {
+                // nektere telefony ANDROID_ID nemaji (nebo maji chybne stejne) - nahradni nahodne oznaceni
+                id = sp.getString("zarizeni_nahradni", null);
+                if (id == null) {
+                    byte[] b = new byte[8];
+                    new java.security.SecureRandom().nextBytes(b);
+                    StringBuilder h = new StringBuilder();
+                    for (byte x : b) h.append(String.format(Locale.US, "%02x", x & 0xFF));
+                    id = h.toString();
+                    sp.edit().putString("zarizeni_nahradni", id).commit();
+                }
+            }
+            String verze = "?";
+            try { verze = getPackageManager().getPackageInfo(getPackageName(), 0).versionName; } catch (Throwable ignored) {}
+            napServer = new NapServerKlient(u, id.toLowerCase(Locale.US), Build.MANUFACTURER + " " + Build.MODEL, Build.VERSION.RELEASE, verze);
+            napServer.nastavLog(this::appendNativeLog);
+            NapAktualizace.server = napServer;
+            appendNativeLog("B321 SERVER " + napServer.server() + " | " + (napServer.sparovano() ? "telefon sparovany, kod " + napServer.kodMaska()
+                    : "telefon NESPAROVANY") + (napServer.zablokovano() ? " | ZABLOKOVANY" : "")
+                    + " | klic v APK: " + (napApkTajemstvi().length() > 0 ? "ano" : "ne"));
+        } catch (Throwable t) {
+            appendNativeLog("B321 SERVER init chyba " + safeMsg(t));
+        }
+    }
+
+    /** Klic, ktery server vlozil do tohohle APK pri stazeni ("" = APK bez klice, napr. z GitHubu nebo z LAN). */
+    private String napApkTajemstvi() {
+        String t = napTajemstviApk;
+        if (t == null) {
+            t = "";
+            try {
+                String v = NapApkKlic.hodnoty(getApplicationInfo().sourceDir).get("tajemstvi");
+                if (v != null && v.matches("[0-9a-f]{32}")) t = v;
+            } catch (Throwable ignored) {}
+            napTajemstviApk = t;
+        }
+        return t;
+    }
+
+    /** Telefon neni sparovany nebo je zablokovany -> appka jen na strance aktivace. */
+    private boolean napZamceno() {
+        return napServer != null && (!napServer.sparovano() || napServer.zablokovano());
+    }
+
+    private boolean napZamekStranky(String url) {
+        if (url == null || !napZamceno() || !url.startsWith("file:///android_asset/")) return false;
+        return !url.startsWith(NAP_AKTIVACE_URL) && !url.startsWith("file:///android_asset/napoveda/");
+    }
+
+    private void napOtevriHry(String system) {
+        if (web == null) return;
+        String s = ("sega".equals(system) || "ps1".equals(system)) ? system : "atari";
+        appendNativeLog("B321 HRY otevrit " + s);
+        web.loadUrl(NAP_HRY_URL + "?system=" + s);
+    }
+
+    private void napOtevriVProhlizeci(String url, String proc) {
+        try {
+            Intent i = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
+            i.addCategory(Intent.CATEGORY_BROWSABLE);
+            i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            startActivity(i);
+            appendNativeLog("B321 WEB v prohlizeci " + compactUrl(url) + " (" + proc + ")");
+        } catch (Throwable t) {
+            appendNativeLog("B321 WEB prohlizec nejde otevrit: " + safeMsg(t));
+            android.widget.Toast.makeText(MainActivity.this, tx("Prohlížeč nejde otevřít: ", "Cannot open the browser: ") + url,
+                    android.widget.Toast.LENGTH_LONG).show();
+        }
+    }
+
+    private void napJs(final String js) {
+        ui.post(() -> { try { if (web != null) web.evaluateJavascript(js, null); } catch (Throwable ignored) {} });
+    }
+
+    /** Odpoved strance: JSON jako text, stranka si ho rozebere (JSON.parse) - ze serveru nic nejde rovnou do JS. */
+    private void napOdpovedStrance(String funkce, String json) {
+        napJs("window.napHry&&napHry." + funkce + "(JSON.parse(" + NapJson.uvoz(json) + "))");
+    }
+
+    /** Obal hry pro stranku N&P HRY: https://nap.hry/obal/<id> -> podepsany dotaz na server, mezipamet 7 dni. */
+    private WebResourceResponse napObal(String url) {
+        if (url == null || !url.startsWith("https://nap.hry/obal/")) return null;
+        String id = url.substring("https://nap.hry/obal/".length());
+        int q = id.indexOf('?');
+        if (q >= 0) id = id.substring(0, q);
+        if (!id.matches("(atari|sega|ps1)-[0-9a-f]{16}")) return napPrazdna(404);
+        try {
+            File dir = new File(getCacheDir(), "nap_obaly");
+            File data = new File(dir, id), typ = new File(dir, id + ".typ");
+            if (data.isFile() && typ.isFile() && System.currentTimeMillis() - data.lastModified() < 7L * 24 * 3600 * 1000) {
+                String mime = new String(napCtiSoubor(typ, 256), "UTF-8").trim();
+                return new WebResourceResponse(mime, null, new FileInputStream(data));
+            }
+            if (napServer == null || !napServer.sparovano()) return napPrazdna(404);
+            NapServerKlient.Odpoved o = napServer.get("/api/v1/obal?id=" + id);
+            String mime = o.typ == null ? "" : o.typ.split(";")[0].trim();
+            if (o.kod != 200 || o.data.length == 0 || !mime.startsWith("image/")) return napPrazdna(404);
+            if (dir.isDirectory() || dir.mkdirs()) {
+                FileOutputStream f = new FileOutputStream(data);
+                try { f.write(o.data); } finally { f.close(); }
+                FileOutputStream ft = new FileOutputStream(typ);
+                try { ft.write(mime.getBytes("UTF-8")); } finally { ft.close(); }
+            }
+            return new WebResourceResponse(mime, null, new ByteArrayInputStream(o.data));
+        } catch (Throwable t) {
+            return napPrazdna(404);
+        }
+    }
+
+    /** Cely maly soubor (java.nio.file az od Androidu 8 - appka bezi od 7). */
+    private static byte[] napCtiSoubor(File f, int max) throws IOException {
+        FileInputStream in = new FileInputStream(f);
+        try {
+            ByteArrayOutputStream b = new ByteArrayOutputStream();
+            byte[] buf = new byte[16384];
+            int n;
+            while ((n = in.read(buf)) > 0) {
+                if (b.size() + n > max) throw new IOException("soubor je moc velky: " + f.getName());
+                b.write(buf, 0, n);
+            }
+            return b.toByteArray();
+        } finally {
+            in.close();
+        }
+    }
+
+    private WebResourceResponse napPrazdna(int kod) {
+        if (Build.VERSION.SDK_INT >= 21) {
+            return new WebResourceResponse("text/plain", "utf-8", kod, "Not Found", new java.util.HashMap<String, String>(),
+                    new ByteArrayInputStream(new byte[0]));
+        }
+        return new WebResourceResponse("text/plain", "utf-8", new ByteArrayInputStream(new byte[0]));
+    }
+
+    /** Chyba HTTP pri stahovani: pro server N&P srozumitelne (a neplatny token appka zapomene). */
+    private IOException napChybaStahovani(HttpURLConnection c, String url, int code) {
+        String zprava = "";
+        try { zprava = c.getResponseMessage(); } catch (Throwable ignored) {}
+        if (napServer == null || !napServer.jeNasUrl(url)) return new IOException("HTTP " + code + " " + zprava);
+        String telo = "";
+        try {
+            InputStream e = c.getErrorStream();
+            if (e != null) telo = new String(readStreamLimited(e, 65536), "UTF-8");
+        } catch (Throwable ignored) {}
+        napServer.zpracujChybuStahovani(code, telo);
+        appendNativeLog("B321 STAHOVANI ze serveru N&P: HTTP " + code + " " + telo);
+        if (code == 401 || code == 403) {
+            ui.post(() -> { try { if (web != null && napZamceno()) web.loadUrl(NAP_AKTIVACE_URL); } catch (Throwable ignored) {} });
+        }
+        if (code == 401) return new IOException(tx("telefon není spárovaný se serverem N&P – zadej svůj kód",
+                "this phone is not paired with the N&P server – enter your code"));
+        if (code == 403) return new IOException(tx("telefon je na serveru N&P zablokovaný – napiš správci N&P",
+                "this phone is blocked on the N&P server – contact the N&P admin"));
+        if (code == 404) return new IOException(tx("hra už na serveru N&P není", "the game is no longer on the N&P server"));
+        return new IOException(tx("server N&P hlásí chybu ", "the N&P server reports error ") + code);
+    }
+
+    /** Kontrola u serveru: blokace, zprava pro vsechny, nova verze appky. Na pozadi; bez site appka jede dal. */
+    private void napOverStav(final String proc) {
+        if (napServer == null || !napServer.sparovano()) return;
+        napStavCas = android.os.SystemClock.uptimeMillis();
+        new Thread(() -> {
+            NapServerKlient.Odpoved o = napServer.get("/api/v1/stav");
+            if (o.kod == 0) { appendNativeLog("B321 STAV server nedostupny (" + proc + ") - appka jede dal"); return; }
+            if (napZamceno()) {
+                appendNativeLog("B321 STAV " + o.kod + " " + o.duvod() + " -> aktivace");
+                ui.post(() -> { try { if (web != null && napZamekStranky(web.getUrl())) web.loadUrl(NAP_AKTIVACE_URL); } catch (Throwable ignored) {} });
+                return;
+            }
+            if (!o.ok()) return;
+            final String zprava = NapJson.text(o.json, "zprava");
+            final int nova = (int) NapJson.cislo(o.json, "apk_verze", 0);
+            final String nazev = NapJson.text(o.json, "apk_nazev");
+            int moje = 0;
+            try { moje = getPackageManager().getPackageInfo(getPackageName(), 0).versionCode; } catch (Throwable ignored) {}
+            final int mojeF = moje;
+            appendNativeLog("B321 STAV ok (" + proc + "): na serveru appka " + (nova > 0 ? nazev + " (" + nova + ")" : "neznama verze")
+                    + ", tahle " + moje);
+            ui.post(() -> {
+                try {
+                    if (zprava.length() > 0 && !zprava.equals(napPosledniZprava)) {
+                        napPosledniZprava = zprava;
+                        android.widget.Toast.makeText(MainActivity.this, "N&P: " + zprava, android.widget.Toast.LENGTH_LONG).show();
+                    }
+                    if (nova > mojeF && nova != napNabidnutaVerze) {
+                        napNabidnutaVerze = nova;
+                        NapAktualizace.nabidniZeServeru(MainActivity.this, nova, nazev, mojeF, z -> appendNativeLog("B321 " + z));
+                    }
+                } catch (Throwable ignored) {}
+            });
+        }, "nap-stav").start();
+    }
+
+    /** Po uspesne aktivaci: intro (poprve) nebo rovnou menu - jako pri beznem startu. */
+    private void napPoAktivaci() {
+        if (web == null) return;
+        if (napZamceno()) { web.loadUrl(NAP_AKTIVACE_URL); return; }
+        final boolean demo = !napIntroUkazano && demoSpust("po aktivaci");
+        final String cil = (napIntroUkazano || demo) ? "file:///android_asset/index.html" : "file:///android_asset/intro/etapa1.html";
+        appendNativeLog("B321 AKTIVACE hotova -> " + cil);
+        applyWebViewVisualMode(cil, "poAktivaci");
+        web.loadUrl(cil);
+        napOverStav("aktivace");
+    }
+
+    @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        napInstalace(intent);
+    }
+
+    /** B321: vysledek instalace aktualizace (PackageInstaller): potvrzovaci okno Androidu musi otevrit appka sama. */
+    private void napInstalace(Intent i) {
+        if (i == null || !"eu.atarihelp.emu10.INSTALACE".equals(i.getAction())) return;
+        int st = i.getIntExtra(android.content.pm.PackageInstaller.EXTRA_STATUS, Integer.MIN_VALUE);
+        String zprava = i.getStringExtra(android.content.pm.PackageInstaller.EXTRA_STATUS_MESSAGE);
+        appendNativeLog("B321 INSTALACE stav=" + st + (zprava != null ? " " + zprava : ""));
+        if (st == android.content.pm.PackageInstaller.STATUS_PENDING_USER_ACTION) {
+            Intent potvrzeni = i.getParcelableExtra(Intent.EXTRA_INTENT);
+            if (potvrzeni != null) {
+                try {
+                    potvrzeni.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                    startActivity(potvrzeni);
+                } catch (Throwable t) {
+                    appendNativeLog("B321 INSTALACE potvrzeni nejde otevrit: " + safeMsg(t));
+                }
+            }
+        } else if (st != android.content.pm.PackageInstaller.STATUS_SUCCESS && st != Integer.MIN_VALUE) {
+            android.widget.Toast.makeText(MainActivity.this, tx("Aktualizace se nenainstalovala", "The update was not installed")
+                    + (zprava != null ? ": " + zprava : ""), android.widget.Toast.LENGTH_LONG).show();
+        }
+    }
+
+    /** B321: most pro stranky hry/aktivace.html a hry/index.html. Odpovida jen strankam z assets/hry. */
+    public class AHHry {
+        private boolean nase() {
+            String u = napAktualniUrl;
+            return napServer != null && u != null && u.startsWith("file:///android_asset/hry/");
+        }
+
+        @JavascriptInterface public String stav() {
+            if (!nase()) return "{}";
+            String verze = "";
+            try { verze = getPackageManager().getPackageInfo(getPackageName(), 0).versionName; } catch (Throwable ignored) {}
+            String z = napServer.zarizeni();
+            return "{\"sparovano\":" + napServer.sparovano() + ",\"zablokovano\":" + napServer.zablokovano()
+                    + ",\"server\":" + NapJson.uvoz(napServer.server()) + ",\"vychozi\":" + NapJson.uvoz(NapServerKlient.VYCHOZI_SERVER)
+                    + ",\"kod\":" + NapJson.uvoz(napServer.kodMaska()) + ",\"klic\":" + (napApkTajemstvi().length() > 0)
+                    + ",\"verze\":" + NapJson.uvoz(verze) + ",\"jazyk\":" + NapJson.uvoz(NapJazyk.kod(MainActivity.this))
+                    + ",\"telefon\":" + NapJson.uvoz(z.length() > 4 ? z.substring(z.length() - 4) : z) + "}";
+        }
+
+        /** Sparovat: prazdny kod = klic z APK. Vysledek prijde do napHry.aktivace({...}). */
+        @JavascriptInterface public void aktivuj(final String kod) {
+            if (!nase()) return;
+            final String k = kod == null ? "" : kod.trim();
+            new Thread(() -> {
+                NapServerKlient.Odpoved o = napServer.sparuj(k, k.isEmpty() ? napApkTajemstvi() : "");
+                boolean ok = o.kod == 200 && napServer.sparovano();
+                napOdpovedStrance("aktivace", "{\"ok\":" + ok + ",\"kod\":" + o.kod + ",\"duvod\":" + NapJson.uvoz(o.duvod())
+                        + ",\"zprava\":" + NapJson.uvoz(o.zprava()) + "}");
+            }, "nap-aktivace").start();
+        }
+
+        @JavascriptInterface public void pokracuj() {
+            if (nase()) ui.post(MainActivity.this::napPoAktivaci);
+        }
+
+        /** Znovu overit u serveru (napr. po odblokovani). Vysledek prijde do napHry.over({...}). */
+        @JavascriptInterface public void over() {
+            if (!nase()) return;
+            new Thread(() -> {
+                NapServerKlient.Odpoved o = napServer.sparovano() ? napServer.get("/api/v1/stav") : null;
+                napOdpovedStrance("over", "{\"ok\":" + (o != null && o.ok()) + ",\"kod\":" + (o == null ? 401 : o.kod)
+                        + ",\"duvod\":" + NapJson.uvoz(o == null ? "nesparovano" : o.duvod()) + "}");
+            }, "nap-over").start();
+        }
+
+        @JavascriptInterface public String nastavServer(String url) {
+            if (!nase()) return "";
+            napServer.nastavServer(url);
+            return napServer.server();
+        }
+
+        /** Seznam her ze serveru (bez site posledni ulozeny). Vysledek prijde do napHry.seznam({...}). */
+        @JavascriptInterface public void seznam() {
+            if (!nase()) return;
+            new Thread(() -> {
+                File cache = new File(getFilesDir(), "nap_hry_seznam.json");
+                NapServerKlient.Odpoved o = napServer.get("/api/v1/hry");
+                String data = null;
+                boolean offline = false;
+                if (o.ok() && o.json != null) {
+                    data = o.text();
+                    try {
+                        FileOutputStream f = new FileOutputStream(cache);
+                        try { f.write(o.data); } finally { f.close(); }
+                    } catch (Throwable ignored) {}
+                } else {
+                    offline = true;
+                    try {
+                        if (cache.isFile()) data = new String(napCtiSoubor(cache, 16 * 1024 * 1024), "UTF-8");
+                    } catch (Throwable ignored) {}
+                    if (data != null && NapJson.objekt(data) == null) data = null;
+                }
+                appendNativeLog("B321 HRY seznam: " + (offline ? "server " + (o.kod == 0 ? "nedostupny" : o.kod + " " + o.duvod())
+                        + (data != null ? ", ukazuji ulozeny" : "") : "ze serveru"));
+                napOdpovedStrance("seznam", "{\"ok\":" + (data != null) + ",\"offline\":" + offline + ",\"kod\":" + o.kod
+                        + ",\"duvod\":" + NapJson.uvoz(o.duvod()) + ",\"zprava\":" + NapJson.uvoz(o.zprava())
+                        + ",\"zamceno\":" + napZamceno() + ",\"data\":" + (data == null ? "null" : data) + "}");
+            }, "nap-seznam").start();
+        }
+
+        /** Stahnout a spustit hru v jejim emulatoru (stejne cesty jako drive hry z webu). */
+        @JavascriptInterface public void spust(final String system, final String id, final String soubor) {
+            if (!nase() || system == null || id == null) return;
+            if (!id.matches("(atari|sega|ps1)-[0-9a-f]{16}") || !id.startsWith(system + "-")) return;
+            final String url = napServer.server() + "/api/v1/hra?id=" + id;
+            final String jm = soubor == null ? "" : soubor;
+            appendNativeLog("B321 HRY spustit " + system + ": " + jm);
+            ui.post(() -> {
+                if ("atari".equals(system)) { atariNetGen.incrementAndGet(); downloadAndRun(url); }
+                else if ("sega".equals(system)) {
+                    if (jm.toLowerCase(Locale.US).endsWith(".zip")) downloadAndRunSegaArchive(url); else downloadAndRunSega(url);
+                } else downloadAndRunPs1Remote(url, "napHry");
+            });
+        }
+
+        @JavascriptInterface public void zpet(final String system) {
+            if (!nase()) return;
+            ui.post(() -> {
+                if (web == null) return;
+                web.loadUrl("sega".equals(system) ? SEGA_URL : "ps1".equals(system) ? PS1_URL
+                        : "atari".equals(system) ? ATARI_CPP_URL : "file:///android_asset/index.html");
+            });
+        }
+
+        @JavascriptInterface public void web() {
+            if (nase()) ui.post(() -> napOtevriVProhlizeci("https://atarihelp.eu/", "stranka hry"));
+        }
+    }
+
     public class AHNet {
         @JavascriptInterface
         public void openGames() {
-            // BUILD2SA5J: AtariHelp sbirka musi zustat uvnitr WebView.
-            // Jen tak muze klik na ZIP/XEX/GEN projit pres AHNET.runGameUrl() a rovnou spustit emu.
-            ui.post(() -> {
-                showAtariNetGamesBridge();
-            });
+            // B321: hry Atari ze serveru N&P (WEDOS appku v okne odmita - 503)
+            ui.post(() -> napOtevriHry("atari"));
         }
         @JavascriptInterface
         public void openGamesWeb() {
-            ui.post(() -> loadAtariHelpGuarded("https://atarihelp.eu/?page_id=21", "openGamesWeb"));
+            ui.post(() -> napOtevriHry("atari"));   // B321
         }
         @JavascriptInterface
         public void openPs1Games() {
-            ui.post(() -> loadAtariHelpGuarded(PS1_GOOGLE_GAMES_URL, "openPs1Games"));
+            ui.post(() -> napOtevriHry("ps1"));     // B321
         }
         @JavascriptInterface
         public void openInBrowser(String url) {
@@ -10571,15 +10944,7 @@ public class MainActivity extends Activity {
     }
 
 
-    private void addAtariNetGame(StringBuilder sb, String title, String zipUrl) {
-        String safeTitle = escapeHtml(title == null ? "Atari XEX" : title);
-        String bridgeUrl = bridgeGameHref(zipUrl);
-        String safeUrl = escapeHtml(bridgeUrl);
-        String jsUrl = jsQuote(zipUrl == null ? "" : zipUrl);
-        sb.append("<a class='game' href='").append(safeUrl).append("' onclick=\"try{AHNET.runGameUrl(")
-                .append(jsUrl).append(");return false;}catch(e){return true;}\">")
-                .append(safeTitle).append("</a>");
-    }
+    // B321: addAtariNetGame (polozky pevneho seznamu her na atarihelp.eu) smazano - hry jsou ze serveru N&P.
 
     private String bridgeGameHref(String url) {
         try {
@@ -10650,59 +11015,9 @@ public class MainActivity extends Activity {
     }
 
     private void showAtariNetGamesBridge() {
-        if (web == null) return;
-        StringBuilder sb = new StringBuilder(12000);
-        sb.append("<!doctype html><html><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'>");
-        sb.append("<style>");
-        sb.append("body{margin:0;background:#050505;color:#f4ead2;font-family:Arial,sans-serif;padding:18px 14px 28px}");
-        sb.append("h1{font-size:22px;margin:6px 0 14px;text-align:center;letter-spacing:.04em}");
-        sb.append(".bar{display:flex;gap:8px;justify-content:center;margin:0 0 14px;flex-wrap:wrap}");
-        sb.append(".cmd{border:1px solid #9e854c;color:#f4ead2;background:#14120c;border-radius:6px;padding:9px 12px;text-decoration:none;font-weight:700}");
-        sb.append(".grid{display:grid;grid-template-columns:1fr;gap:9px;max-width:620px;margin:0 auto}");
-        sb.append(".game{display:block;border:1px solid #8b743f;background:linear-gradient(180deg,#201b12,#0d0c09);color:#fff0c0;text-decoration:none;border-radius:6px;padding:13px 14px;font-size:17px;font-weight:700;box-shadow:inset 0 0 0 1px rgba(255,255,255,.05)}");
-        sb.append(".game:active{background:#3a2f16;color:#fff}");
-        sb.append("</style></head><body>");
-        sb.append("<h1>Atari XEX</h1>");
-        sb.append("<div class='bar'><a class='cmd' href='#' onclick='try{AHNET.openGamesWeb();}catch(e){}return false;'>WEB</a></div>");
-        sb.append("<div class='grid'>");
-        addAtariNetGame(sb, "Atari Galactic Chase XEX", "https://atarihelp.eu/wp-content/uploads/2026/06/galactic_chase.zip");
-        addAtariNetGame(sb, "Atari Moon Patrol XEX", "https://atarihelp.eu/wp-content/uploads/2026/06/moon_patrol.zip");
-        addAtariNetGame(sb, "Atari Pac Man XEX", "https://atarihelp.eu/wp-content/uploads/2026/06/de_re_pac-man.zip");
-        addAtariNetGame(sb, "Atari Donkey Kong XEX", "https://atarihelp.eu/wp-content/uploads/2026/06/donkey_kong.zip");
-        addAtariNetGame(sb, "Atari Death Race XEX", "https://atarihelp.eu/wp-content/uploads/2026/06/death_race.zip");
-        addAtariNetGame(sb, "Atari Super Cobra XEX", "https://atarihelp.eu/wp-content/uploads/2026/06/Super-Cobra.zip");
-        addAtariNetGame(sb, "Atari Pitstop 2 XEX", "https://atarihelp.eu/wp-content/uploads/2026/06/pitstop_ii.zip");
-        addAtariNetGame(sb, "Atari River Raid XEX", "https://atarihelp.eu/wp-content/uploads/2026/06/River-Raid.zip");
-        addAtariNetGame(sb, "Atari NaP Pitt-Kitt XEX", "https://atarihelp.eu/wp-content/uploads/2026/06/PiTT-KiTT-NaP-Final.zip");
-        addAtariNetGame(sb, "Atari Bugi Bugi 3 XEX", "https://atarihelp.eu/wp-content/uploads/2026/06/bugi_bugi_3.zip");
-        addAtariNetGame(sb, "Atari International Karate XEX", "https://atarihelp.eu/wp-content/uploads/2026/06/international_karate_enhanced_version_2014.zip");
-        addAtariNetGame(sb, "Atari Tennis XEX", "https://atarihelp.eu/wp-content/uploads/2026/06/atari_tennis.zip");
-        addAtariNetGame(sb, "Atari Bruce Lee XEX", "https://atarihelp.eu/wp-content/uploads/2026/06/Bruce-Lee.zip");
-        addAtariNetGame(sb, "Atari Alley Cat XEX", "https://atarihelp.eu/wp-content/uploads/2026/06/Alley-Cat.zip");
-        addAtariNetGame(sb, "Atari Bruce Lee's Return XEX", "https://atarihelp.eu/wp-content/uploads/2026/06/Bruce-Lees-Return.zip");
-        addAtariNetGame(sb, "Atari Ghostbusters XEX", "https://atarihelp.eu/wp-content/uploads/2026/06/Ghostbusters.zip");
-        addAtariNetGame(sb, "Atari Dawn Raider XEX", "https://atarihelp.eu/wp-content/uploads/2026/06/dawn_raider.zip");
-        addAtariNetGame(sb, "Atari Mario Bros XEX", "https://atarihelp.eu/wp-content/uploads/2026/06/mario_bros._xe_arcade.zip");
-        addAtariNetGame(sb, "Atari Montezuma's Revenge XEX", "https://atarihelp.eu/wp-content/uploads/2026/06/Montezumas-Revenge-.zip");
-        addAtariNetGame(sb, "Atari Shaft Raider XEX", "https://atarihelp.eu/wp-content/uploads/2026/06/shaft_raider.zip");
-        addAtariNetGame(sb, "Atari Sidewinder XEX", "https://atarihelp.eu/wp-content/uploads/2026/06/sidewinder.zip");
-        addAtariNetGame(sb, "Atari Vanguard XEX", "https://atarihelp.eu/wp-content/uploads/2026/06/Vanguard.zip");
-        addAtariNetGame(sb, "Atari Cross-Country Road Race XEX", "https://atarihelp.eu/wp-content/uploads/2026/06/The-Great-American-Cross-Country-Road-Race.zip");
-        addAtariNetGame(sb, "Atari Activision Decathlon XEX", "https://atarihelp.eu/wp-content/uploads/2026/06/The-Activision-Decathlon.zip");
-        addAtariNetGame(sb, "Atari Popeye Arcade XEX", "https://atarihelp.eu/wp-content/uploads/2026/06/Popeye-Arcade-Version.zip");
-        addAtariNetGame(sb, "Atari Ninja Title XEX", "https://atarihelp.eu/wp-content/uploads/2026/06/Ninja-Title-Version.zip");
-        addAtariNetGame(sb, "Atari Patent Pole Position XEX", "https://atarihelp.eu/wp-content/uploads/2026/06/Patent-Pole-Position.zip");
-        addAtariNetGame(sb, "Atari Bros XEX", "https://atarihelp.eu/wp-content/uploads/2026/06/Bros.zip");
-        addAtariNetGame(sb, "Atari Arkanoid XEX", "https://atarihelp.eu/wp-content/uploads/2026/06/Arkanoid.zip");
-        addAtariNetGame(sb, "Atari Star Wars XEX", "https://atarihelp.eu/wp-content/uploads/2026/06/Starwars.zip");
-        sb.append("</div></body></html>");
-        try {
-            applyWebViewVisualMode("file:///android_asset/atari_xex_bridge.html", "atariNetBridge");
-            web.loadDataWithBaseURL("file:///android_asset/atari_xex_bridge.html", sb.toString(), "text/html", "UTF-8", null);
-            appendNativeLog("BUILD2SA5AF ATARI_NET_BRIDGE_OPEN protectedWeb=ON games=30");
-        } catch (Throwable t) {
-            appendNativeLog("BUILD2SA5AF ATARI_NET_BRIDGE_FAIL " + safeMsg(t));
-        }
+        // B321: NET / HRY na pristroji Atari -> N&P HRY (server Reneho PC). Drive pevny seznam
+        // ZIPu na atarihelp.eu, ktery WEDOS v okne appky odmita (503).
+        napOtevriHry("atari");
     }
 
     private boolean isYoutubeUrl(String url) {
@@ -10746,10 +11061,8 @@ public class MainActivity extends Activity {
 
     private boolean openRawExternalBrowserUrl(String url) {
         if (url == null || url.trim().length() == 0) return false;
-        if (isProviderBlockedUrl(url)) {
-            loadAtariHelpGuarded(url, "openBrowserRelay");
-            return true;
-        }
+        // B321: atarihelp.eu uz NE v okne appky (WEDOS ji odmita - 503), ale opravdu v prohlizeci telefonu.
+        // Hry jsou ze serveru N&P (N&P HRY). Drive: loadAtariHelpGuarded(url, "openBrowserRelay").
         try {
             Intent i = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
             i.addCategory(Intent.CATEGORY_BROWSABLE);
@@ -11145,6 +11458,8 @@ public class MainActivity extends Activity {
         // B314: jazyk appky (OPTIONS -> JAZYK · LANGUAGE, jinak podle telefonu)
         appendNativeLog("B314 JAZYK_PRI_STARTU " + NapJazyk.popis(this));
         jazykDoKnihoven("start");
+        napServerInit();               // B321: server her N&P - stav parovani telefonu do logu
+        napInstalace(getIntent());     // B321: appka spustena vysledkem instalace aktualizace
         // BUILD2SK99: rekni PS1 nativnimu kodu, kam ma zapisovat pohotovostni
         // diagnostiku (napr. gpu-gles/EGL inicializace) - primo do STEJNEHO
         // souboru, co uz napTvWebLogFileInit prave zalozil. Musi byt AZ PO
@@ -11186,6 +11501,7 @@ public class MainActivity extends Activity {
         web.addJavascriptInterface(new AHIntro(), "AHINTRO");       // BUILD2SA21: uvodni intro
         web.addJavascriptInterface(new AHJazyk(), "AHJAZYK");       // B314: jazyk CZ / EN
         web.addJavascriptInterface(new AHOvladac(), "AHOVL");       // B320: herni ovladac (Retroid Pocket 6, gamepad)
+        web.addJavascriptInterface(new AHHry(), "AHHRY");           // B321: aktivace telefonu + hry ze serveru N&P
         ovladacStart();                                              // B320: ovladace do logu, sledovat pripojeni
         web.setWebChromeClient(new WebChromeClient() {
             // BUILD2SH2: zachyt JS console (jen nase SH2 stream diagnostika) do
@@ -11222,6 +11538,14 @@ public class MainActivity extends Activity {
                 // obrazovky Rene pri testu prosel - a pak se nedaji jeho
                 // odpovedi opret o nic jineho nez o jeho slovo.
                 try { appendNativeLog("BUILD2SA14 OBRAZOVKA url=" + url); } catch (Throwable ignored) {}
+                napAktualniUrl = url == null ? "" : url;   // B321: AHHRY odpovida jen strankam hry/
+                // B321: nesparovany nebo zablokovany telefon - appka jen na strance aktivace (a v HELP)
+                if (napZamekStranky(url)) {
+                    try { v.stopLoading(); } catch (Throwable ignored) {}
+                    appendNativeLog("B321 ZAMEK " + compactUrl(url) + " -> aktivace");
+                    ui.post(() -> { try { if (web != null) web.loadUrl(NAP_AKTIVACE_URL); } catch (Throwable ignored) {} });
+                    return;
+                }
                 applyWebViewVisualMode(url, "onPageStarted");
                 stopNativeIfLeavingSega(url, "onPageStarted");
                 stopPs1IfLeaving(url, "onPageStarted");
@@ -11273,12 +11597,14 @@ public class MainActivity extends Activity {
                     injectGameLinkBridge();
                 }
                 // B311: hlavni nabidka nactena -> nad ni C++ menu (karusel karet)
-                if (jeMenuUrl(url) && !menuSkryteProOptions) menuUkaz("stranka menu");
+                if (jeMenuUrl(url) && !menuSkryteProOptions && !napZamceno()) menuUkaz("stranka menu");
                 // B320: hra s hernim ovladacem - poprve kratka zprava, jak vratit dotykove ovladani
                 if (isPs1OwnerUrl(url) || isSegaNativeOwnerUrl(url)) ui.postDelayed(MainActivity.this::ovladacNapoveda, 1500);
             }
             @Override
             public WebResourceResponse shouldInterceptRequest(WebView v, String url) {
+                WebResourceResponse obal = napObal(url);   // B321: obal hry ze serveru N&P
+                if (obal != null) return obal;
                 WebResourceResponse bridge = interceptAhGameBridgeNavigation(url);
                 if (bridge != null) return bridge;
                 WebResourceResponse rr = interceptProviderBlockedResource(url, false);
@@ -11288,6 +11614,8 @@ public class MainActivity extends Activity {
             public WebResourceResponse shouldInterceptRequest(WebView v, WebResourceRequest request) {
                 if (Build.VERSION.SDK_INT >= 21 && request != null && request.getUrl() != null) {
                     String reqUrl = request.getUrl().toString();
+                    WebResourceResponse obal = napObal(reqUrl);   // B321: obal hry ze serveru N&P
+                    if (obal != null) return obal;
                     if (request.isForMainFrame()) {
                         // B312: zamcena konzole - stranka emulatoru se vubec nenacte (nebezi ani jeji skript)
                         WebResourceResponse zamek = zamcenaStrankaOdpoved(reqUrl);
@@ -11385,6 +11713,13 @@ public class MainActivity extends Activity {
             final Runnable spustIntro = () -> {
                 if (uzJede[0]) return;
                 uzJede[0] = true;
+                // B321: nesparovany telefon -> nejdriv aktivace (klic z APK nebo osobni kod), menu az potom
+                if (napZamceno()) {
+                    appendNativeLog("B321 START -> AKTIVACE (" + (napServer != null && napServer.zablokovano() ? "zablokovany" : "nesparovany") + " telefon)");
+                    web.loadUrl(NAP_AKTIVACE_URL);
+                    return;
+                }
+                napOverStav("start");
                 // B304: uvodni demo je ted C++ plocha NAD strankou - pod ni se
                 // rovnou nacita menu (po konci dema je hned videt). Puvodni
                 // intro (etapy ve WebView) jen kdyby knihovna napintro chybela.
@@ -11986,6 +12321,11 @@ public class MainActivity extends Activity {
     }
 
     private String ps1RemoteCacheKey(String url) {
+        // B321: hra ze serveru N&P -> slozka podle id hry
+        if (napServer != null && napServer.jeNasUrl(url)) {
+            String nid = Uri.parse(url).getQueryParameter("id");
+            if (nid != null && nid.matches("ps1-[0-9a-f]{16}")) return "nap_" + nid;
+        }
         String id = isGoogleDriveUrl(url) ? googleDriveFileId(url) : null;
         if (id != null && id.length() > 0) return safeFileName("gdrive_" + id);
         return safeFileName("url_" + ps1StableHash(url));
@@ -12727,7 +13067,7 @@ public class MainActivity extends Activity {
                 try { c.setRequestProperty("Accept", "application/octet-stream,application/x-cd-image,application/x-chd,*/*"); } catch (Throwable ignored) {}
                 c.connect();
                 int code = c.getResponseCode();
-                if (code < 200 || code >= 400) throw new IOException("HTTP " + code + " " + c.getResponseMessage());
+                if (code < 200 || code >= 400) throw napChybaStahovani(c, downloadUrl, code);   // B321
                 String contentType = c.getContentType();
                 long expectedLen = -1L;
                 try { expectedLen = c.getContentLengthLong(); } catch (Throwable ignored) {}
@@ -13284,6 +13624,15 @@ public class MainActivity extends Activity {
         try {
             if (contentDisposition != null) {
                 String cd = contentDisposition;
+                // B321: filename*=UTF-8''... (RFC 5987) - server N&P posila jmeno s diakritikou
+                int hv = cd.toLowerCase(Locale.US).indexOf("filename*=utf-8''");
+                if (hv >= 0) {
+                    String n = cd.substring(hv + 17);
+                    int semi = n.indexOf(';');
+                    if (semi >= 0) n = n.substring(0, semi);
+                    n = URLDecoder.decode(n.trim().replace("+", "%2B"), "UTF-8");
+                    if (n.length() > 0 && n.indexOf('/') < 0 && n.indexOf('\\') < 0) return n;
+                }
                 int p = cd.toLowerCase().indexOf("filename=");
                 if (p >= 0) {
                     String n = cd.substring(p + 9).replace("\"", "").replace("'", "").trim();
@@ -13904,6 +14253,8 @@ public class MainActivity extends Activity {
     protected void onResume() {
         super.onResume();
         if (web != null) web.onResume();
+        // B321: po navratu do appky (nejdriv po 30 min) zkontrolovat server: blokace, zprava, nova verze
+        if (napStavCas != 0 && android.os.SystemClock.uptimeMillis() - napStavCas > 30L * 60 * 1000) napOverStav("navrat do appky");
         // B311: navrat do appky (napr. z prohlizece po karte s webem) na index.html -> menu zpet
         try {
             if (menuPlocha == null && demoPlocha == null && !menuSkryteProOptions && web != null && jeMenuUrl(web.getUrl()))

@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>N&amp;P HRY</title>
+<!-- B321: N&P HRY - hry Atari, Segy a PS1 ze serveru N&P (Reneho PC). Hra se stahne podepsanym dotazem
+     a spusti ve svem emulatoru (stejne cesty jako drive hry z webu). Obaly: https://nap.hry/obal/<id>
+     (MainActivity.napObal). Most AHHRY: stav(), seznam(), spust(system, id, soubor), zpet(system), web(). -->
+<script src="../spolecne/nap_jazyk.js"></script>
+<script src="../jazyk/en_hry.js"></script>
+<style>
+@font-face{font-family:"Chakra Petch";src:url(../pisma/chakra_semibold.woff2) format("woff2");font-weight:400 600;font-style:normal;font-display:swap;}
+@font-face{font-family:"Chakra Petch";src:url(../pisma/chakra_bold.woff2) format("woff2");font-weight:700 900;font-style:normal;font-display:swap;}
+:root{--zl1:#ffe39a;--zl2:#d79a2e;--zl3:#7a4a10;--text:#efe6cf;--tlumene:#b7aa8a;--azur:#8fdcff;--bg:#050302;--karta:#0f0b06;--cervena:#ff6b5a;
+  --atari:#F2B640;--sega:#3FA9FF;--ps1:#B26BFF;--barva:var(--atari);}
+body.sega{--barva:var(--sega);} body.ps1{--barva:var(--ps1);}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+html,body{margin:0;background:var(--bg);color:var(--text);font-family:"Chakra Petch","Segoe UI",Roboto,Arial,sans-serif;}
+body{min-height:100vh;background:radial-gradient(ellipse at 50% -10%,rgba(215,154,46,.16),transparent 55%),var(--bg);}
+header{position:sticky;top:0;z-index:5;background:linear-gradient(180deg,rgba(5,3,2,.97),rgba(5,3,2,.9));backdrop-filter:blur(6px);
+  border-bottom:1px solid rgba(122,74,16,.55);padding:max(8px,env(safe-area-inset-top)) 10px 8px;}
+.radek{display:flex;align-items:center;gap:8px;}
+.mala{flex:none;border:1px solid var(--zl3);background:#120d07;color:var(--zl1);border-radius:10px;padding:9px 12px;
+  font:700 13px "Chakra Petch",sans-serif;letter-spacing:.06em;cursor:pointer;}
+.mala:active{background:#2a1d0c;}
+h1{flex:1;margin:0;text-align:center;font-size:21px;font-weight:900;letter-spacing:.14em;color:var(--zl1);text-shadow:0 0 14px rgba(255,227,154,.3);}
+.zalozky{display:flex;gap:6px;margin-top:9px;}
+.zalozka{flex:1;border:1px solid #2b2112;background:#0d0905;color:var(--tlumene);border-radius:10px;padding:9px 4px;cursor:pointer;
+  font:800 13px "Chakra Petch",sans-serif;letter-spacing:.06em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.zalozka b{font-weight:600;opacity:.75;}
+.zalozka.aktivni{color:#120b02;border-color:transparent;background:linear-gradient(180deg,#fff2c4,var(--barva));box-shadow:0 0 14px rgba(255,227,154,.25);}
+#hledat{width:100%;margin-top:9px;padding:10px 12px;border-radius:10px;border:1px solid #2b2112;background:#0a0704;color:#fff;
+  font:600 15px "Chakra Petch",sans-serif;outline:none;}
+#hledat:focus{border-color:var(--zl2);}
+#stav{padding:10px 14px 2px;font-size:13px;color:var(--tlumene);min-height:20px;}
+#stav.chyba{color:var(--cervena);}
+#mrizka{display:grid;grid-template-columns:repeat(auto-fill,minmax(136px,1fr));gap:11px;padding:10px 12px 18px;}
+@media (orientation:landscape){#mrizka{grid-template-columns:repeat(auto-fill,minmax(150px,1fr));}}
+.hra{position:relative;display:flex;flex-direction:column;text-align:left;border:1px solid #2b2112;border-radius:13px;overflow:hidden;
+  background:linear-gradient(180deg,#160f08,var(--karta));color:var(--text);padding:0;cursor:pointer;font-family:inherit;}
+.hra:active{transform:scale(.97);border-color:var(--barva);}
+.obal{position:relative;aspect-ratio:4/5;background:linear-gradient(160deg,#1d150b,#090603);display:flex;align-items:center;justify-content:center;overflow:hidden;}
+.obal img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;}
+.obal .znak{font-weight:900;font-size:22px;letter-spacing:.1em;color:var(--barva);opacity:.55;text-align:center;padding:6px;}
+.nazev{padding:8px 9px 2px;font-size:13.5px;font-weight:700;line-height:1.25;color:#fff3cf;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;min-height:2.5em;}
+.meta{display:flex;justify-content:space-between;align-items:center;padding:4px 9px 9px;font-size:11.5px;color:var(--tlumene);}
+.znacka{border:1px solid var(--barva);color:var(--barva);border-radius:5px;padding:1px 6px;font-weight:800;}
+.prazdno{grid-column:1/-1;text-align:center;color:var(--tlumene);padding:34px 10px;font-size:15px;line-height:1.5;}
+footer{text-align:center;padding:8px 12px 22px;font-size:12px;color:#8c805f;}
+footer a{color:var(--azur);text-decoration:none;}
+#prekryv{position:fixed;inset:0;z-index:20;display:none;align-items:center;justify-content:center;background:rgba(3,2,1,.86);padding:20px;}
+#prekryv.zobraz{display:flex;}
+.okenko{max-width:360px;width:100%;text-align:center;background:linear-gradient(180deg,#19120a,#0c0805);border:1px solid var(--zl3);border-radius:16px;padding:22px 18px;}
+.kolecko{display:inline-block;width:36px;height:36px;border:3px solid rgba(255,227,154,.2);border-top-color:var(--barva);border-radius:50%;animation:toc 1s linear infinite;}
+@keyframes toc{to{transform:rotate(360deg);}}
+#prekryvNazev{font-weight:800;font-size:17px;color:#fff3cf;margin:12px 0 6px;}
+#prekryvText{font-size:13px;color:var(--tlumene);line-height:1.45;}
+</style>
+</head>
+<body>
+<header>
+  <div class="radek">
+    <button class="mala" id="zpet" type="button">◀ ZPĚT</button>
+    <h1>N&amp;P HRY</h1>
+    <button class="mala" id="obnovit" type="button" aria-label="Obnovit">↻</button>
+  </div>
+  <div class="zalozky">
+    <button class="zalozka" data-system="atari" type="button">ATARI <b data-nepreklad id="pocet-atari"></b></button>
+    <button class="zalozka" data-system="sega" type="button">SEGA <b data-nepreklad id="pocet-sega"></b></button>
+    <button class="zalozka" data-system="ps1" type="button">PS1 <b data-nepreklad id="pocet-ps1"></b></button>
+  </div>
+  <input id="hledat" type="search" placeholder="Hledat hru" autocomplete="off" spellcheck="false">
+</header>
+<div id="stav">Načítám hry ze serveru N&amp;P…</div>
+<div id="mrizka" data-nepreklad></div>
+<footer><a href="#" id="web">Web atarihelp.eu ↗</a></footer>
+<div id="prekryv"><div class="okenko">
+  <span class="kolecko"></span>
+  <div id="prekryvNazev" data-nepreklad></div>
+  <div id="prekryvText"></div>
+</div></div>
+<script>
+(function () {
+  'use strict';
+  var H = window.AHHRY || null;
+  var $ = function (id) { return document.getElementById(id); };
+  var SYSTEMY = ['atari', 'sega', 'ps1'];
+  var ZNAK = { atari: 'ATARI', sega: 'SEGA', ps1: 'PS1' };
+  var m = /[?&]system=(atari|sega|ps1)\b/.exec(location.search);
+  var system = m ? m[1] : 'atari';
+  var hry = [];
+  var nacteno = false;
+  var spousteni = null;
+
+  function tx(t) { return window.NapJazyk && NapJazyk.tr ? NapJazyk.tr(t) : t; }
+
+  function pocetHer(n) {
+    return n + ' ' + (n === 1 ? 'hra' : (n >= 2 && n <= 4) ? 'hry' : 'her');
+  }
+
+  function velikost(b) {
+    if (!(b >= 0)) return '';
+    if (b >= 1048576) return (b / 1048576).toFixed(b >= 10485760 ? 0 : 1) + ' MB';
+    return Math.max(1, Math.round(b / 1024)) + ' kB';
+  }
+
+  function pripona(s) {
+    var i = String(s || '').lastIndexOf('.');
+    return i > 0 ? String(s).slice(i + 1).toUpperCase().slice(0, 4) : '';
+  }
+
+  function bezDiakritiky(s) {
+    s = String(s || '').toLowerCase();
+    return s.normalize ? s.normalize('NFD').replace(/[̀-ͯ]/g, '') : s;
+  }
+
+  function nastavStav(text, chyba) {
+    var e = $('stav');
+    e.textContent = text;
+    e.className = chyba ? 'chyba' : '';
+  }
+
+  function prepni(s) {
+    system = s;
+    document.body.className = s;
+    var z = document.querySelectorAll('.zalozka');
+    for (var i = 0; i < z.length; i++) z[i].className = 'zalozka' + (z[i].getAttribute('data-system') === s ? ' aktivni' : '');
+    try { history.replaceState(null, '', '?system=' + s); } catch (e) {}
+    vykresli();
+  }
+
+  function vykresli() {
+    var mr = $('mrizka');
+    while (mr.firstChild) mr.removeChild(mr.firstChild);
+    if (!nacteno) return;
+    var hledej = bezDiakritiky($('hledat').value.trim());
+    var vyber = [];
+    for (var i = 0; i < hry.length; i++) {
+      var h = hry[i];
+      if (h.system !== system) continue;
+      if (hledej && bezDiakritiky(h.nazev).indexOf(hledej) < 0) continue;
+      vyber.push(h);
+    }
+    if (!vyber.length) {
+      var p = document.createElement('div');
+      p.className = 'prazdno';
+      p.textContent = tx(hledej ? 'Nic nenalezeno.' : 'Na serveru zatím nejsou žádné hry pro tenhle systém.');
+      mr.appendChild(p);
+      return;
+    }
+    for (var k = 0; k < vyber.length; k++) mr.appendChild(karta(vyber[k]));
+  }
+
+  function karta(h) {
+    var b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'hra';
+    var o = document.createElement('div');
+    o.className = 'obal';
+    var z = document.createElement('div');
+    z.className = 'znak';
+    z.textContent = ZNAK[h.system] || '';
+    o.appendChild(z);
+    if (/^(atari|sega|ps1)-[0-9a-f]{16}$/.test(h.id)) {
+      var img = document.createElement('img');
+      img.alt = '';
+      img.loading = 'lazy';
+      img.onerror = function () { this.parentNode && this.parentNode.removeChild(this); };
+      img.src = 'https://nap.hry/obal/' + h.id;
+      o.appendChild(img);
+    }
+    b.appendChild(o);
+    var n = document.createElement('div');
+    n.className = 'nazev';
+    n.textContent = h.nazev || h.soubor;
+    b.appendChild(n);
+    var mt = document.createElement('div');
+    mt.className = 'meta';
+    var zn = document.createElement('span');
+    zn.className = 'znacka';
+    zn.textContent = pripona(h.soubor);
+    var vel = document.createElement('span');
+    vel.textContent = velikost(h.velikost);
+    mt.appendChild(zn);
+    mt.appendChild(vel);
+    b.appendChild(mt);
+    b.addEventListener('click', function () { spust(h); });
+    return b;
+  }
+
+  function spust(h) {
+    if (!H) return;
+    $('prekryvNazev').textContent = h.nazev || h.soubor;
+    $('prekryvText').textContent = tx(h.system === 'ps1' ? 'Hra se stahuje v PS1 – průběh uvidíš tam.' : 'Stahuji ze serveru N&P…');
+    $('prekryv').className = 'zobraz';
+    clearTimeout(spousteni);
+    spousteni = setTimeout(function () { $('prekryv').className = ''; }, 25000);   /* chyba stahovani -> hlaska z appky */
+    H.spust(h.system, h.id, h.soubor || '');
+  }
+
+  function pocty() {
+    for (var i = 0; i < SYSTEMY.length; i++) {
+      var n = 0;
+      for (var k = 0; k < hry.length; k++) if (hry[k].system === SYSTEMY[i]) n++;
+      $('pocet-' + SYSTEMY[i]).textContent = nacteno ? String(n) : '';
+    }
+  }
+
+  window.napHry = {
+    seznam: function (r) {
+      $('obnovit').disabled = false;
+      if (r && r.zamceno) { location.replace('aktivace.html'); return; }
+      var data = r && r.data;
+      if (data && data.hry && data.hry.length !== undefined) {
+        hry = [];
+        for (var i = 0; i < data.hry.length; i++) {
+          var h = data.hry[i];
+          if (h && typeof h.id === 'string' && SYSTEMY.indexOf(h.system) >= 0) hry.push(h);
+        }
+        nacteno = true;
+      }
+      pocty();
+      vykresli();
+      var vSystemu = 0;
+      for (var k = 0; k < hry.length; k++) if (hry[k].system === system) vSystemu++;
+      if (r && r.ok && !r.offline) nastavStav(tx('Server N&P') + ' · ' + tx(pocetHer(vSystemu)), false);
+      else if (r && r.ok) nastavStav(tx('Bez připojení k serveru – ukazuji uložený seznam.'), true);
+      else nastavStav(tx(r && r.kod === 0 ? 'Server N&P je nedostupný. Zkontroluj připojení a klepni na ↻.' : 'Seznam her nejde načíst.')
+        + (r && r.zprava && r.kod !== 0 ? ' ' + tx(r.zprava) : ''), true);
+    }
+  };
+
+  function nacti() {
+    if (!H) { nastavStav('N&P HRY běží jen v aplikaci.', true); return; }
+    $('obnovit').disabled = true;
+    nastavStav(tx('Načítám hry ze serveru N&P…'), false);
+    H.seznam();
+  }
+
+  var zal = document.querySelectorAll('.zalozka');
+  for (var i = 0; i < zal.length; i++) zal[i].addEventListener('click', function () { prepni(this.getAttribute('data-system')); });
+  $('hledat').addEventListener('input', vykresli);
+  $('obnovit').addEventListener('click', nacti);
+  $('zpet').addEventListener('click', function () { if (H) H.zpet(system); else history.back(); });
+  $('web').addEventListener('click', function (e) { e.preventDefault(); if (H) H.web(); });
+  window.addEventListener('pageshow', function () { $('prekryv').className = ''; });
+
+  try {
+    var st = JSON.parse(H ? H.stav() : '{}') || {};
+    if (H && (!st.sparovano || st.zablokovano)) { location.replace('aktivace.html'); return; }
+  } catch (e) {}
+  prepni(system);
+  nacti();
+})();
+</script>
+</body>
+</html>

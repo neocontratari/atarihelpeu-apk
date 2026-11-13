@@ -30,7 +30,11 @@ import java.util.zip.ZipInputStream;
  *   - systemove okno "Nainstalovat" uzivatel uvidi vzdycky
  *   - poprve se telefon zepta na povoleni instalovat z tohoto zdroje
  *
- * Kontrola verze:
+ * B321: AKTUALIZACE ZE SERVERU N&P (Reneho PC). Sparovany telefon se pta serveru
+ * (/api/v1/stav: apk_verze = versionCode APK na serveru) a novou verzi stahuje podepsane
+ * z /api/v1/apk - primo, bez ZIPu. Web atarihelp.eu zustava jen jako zaloha.
+ *
+ * Kontrola verze (zaloha):
  *   https://atarihelp.eu/wp-content/uploads/2026/08/emu10_verze.txt
  * obsahuje jeden radek  "cislo|odkaz_na_zip".  Ma 69 bajtu, takze se
  * nemusi tahat celych 48 MB jen kvuli zjisteni, jestli je neco noveho.
@@ -47,12 +51,29 @@ public final class NapAktualizace {
 
     public interface Hlaska { void rekni(String zprava); }
 
-    private static final class Novinka { int verze; String zip; }
+    /** B321: server N&P (nastavi MainActivity). Sparovany telefon bere aktualizace odtud. */
+    public static volatile NapServerKlient server;
+
+    private static final class Novinka { int verze; String zip; String nazev = ""; }
+
+    private static boolean zeServeru() {
+        NapServerKlient s = server;
+        return s != null && s.sparovano();
+    }
 
     // ------------------------------------------------------------------
     //  Kontrola, jestli je venku novejsi
     // ------------------------------------------------------------------
     private static Novinka zjistiNovinku() {
+        if (zeServeru()) {   // B321: verze APK na serveru N&P (zip = null -> stahuje se z /api/v1/apk)
+            NapServerKlient.Odpoved o = server.get("/api/v1/stav");
+            if (!o.ok()) return null;
+            Novinka v = new Novinka();
+            v.verze = (int) NapJson.cislo(o.json, "apk_verze", 0);
+            v.nazev = NapJson.text(o.json, "apk_nazev");
+            v.zip = null;
+            return v.verze > 0 ? v : null;
+        }
         HttpURLConnection c = null;
         try {
             c = (HttpURLConnection) new URL(VERZE_URL).openConnection();
@@ -94,9 +115,9 @@ public final class NapAktualizace {
             Novinka v = zjistiNovinku();
             if (v == null) { if (log != null) log.rekni("AKTUALIZACE nezjistena"); return; }
             final int moje = mojeVerze(a);
-            if (log != null) log.rekni("AKTUALIZACE na webu=" + v.verze + " moje=" + moje);
+            if (log != null) log.rekni("AKTUALIZACE " + (v.zip == null ? "na serveru N&P=" : "na webu=") + v.verze + " moje=" + moje);
             if (v.verze <= moje) return;
-            a.runOnUiThread(() -> zeptejSe(a, v.verze, moje, v.zip, log));
+            a.runOnUiThread(() -> zeptejSe(a, v.verze, v.nazev, moje, v.zip, log));
         }, "nap-aktualizace").start();
     }
 
@@ -104,17 +125,49 @@ public final class NapAktualizace {
     public static void spustRucne(final Activity a, final Hlaska log) {
         new Thread(() -> {
             Novinka v = zjistiNovinku();
-            final String zip = (v != null) ? v.zip : ZALOZNI_ZIP;
+            final boolean srv = zeServeru();
+            final String zip = srv ? null : (v != null) ? v.zip : ZALOZNI_ZIP;
             final int nova = (v != null) ? v.verze : 0;
-            a.runOnUiThread(() -> zeptejSe(a, nova, mojeVerze(a), zip, log));
+            final String nazev = (v != null) ? v.nazev : "";
+            a.runOnUiThread(() -> zeptejSe(a, nova, nazev, mojeVerze(a), zip, log));
         }, "nap-aktualizace-rucne").start();
     }
 
-    private static void zeptejSe(final Activity a, int nova, int moje,
+    /** B321: server N&P ma novejsi appku - nabidnout (bez povoleni instalace nejdriv nastaveni). */
+    public static void nabidniZeServeru(final Activity a, int nova, String nazev, int moje, final Hlaska log) {
+        if (log != null) log.rekni("AKTUALIZACE na serveru N&P " + nazev + " (" + nova + "), moje " + moje);
+        if (!smiInstalovat(a)) {
+            try {
+                new AlertDialog.Builder(a)
+                        .setTitle(NapJazyk.t(a, "Nová verze appky", "New app version"))
+                        .setMessage(NapJazyk.t(a, "Na serveru N&P je verze " + nova + ", ty máš " + moje
+                                + ".\n\nTelefon zatím nedovoluje instalovat z této aplikace. Otevřu nastavení, kde se to zapíná,"
+                                + " potom zvol v OPTIONS AKTUALIZOVAT.",
+                                "The N&P server has version " + nova + ", you have " + moje
+                                + ".\n\nThe phone does not allow installing from this app yet. I will open the settings where you can"
+                                + " turn it on, then choose UPDATE in OPTIONS."))
+                        .setPositiveButton(NapJazyk.t(a, "OTEVŘÍT", "OPEN"), (d, w) -> otevriPovoleni(a))
+                        .setNegativeButton(NapJazyk.t(a, "TEĎ NE", "NOT NOW"), null).show();
+            } catch (Throwable ignored) { }
+            return;
+        }
+        zeptejSe(a, nova, nazev, moje, null, log);
+    }
+
+    private static void zeptejSe(final Activity a, int nova, String nazev, int moje,
                                  final String zip, final Hlaska log) {
         try {
-            // B314: cesky / anglicky (NapJazyk)
-            String text = NapJazyk.t(a, "Na atarihelp.eu je verze " + nova
+            // B314: cesky / anglicky (NapJazyk); B321: ze serveru N&P (zip == null)
+            String odkud = zip == null ? NapJazyk.t(a, "Na serveru N&P", "The N&P server has")
+                                       : NapJazyk.t(a, "Na atarihelp.eu", "atarihelp.eu has");
+            String jmeno = nazev != null && nazev.length() > 0 ? " (" + nazev + ")" : "";
+            String text = zip == null ? NapJazyk.t(a, odkud + " je verze " + nova + jmeno + ", ty máš " + moje + ".\n\n"
+                    + "Stáhne se a rovnou nainstaluje – do telefonu se přitom NEULOŽÍ žádný soubor"
+                    + " a uložené hry zůstanou.\n\nTelefon se ještě zeptá, jestli instalaci povolíš.",
+                    odkud + " version " + nova + jmeno + ", you have " + moje + ".\n\n"
+                    + "It downloads and installs right away – NO file is saved on the phone and your saves stay."
+                    + "\n\nThe phone will still ask whether you allow the installation.")
+                    : NapJazyk.t(a, "Na atarihelp.eu je verze " + nova
                     + ", ty mas " + moje + ".\n\n"
                     + "Stahne se a rovnou nainstaluje - do telefonu se pritom"
                     + " NEULOZI zadny soubor.\n\n"
@@ -167,13 +220,26 @@ public final class NapAktualizace {
             PackageInstaller.Session relace = null;
             try {
                 if (Build.VERSION.SDK_INT < 21) throw new Exception("stary Android");
-                c = (HttpURLConnection) new URL(zipUrl).openConnection();
-                c.setConnectTimeout(30000);
-                c.setReadTimeout(90000);
-                c.setRequestProperty("User-Agent", "AtariHelpEMU10");
-                c.setInstanceFollowRedirects(true);
+                final boolean primoApk = zipUrl == null;   // B321: ze serveru N&P rovnou APK (podepsany dotaz)
+                if (primoApk) {
+                    if (server == null || !server.sparovano()) throw new Exception(NapJazyk.t(a, "telefon není spárovaný se serverem N&P", "the phone is not paired with the N&P server"));
+                    c = server.otevri("/api/v1/apk", "GET");
+                    c.setReadTimeout(90000);
+                } else {
+                    c = (HttpURLConnection) new URL(zipUrl).openConnection();
+                    c.setConnectTimeout(30000);
+                    c.setReadTimeout(90000);
+                    c.setRequestProperty("User-Agent", "AtariHelpEMU10");
+                    c.setInstanceFollowRedirects(true);
+                }
                 int kod = c.getResponseCode();
-                if (kod != 200) throw new Exception("HTTP " + kod);
+                if (kod != 200) {
+                    if (primoApk) {
+                        java.io.InputStream e = c.getErrorStream();
+                        server.zpracujChybuStahovani(kod, e == null ? "" : new String(NapServerKlient.precti(e, 65536), "UTF-8"));
+                    }
+                    throw new Exception("HTTP " + kod);
+                }
                 final long celkem = c.getContentLength();
 
                 PackageInstaller pi = a.getPackageManager().getPackageInstaller();
@@ -183,13 +249,32 @@ public final class NapAktualizace {
                 relace = pi.openSession(id);
 
                 InputStream sit = c.getInputStream();
-                ZipInputStream zi = new ZipInputStream(sit);
-                ZipEntry e;
-                boolean naslo = false;
                 byte[] buf = new byte[65536];
                 long staženo = 0;
                 long zacatek = System.currentTimeMillis();
-                while ((e = zi.getNextEntry()) != null) {
+                boolean naslo = false;
+                if (primoApk) {   // B321: APK rovnou do instalacni relace
+                    naslo = true;
+                    OutputStream ven = relace.openWrite("emu10", 0, celkem > 0 ? celkem : -1);
+                    int n;
+                    while ((n = sit.read(buf)) > 0) {
+                        ven.write(buf, 0, n);
+                        staženo += n;
+                        final long mam = staženo;
+                        a.runOnUiThread(() -> {
+                            popis.setText(NapJazyk.t(a, "Instaluji přímo ze serveru N&P", "Installing straight from the N&P server"));
+                            pruh.setIndeterminate(celkem <= 0);
+                            if (celkem > 0) pruh.setProgress((int) (mam * 100 / celkem));
+                        });
+                    }
+                    relace.fsync(ven);
+                    ven.close();
+                    sit.close();
+                    if (celkem > 0 && staženo != celkem) throw new Exception(NapJazyk.t(a, "stahování se přerušilo", "the download was interrupted"));
+                }
+                ZipInputStream zi = primoApk ? null : new ZipInputStream(sit);
+                ZipEntry e;
+                while (zi != null && (e = zi.getNextEntry()) != null) {
                     if (e.isDirectory()) continue;
                     if (!e.getName().toLowerCase(java.util.Locale.US).endsWith(".apk")) continue;
                     naslo = true;
@@ -211,16 +296,16 @@ public final class NapAktualizace {
                     ven.close();
                     break;
                 }
-                zi.close();
+                if (zi != null) zi.close();
                 if (!naslo) throw new Exception("v ZIPu neni APK");
 
                 Intent i = new Intent(a, MainActivity.class);
                 i.setAction("eu.atarihelp.emu10.INSTALACE");
+                // B321: vysledek (a hlavne potvrzeni instalace) zpracuje MainActivity.napInstalace
                 android.app.PendingIntent pending = android.app.PendingIntent.getActivity(
                         a, 0, i,
-                        Build.VERSION.SDK_INT >= 31
-                                ? android.app.PendingIntent.FLAG_MUTABLE
-                                : 0);
+                        (Build.VERSION.SDK_INT >= 31 ? android.app.PendingIntent.FLAG_MUTABLE : 0)
+                                | android.app.PendingIntent.FLAG_UPDATE_CURRENT);
                 relace.commit(pending.getIntentSender());
                 relace = null;               // relaci uz drzi system
                 vysledek = "OK (" + (staženo / 1024) + " kB, na disku nic)";

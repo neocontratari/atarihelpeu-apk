@@ -1340,7 +1340,8 @@ bindPerfButtons();
   var el=$('btnCollection'); if(!el) return;
   // BUILD2SA22: SBIRKA vede rovnou na stranku, ze ktere se hra spousti.
   // Drive to slo na page_id=207 (rozcestnik) a clovek musel jeste proklikat.
-  var COLLECTION_URL='https://atarihelp.eu/?page_id=1003';
+  // B321: SBIRKA = N&P HRY (hry Segy ze serveru N&P). WEDOS stranku page_id=1003 appka v okne nedostane (503).
+  var COLLECTION_URL='file:///android_asset/hry/index.html?system=sega';
   var lpTimer=null,lpFired=false;
   el.addEventListener('pointerdown',function(e){e.preventDefault();e.stopPropagation();lpFired=false;clearTimeout(lpTimer);
     lpTimer=setTimeout(function(){lpFired=true;pushLog('BUILD2RZ COLLECTION_LONGPRESS perfMenu');openPerformanceMenu();},700);},true);
@@ -1383,7 +1384,8 @@ var dpad=$('dpad'),dpadPointerId=null,dpadActive=false;if(dpad){dpad.addEventLis
 bindUiAction('btnSaves','savedPositions',function(){showSegaSaved();});
 bindUiAction('btnManuals','manuals',function(){showMonitor('BUILD2RV SEGA CLEAN UI + AUDIO MASTER NOSTARVE\n\nSBIRKA:\n- vyber vykonu HIGH / LOW\n\nCARTRIDGE / CART:\n- vyber ROM v nasi appce\n- ROM jde primo do C++ bridge\n- Java/WebView wrapper je vypnuty\n- C++ CORE DOM cesta je odstranena; zadny cerny prekryv pres skin\n\nREGION:\n- C++ uz neprepisuje Europe/PAL ROM na U/NTSC\n- core respektuje header ROM\n\nMOBIL:\n- landscape cisti stare WebView vrstvy\n- portrait navrat ignoruje nulovy rect\n\nZVUK:\n- FM/PSG audio ma zeroed buffery a RR recovery safe-audit governor; S8 ma no-starve profil; LOW/HIGH nemeni barvu zvuku.');});
 bindUiAction('btnMenu','menu',function(){pushLog('BUILD2RV MENU_CLICK stop native and leave sega');try{stopNativeCppInPlace('menuButton');}catch(_){}try{location.href='../index.html';}catch(_){}});
-bindUiAction('btnWeb','web',function(){pushLog('BUILD2RV WEB_CLICK');try{location.href='https://atarihelp.eu/';}catch(_){}});
+/* B321: web atarihelp.eu v prohlizeci telefonu (WEDOS appku v okne odmita - 503) */
+bindUiAction('btnWeb','web',function(){pushLog('BUILD2RV WEB_CLICK');try{if(window.AHNET&&AHNET.openInBrowser)AHNET.openInBrowser('https://atarihelp.eu/');else location.href='https://atarihelp.eu/';}catch(_){}});
 
 var nativeCpp=$('btnNativeCpp');
 if(nativeCpp){try{nativeCpp.style.display='none';nativeCpp.disabled=true;nativeCpp.setAttribute('aria-hidden','true');}catch(_){}}

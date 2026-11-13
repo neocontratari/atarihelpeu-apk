@@ -557,7 +557,8 @@ body.mysLeveDrzi .mysUkazDrzi{display:block;}
 <script>
 (function(){'use strict';
 var BUILD='BUILD2SA5AQ_STAGE191_ROUTING_GUARD_NO_PS1_ZIP_HIJACK';
-var PS1_GOOGLE_PAGE='https://atarihelp.eu/?page_id=1048';
+/* B321: hry PS1 = N&P HRY (server N&P); drive stranka page_id=1048 s odkazy na Google Drive (WEDOS v okne appky 503) */
+var PS1_GOOGLE_PAGE='file:///android_asset/hry/index.html?system=ps1';
 function $(id){return document.getElementById(id);}
 /* ===== BUILD2RZ PS1 TEST LOG: ring buffer + panel + kopirovani ===== */
 var LOG=[];
@@ -1643,7 +1644,7 @@ function ps1NormalizeRemoteUrl(u){
 function openPs1GooglePage(){
   try{
     log('PS1_GOOGLE_PAGE '+PS1_GOOGLE_PAGE);
-    toast('Oteviram PS1 Google Drive stranku',2600);
+    toast('Otevírám hry PS1 ze serveru N&P',2600);
     if(window.AHNET&&window.AHNET.openPs1Games)window.AHNET.openPs1Games();
     else location.href=PS1_GOOGLE_PAGE;
   }catch(e){
@@ -1907,7 +1908,7 @@ OVL_PRVKY.forEach(function(id){
 try{if(window.AHOVL&&window.AHOVL.stav){var ovs=String(window.AHOVL.stav()).split('|');window.napOvladacStav(ovs[0],ovs.slice(1).join('|'));}}catch(_){}
 log('POZN: cerny monitor pred bootem je spravne; obraz se rozsviti az po realnem PS1 bootu.');
 ensurePs1ScreenAndPoll();
-log(BUILD+' ready: LOAD GAME otevre PS1 Google Drive stranku '+PS1_GOOGLE_PAGE+'; cache je v Downloads/AtariHelp/PS1, BOOT_OK banner se hned schova.');
+log(BUILD+' ready: LOAD GAME otevre N&P HRY (PS1) '+PS1_GOOGLE_PAGE+'; BOOT_OK banner se hned schova.');
 })();
 </script>
 </body>

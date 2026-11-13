@@ -68,6 +68,53 @@ jobs:
       - name: Sestaveni APK
         run: gradle assembleDebug --no-daemon --stacktrace
 
+      # B321: soukromy podpisovy klic N&P. Rotace klice (APK Signature Scheme v3): Android 9+ bere
+      # novy klic N&P (stary verejny debug klic uz aktualizaci neprotlaci), Android 7-8 dal debug klic (v2).
+      # Klic je v tajemstvi NAP_PODPIS (1. radek heslo, zbytek base64 PKCS12), rodokmen app/nap_rodokmen.bin.
+      - name: Podpis klicem N&P (rotace z debug klice)
+        env:
+          NAP_PODPIS: ${{ secrets.NAP_PODPIS }}
+        run: |
+          set -e
+          BT="$ANDROID_HOME/build-tools/34.0.0"
+          APK=$(ls app/build/outputs/apk/debug/*.apk | head -1)
+          if [ -z "$NAP_PODPIS" ]; then
+            echo "::warning::Chybi tajemstvi NAP_PODPIS - APK zustava podepsane jen starym verejnym debug klicem."
+            exit 0
+          fi
+          printf '%s\n' "$NAP_PODPIS" | tr -d '\r' > "$RUNNER_TEMP/podpis.txt"
+          NAP_HESLO="$(head -n1 "$RUNNER_TEMP/podpis.txt" | tr -d ' ')"
+          echo "::add-mask::$NAP_HESLO"
+          export NAP_HESLO
+          tail -n +2 "$RUNNER_TEMP/podpis.txt" | tr -d ' \n' | base64 -d > "$RUNNER_TEMP/nap.p12"
+          rm -f "$RUNNER_TEMP/podpis.txt"
+          "$BT/apksigner" sign \
+            --ks app/debug.keystore --ks-type PKCS12 --ks-key-alias androiddebugkey --ks-pass pass:android --key-pass pass:android \
+            --next-signer --ks "$RUNNER_TEMP/nap.p12" --ks-type PKCS12 --ks-key-alias nap --ks-pass env:NAP_HESLO --key-pass env:NAP_HESLO \
+            --lineage app/nap_rodokmen.bin --rotation-min-sdk-version 28 --v4-signing-enabled false \
+            --out "$RUNNER_TEMP/podepsane.apk" "$APK"
+          rm -f "$RUNNER_TEMP/nap.p12"
+          mv "$RUNNER_TEMP/podepsane.apk" "$APK"
+          echo "Podepsano klicem N&P (rotace)."
+
+      - name: Kontrola APK - podpis, verze, osobni klic jako server N&P v10
+        run: |
+          set -e
+          BT="$ANDROID_HOME/build-tools/34.0.0"
+          APK=$(ls app/build/outputs/apk/debug/*.apk | head -1)
+          "$BT/aapt2" dump badging "$APK" | head -1
+          "$BT/apksigner" verify -v --print-certs --min-sdk-version 24 "$APK" | grep -E "^Verif|certificate DN|Number of signers"
+          echo "--- Android 9 a novejsi (v3):"
+          "$BT/apksigner" verify --print-certs --min-sdk-version 28 "$APK" | grep "certificate DN" || true
+          "$BT/apksigner" lineage --in "$APK" --print-certs 2>/dev/null | grep "DN" || echo "(APK bez rotace klice)"
+          echo "--- osobni klic N&P vlozeny jako na serveru v10 (APK Signing Block):"
+          python3 test_overeni/b321/vloz_klic.py "$APK" "$RUNNER_TEMP/s_klicem.apk"
+          "$BT/apksigner" verify --min-sdk-version 24 "$RUNNER_TEMP/s_klicem.apk" && echo "APK s klicem: podpis plati"
+          mkdir -p "$RUNNER_TEMP/k"
+          javac -d "$RUNNER_TEMP/k" app/src/main/java/eu/atarihelp/emu10/NapApkKlic.java test_overeni/b321/jvm/NapApkKlicTest.java
+          java -cp "$RUNNER_TEMP/k" NapApkKlicTest "$RUNNER_TEMP/s_klicem.apk" | tee "$RUNNER_TEMP/klic.txt"
+          grep -q "tajemstvi=5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a" "$RUNNER_TEMP/klic.txt"
+
       - name: Ulozeni APK ke stazeni
         uses: actions/upload-artifact@v4
         with:

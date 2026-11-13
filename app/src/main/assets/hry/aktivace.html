@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>N&amp;P – aktivace</title>
+<!-- B321: AKTIVACE TELEFONU. Appka se pusti az po sparovani se serverem N&P (Reneho PC):
+     klic, ktery server vlozil do APK pri stazeni (automaticky), nebo osobni kod NAP-XXXX-XXXX.
+     Most AHHRY (MainActivity.AHHry): stav(), aktivuj(kod), over(), pokracuj(), nastavServer(url). -->
+<script src="../spolecne/nap_jazyk.js"></script>
+<script src="../jazyk/en_hry.js"></script>
+<style>
+@font-face{font-family:"Chakra Petch";src:url(../pisma/chakra_semibold.woff2) format("woff2");font-weight:400 600;font-style:normal;font-display:swap;}
+@font-face{font-family:"Chakra Petch";src:url(../pisma/chakra_bold.woff2) format("woff2");font-weight:700 900;font-style:normal;font-display:swap;}
+:root{--zl1:#ffe39a;--zl2:#d79a2e;--zl3:#7a4a10;--text:#efe6cf;--tlumene:#b7aa8a;--azur:#8fdcff;--bg:#050302;--karta:#0f0b06;--cervena:#ff6b5a;--zelena:#7dff9b;}
+*{box-sizing:border-box;}
+html,body{margin:0;min-height:100%;background:var(--bg);color:var(--text);font-family:"Chakra Petch","Segoe UI",Roboto,Arial,sans-serif;}
+body{display:flex;align-items:center;justify-content:center;padding:max(14px,env(safe-area-inset-top)) 14px 14px;
+  background:radial-gradient(ellipse at 50% 0%,rgba(215,154,46,.18),transparent 60%),var(--bg);}
+.okno{width:100%;max-width:440px;background:linear-gradient(180deg,#17110a,var(--karta));border:1px solid var(--zl3);border-radius:18px;
+  padding:22px 20px 18px;box-shadow:0 0 0 1px rgba(255,227,154,.06) inset,0 18px 50px rgba(0,0,0,.6),0 0 40px rgba(215,154,46,.12);text-align:center;}
+.logo{font-weight:900;font-size:26px;letter-spacing:.12em;color:var(--zl1);text-shadow:0 0 18px rgba(255,227,154,.35);margin:2px 0 2px;}
+.pod{font-size:12px;letter-spacing:.28em;color:var(--zl2);margin-bottom:18px;}
+#ikona{font-size:38px;line-height:1;height:44px;margin:4px 0 8px;}
+#zprava{font-size:17px;font-weight:600;line-height:1.4;min-height:48px;margin:0 0 6px;}
+#zprava.chyba{color:var(--cervena);}
+#zprava.ok{color:var(--zelena);}
+#detail{font-size:13px;color:var(--tlumene);line-height:1.45;margin:0 0 14px;min-height:18px;}
+.kolecko{display:inline-block;width:34px;height:34px;border:3px solid rgba(255,227,154,.2);border-top-color:var(--zl1);border-radius:50%;animation:toc 1s linear infinite;}
+@keyframes toc{to{transform:rotate(360deg);}}
+#formular{display:none;margin-top:4px;}
+label{display:block;font-size:13px;letter-spacing:.12em;color:var(--zl2);margin-bottom:8px;}
+#kod{width:100%;padding:14px 10px;border-radius:12px;border:1px solid var(--zl2);background:#090603;color:#fff;font:700 22px "Chakra Petch",monospace;
+  letter-spacing:.14em;text-align:center;text-transform:uppercase;outline:none;}
+#kod:focus{box-shadow:0 0 0 3px rgba(215,154,46,.35);}
+.tlacitko{display:block;width:100%;margin-top:12px;padding:14px;border:0;border-radius:12px;cursor:pointer;
+  background:linear-gradient(180deg,var(--zl1),var(--zl2));color:#120b02;font:800 15px "Chakra Petch",sans-serif;letter-spacing:.1em;}
+.tlacitko:active{filter:brightness(.9);}
+.tlacitko[disabled]{opacity:.45;}
+.vedlejsi{background:transparent;border:1px solid var(--zl3);color:var(--zl1);}
+#znovu{display:none;}
+.rada{font-size:12.5px;color:var(--tlumene);line-height:1.5;margin-top:14px;text-align:left;border-top:1px solid rgba(122,74,16,.45);padding-top:12px;}
+.pata{margin-top:14px;font-size:11.5px;color:#8c805f;line-height:1.6;}
+.pata a{color:var(--azur);text-decoration:none;}
+</style>
+</head>
+<body>
+<div class="okno">
+  <div class="logo">★ N&amp;P VISION ★</div>
+  <div class="pod">AKTIVACE APLIKACE</div>
+  <div id="ikona"><span class="kolecko"></span></div>
+  <div id="zprava">Ověřuji aplikaci…</div>
+  <div id="detail"></div>
+  <form id="formular" autocomplete="off" onsubmit="return false;">
+    <label for="kod">TVŮJ OSOBNÍ KÓD</label>
+    <input id="kod" maxlength="16" placeholder="NAP-XXXX-XXXX" autocapitalize="characters" autocorrect="off" spellcheck="false" inputmode="text">
+    <button id="potvrdit" class="tlacitko" type="submit">POTVRDIT KÓD</button>
+  </form>
+  <button id="znovu" class="tlacitko vedlejsi" type="button">ZKUSIT ZNOVU</button>
+  <div class="rada">Kód ti dal správce N&amp;P. Jeden kód patří jednomu telefonu – aplikaci nikomu neposílej, na jiném telefonu nefunguje.</div>
+  <div class="pata"><span data-nepreklad id="verze"></span><br>Server: <span data-nepreklad id="server"></span> · <a href="#" id="zmenit">ZMĚNIT</a></div>
+</div>
+<script>
+(function () {
+  'use strict';
+  var H = window.AHHRY || null;
+  var st = {};
+  var $ = function (id) { return document.getElementById(id); };
+  var pracuje = false;
+
+  function cti() {
+    try { st = JSON.parse(H ? H.stav() : '{}') || {}; } catch (e) { st = {}; }
+    $('server').textContent = st.server || '';
+    $('verze').textContent = st.verze ? 'AtariHelp ' + st.verze + (st.telefon ? ' · …' + st.telefon : '') : '';
+  }
+
+  function stav(ikona, text, druh, detail) {
+    var i = $('ikona');
+    if (ikona === 'cekej') i.innerHTML = '<span class="kolecko"></span>'; else i.textContent = ikona;
+    var z = $('zprava');
+    z.textContent = text;
+    z.className = druh || '';
+    $('detail').textContent = detail || '';
+  }
+
+  function ukazFormular(zobrazit) {
+    $('formular').style.display = zobrazit ? 'block' : 'none';
+    if (zobrazit) setTimeout(function () { try { $('kod').focus(); } catch (e) {} }, 50);
+  }
+
+  /* "nap 7k3q-m9xd" -> "NAP-7K3Q-M9XD"; 8 znaku bez NAP -> doplnit NAP */
+  function upravKod(v) {
+    var c = String(v || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+    if (c.length === 8 && c.indexOf('NAP') !== 0) c = 'NAP' + c;
+    if (c.indexOf('NAP') !== 0) return c.slice(0, 13);
+    c = c.slice(0, 11);
+    return c.length <= 3 ? c : c.length <= 7 ? 'NAP-' + c.slice(3) : 'NAP-' + c.slice(3, 7) + '-' + c.slice(7);
+  }
+
+  function hotovo() {
+    stav('✔', 'Aplikace je aktivovaná', 'ok', 'Vítej v N&P Vision!');
+    ukazFormular(false);
+    $('znovu').style.display = 'none';
+    setTimeout(function () { if (H) H.pokracuj(); }, 900);
+  }
+
+  function zablokovano() {
+    stav('🔒', 'Tento telefon je zablokovaný', 'chyba', 'Napiš správci N&P. Až tě odblokuje, klepni na ZKUSIT ZNOVU.');
+    ukazFormular(false);
+    $('znovu').style.display = 'block';
+    $('znovu').onclick = over;
+  }
+
+  /* odpoved serveru na parovani */
+  function vysledek(r, kodem) {
+    pracuje = false;
+    $('potvrdit').disabled = false;
+    if (r && r.ok) { hotovo(); return; }
+    var d = (r && r.duvod) || '';
+    $('znovu').style.display = 'none';
+    if (d === 'zablokovano') { zablokovano(); return; }
+    if (d === 'sit') {
+      stav('📡', 'Server N&P je nedostupný', 'chyba', 'Zkontroluj připojení k internetu a zkus to znovu.');
+      $('znovu').style.display = 'block';
+      $('znovu').onclick = kodem ? function () { odesli(); } : automaticky;
+      ukazFormular(!st.klic || kodem);
+      return;
+    }
+    if (d === 'moc_pokusu') { stav('⏳', 'Příliš mnoho pokusů', 'chyba', 'Zkus to znovu za hodinu.'); ukazFormular(false); return; }
+    if (d === 'spatny_kod') stav('❌', 'Tenhle kód neznám', 'chyba', 'Zkontroluj ho a zkus znovu (bez 0 a O, bez 1 a I).');
+    else if (d === 'kod_pouzit') stav('📱', kodem ? 'Kód už patří jinému telefonu' : 'Tahle kopie aplikace patří jinému telefonu', 'chyba',
+      kodem ? 'Na nový telefon ti kód uvolní správce N&P.' : 'Zadej svůj osobní kód.');
+    else if (d === 'jiny_kod') stav('📱', 'Telefon už má jiný kód', 'chyba', (r && r.zprava) || '');
+    else stav('🔑', 'Zadej svůj osobní kód', '', st.klic ? 'Tahle kopie aplikace nemá platný klíč.' : '');
+    ukazFormular(true);
+  }
+
+  function automaticky() {
+    if (!H || pracuje) return;
+    pracuje = true;
+    stav('cekej', 'Aktivuji aplikaci…', '', 'Spojuji se se serverem N&P.');
+    $('znovu').style.display = 'none';
+    ukazFormular(false);
+    H.aktivuj('');
+  }
+
+  function odesli() {
+    if (!H || pracuje) return;
+    var k = upravKod($('kod').value);
+    $('kod').value = k;
+    if (k.replace(/-/g, '').length !== 11) { stav('🔑', 'Kód má tvar NAP-XXXX-XXXX', 'chyba', ''); return; }
+    pracuje = true;
+    $('potvrdit').disabled = true;
+    stav('cekej', 'Ověřuji kód…', '', '');
+    $('znovu').style.display = 'none';
+    window.napHry._kodem = true;
+    H.aktivuj(k);
+  }
+
+  function over() {
+    if (!H || pracuje) return;
+    pracuje = true;
+    stav('cekej', 'Ověřuji u serveru…', '', '');
+    $('znovu').style.display = 'none';
+    H.over();
+  }
+
+  window.napHry = {
+    _kodem: false,
+    aktivace: function (r) { var k = window.napHry._kodem; window.napHry._kodem = false; cti(); vysledek(r, k); },
+    over: function (r) {
+      pracuje = false;
+      cti();
+      if (r && r.ok && st.sparovano && !st.zablokovano) { hotovo(); return; }
+      if (st.zablokovano || (r && r.duvod === 'zablokovano')) { zablokovano(); return; }
+      if (r && r.duvod === 'sit') { stav('📡', 'Server N&P je nedostupný', 'chyba', 'Zkontroluj připojení k internetu a zkus to znovu.'); $('znovu').style.display = 'block'; $('znovu').onclick = over; return; }
+      start();
+    }
+  };
+
+  function start() {
+    cti();
+    if (!H) { stav('⚠', 'Aktivace běží jen v aplikaci', 'chyba', ''); return; }
+    if (st.sparovano && st.zablokovano) { zablokovano(); return; }
+    if (st.sparovano) { hotovo(); return; }
+    if (st.klic) { automaticky(); return; }
+    stav('🔑', 'Zadej svůj osobní kód', '', 'Aplikace se tím spáruje s tvým telefonem.');
+    ukazFormular(true);
+  }
+
+  $('kod').addEventListener('input', function () {
+    var p = $('kod').value, n = upravKod(p);
+    if (n !== p) $('kod').value = n;
+  });
+  $('formular').addEventListener('submit', function (e) { e.preventDefault(); odesli(); });
+  $('zmenit').addEventListener('click', function (e) {
+    e.preventDefault();
+    if (!H) return;
+    var novy = window.prompt('Adresa serveru N&P (prázdné = výchozí):', st.server || '');
+    if (novy === null) return;
+    H.nastavServer(novy);
+    cti();
+  });
+  start();
+})();
+</script>
+</body>
+</html>

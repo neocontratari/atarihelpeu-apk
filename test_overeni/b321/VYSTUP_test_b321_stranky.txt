@@ -1,0 +1,43 @@
+B321 - stranky AKTIVACE a N&P HRY v Chromiu (assets appky, falesny most AHHRY)
+
+OK     A1 klic v APK: sama se aktivuje a pokracuje do appky
+OK     A1 formular kodu se neukazal
+OK     A2 preposlana kopie: hlaska a formular kodu
+OK     A2 kod se pri psani upravi na NAP-7K3Q-M9XD
+OK     A2 zadany kod -> aktivace -> pokracuj
+OK     A3 APK bez klice: hned formular, nic se neposila
+OK     A3 neuplny kod se ani neposle
+OK     A3 spatny kod -> "Tenhle kód neznám"
+OK     A4 server nedostupny: hlaska + ZKUSIT ZNOVU
+OK     A4 ZKUSIT ZNOVU -> znovu klicem z APK -> pokracuj
+OK     A5 zablokovany telefon: hlaska, bez formulare
+OK     A5 po odblokovani ZKUSIT ZNOVU -> over -> pokracuj
+OK     A6 sparovany telefon: rovnou dal
+OK     A7 ZMĚNIT server
+OK     A8 8 znaku bez NAP -> NAP-7K3Q-M9XD
+OK     A9 mimo appku: hlaska, zadna chyba
+OK     A10 anglicky (preposlana kopie): bez cestiny
+OK     A10 anglicky: hlaska preposlane kopie
+OK     A10 anglicky (zablokovany): bez cestiny
+OK     A10 anglicky (server nedostupny): bez cestiny
+OK     A10 anglicky (bez klice): bez cestiny
+OK     L1 seznam: jen hry Atari, v poradi ze serveru
+OK     L1 jmeno hry s <img onerror> je jen text (zadny skript)
+OK     L1 pocty v zalozkach a stav
+OK     L1 znacka CAR a velikost 128 kB
+OK     L2 obaly z https://nap.hry/obal/<id>
+OK     L3 hledani bez diakritiky ("zlutou")
+OK     L3 nic nenalezeno
+OK     L4 zalozka SEGA: adresa, barva, 1 hra
+OK     L5 klepnuti -> AHHRY.spust + okno spousteni
+OK     L9 ZPET -> zpet(sega), web -> web()
+OK     L6 bez site: ulozeny seznam + upozorneni
+OK     L6 PS1: text o prubehu v PS1
+OK     L7 server nedostupny bez seznamu (vychozi zalozka ATARI)
+OK     L8 server zrusil parovani -> aktivace
+OK     L8 nesparovany telefon -> aktivace
+OK     L10 anglicky: bez cestiny (jmena her se neprekladaji)
+OK     L10 anglicky: Nothing found.
+OK     zadna chyba JavaScriptu
+
+VYSLEDEK: 39 OK, 0 CHYBA

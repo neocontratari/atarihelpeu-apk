@@ -73,6 +73,7 @@ NapJazyk.slovnik({
   'LOG ULOZEN (Downloads/AtariHelp) - vyber, cim ho poslat': 'LOG SAVED (Downloads/AtariHelp) - choose how to send it',
   'AHSAVE most neni dostupny - pouzij KOPIROVAT LOG': 'The AHSAVE bridge is not available - use COPY LOG',
   'Oteviram PS1 Google Drive stranku': 'Opening the PS1 Google Drive page',
+  'Otevírám hry PS1 ze serveru N&P': 'Opening PS1 games from the N&P server',   // B321
   'PS1 URL musi zacinat http:// nebo https://': 'The PS1 URL must start with http:// or https://',
   'PS1: stahuju z Drive / netu, pockej na BOOT OK': 'PS1: downloading from Drive / the net, wait for BOOT OK',
   'PS1 BOOT: vyber .bin/.iso hry': 'PS1 BOOT: choose the game .bin/.iso',

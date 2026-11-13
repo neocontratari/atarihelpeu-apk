@@ -1,0 +1,71 @@
+/* B321: anglicky slovnik pro stranky N&P HRY (hry/index.html) a aktivaci telefonu (hry/aktivace.html).
+ * Cesky -> anglicky, cela veta tak, jak ji stranka vypisuje (viz assets/spolecne/nap_jazyk.js).
+ * Patri sem i hlasky serveru N&P (server pise cesky). */
+NapJazyk.slovnik({
+  // --- aktivace telefonu
+  'N&P – aktivace': 'N&P – activation',
+  'AKTIVACE APLIKACE': 'APP ACTIVATION',
+  'Ověřuji aplikaci…': 'Checking the app…',
+  'TVŮJ OSOBNÍ KÓD': 'YOUR PERSONAL CODE',
+  'POTVRDIT KÓD': 'CONFIRM CODE',
+  'ZKUSIT ZNOVU': 'TRY AGAIN',
+  'Kód ti dal správce N&P. Jeden kód patří jednomu telefonu – aplikaci nikomu neposílej, na jiném telefonu nefunguje.':
+    'You got your code from the N&P admin. One code belongs to one phone – do not send the app to anyone, it will not work on another phone.',
+  'ZMĚNIT': 'CHANGE',
+  'Aplikace je aktivovaná': 'The app is activated',
+  'Vítej v N&P Vision!': 'Welcome to N&P Vision!',
+  'Tento telefon je zablokovaný': 'This phone is blocked',
+  'Napiš správci N&P. Až tě odblokuje, klepni na ZKUSIT ZNOVU.': 'Contact the N&P admin. Once you are unblocked, tap TRY AGAIN.',
+  'Server N&P je nedostupný': 'The N&P server is unavailable',
+  'Zkontroluj připojení k internetu a zkus to znovu.': 'Check your internet connection and try again.',
+  'Příliš mnoho pokusů': 'Too many attempts',
+  'Zkus to znovu za hodinu.': 'Try again in an hour.',
+  'Tenhle kód neznám': 'Unknown code',
+  'Zkontroluj ho a zkus znovu (bez 0 a O, bez 1 a I).': 'Check it and try again (there is no 0 or O, no 1 or I).',
+  'Kód už patří jinému telefonu': 'This code already belongs to another phone',
+  'Tahle kopie aplikace patří jinému telefonu': 'This copy of the app belongs to another phone',
+  'Na nový telefon ti kód uvolní správce N&P.': 'The N&P admin can release your code for a new phone.',
+  'Zadej svůj osobní kód.': 'Enter your personal code.',
+  'Zadej svůj osobní kód': 'Enter your personal code',
+  'Telefon už má jiný kód': 'This phone already has a different code',
+  'Tahle kopie aplikace nemá platný klíč.': 'This copy of the app has no valid key.',
+  'Aktivuji aplikaci…': 'Activating the app…',
+  'Spojuji se se serverem N&P.': 'Connecting to the N&P server.',
+  'Kód má tvar NAP-XXXX-XXXX': 'The code looks like NAP-XXXX-XXXX',
+  'Ověřuji kód…': 'Checking the code…',
+  'Ověřuji u serveru…': 'Checking with the server…',
+  'Aktivace běží jen v aplikaci': 'Activation only works in the app',
+  'Aplikace se tím spáruje s tvým telefonem.': 'This pairs the app with your phone.',
+  'Adresa serveru N&P (prázdné = výchozí):': 'N&P server address (empty = default):',
+  // --- hlasky serveru N&P
+  'Tenhle kód neznám.': 'Unknown code.',
+  'Kód už patří jinému telefonu.': 'This code already belongs to another phone.',
+  'Tahle kopie aplikace patří jinému telefonu. Zadej svůj osobní kód.': 'This copy of the app belongs to another phone. Enter your personal code.',
+  'Telefon nebo kód je zablokovaný.': 'The phone or the code is blocked.',
+  'Příliš mnoho špatných kódů. Zkus to za hodinu.': 'Too many wrong codes. Try again in an hour.',
+  'Telefon není spárovaný.': 'The phone is not paired.',
+  'Neplatný podpis – spáruj telefon znovu.': 'Invalid signature – pair the phone again.',
+  'Hodiny v telefonu jdou špatně.': 'The phone clock is wrong.',
+  'Telefon je zablokovaný.': 'The phone is blocked.',
+  'Hra na serveru není.': 'The game is not on the server.',
+  // --- N&P HRY
+  'N&P HRY': 'N&P GAMES',
+  'ZPĚT': 'BACK',
+  'Obnovit': 'Refresh',
+  'Hledat hru': 'Search games',
+  'Načítám hry ze serveru N&P…': 'Loading games from the N&P server…',
+  'Web atarihelp.eu ↗': 'atarihelp.eu website ↗',
+  'Nic nenalezeno.': 'Nothing found.',
+  'Na serveru zatím nejsou žádné hry pro tenhle systém.': 'There are no games for this system on the server yet.',
+  'Hra se stahuje v PS1 – průběh uvidíš tam.': 'The game is downloading in PS1 – you will see the progress there.',
+  'Stahuji ze serveru N&P…': 'Downloading from the N&P server…',
+  'Server N&P': 'N&P server',
+  'Bez připojení k serveru – ukazuji uložený seznam.': 'No connection to the server – showing the saved list.',
+  'Server N&P je nedostupný. Zkontroluj připojení a klepni na ↻.': 'The N&P server is unavailable. Check the connection and tap ↻.',
+  'Seznam her nejde načíst.': 'The game list cannot be loaded.',
+  'N&P HRY běží jen v aplikaci.': 'N&P GAMES only works in the app.'
+});
+NapJazyk.vzory([
+  [/^(\d+) (hra|hry|her)$/, function (m, n) { return n + (n === '1' ? ' game' : ' games'); }],
+  [/^Tenhle telefon už má kód (NAP-[A-Z0-9*]{2,4}[*-]+[*]*)\. Zadej ten\.$/, 'This phone already has code $1. Enter that one.']
+]);
