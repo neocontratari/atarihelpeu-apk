@@ -3888,6 +3888,8 @@ public class MainActivity extends Activity {
                         + " audioSource=" + napTvWebAudioSource
                         + " audioRate=" + napTvWebAudioRate
                         + " h264Seq=" + napTvWebH264Seq
+                        // B320: verze appky - stranka otevrena ze starsi appky se po aktualizaci obnovi sama
+                        + " verze=" + napTvVerze()
                         + " url=" + curUrl3 + "\n").getBytes("UTF-8");
                 napTvWebHeader(out, "200 OK", "text/plain; charset=utf-8", body.length, false);
                 out.write(body);
@@ -3957,8 +3959,24 @@ public class MainActivity extends Activity {
         out.write(h.getBytes("ISO-8859-1"));
     }
 
+    // B320: verze appky (versionCode) pro stranku WEB TV. Stranka si ji vezme do sebe (NAP_VERZE) a /status
+    // ji hlasi porad - kdyz se lisi (appka se mezitim aktualizovala), stranka se sama obnovi. Drive v
+    // prohlizeci zustala stara stranka (Rene po B319: "proc to nejde" - pomohlo az F5).
+    private volatile int napTvVerzeKod = -1;
+    private int napTvVerze() {
+        int v = napTvVerzeKod;
+        if (v < 0) {
+            try { v = getPackageManager().getPackageInfo(getPackageName(), 0).versionCode; } catch (Throwable t) { v = 0; }
+            napTvVerzeKod = v;
+        }
+        return v;
+    }
+
     private void napTvWebWriteHtml(OutputStream out) throws IOException {
         String body = "<!doctype html><html><head><meta charset='utf-8'>"
+                // B320: verze appky, ze ktere je stranka (pollFps ji porovnava s /status verze=); cislo dosadi
+                // Java nize (stranka sama zustava jen z textu - testy ji tak ctou z tohoto zdrojaku)
+                + "<script>window.NAP_VERZE=0/*NAP_VERZE*/;</script>"
                 + "<meta name='viewport' content='width=device-width,initial-scale=1'>"
                 + "<title>AtariHelp TV</title><style>"
                 + "html,body{margin:0;width:100%;height:100%;background:#000;color:#9fdcff;font:16px monospace;overflow:hidden}"
@@ -4122,7 +4140,13 @@ public class MainActivity extends Activity {
                 + "window.napMjStart=function(){if(window.napMjJe)return;window.napMjJe=1;if(window.napAp&&napAp.chce)return;"
                 + "v.onerror=function(){if(!fb)fallback();};v.src='/stream.mjpg?'+Date.now();label('MJPEG');};"
                 + "setTimeout(function(){if(!window.napMjJe)window.napMjStart();},2500);setTimeout(pollFps,0);"
-                + "function pollFps(){if(window.napPollBezi&&Date.now()-window.napPollBezi<2600)return;window.napPollBezi=Date.now();var ac=window.AbortController?new AbortController():null;var tm=setTimeout(function(){if(ac)try{ac.abort();}catch(e){}},2500);fetch('/status?'+Date.now(),ac?{cache:'no-store',signal:ac.signal}:{cache:'no-store'}).then(function(r){return r.text();}).then(function(t){clearTimeout(tm);window.napPollBezi=0;var mp=/ proud=(\\w+)/.exec(t),pd=(mp&&mp[1]!=='0')?mp[1]:'';var od=window.napOdmit;if(od&&Date.now()<od.t&&pd===od.d)pd=od.n;if(!mp){var m0=/atariProud=(\\d)/.exec(t);if(m0&&m0[1]==='1')pd='atari';}window.napProud=pd;window.napAtariProud=(pd==='atari');if(!window.napMjJe){if(pd&&apLze())window.napMjJe=1;else if(window.napMjStart)window.napMjStart();}if(pd&&apLze()){ap.bez=0;if(ap.chce&&ap.druh&&ap.druh!==pd)apZnovu();else if(!ap.on&&!ap.rd)apStart();}else if(ap.chce){if(!ap.bez)ap.bez=Date.now();else if(Date.now()-ap.bez>2500){ap.bez=0;apStop();}}if(ap.chce)apHlidej();var m=/seq=(\\d+)/.exec(t);var m2=/h264Seq=(\\d+)/.exec(t);if(!h264Active&&!h264Loading&&!ap.chce&&!(window.napProud&&apLze())){clog('pollFps calling startH264 (universal)');startH264();}var useM=h264Active&&m2?m2:m;if(useM){var sq=parseInt(useM[1],10),now=Date.now();if(lastSeqT>0){var dt=(now-lastSeqT)/1000;if(dt>0)curFps=Math.round((sq-lastSeq)/dt*10)/10;}if(sq===lastSeq&&sq>0){staleTicks++;}else{staleTicks=0;}lastSeq=sq;lastSeqT=now;if(staleTicks>=4&&!fb&&!h264Active&&!ap.chce){staleTicks=0;v.src='/stream.mjpg?'+Date.now();}}var ma=/atari=(\\d)/.exec(t), ms=/sega=(\\d)/.exec(t);var vA=!!(ma&&ma[1]==='1'), vS=!!(ms&&ms[1]==='1');window.napVAtari=vA;window.napVSeze=vS;var mp1=/ ps1=(\\d)/.exec(t);var vP=!!(mp1&&mp1[1]==='1');window.napVPs1=vP;var mq=/ ps1mys=(\\d)/.exec(t),pmz=!!(vP&&mq&&mq[1]==='1');if(pmz!==!!window.napPs1Mys){window.napPs1Mys=pmz;if(window.napPmZmena)window.napPmZmena(pmz);}var mc=/atariCpp=(\\d)/.exec(t), mr=/klavRezim=(\\w+)/.exec(t);window.napVAtariCpp=!!(mc&&mc[1]==='1');if(window.napVAtariCpp&&mr)window.napRezim=mr[1];var mm=/ menu=(\\d)/.exec(t);window.napVMenu=!!(mm&&mm[1]==='1');if(window.napKlavesnicePopis)window.napKlavesnicePopis(vA||vS||vP||window.napVMenu);label(h264Active?'H264':(fb?'JPEG':'MJPEG'));}).catch(function(e){clearTimeout(tm);window.napPollBezi=0;var n=Date.now();if(!window.napPollErrT||n-window.napPollErrT>5000){window.napPollErrT=n;clog('pollFps fetch err '+e);}label(h264Active?'H264':(fb?'JPEG':'MJPEG'));});}" // BUILD2SK45+SK57+SK59: stale-reconnect jen v MJPEG rezimu; "seq" v /status je porad ta sama zachytavaci sekvence i v H264 rezimu
+                // B320: appka se aktualizovala (jina verze v /status) - stranka se obnovi sama (nejvys 1x za 30 s,
+                // kdyby se prohlizec branil); po obnoveni prohlizec zase chce klik pro zvuk (vyzva to rekne)
+                + "function napVerze(t){var mv=/ verze=(\\d+)/.exec(t);if(!mv||!window.NAP_VERZE)return false;var vn=parseInt(mv[1],10);if(!vn||vn===window.NAP_VERZE)return false;"
+                + "var po=0;try{po=parseInt(sessionStorage.getItem('napObnova')||'0',10);}catch(e){}if(Date.now()-po<30000)return false;"
+                + "try{sessionStorage.setItem('napObnova',String(Date.now()));}catch(e){}clog('B320 STRANKA: appka je nove verze ('+window.NAP_VERZE+' -> '+vn+') - stranka se obnovi');"
+                + "setTimeout(function(){location.reload();},400);return true;}"
+                + "function pollFps(){if(window.napPollBezi&&Date.now()-window.napPollBezi<2600)return;window.napPollBezi=Date.now();var ac=window.AbortController?new AbortController():null;var tm=setTimeout(function(){if(ac)try{ac.abort();}catch(e){}},2500);fetch('/status?'+Date.now(),ac?{cache:'no-store',signal:ac.signal}:{cache:'no-store'}).then(function(r){return r.text();}).then(function(t){clearTimeout(tm);window.napPollBezi=0;if(napVerze(t))return;var mp=/ proud=(\\w+)/.exec(t),pd=(mp&&mp[1]!=='0')?mp[1]:'';var od=window.napOdmit;if(od&&Date.now()<od.t&&pd===od.d)pd=od.n;if(!mp){var m0=/atariProud=(\\d)/.exec(t);if(m0&&m0[1]==='1')pd='atari';}window.napProud=pd;window.napAtariProud=(pd==='atari');if(!window.napMjJe){if(pd&&apLze())window.napMjJe=1;else if(window.napMjStart)window.napMjStart();}if(pd&&apLze()){ap.bez=0;if(ap.chce&&ap.druh&&ap.druh!==pd)apZnovu();else if(!ap.on&&!ap.rd)apStart();}else if(ap.chce){if(!ap.bez)ap.bez=Date.now();else if(Date.now()-ap.bez>2500){ap.bez=0;apStop();}}if(ap.chce)apHlidej();var m=/seq=(\\d+)/.exec(t);var m2=/h264Seq=(\\d+)/.exec(t);if(!h264Active&&!h264Loading&&!ap.chce&&!(window.napProud&&apLze())){clog('pollFps calling startH264 (universal)');startH264();}var useM=h264Active&&m2?m2:m;if(useM){var sq=parseInt(useM[1],10),now=Date.now();if(lastSeqT>0){var dt=(now-lastSeqT)/1000;if(dt>0)curFps=Math.round((sq-lastSeq)/dt*10)/10;}if(sq===lastSeq&&sq>0){staleTicks++;}else{staleTicks=0;}lastSeq=sq;lastSeqT=now;if(staleTicks>=4&&!fb&&!h264Active&&!ap.chce){staleTicks=0;v.src='/stream.mjpg?'+Date.now();}}var ma=/atari=(\\d)/.exec(t), ms=/sega=(\\d)/.exec(t);var vA=!!(ma&&ma[1]==='1'), vS=!!(ms&&ms[1]==='1');window.napVAtari=vA;window.napVSeze=vS;var mp1=/ ps1=(\\d)/.exec(t);var vP=!!(mp1&&mp1[1]==='1');window.napVPs1=vP;var mq=/ ps1mys=(\\d)/.exec(t),pmz=!!(vP&&mq&&mq[1]==='1');if(pmz!==!!window.napPs1Mys){window.napPs1Mys=pmz;if(window.napPmZmena)window.napPmZmena(pmz);}var mc=/atariCpp=(\\d)/.exec(t), mr=/klavRezim=(\\w+)/.exec(t);window.napVAtariCpp=!!(mc&&mc[1]==='1');if(window.napVAtariCpp&&mr)window.napRezim=mr[1];var mm=/ menu=(\\d)/.exec(t);window.napVMenu=!!(mm&&mm[1]==='1');if(window.napKlavesnicePopis)window.napKlavesnicePopis(vA||vS||vP||window.napVMenu);label(h264Active?'H264':(fb?'JPEG':'MJPEG'));}).catch(function(e){clearTimeout(tm);window.napPollBezi=0;var n=Date.now();if(!window.napPollErrT||n-window.napPollErrT>5000){window.napPollErrT=n;clog('pollFps fetch err '+e);}label(h264Active?'H264':(fb?'JPEG':'MJPEG'));});}" // BUILD2SK45+SK57+SK59: stale-reconnect jen v MJPEG rezimu; "seq" v /status je porad ta sama zachytavaci sekvence i v H264 rezimu
                 // ===== B303 + B305: ATARI 130XE, SEGA A PS1 - OBRAZ A ZVUK PRIMO Z C++ =====
                 // B303 (Atari): "ma to na TV zpozdeni - nejde to vylepsit?" Misto H.264 / JPEG
                 // z Javy (zvetsovani, komprese, buffer prohlizece) posila C++ kazdy snimek
@@ -4651,6 +4675,7 @@ public class MainActivity extends Activity {
                 + "window.napPmZmena=function(z){if(z){clog('B318 MYS PC: na telefonu je PS1 s mysi PlayStation - klik do obrazu mys PC zachyti');hint(NAPOVEDA,7000);}"
                 + "else{if(pm.lock){try{(document.exitPointerLock||document.mozExitPointerLock).call(document);}catch(e){}}hint('');}};"
                 + "})();</script></body></html>";
+        body = body.replace("0/*NAP_VERZE*/", String.valueOf(napTvVerze()));   // B320
         body = napTvJazykStranka(body);   // B314: anglicky - prekladac a slovnik primo do stranky
         byte[] b = body.getBytes("UTF-8");
         napTvWebHeader(out, "200 OK", "text/html; charset=utf-8", b.length, false);
@@ -8510,6 +8535,11 @@ public class MainActivity extends Activity {
             try { atariJazyk(); } catch (Throwable ignored) {}   // B314: hlasky na pristroji CZ / EN
             NativeAtariCoreBridge.devStartSafe(true);
             atariCppOvladaniNacti();                       // B297: D-pad / tlacitka na sirku podle uzivatele
+            // B320: hraje herni ovladac -> D-pad a tlacitka na sirku schovat (jako stranky PS1 / Sega)
+            if (ovladac != null) {
+                NativeAtariCoreBridge.devCtlSafe("ovladac:" + ovladac.ui());
+                ui.postDelayed(this::ovladacNapoveda, 600);
+            }
             atariNativeAudioActive = true;
             appendNativeLog("B291 PRISTROJ_ZAPNUT - Atari 130XE ze schvaleneho navrhu, kresli C++ primo na displej");
             ui.removeCallbacks(atariZarizeniTik);
@@ -8543,8 +8573,9 @@ public class MainActivity extends Activity {
         atariZarizeni = null;
         atariZarizeniSkryte = false;
         atariCppNaObrazovce = false;
-        atariPadTlacitka = 0; atariPadPacka = 0;           // B296: ovladac pustit
+        atariPadTlacitka = 0;                              // B296: klavesnice pustit
         try { NativeAtariCoreBridge.devPadSafe(0); } catch (Throwable ignored) {}
+        try { NativeAtariCoreBridge.devOvladacPustSafe(); } catch (Throwable ignored) {}   // B320: herni ovladac
         ui.removeCallbacks(atariZarizeniTik);
         if (atariCppSpustCekajici != null) { ui.removeCallbacks(atariCppSpustCekajici); atariCppSpustCekajici = null; }
         try { NativeAtariCoreBridge.devStopSafe(); } catch (Throwable ignored) {}
@@ -8637,6 +8668,7 @@ public class MainActivity extends Activity {
     /** Servisni tlacitka pristroje (kod z C++ po PUSTENI tlacitka). */
     private void atariZarizeniAkce(int kod) {
         if (kod == AtariDeviceView.AKCE_VIBRACE) { atariCppVibruj(); return; }   // B297 (bez logu - casto)
+        if (kod == AtariDeviceView.AKCE_OVLADAC_DOTYK) { if (ovladac != null) ovladac.dotyk("Atari 130XE"); return; }   // B320
         final String[] jmena = {"?", "NET_HRY", "XEX_MOBIL", "ATR_DISK", "TURBO_BASIC", "BASIC_TBXL_TXT", "LOG_CHYBA", "HELP", "MENU", "EJECT_KAZETA",
                 "OVLADANI_MENU", "OVLADANI_ULOZIT"};
         appendNativeLog("B291 SERVISNI_TLACITKO " + (kod > 0 && kod < jmena.length ? jmena[kod] : String.valueOf(kod)));
@@ -10750,53 +10782,51 @@ public class MainActivity extends Activity {
 
 
     // ===================================================================
-    //  KLAVESNICE A JOYSTICK - NEJRYCHLEJSI CESTA STISKU
+    //  KLAVESNICE (Bluetooth / USB) - NEJRYCHLEJSI CESTA STISKU
     //
     //  Dotyk na displeji jde pres WebView, ktery si udalosti drzi ve
-    //  vlastni fronte. Klavesnice a joystick jdou naopak PRIMO sem, takze
-    //  se bit preda do jadra hned - zadne mezikroky.
+    //  vlastni fronte. Klavesnice jde naopak PRIMO sem, takze se bit preda
+    //  do jadra hned - zadne mezikroky.
     //
-    //  Cisla tlacitek jsou RetroPad, stejne jako u dotyku:
-    //    0=X(kriz)  1=O(kolecko)  2=ctverec  3=trojuhelnik
-    //    4=nahoru 5=dolu 6=vlevo 7=vpravo
-    //    8=SELECT 9=START  10=L1 11=R1  12=L2 13=R2
+    //  B320: HERNI OVLADAC (Retroid Pocket 6, gamepad) uz sem nechodi -
+    //  vezme si ho dispatchKeyEvent / dispatchGenericMotionEvent (nize)
+    //  driv, nez by ho mohl spolknout WebView, a co tlacitko udela,
+    //  rozhoduje C++ (nap_ovladac.h). Tady zustava jen klavesnice.
+    //
+    //  Cisla tlacitek PS1 jsou RetroPad (libretro), stejne jako u dotyku
+    //  (ps1ButtonId): 0 KRIZEK 1 CTVEREC 2 SELECT 3 START 4-7 smer
+    //  8 KOLECKO 9 TROJUHELNIK 10 L1 11 R1 12 L2 13 R2.
+    //  B320: do B319 tu byla spatna cisla (Enter = TROJUHELNIK, K = CTVEREC,
+    //  H = SELECT, U = START ...) - ted klavesy jako klavesnice PC na TV (B308):
+    //  sipky / WASD smer, K / mezernik KRIZEK, L KOLECKO, J CTVEREC,
+    //  I TROJUHELNIK, Q / E L1 / R1, Z / C L2 / R2, Enter / P START,
+    //  Backspace / O SELECT.
     // ===================================================================
-    private static int napTlacitkoPodleKlavesy(int kod) {
+    static int napTlacitkoPodleKlavesy(int kod) {
         switch (kod) {
-            // --- joystick / gamepad (Xbox, PS, 8BitDo a dalsi) ---
-            case KeyEvent.KEYCODE_BUTTON_A:      return 0;   // Xbox A -> kriz
-            case KeyEvent.KEYCODE_BUTTON_B:      return 1;   // Xbox B -> kolecko
-            case KeyEvent.KEYCODE_BUTTON_X:      return 2;   // Xbox X -> ctverec
-            case KeyEvent.KEYCODE_BUTTON_Y:      return 3;   // Xbox Y -> trojuhelnik
-            case KeyEvent.KEYCODE_DPAD_UP:       return 4;
-            case KeyEvent.KEYCODE_DPAD_DOWN:     return 5;
-            case KeyEvent.KEYCODE_DPAD_LEFT:     return 6;
-            case KeyEvent.KEYCODE_DPAD_RIGHT:    return 7;
-            case KeyEvent.KEYCODE_BUTTON_SELECT: return 8;
-            case KeyEvent.KEYCODE_BUTTON_MODE:   return 8;   // nektere padi
-            case KeyEvent.KEYCODE_BUTTON_START:  return 9;
-            case KeyEvent.KEYCODE_BUTTON_L1:     return 10;
-            case KeyEvent.KEYCODE_BUTTON_R1:     return 11;
-            case KeyEvent.KEYCODE_BUTTON_L2:     return 12;
-            case KeyEvent.KEYCODE_BUTTON_R2:     return 13;
-
-            // --- klavesnice (i bluetooth) ---
-            case KeyEvent.KEYCODE_DPAD_CENTER:
-            case KeyEvent.KEYCODE_SPACE:         return 0;   // kriz
-            case KeyEvent.KEYCODE_ENTER:         return 9;   // START
-            case KeyEvent.KEYCODE_SHIFT_RIGHT:   return 8;   // SELECT
+            case KeyEvent.KEYCODE_DPAD_UP:
             case KeyEvent.KEYCODE_W:             return 4;
+            case KeyEvent.KEYCODE_DPAD_DOWN:
             case KeyEvent.KEYCODE_S:             return 5;
+            case KeyEvent.KEYCODE_DPAD_LEFT:
             case KeyEvent.KEYCODE_A:             return 6;
+            case KeyEvent.KEYCODE_DPAD_RIGHT:
             case KeyEvent.KEYCODE_D:             return 7;
-            case KeyEvent.KEYCODE_J:             return 0;   // kriz
-            case KeyEvent.KEYCODE_K:             return 1;   // kolecko
-            case KeyEvent.KEYCODE_H:             return 2;   // ctverec
-            case KeyEvent.KEYCODE_U:             return 3;   // trojuhelnik
+            case KeyEvent.KEYCODE_DPAD_CENTER:
+            case KeyEvent.KEYCODE_SPACE:
+            case KeyEvent.KEYCODE_K:             return 0;   // KRIZEK
+            case KeyEvent.KEYCODE_L:             return 8;   // KOLECKO
+            case KeyEvent.KEYCODE_J:             return 1;   // CTVEREC
+            case KeyEvent.KEYCODE_I:             return 9;   // TROJUHELNIK
             case KeyEvent.KEYCODE_Q:             return 10;  // L1
             case KeyEvent.KEYCODE_E:             return 11;  // R1
-            case KeyEvent.KEYCODE_1:             return 12;  // L2
-            case KeyEvent.KEYCODE_3:             return 13;  // R2
+            case KeyEvent.KEYCODE_Z:             return 12;  // L2
+            case KeyEvent.KEYCODE_C:             return 13;  // R2
+            case KeyEvent.KEYCODE_ENTER:
+            case KeyEvent.KEYCODE_NUMPAD_ENTER:
+            case KeyEvent.KEYCODE_P:             return 3;   // START
+            case KeyEvent.KEYCODE_DEL:
+            case KeyEvent.KEYCODE_O:             return 2;   // SELECT
             default: return -1;
         }
     }
@@ -10806,15 +10836,12 @@ public class MainActivity extends Activity {
     }
 
     // ===================================================================
-    //  B296: HERNI OVLADAC PRO ATARI 130XE V HELP (C++ jadro)
-    //  Smerovy krizek / packa = joystick 1, A/B/L1/R1 = FIRE,
-    //  X = klavesa MEZERA (Wolfenstein: otevrit dvere), Y = RETURN,
-    //  START = START, SELECT = SELECT, L2/R2/MODE = OPTION. Sipky na
-    //  bluetooth klavesnici jsou taky smerovy krizek. Hry pro VBXE
-    //  (Wolfenstein 3D, Popeye) se bez joysticku ovladat nedaji.
+    //  B296: KLAVESNICE TELEFONU PRO ATARI 130XE V HELP (C++ jadro)
+    //  Sipky = joystick 1, stred (DPAD_CENTER) = FIRE. B320: herni ovladac
+    //  (smer, FIRE, START, SELECT, OPTION, MEZERA, RETURN) jde pres C++
+    //  (nap_ovladac.h atariBity) - viz dispatchKeyEvent.
     // ===================================================================
     private int atariPadTlacitka = 0;       // bity jako NativeAtariCoreBridge.devPadSafe
-    private int atariPadPacka = 0;          // smer z analogove packy / HAT
 
     private boolean napAtariOvladani() {
         return atariZarizeni != null && !atariZarizeniSkryte;
@@ -10826,24 +10853,13 @@ public class MainActivity extends Activity {
             case KeyEvent.KEYCODE_DPAD_DOWN:     return 2;
             case KeyEvent.KEYCODE_DPAD_LEFT:     return 4;
             case KeyEvent.KEYCODE_DPAD_RIGHT:    return 8;
-            case KeyEvent.KEYCODE_DPAD_CENTER:
-            case KeyEvent.KEYCODE_BUTTON_A:
-            case KeyEvent.KEYCODE_BUTTON_B:
-            case KeyEvent.KEYCODE_BUTTON_L1:
-            case KeyEvent.KEYCODE_BUTTON_R1:     return 16;   // FIRE
-            case KeyEvent.KEYCODE_BUTTON_START:  return 32;   // START
-            case KeyEvent.KEYCODE_BUTTON_SELECT: return 64;   // SELECT
-            case KeyEvent.KEYCODE_BUTTON_MODE:
-            case KeyEvent.KEYCODE_BUTTON_L2:
-            case KeyEvent.KEYCODE_BUTTON_R2:     return 128;  // OPTION
-            case KeyEvent.KEYCODE_BUTTON_X:      return 256;  // klavesa MEZERA
-            case KeyEvent.KEYCODE_BUTTON_Y:      return 512;  // klavesa RETURN
+            case KeyEvent.KEYCODE_DPAD_CENTER:   return 16;   // FIRE
             default: return 0;
         }
     }
 
     private void napAtariPadPosli() {
-        NativeAtariCoreBridge.devPadSafe(atariPadTlacitka | atariPadPacka);
+        NativeAtariCoreBridge.devPadSafe(atariPadTlacitka);
     }
 
     @Override
@@ -10884,43 +10900,216 @@ public class MainActivity extends Activity {
         return super.onKeyUp(keyCode, event);
     }
 
-    /** Analogova packa a smerovy krizek joysticku. */
-    @Override
-    public boolean onGenericMotionEvent(MotionEvent event) {
+    // ===================================================================
+    //  B320: HERNI OVLADAC - Retroid Pocket 6 (vestaveny), Bluetooth / USB gamepad
+    //
+    //  Rene: "proste to riskni ... je to pro nas vyzva Retroid pocket naslepo".
+    //  Uzivatel z fora: "po pripojeni by se na obrazovce stahnul nas d-pad a
+    //  najelo to na origo tlacitka".
+    //   - udalost z ovladace si appka vezme HNED v dispatchKeyEvent /
+    //     dispatchGenericMotionEvent - drive sla az do onKeyDown, a to jen
+    //     kdyz ji WebView (stranka PS1 / Sega) nespolknul (sipky, A = klik),
+    //   - co tlacitko udela, rozhoduje C++ (nap_ovladac.h, spolecne pro PS1,
+    //     Segu a Atari): PS1 spodni KRIZEK, prave KOLECKO, leve CTVEREC, horni
+    //     TROJUHELNIK; Sega leve A, spodni B, prave C; Atari FIRE, MEZERA,
+    //     RETURN, START / SELECT / OPTION; packy, krizek HAT, spouste L2 / R2;
+    //     mys PlayStation (Dune 2000) analogovou packou,
+    //   - hlavni menu (C++): krizek / packa / L1 R1 listuji, A / START spusti,
+    //     SELECT / Y = OPTIONS, B nic (jinak by bylo ZPET = appka do pozadi),
+    //   - dotykove ovladani (PS1, Sega, Atari na sirku) se schova, kdyz hraje
+    //     ovladac, a ukaze se po odpojeni nebo dotykem na misto tlacitka
+    //     (OPTIONS -> HERNI OVLADAC: AUTOMATICKY / VZDY DOTYK / SKRYT DOTYK),
+    //   - vse o ovladaci (jmeno, tlacitka, osy, prvni stisky) do logu.
+    // ===================================================================
+    private NapOvladac ovladac;
+    private final float[] ovladacOsy = new float[NapOvladac.O_POCET];
+    private int ovladacUiPoslano = -1;            // co dostaly stranky / Atari (NapOvladac.UI_*)
+    private boolean ovladacNapovedaUkazana = false;
+    private int ovladacChyb = 0;
+    private static final int OVL_NIC = 0, OVL_PS1 = 1, OVL_SEGA = 2, OVL_ATARI = 3, OVL_MENU = 4;
+    // ktera jadra uz od ovladace neco dostala (jen ta se pri odpojeni pousti - trida mostu Segy pri
+    // prvnim pouziti nacita knihovnu Segy, a to zbytecne, kdyz se Sega vubec nespustila)
+    private boolean ovlPouzitPs1 = false, ovlPouzitSega = false, ovlPouzitAtari = false;
+    private static final String[] OVL_KAM = {"nic (stranka)", "PS1", "Sega", "Atari 130XE", "hlavni menu"};
+
+    /** Kam ted patri herni ovladac. */
+    private int ovladacKam() {
+        if (napPs1Ovladani()) return OVL_PS1;
+        if (napAtariOvladani()) return OVL_ATARI;
+        if (segaPlocha != null && isSegaNativeOwnerUrl(napTvWebCurrentUrl)) return OVL_SEGA;
+        if (menuPlocha != null && !menuSkryteProOptions && demoPlocha == null) return OVL_MENU;
+        return OVL_NIC;
+    }
+
+    private void ovladacStart() {
         try {
-            if (napPs1Ovladani()
-                    && (event.getSource() & InputDevice.SOURCE_JOYSTICK) == InputDevice.SOURCE_JOYSTICK
-                    && event.getAction() == MotionEvent.ACTION_MOVE) {
-                float x = event.getAxisValue(MotionEvent.AXIS_X);
-                float y = event.getAxisValue(MotionEvent.AXIS_Y);
-                // Smerovy krizek na joysticku chodi jako HAT osa - pripocteme.
-                float hx = event.getAxisValue(MotionEvent.AXIS_HAT_X);
-                float hy = event.getAxisValue(MotionEvent.AXIS_HAT_Y);
-                if (Math.abs(hx) > 0.5f) x = hx;
-                if (Math.abs(hy) > 0.5f) y = hy;
-                NativePs1CoreBridge.setStickSafe((int) (x * 32767), (int) (y * 32767));
-                return true;
-            }
-            // B296: Atari 130XE v HELP - packa / HAT = joystick 1 (8 smeru)
-            if (napAtariOvladani()
-                    && (event.getSource() & InputDevice.SOURCE_JOYSTICK) == InputDevice.SOURCE_JOYSTICK
-                    && event.getAction() == MotionEvent.ACTION_MOVE) {
-                float x = event.getAxisValue(MotionEvent.AXIS_X);
-                float y = event.getAxisValue(MotionEvent.AXIS_Y);
-                float hx = event.getAxisValue(MotionEvent.AXIS_HAT_X);
-                float hy = event.getAxisValue(MotionEvent.AXIS_HAT_Y);
-                if (Math.abs(hx) > 0.5f) x = hx;
-                if (Math.abs(hy) > 0.5f) y = hy;
-                int m = 0;
-                if (y < -0.5f) m |= 1;
-                if (y > 0.5f) m |= 2;
-                if (x < -0.5f) m |= 4;
-                if (x > 0.5f) m |= 8;
-                if (m != atariPadPacka) { atariPadPacka = m; napAtariPadPosli(); }
-                return true;
-            }
+            ovladac = new NapOvladac(this, ui, new NapOvladac.Posluchac() {
+                @Override public void ovladacLog(String radek) { appendNativeLog(radek); }
+                @Override public void ovladacUi(int stav, String jmeno, String duvod) { ovladacUiPouzij(stav, jmeno, duvod); }
+                @Override public void ovladacOdpojen() { ovladacPustVse("ovladac odpojen"); }
+            });
+            ovladac.start();
+        } catch (Throwable t) {
+            appendNativeLog("B320 OVLADAC_START_CHYBA " + safeMsg(t));
+        }
+    }
+
+    /** Vse, co drzel ovladac, pustit (odpojen - uz neposle "pusteno"). */
+    private void ovladacPustVse(String duvod) {
+        if (ovlPouzitPs1) try { NativePs1CoreBridge.ovladacPustSafe(); } catch (Throwable ignored) {}
+        if (ovlPouzitSega) try { NativeSegaCoreBridge.ovladacPustSafe(); } catch (Throwable ignored) {}
+        if (ovlPouzitAtari) try { NativeAtariCoreBridge.devOvladacPustSafe(); } catch (Throwable ignored) {}
+        appendNativeLog("B320 OVLADAC: vse pusteno (" + duvod + ")");
+    }
+
+    /** Dotykove ovladani schovat / ukazat: stranky PS1 a Sega, Atari 130XE na sirku (vlakno UI). */
+    private void ovladacUiPouzij(int stav, String jmeno, String duvod) {
+        final int predtim = ovladacUiPoslano;
+        ovladacUiPoslano = stav;
+        if (predtim != stav)
+            appendNativeLog("B320 OVLADAC dotykove ovladani: " + (stav == NapOvladac.UI_VIDET ? "VIDET"
+                    : stav == NapOvladac.UI_SKRYTO ? "SCHOVANE (hraje ovladac, dotyk ho ukaze)" : "SCHOVANE VZDY")
+                    + " - " + duvod + (jmeno == null || jmeno.isEmpty() ? "" : " | ovladac \"" + jmeno + "\""));
+        try {
+            if (web != null)
+                web.evaluateJavascript("window.napOvladacStav&&napOvladacStav(" + stav + "," + jsonQuote(jmeno == null ? "" : jmeno) + ")", null);
         } catch (Throwable ignored) {}
-        return super.onGenericMotionEvent(event);
+        try { if (atariZarizeni != null) NativeAtariCoreBridge.devCtlSafe("ovladac:" + stav); } catch (Throwable ignored) {}
+        if (duvod != null && duvod.startsWith("odpojen") && predtim == NapOvladac.UI_SKRYTO && stav == NapOvladac.UI_VIDET)
+            ovladacZprava(tx("Ovladač odpojen – dotyková tlačítka jsou zpět", "Controller disconnected – touch buttons are back"));
+        else ovladacNapoveda();
+    }
+
+    /** Poprve, kdyz je ve hre dotykove ovladani schovane: kratka zprava, jak ho vratit. */
+    private void ovladacNapoveda() {
+        if (ovladacNapovedaUkazana || ovladacUiPoslano != NapOvladac.UI_SKRYTO) return;
+        final int kam = ovladacKam();
+        if (kam != OVL_PS1 && kam != OVL_SEGA && kam != OVL_ATARI) return;
+        ovladacNapovedaUkazana = true;
+        final String j = ovladac != null ? ovladac.jmeno() : "";
+        ovladacZprava(tx("🎮 " + (j.isEmpty() ? "Ovladač" : j) + " – dotyková tlačítka schovaná. Ťukni na jejich místo a jsou zpět.",
+                "🎮 " + (j.isEmpty() ? "Controller" : j) + " – touch buttons hidden. Tap their place to bring them back."));
+    }
+
+    private void ovladacZprava(String t) {
+        try { android.widget.Toast.makeText(this, t, android.widget.Toast.LENGTH_LONG).show(); } catch (Throwable ignored) {}
+    }
+
+    private void ovladacChyba(Throwable t) {
+        if (ovladacChyb++ < 5) appendNativeLog("B320 OVLADAC_CHYBA " + safeMsg(t));
+    }
+
+    /** Klavesy herniho ovladace - driv nez WebView. */
+    @Override
+    public boolean dispatchKeyEvent(KeyEvent e) {
+        try {
+            if (ovladac != null && ovladac.zOvladace(e) && ovladacKlavesa(e)) return true;
+        } catch (Throwable t) { ovladacChyba(t); }
+        return super.dispatchKeyEvent(e);
+    }
+
+    private boolean ovladacKlavesa(KeyEvent e) {
+        final int akce = e.getAction();
+        if (akce != KeyEvent.ACTION_DOWN && akce != KeyEvent.ACTION_UP) return false;
+        final boolean dolu = akce == KeyEvent.ACTION_DOWN;
+        final int k = e.getKeyCode();
+        final int kam = ovladacKam();
+        int t;
+        switch (kam) {
+            case OVL_PS1:   ovlPouzitPs1 = true; t = NativePs1CoreBridge.ovladacKlavesaSafe(k, dolu); break;
+            case OVL_SEGA:  ovlPouzitSega = true; t = NativeSegaCoreBridge.ovladacKlavesaSafe(k, dolu); break;
+            case OVL_ATARI: ovlPouzitAtari = true; t = NativeAtariCoreBridge.devOvladacKlavesaSafe(k, dolu); break;
+            case OVL_MENU:  t = ovladacMenu(k, dolu, e.getRepeatCount()); break;
+            default:        t = 0; break;   // stranky (OPTIONS, HELP ...): jako drive - A = klik, B = zpet
+        }
+        if (ovladac != null) ovladac.klavesa(e, OVL_KAM[kam], t);
+        return t != 0;
+    }
+
+    /** Hlavni menu (C++ karusel) ovladacem. Vraci != 0, kdyz se klavesa spotrebovala. */
+    private int ovladacMenu(int k, boolean dolu, int opakovani) {
+        int kl = 0;
+        boolean options = false;
+        switch (k) {
+            case KeyEvent.KEYCODE_DPAD_LEFT: case KeyEvent.KEYCODE_DPAD_UP_LEFT: case KeyEvent.KEYCODE_DPAD_DOWN_LEFT:
+            case KeyEvent.KEYCODE_BUTTON_L1:
+                kl = NativeMenuBridge.KL_VLEVO; break;
+            case KeyEvent.KEYCODE_DPAD_RIGHT: case KeyEvent.KEYCODE_DPAD_UP_RIGHT: case KeyEvent.KEYCODE_DPAD_DOWN_RIGHT:
+            case KeyEvent.KEYCODE_BUTTON_R1:
+                kl = NativeMenuBridge.KL_VPRAVO; break;
+            case KeyEvent.KEYCODE_BUTTON_A: case KeyEvent.KEYCODE_BUTTON_START: case KeyEvent.KEYCODE_DPAD_CENTER:
+                kl = NativeMenuBridge.KL_POTVRD; break;
+            case KeyEvent.KEYCODE_BUTTON_L2: kl = NativeMenuBridge.KL_ZACATEK; break;
+            case KeyEvent.KEYCODE_BUTTON_R2: kl = NativeMenuBridge.KL_KONEC; break;
+            case KeyEvent.KEYCODE_BUTTON_SELECT: case KeyEvent.KEYCODE_BUTTON_Y:
+                options = true; break;
+            case KeyEvent.KEYCODE_BUTTON_B: case KeyEvent.KEYCODE_BUTTON_X: case KeyEvent.KEYCODE_DPAD_UP:
+            case KeyEvent.KEYCODE_DPAD_DOWN: case KeyEvent.KEYCODE_BUTTON_THUMBL: case KeyEvent.KEYCODE_BUTTON_THUMBR:
+                return 1;     // spotrebovat (B by jinak Android poslal jako ZPET = appka do pozadi)
+            default:
+                return 0;
+        }
+        if (!dolu) return 1;
+        if (kl != 0) {
+            if (kl == NativeMenuBridge.KL_POTVRD && opakovani > 0) return 1;   // drzene A nespousti znovu
+            final int r = NativeMenuBridge.klavesaSafe(kl);
+            if (r != NativeMenuBridge.AKCE_NIC) menuAkce(r, "ovladac");
+        } else if (options && opakovani == 0) {
+            menuAkce(NativeMenuBridge.AKCE_NASTAVENI, "ovladac");
+        }
+        return 1;
+    }
+
+    /** Packy, krizek (HAT) a spouste herniho ovladace - ve hre driv nez cokoli jineho.
+     *  (V menu se nespotrebuji - Android z nich sam udela sipky, ty listuji.) */
+    @Override
+    public boolean dispatchGenericMotionEvent(MotionEvent e) {
+        try {
+            if (ovladac != null && NapOvladac.jeJoystick(e)) {
+                final int kam = ovladacKam();
+                if (kam == OVL_PS1 || kam == OVL_SEGA || kam == OVL_ATARI) {
+                    final int maska = ovladac.osy(e, ovladacOsy);
+                    if (kam == OVL_PS1) { ovlPouzitPs1 = true; NativePs1CoreBridge.ovladacOsySafe(ovladacOsy, maska); }
+                    else if (kam == OVL_SEGA) { ovlPouzitSega = true; NativeSegaCoreBridge.ovladacOsySafe(ovladacOsy, maska); }
+                    else { ovlPouzitAtari = true; NativeAtariCoreBridge.devOvladacOsySafe(ovladacOsy, maska); }
+                    return true;
+                }
+            }
+        } catch (Throwable t) { ovladacChyba(t); }
+        return super.dispatchGenericMotionEvent(e);
+    }
+
+    /** B320: JS rozhrani "AHOVL" - stranky PS1 / Sega (schovani ovladani) a OPTIONS (rezim). */
+    public class AHOvladac {
+        /** "stav|jmeno ovladace" - stav NapOvladac.UI_* (0 videt, 1 schovane, 2 schovane vzdy) */
+        @JavascriptInterface
+        public String stav() {
+            final NapOvladac o = ovladac;
+            return o == null ? "0|" : o.ui() + "|" + o.jmeno();
+        }
+        /** dotyk na schovane tlacitko - stranka ovladani sama ukazala */
+        @JavascriptInterface
+        public void dotyk(String kde) {
+            ui.post(() -> { if (ovladac != null) ovladac.dotyk(kde == null || kde.isEmpty() ? "stranka" : kde); });
+        }
+        /** rezim z OPTIONS: 0 AUTOMATICKY, 1 VZDY DOTYK, 2 SKRYT DOTYK */
+        @JavascriptInterface
+        public int rezim() {
+            final NapOvladac o = ovladac;
+            return o == null ? NapOvladac.REZIM_AUTO : o.rezim();
+        }
+        /** OPTIONS -> HERNI OVLADAC: novy rezim (0 AUTOMATICKY, 1 VZDY DOTYK, 2 SKRYT DOTYK);
+         *  NapOvladac ho ulozi a hned pouzije (stranky dostanou napOvladacStav) */
+        @JavascriptInterface
+        public void nastavRezim(int r) {
+            ui.post(() -> { if (ovladac != null) ovladac.nastavRezim(r); });
+        }
+        /** jmeno herniho ovladace, ktery hral ("" = zadny) */
+        @JavascriptInterface
+        public String jmeno() {
+            final NapOvladac o = ovladac;
+            return o == null ? "" : o.jmeno();
+        }
     }
 
     @SuppressLint({"SetJavaScriptEnabled", "AddJavascriptInterface"})
@@ -10996,6 +11185,8 @@ public class MainActivity extends Activity {
         web.addJavascriptInterface(new AHAtariCpp(), "AHATARICPP"); // BUILD2SA14: jadro Atari v C++ (obrazovka HELP)
         web.addJavascriptInterface(new AHIntro(), "AHINTRO");       // BUILD2SA21: uvodni intro
         web.addJavascriptInterface(new AHJazyk(), "AHJAZYK");       // B314: jazyk CZ / EN
+        web.addJavascriptInterface(new AHOvladac(), "AHOVL");       // B320: herni ovladac (Retroid Pocket 6, gamepad)
+        ovladacStart();                                              // B320: ovladace do logu, sledovat pripojeni
         web.setWebChromeClient(new WebChromeClient() {
             // BUILD2SH2: zachyt JS console (jen nase SH2 stream diagnostika) do
             // nativniho logu, aby slo poslat log pri ladeni zvuku na projektor.
@@ -11083,6 +11274,8 @@ public class MainActivity extends Activity {
                 }
                 // B311: hlavni nabidka nactena -> nad ni C++ menu (karusel karet)
                 if (jeMenuUrl(url) && !menuSkryteProOptions) menuUkaz("stranka menu");
+                // B320: hra s hernim ovladacem - poprve kratka zprava, jak vratit dotykove ovladani
+                if (isPs1OwnerUrl(url) || isSegaNativeOwnerUrl(url)) ui.postDelayed(MainActivity.this::ovladacNapoveda, 1500);
             }
             @Override
             public WebResourceResponse shouldInterceptRequest(WebView v, String url) {
@@ -13693,6 +13886,7 @@ public class MainActivity extends Activity {
     @Override
     protected void onDestroy() {
         zapisOdchod("ZRUSENA");
+        try { if (ovladac != null) ovladac.stop(); } catch (Throwable ignored) {}   // B320
         if (demoPlocha != null) demoKonec("appka zrusena");   // B304
         menuSkryj("appka zrusena");                            // B311
         try { napTvWebStop("activityDestroy"); } catch (Throwable ignored) {} // BUILD2SA13C

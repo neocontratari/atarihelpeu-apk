@@ -120,6 +120,14 @@ public final class NativeAtariCoreBridge {
     // B297: ovladani na sirku (D-pad a tlacitka jako u Segy): "get", "set:<nastaveni>",
     //  "edit", "mirror", "reset", "done", "stav" -> vraci nastaveni (pro SharedPreferences)
     private static native String  devCtlNative(String prikaz);
+    // B320: herni ovladac (Retroid Pocket 6, Bluetooth / USB gamepad) - Java jen pozna ovladac,
+    //  co tlacitko udela, rozhoduje C++ (nap_ovladac.h atariBity: spodni / prave / L1 / R1 = FIRE,
+    //  leve = MEZERA, horni = RETURN, START, SELECT, L2 / R2 / MODE = OPTION; krizek a packa = smer).
+    //  Klavesa (KeyEvent.KEYCODE_*): vraci logicka tlacitka, 0 = neni klavesa ovladace.
+    //  Osy: leva packa x y, prava x y, krizek HAT x y, spoust L2 R2; maska = co ovladac ma.
+    private static native int     devOvladacKlavesaNative(int keyCode, boolean dolu);
+    private static native void    devOvladacOsyNative(float[] osy, int maska);
+    private static native void    devOvladacPustNative();
     // B299: program z TXT souboru (rezim 0 = ATARI BASIC, 1 = Turbo-BASIC XL - ten zavede Java
     //  pred tim pres devLoadXexNative); diagnostika pameti a cela RAM pro LOG/CHYBA
     private static native String  devProgramNative(byte[] data, String jmeno, int rezim);
@@ -320,6 +328,21 @@ public final class NativeAtariCoreBridge {
     public static String devCtlSafe(String prikaz) {
         if (!loaded || prikaz == null) return "";
         try { String r = devCtlNative(prikaz); return r == null ? "" : r; } catch (Throwable t) { return ""; }
+    }
+    /** B320: klavesa herniho ovladace; vraci logicka tlacitka (0 = neni klavesa ovladace). */
+    public static int devOvladacKlavesaSafe(int keyCode, boolean dolu) {
+        if (!loaded) return 0;
+        try { return devOvladacKlavesaNative(keyCode, dolu); } catch (Throwable t) { return 0; }
+    }
+    /** B320: osy herniho ovladace (packy, krizek HAT, spouste). */
+    public static void devOvladacOsySafe(float[] osy, int maska) {
+        if (!loaded) return;
+        try { devOvladacOsyNative(osy, maska); } catch (Throwable ignored) {}
+    }
+    /** B320: vse z ovladace pustit (odpojen, konec pristroje). */
+    public static void devOvladacPustSafe() {
+        if (!loaded) return;
+        try { devOvladacPustNative(); } catch (Throwable ignored) {}
     }
 
     /** B299: TXT soubor -> program v ATARI BASICu (rezim 0) nebo Turbo-BASICu XL (rezim 1). */

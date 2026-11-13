@@ -214,4 +214,26 @@ public final class NativePs1CoreBridge {
         if (!loaded) return null;
         try { return ps1PcMys(dx, dy, tlacitka); } catch (Throwable t) { return null; }
     }
+
+    // ===== B320: HERNI OVLADAC (Retroid Pocket 6, Bluetooth / USB gamepad) =====
+    // Java (NapOvladac) jen pozna, ze udalost prisla z ovladace. Co tlacitko udela,
+    // rozhoduje C++ (nap_ovladac.h - spolecne pro PS1, Segu a Atari).
+    // Klavesa (KeyEvent.KEYCODE_*): vraci logicka tlacitka, 0 = neni klavesa ovladace.
+    private static native int ps1OvladacKlavesa(int keyCode, boolean dolu);
+    // osy: leva packa x y, prava x y, krizek HAT x y, spoust L2 R2; maska = co ovladac ma
+    private static native void ps1OvladacOsy(float[] osy, int maska);
+    private static native void ps1OvladacPust();
+
+    public static int ovladacKlavesaSafe(int keyCode, boolean dolu) {
+        if (!loaded) return 0;
+        try { return ps1OvladacKlavesa(keyCode, dolu); } catch (Throwable t) { return 0; }
+    }
+    public static void ovladacOsySafe(float[] osy, int maska) {
+        if (!loaded) return;
+        try { ps1OvladacOsy(osy, maska); } catch (Throwable ignored) {}
+    }
+    public static void ovladacPustSafe() {
+        if (!loaded) return;
+        try { ps1OvladacPust(); } catch (Throwable ignored) {}
+    }
 }

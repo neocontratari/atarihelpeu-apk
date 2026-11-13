@@ -5,6 +5,10 @@ NapJazyk.slovnik({
   'SPUSTIT': 'START',
   'OTEVŘÍT': 'OPEN',
   'SPUSTIT WEB TV': 'START WEB TV',
+  // B320: OPTIONS -> HERNI OVLADAC (Retroid Pocket 6, gamepad)
+  'HERNÍ OVLADAČ': 'GAME CONTROLLER',
+  'VŽDY DOTYK': 'ALWAYS TOUCH',
+  'SKRÝT DOTYK': 'HIDE TOUCH',
   'WEB TV BĚŽÍ': 'WEB TV IS RUNNING',
   'NA TV NEBO PC OTEVŘI V PROHLÍŽEČI': 'OPEN IN A BROWSER ON YOUR TV OR PC',
   'stejná Wi-Fi · zvuk pustíš kliknutím do obrazu': 'same Wi-Fi · click the picture to turn the sound on',

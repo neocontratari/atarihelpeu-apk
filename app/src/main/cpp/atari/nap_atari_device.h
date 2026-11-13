@@ -656,6 +656,36 @@ public:
   float nubDx = 0, nubDy = 0; bool nubAktivni = false;
   bool hapticReq = false;                  // vibrace pri stisku (vyzvedne Java)
   bool landNapovezeno = false;
+  // B320: HERNI OVLADAC (Retroid Pocket 6, gamepad) - uzivatel z fora: "po pripojeni by se
+  // stahnul nas d-pad a najelo to na origo tlacitka". Java (devCtl "ovladac:N"):
+  //   0 = dotykove ovladani videt (jako drive),
+  //   1 = schovane, protoze hraje ovladac - dotyk na misto tlacitka ho zase ukaze
+  //       (a tlacitko zaroven funguje); Java se to dozvi (bit 0x2000 z devTouch),
+  //   2 = schovane vzdy (OPTIONS -> OVLADAC: SKRYT DOTYK) - dotyk na ovladani nic nedela.
+  // Ozubene kolecko (nastaveni) zustava vzdy.
+  int ovladacRezim = 0;
+  bool ovladacOdkryto = false;             // dotyk prave ukazal schovane ovladani (vyzvedne Java)
+  bool ctlSkryte() const { return land && ovladacRezim != 0 && !editMode; }
+  void nastavOvladac(int r) {
+    r = r < 0 ? 0 : (r > 2 ? 2 : r);
+    if (r == ovladacRezim) return;
+    ovladacRezim = r;
+    if (land) markAll();
+  }
+  // dotyk (mimo kolecko) pri schovanem ovladani: rezim 1 - prst na miste tlacitka ovladani
+  // ukaze (a tlacitko zaroven funguje); rezim 2 - dotykove ovladani neni, dotyk se nepocita
+  // (vraci false).
+  bool dotykNaOvladani(float x, float y) {
+    if (!ctlSkryte()) return true;
+    if (ovladacRezim == 2) return false;
+    bool naPrvku = false;
+    for (int i = 0; i < C_N && !naPrvku; i++) naPrvku = inCtl(i, x, y, i == C_DPAD ? 1.35f : 1.22f);
+    if (!naPrvku) return true;
+    ovladacRezim = 0;
+    ovladacOdkryto = true;
+    markAll();
+    return true;
+  }
   float obrX = 0, obrY = 0, obrW = 0, obrH = 0;        // obraz Atari na sirku (px)
   float rDpad = 0, rFire = 0, rBtn = 0, pillW = 0, pillH = 0;
   float gearCx = 0, gearCy = 0, gearW = 0, gearH = 0;
@@ -2288,7 +2318,7 @@ public:
   void drawDynamicLand(Canvas &c, long long now) {
     (void)now;
     if (hits(c.clip, IRect{scrX0, scrY0, scrX1, scrY1})) drawScreenLand(c);
-    for (int i = 0; i < C_N; i++) {
+    for (int i = 0; i < C_N && !ctlSkryte(); i++) {   // B320: hraje herni ovladac - dotykove schovane
       if (!hits(c.clip, ctlRect(i))) continue;
       const int cx = (int)std::lround(cpx(i)), cy = (int)std::lround(cpy(i));
       const bool on = ctlOn(i);
@@ -2506,6 +2536,7 @@ public:
       return 0;
     }
     if (gearHit(x, y)) { gearPid = pid; mark(gearRect()); return 0; }
+    if (!dotykNaOvladani(x, y)) return 0;           // B320: ovladani schovane vzdy - dotyk nic
     lpDown[pid] = true; lpX[pid] = x; lpY[pid] = y;
     if (dpadPid < 0 && inCtl(C_DPAD, x, y, 1.35f)) dpadPid = pid;
     return landRecompute(out, maxOut);

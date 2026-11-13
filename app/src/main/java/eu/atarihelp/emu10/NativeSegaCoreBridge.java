@@ -78,4 +78,22 @@ public final class NativeSegaCoreBridge {
     public static String proudLogSafe() {
         try { return proudLogNative(); } catch (Throwable t) { return null; }
     }
+
+    // ===== B320: HERNI OVLADAC (Retroid Pocket 6, Bluetooth / USB gamepad) =====
+    // Co tlacitko udela, rozhoduje C++ (nap_ovladac.h): leve = A, spodni = B, prave = C, START.
+    // Klavesa (KeyEvent.KEYCODE_*): vraci logicka tlacitka, 0 = neni klavesa ovladace.
+    private static native int ovladacKlavesa(int keyCode, boolean dolu);
+    // osy: leva packa x y, prava x y, krizek HAT x y, spoust L2 R2; maska = co ovladac ma
+    private static native void ovladacOsy(float[] osy, int maska);
+    private static native void ovladacPust();
+
+    public static int ovladacKlavesaSafe(int keyCode, boolean dolu) {
+        try { return ovladacKlavesa(keyCode, dolu); } catch (Throwable t) { return 0; }
+    }
+    public static void ovladacOsySafe(float[] osy, int maska) {
+        try { ovladacOsy(osy, maska); } catch (Throwable ignored) {}
+    }
+    public static void ovladacPustSafe() {
+        try { ovladacPust(); } catch (Throwable ignored) {}
+    }
 }

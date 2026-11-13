@@ -240,6 +240,15 @@ body.tvCastActive .segaRychlyPruh{animation-play-state:paused!important;}
  .hit:active{background:rgba(0,118,255,.22)!important;box-shadow:0 0 22px rgba(0,140,255,.48),inset 0 0 18px rgba(255,255,255,.12);}
  #perfMenu{left:22vw;right:22vw;top:18vh;}
  #logBadge{display:none;}.toast{display:none!important;}
+ /* B320: hraje HERNI OVLADAC (Retroid Pocket 6, gamepad) - D-pad, A B C a START schovane (pruhledne);
+    dotyk na misto tlacitka ho zase ukaze a tlacitko zaroven funguje. Ozubene kolecko zustava.
+    Vzdy schovane (OPTIONS -> HERNI OVLADAC: SKRYT DOTYK) - ovladani vubec neni. Pri uprave
+    rozlozeni tlacitek je videt vzdy. */
+ #dpad,#btnA,#btnB,#btnC,#btnStart{transition:opacity .35s;}
+ body.napOvladac #dpad:not(.layoutEdit),body.napOvladac #btnA:not(.layoutEdit),body.napOvladac #btnB:not(.layoutEdit),
+ body.napOvladac #btnC:not(.layoutEdit),body.napOvladac #btnStart:not(.layoutEdit){opacity:0!important;}
+ body.napOvladacVzdy #dpad:not(.layoutEdit),body.napOvladacVzdy #btnA:not(.layoutEdit),body.napOvladacVzdy #btnB:not(.layoutEdit),
+ body.napOvladacVzdy #btnC:not(.layoutEdit),body.napOvladacVzdy #btnStart:not(.layoutEdit){display:none!important;}
 }
 
 </style>
@@ -1167,6 +1176,7 @@ function setupLandscapeMultiTouch(){
       if(inCircle(cS,x,y)){want.START=true;touchedControl=true;continue;}
     }
     var anyLast=last.UP||last.DOWN||last.LEFT||last.RIGHT||last.A||last.B||last.C||last.START;
+    if(touchedControl&&ev.type==='touchstart')ovlDotyk();   // B320: schovane ovladani (herni ovladac) - dotyk ho ukaze
     if(!touchedControl && !anyLast)return;
     try{ev.preventDefault();ev.stopPropagation();}catch(_){ }
     ['UP','DOWN','LEFT','RIGHT','A','B','C','START'].forEach(function(k){applyKey(k,want[k]);});
@@ -1195,6 +1205,31 @@ function setupLandscapeMultiTouch(){
   },80);},true);
   pushLog('BUILD2RZ LANDSCAPE_PAD_V3_READY singlePad=YES thumbstickNub=YES abcColumn=RIGHT diagonals=YES mapping=A/B/C-1:1');
 }
+/* ===== B320: HERNI OVLADAC (Retroid Pocket 6 vestaveny, Bluetooth / USB gamepad) =====
+   Uzivatel z fora: "po pripojeni by se na obrazovce stahnul nas d-pad a najelo to na origo
+   tlacitka". Java (NapOvladac) rekne stav: 0 = dotykove ovladani videt, 1 = schovane (hraje
+   ovladac - dotyk na misto tlacitka ho ukaze), 2 = schovane vzdy (OPTIONS). Tlacitka ovladace
+   jdou primo do C++ (nap_ovladac.h: leve = A, spodni = B, prave = C, START) - stranka o nich
+   nic nevi. */
+var OVL={stav:0,jmeno:''};
+window.napOvladacStav=function(st,jm){
+  st=parseInt(st,10)||0;
+  if(st<0||st>2)st=0;
+  var bylo=OVL.stav;
+  OVL.stav=st;
+  if(jm!=null)OVL.jmeno=String(jm);
+  document.body.classList.toggle('napOvladac',st===1);
+  document.body.classList.toggle('napOvladacVzdy',st===2);
+  if(bylo!==st)pushLog('B320 OVLADAC stav '+st+(OVL.jmeno?' ('+OVL.jmeno+')':''));
+};
+function ovlDotyk(){
+  if(OVL.stav!==1)return;
+  window.napOvladacStav(0);
+  try{if(window.AHOVL&&window.AHOVL.dotyk)window.AHOVL.dotyk('Sega');}catch(_){}
+}
+/* na vysku (a bez dotykoveho enginu) jdou doteky primo na tlacitka */
+['dpad','btnA','btnB','btnC','btnStart'].forEach(function(id){var el=$(id);if(el)el.addEventListener('pointerdown',ovlDotyk,true);});
+try{if(window.AHOVL&&window.AHOVL.stav){var ovs=String(window.AHOVL.stav()).split('|');window.napOvladacStav(ovs[0],ovs.slice(1).join('|'));}}catch(_){}
 setupLandscapeMultiTouch();
 /* ===== BUILD2SB19: zapojeni novych tlacitek OVLADANI/D-PAD panelu ===== */
 $('btnSegaSettings').addEventListener('click',function(e){e.preventDefault();showSegaDpadMenu();},true);
