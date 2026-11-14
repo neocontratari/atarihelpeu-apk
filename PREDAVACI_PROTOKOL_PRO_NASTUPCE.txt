@@ -3524,6 +3524,14 @@
        je tajemstvi POVINNE: soubor app/nap_podpis_povinny -> build bez nej
        skonci chybou (APK jen s debug klicem by na Androidu 9+ neslo
        nainstalovat pres rotovanou verzi). Soubor nemazat.
+     - WEB atarihelp.eu/?page_id=1130 (stahovani appky, WordPress "Vlastni
+       HTML", odpocet do 20. 11. 2026 18:00 CET): Reneho puvodni stranka
+       overovala v JavaScriptu 2 pevne klice z v9 (videl je kazdy v kodu
+       stranky, v10 je nebere - NIKDE je neopakovat). Nova stranka (14. 11.,
+       u Reneho html_kod_www_stranky_B321.txt) bere osobni kod NAP-XXXX-XXXX,
+       jen kontroluje tvar a jde na http://46.33.114.139:8080/aktivace?kod=...
+       (adresa serveru = jedina promenna NAP_SERVER). Overuje az server.
+       Test v Chromiu + skutecny server v10: 19 OK (u testu serveru).
        CI kontrola na skutecnem APK: aapt2 badging, apksigner verify, vlozeni
        klice (vloz_klic.py) + verify + NapApkKlicTest.
      - TESTY: test_overeni/b321 (JAK_SPUSTIT.txt): jvm/TestB321Server.java
