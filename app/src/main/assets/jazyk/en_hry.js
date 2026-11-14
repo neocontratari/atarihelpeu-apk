@@ -63,9 +63,67 @@ NapJazyk.slovnik({
   'Bez připojení k serveru – ukazuji uložený seznam.': 'No connection to the server – showing the saved list.',
   'Server N&P je nedostupný. Zkontroluj připojení a klepni na ↻.': 'The N&P server is unavailable. Check the connection and tap ↻.',
   'Seznam her nejde načíst.': 'The game list cannot be loaded.',
-  'N&P HRY běží jen v aplikaci.': 'N&P GAMES only works in the app.'
+  'N&P HRY běží jen v aplikaci.': 'N&P GAMES only works in the app.',
+  // --- B322: ODEMKNOUT HNED (hry/odemknout.html)
+  'N&P – odemknout': 'N&P – unlock',
+  'ODEMKNOUT': 'UNLOCK',
+  'ZDARMA': 'FOR FREE',
+  'ODEMKNOUT HNED': 'UNLOCK NOW',
+  'Načítám…': 'Loading…',
+  'SPUSTIT': 'START',
+  'SPUSTIT SEGU': 'START THE SEGA',
+  'SPUSTIT PS1': 'START THE PS1',
+  'ODEMKNOUT SEGU': 'UNLOCK THE SEGA',
+  'SEGA je odemčená.': 'The SEGA is unlocked.',
+  'PS1 je odemčená.': 'The PS1 is unlocked.',
+  'SEGA je zamčená.': 'The SEGA is locked.',
+  'PS1 je zamčená.': 'The PS1 is locked.',
+  'PS1 jde až po Seze. Nejdřív odemkni Segu.': 'The PS1 comes after the Sega. Unlock the Sega first.',
+  'Počítají se řádky s číslem (10 PRINT …), když dáš RUN nebo LIST – najednou aspoň 5 řádků. Vložený text se nepočítá.':
+    'Numbered lines count (10 PRINT …) when you type RUN or LIST – at least 5 lines at a time. Pasted text does not count.',
+  'Počítá se jen čas, kdy hra na Seze opravdu běží – minuty se sčítají.': 'Only the time a Sega game is really running counts – the minutes add up.',
+  'Načítám platební údaje ze serveru N&P…': 'Loading the payment details from the N&P server…',
+  'Platba běží jen v aplikaci.': 'Payment only works in the app.',
+  'Odemknutí běží jen v aplikaci.': 'Unlocking only works in the app.',
+  'Platební údaje nejdou načíst.': 'The payment details cannot be loaded.',
+  'Platby zatím nejsou nastavené. Napiš správci N&P.': 'Payments are not set up yet. Contact the N&P admin.',
+  'Platby zatím nejsou nastavené.': 'Payments are not set up yet.',
+  'Server N&P je nedostupný. Zkontroluj připojení a zkus to znovu.': 'The N&P server is unavailable. Check the connection and try again.',
+  'Nepovedlo se. Zkus to znovu.': 'That did not work. Try again.',
+  'Nejdřív odemkni Segu.': 'Unlock the Sega first.',
+  'QR PLATBA · Kč': 'QR PAYMENT · CZK',
+  'SEPA · €': 'SEPA · €',
+  'Částka': 'Amount',
+  'Účet': 'Account',
+  'Zpráva': 'Message',
+  'Příjemce': 'Recipient',
+  'KOPÍROVAT': 'COPY',
+  'ULOŽIT QR DO GALERIE': 'SAVE QR TO GALLERY',
+  'V bankovní appce zvol platbu QR kódem a načti ho z obrázku (z galerie). Nebo QR naskenuj z jiného telefonu, či údaje opiš.':
+    'In your banking app choose QR payment and load it from a picture (gallery). Or scan the QR from another phone, or copy the details.',
+  'QR se nepovedlo uložit. Naskenuj ho z jiného telefonu, nebo údaje opiš.': 'The QR could not be saved. Scan it from another phone, or copy the details.',
+  'ZAPLATIL JSEM': 'I HAVE PAID',
+  'Po zaplacení klepni na ZAPLATIL JSEM. Odemčení potvrzuje správce N&P ručně, když platbu uvidí v bance – může to chvíli trvat.':
+    'After paying, tap I HAVE PAID. The N&P admin confirms the unlock by hand once the payment shows up in the bank – it may take a while.',
+  'ČEKÁ NA POTVRZENÍ': 'WAITING FOR CONFIRMATION',
+  'Správce N&P platbu zkontroluje v bance a appka se odemkne sama – stačí ji mít zapnutou.':
+    'The N&P admin checks the payment in the bank and the app unlocks by itself – just keep it running.',
+  'ZKONTROLOVAT': 'CHECK NOW',
+  'DO MENU': 'MENU',
+  'SEGA ODEMČENA – díky! Najdeš ji v menu.': 'SEGA UNLOCKED – thank you! It is in the menu.',
+  'PS1 ODEMČENA – díky! Najdeš ji v menu.': 'PS1 UNLOCKED – thank you! It is in the menu.'
 });
 NapJazyk.vzory([
   [/^(\d+) (hra|hry|her)$/, function (m, n) { return n + (n === '1' ? ' game' : ' games'); }],
-  [/^Tenhle telefon už má kód (NAP-[A-Z0-9*]{2,4}[*-]+[*]*)\. Zadej ten\.$/, 'This phone already has code $1. Enter that one.']
+  [/^Tenhle telefon už má kód (NAP-[A-Z0-9*]{2,4}[*-]+[*]*)\. Zadej ten\.$/, 'This phone already has code $1. Enter that one.'],
+  // B322: ODEMKNOUT HNED
+  [/^Napiš v Atari (\d+) řádků programu\.$/, 'Type $1 program lines on the Atari.'],
+  [/^Napsáno (\d+) z (\d+) (řádek|řádky|řádků)\.$/, 'Typed $1 of $2 lines.'],
+  [/^Hraj (\d+) hodin na Seze\.$/, 'Play the Sega for $1 hours.'],
+  [/^Nejdřív Sega, pak (\d+) hodin hraní na Seze\.$/, 'The Sega first, then $1 hours of playing it.'],
+  [/^Odehráno (\d+ h \d+ min|\d+ min) ze (\d+) h\.$/, 'Played $1 of $2 h.'],
+  [/^z ciziny ([\d,]+ €) \(SEPA\)$/, 'from abroad $1 (SEPA)'],
+  [/^v Česku (\d+) Kč \(QR Platba\)$/, 'in Czechia $1 CZK (QR Platba)'],
+  [/^Uloženo do galerie: (.+)\. V bankovní appce zvol platbu QR kódem a načti ho z obrázku\.$/,
+    'Saved to the gallery: $1. In your banking app choose QR payment and load it from the picture.']
 ]);

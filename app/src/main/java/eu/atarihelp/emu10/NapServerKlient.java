@@ -174,6 +174,20 @@ public final class NapServerKlient {
         return o;
     }
 
+    /**
+     * B322: podepsany POST bez tela - parametry jsou v adrese (?co=sega...), takze je kryje podpis.
+     * (platba ZAPLATIL JSEM, zaloha postupu). Blokuje.
+     */
+    public Odpoved post(String cesta) {
+        Odpoved o = posli("POST", cesta, new byte[0], true);
+        if (o.kod == 401 && "cas".equals(o.duvod())) {
+            rekni("B321 HODINY telefonu srovnany podle serveru (posun " + posun() + " s), znovu");
+            o = posli("POST", cesta, new byte[0], true);
+        }
+        zpracujStav(o);
+        return o;
+    }
+
     /** Po odpovedi serveru: neplatny token zapomenout, blokaci si zapamatovat. */
     public void zpracujStav(Odpoved o) {
         if (o.kod == 401 && ("nesparovano".equals(o.duvod()) || "podpis".equals(o.duvod()))) zapomen("server: " + o.duvod());
@@ -232,7 +246,9 @@ public final class NapServerKlient {
             if (telo != null) {
                 c.setDoOutput(true);
                 c.setRequestProperty("Content-Type", "application/x-www-form-urlencoded");
-                c.setFixedLengthStreamingMode(telo.length);
+                // B322: prazdne telo (post) bez streamovani - jinak HttpURLConnection u odpovedi 401
+                // (spatne hodiny telefonu) neda telo chyby a appka by se podle serveru nesrovnala
+                if (telo.length > 0) c.setFixedLengthStreamingMode(telo.length);
                 OutputStream out = c.getOutputStream();
                 out.write(telo);
                 out.close();

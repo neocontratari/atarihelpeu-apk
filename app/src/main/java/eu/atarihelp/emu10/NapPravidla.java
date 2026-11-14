@@ -60,20 +60,30 @@ final class NapPravidla {
         return "";
     }
 
-    /** B314: duvod pod zamcenou kartou v hlavnim menu (bez nadpisu), cesky / anglicky. */
+    /** B322: zbyvajici cas Segy citelne - "118 h 47 min", "5 h", "47 min" (cesky i anglicky stejne). */
+    static String casText(int minut) {
+        int m = Math.max(0, minut), h = m / 60;
+        if (h == 0) return m + " min";
+        return h + " h" + (m % 60 > 0 ? " " + (m % 60) + " min" : "");
+    }
+
+    /**
+     * B314: duvod pod zamcenou kartou v hlavnim menu (bez nadpisu), cesky / anglicky.
+     * B322: Sega po 1500 radcich, PS1 po 120 hodinach Segy - nebo hned (tlacitko ODEMKNOUT
+     * na karte otevre platbu, hry/odemknout.html). PS1 jde koupit az po Seze.
+     */
     static String duvodKarty(String konzole, boolean segaOtevrena, int zbyvaRadku, int zbyvaMinut, boolean en) {
         if (SEGA.equals(konzole)) {
             int r = Math.max(0, zbyvaRadku);
-            return en ? "Type " + r + " more program " + (r == 1 ? "line" : "lines")
-                            + " on the Atari (numbered lines – they count on RUN or LIST)."
-                      : "Napiš v Atari ještě " + r + " " + radkuSlovo(r)
-                            + " programu (řádky s číslem, počítají se při RUN nebo LIST).";
+            return en ? "Type " + r + " more program " + (r == 1 ? "line" : "lines") + " on the Atari – or unlock it now."
+                      : "Napiš v Atari ještě " + r + " " + radkuSlovo(r) + " programu – nebo odemkni hned.";
         }
         if (PS1.equals(konzole)) {
-            int m = Math.max(0, zbyvaMinut);
-            if (segaOtevrena) return en ? "Play the Sega for " + m + " more min." : "Hraj na Seze ještě " + m + " min.";
-            return en ? "Unlock the Sega first, then play it for 30 minutes."
-                      : "Nejdřív odemkni Segu, pak 30 minut hraní na Seze.";
+            String c = casText(zbyvaMinut);
+            if (segaOtevrena) return en ? "Play the Sega for " + c + " more – or unlock it now."
+                                        : "Hraj na Seze ještě " + c + " – nebo odemkni hned.";
+            return en ? "Unlock the Sega first, then play it for 120 hours."
+                      : "Nejdřív odemkni Segu, pak 120 hodin hraní na Seze.";
         }
         return "";
     }

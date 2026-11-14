@@ -1,0 +1,47 @@
+== A NapPostupJadro (Sega 1500 radku, PS1 120 h, koupeno, PS1 az po Seze)
+OK     A0 prahy: Sega 1500 radku, PS1 120 hodin (432 000 000 ms), davka od 5 radku
+OK     A1 novy hrac: Sega i PS1 zamcene, zbyva 1500 radku a 7200 minut
+OK     A2 davka 4 radky se nepocita
+OK     A3 1495 radku: Sega porad zamcena (dřív by stacilo 50)
+OK     A4 1500 radku: Sega se prave otevrela (true), ziskana
+OK     A4 dalsi radky uz 'prave otevreno' nehlasi
+OK     A5 119 h 59 min Segy: PS1 zamcena, zbyva 1 minuta
+OK     A6 120 hodin: PS1 se prave otevrela
+OK     A7 nastavKoupeno(false,false) u noveho = zadna zmena
+OK     A8 server: zaplaceno PS1, Sega ne -> PS1 porad zamcena (PS1 az po Seze)
+OK     A9 server: zaplaceno Sega i PS1 -> obe otevrene, stav koupeno=SP
+OK     A10 spravce zrusil odemceni Segy -> Sega i PS1 zase zamcene (nic ziskaneho)
+OK     A11 koupena Sega + 120 hodin hrani -> PS1 ziskana a prave otevrena
+OK     A12 server ma mene (50 radku) -> nic se nemeni
+OK     A13 server ma 1500 radku (preinstalace) -> Sega otevrena z postupu
+OK     A14 server ma 121 hodin -> PS1 otevrena
+OK     A15 server: 130 h Segy, ale jen 10 radku -> PS1 ne (Sega neni)
+OK     A16 obrovsky pocet radku ze serveru se vejde do int
+OK     A17 servis ODEMKNOUT DALSI: SEGA, PS1, UZ JE VSE OTEVRENE (+ radky a cas na prah)
+OK     A18 servis ZAMKNOUT VSE: vse zamcene, nuly, i zapamatovane platby
+OK     A19 hrac z B321 (Sega po 50 radcich, PS1 po 30 min): co ma otevrene, zustava otevrene
+OK     A20 stav do logu
+== B NapPravidla - texty zamku
+OK     B1 casText: 7200 min = 120 h, 7127 = 118 h 47 min, 47 = 47 min, 60 = 1 h
+OK     B2 Sega cesky / anglicky
+OK     B3 PS1 po Seze: hodiny a minuty
+OK     B4 PS1 bez Segy: nejdriv Sega, 120 hodin (bez 'odemkni hned' - PS1 az po Seze)
+OK     B5 hlaska u zamcene konzole z webu (nadpis + duvod)
+== C NapServerKlient (post, platba, zaloha postupu) proti skutecnemu serveru N&P v11
+OK     C1 sparovano kodem
+OK     C2 stav: NapJson.mapa -> odemceno {sega:false, ps1:false}, postup {0, 0}, platby false
+OK     C2 NapJson.mapa na neexistujici / necim jinym = null
+OK     C3 spravce nastavil ucet
+OK     C4 platba: VS 10011, 75 Kc, SPD a EPC texty
+OK     C5 post ZAPLATIL ps1 bez Segy = 409 nejdriv_sega
+OK     C6 post ZAPLATIL sega = 200, zadost
+OK     C7 stav.zadost.sega = true
+OK     C8 spravce odemkl -> stav.odemceno.sega -> appka: Sega otevrena (koupena), zadost pryc
+OK     C9 post zaloha postupu (podepsana adresa) -> server vraci 777 / 3 h a odemceno
+OK     C10 preinstalace (stejny telefon, stejny kod): zaplacena Sega i postup 777 radku / 3 h se vrati
+OK     C11 ZAPLATIL ps1 (Sega zaplacena) = 200
+OK     C12 servis ZAMKNOUT VSE -> reset zalohy na serveru, zaplacene zustava
+OK     C13 post se spatnymi hodinami telefonu: server 401 cas -> srovnat -> 200
+OK     C14 log serveru: ZAPLATIL? Sega a PS1 s modelem telefonu, ODEMČENO
+
+VYSLEDEK: 42 OK, 0 CHYBA

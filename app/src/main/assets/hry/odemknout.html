@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>N&amp;P – odemknout</title>
+<!-- B322: ODEMKNOUT HNED. Sega se otevre po 1500 radcich programu v Atari, PS1 po 120 hodinach
+     hrani Segy - nebo hned po zaplaceni (PS1 az po Seze). Platebni udaje (ucet, VS, texty QR kodu)
+     da server N&P (Reneho PC) - v appce ani v GitHubu cislo uctu neni. Clovek zaplati QR kodem,
+     klepne ZAPLATIL JSEM, spravce uvidi platbu v bance a v okne serveru klikne ODEMKNOUT.
+     Most AHHRY (MainActivity.AHHry): odemknuti(), platba(co), zaplatil(co), ulozQr(png, nazev),
+     kopiruj(text), odemknout(co), spustKonzoli(co), menu(), zkontroluj().
+     QR kod: spolecne/qrcode.js (MIT, licence/qrcode-generator_MIT.txt). -->
+<script src="../spolecne/nap_jazyk.js"></script>
+<script src="../jazyk/en_hry.js"></script>
+<script src="../spolecne/qrcode.js"></script>
+<style>
+@font-face{font-family:"Chakra Petch";src:url(../pisma/chakra_semibold.woff2) format("woff2");font-weight:400 600;font-style:normal;font-display:swap;}
+@font-face{font-family:"Chakra Petch";src:url(../pisma/chakra_bold.woff2) format("woff2");font-weight:700 900;font-style:normal;font-display:swap;}
+:root{--zl1:#ffe39a;--zl2:#d79a2e;--zl3:#7a4a10;--text:#efe6cf;--tlumene:#b7aa8a;--azur:#8fdcff;--bg:#050302;--karta:#0f0b06;
+  --cervena:#ff6b5a;--zelena:#7dff9b;--barva:#3FA9FF;}
+*{box-sizing:border-box;}
+html,body{margin:0;min-height:100%;background:var(--bg);color:var(--text);font-family:"Chakra Petch","Segoe UI",Roboto,Arial,sans-serif;}
+body{padding:max(14px,env(safe-area-inset-top)) 12px max(16px,env(safe-area-inset-bottom));
+  background:radial-gradient(ellipse at 50% 0%,rgba(215,154,46,.18),transparent 60%),var(--bg);}
+.okno{width:100%;max-width:460px;margin:0 auto;}
+.hlava{text-align:center;margin:4px 0 14px;}
+.logo{font-weight:900;font-size:24px;letter-spacing:.12em;color:var(--zl1);text-shadow:0 0 18px rgba(255,227,154,.35);}
+.pod{font-size:12px;letter-spacing:.28em;color:var(--zl2);margin-top:2px;}
+.konzole{font-weight:900;font-size:21px;letter-spacing:.06em;color:var(--barva);margin-top:10px;text-shadow:0 0 16px rgba(63,169,255,.35);}
+.blok{background:linear-gradient(180deg,#17110a,var(--karta));border:1px solid var(--zl3);border-radius:16px;padding:16px 16px 14px;margin:0 0 12px;
+  box-shadow:0 0 0 1px rgba(255,227,154,.05) inset,0 12px 34px rgba(0,0,0,.55);}
+.stitek{font-size:11.5px;letter-spacing:.24em;color:var(--zl2);margin:0 0 6px;font-weight:700;}
+#stav{display:flex;align-items:center;gap:12px;}
+#stavIkona{font-size:30px;line-height:1;min-width:34px;text-align:center;}
+#stavText{font-size:16px;font-weight:700;line-height:1.35;}
+#stavText.ok{color:var(--zelena);} #stavText.chyba{color:var(--cervena);}
+.ukol{font-size:16px;font-weight:700;line-height:1.35;margin:0 0 10px;}
+.pruh{height:12px;border-radius:7px;background:#1d150b;border:1px solid #3a2a12;overflow:hidden;}
+.pruh i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--zl2),var(--zl1));border-radius:7px;transition:width .6s;}
+.pruhText{font-size:13px;color:var(--zl1);margin:6px 0 0;font-weight:600;}
+.mal{font-size:12.5px;color:var(--tlumene);line-height:1.5;margin:8px 0 0;}
+.cena{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin:2px 0 12px;}
+.cena b{font-size:34px;font-weight:900;color:var(--zl1);letter-spacing:.02em;}
+.cena span{font-size:14px;color:var(--tlumene);}
+.zalozky{display:flex;gap:6px;margin:0 0 12px;}
+.zalozka{flex:1;padding:10px 6px;border-radius:10px;border:1px solid var(--zl3);background:#0c0905;color:var(--tlumene);
+  font:700 13px "Chakra Petch",sans-serif;letter-spacing:.05em;cursor:pointer;}
+.zalozka.on{background:linear-gradient(180deg,var(--zl1),var(--zl2));color:#120b02;border-color:var(--zl2);}
+.qr{background:#fff;border-radius:12px;padding:10px;width:100%;max-width:300px;margin:0 auto 12px;display:block;}
+.qr canvas{display:block;width:100%;height:auto;image-rendering:pixelated;}
+.udaje{border-top:1px solid rgba(122,74,16,.45);}
+.radek{display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid rgba(122,74,16,.3);}
+.radek .co{font-size:12px;color:var(--tlumene);min-width:74px;letter-spacing:.04em;}
+.radek .hodnota{flex:1;font-size:15px;font-weight:700;color:#fff;word-break:break-all;}
+.kopie{border:1px solid var(--zl3);background:transparent;color:var(--zl1);border-radius:8px;padding:6px 9px;font:700 11px "Chakra Petch",sans-serif;letter-spacing:.06em;cursor:pointer;}
+.kopie:active{background:rgba(255,227,154,.12);}
+.tlacitko{display:block;width:100%;margin-top:12px;padding:14px;border:0;border-radius:12px;cursor:pointer;
+  background:linear-gradient(180deg,var(--zl1),var(--zl2));color:#120b02;font:800 15px "Chakra Petch",sans-serif;letter-spacing:.08em;}
+.tlacitko:active{filter:brightness(.9);}
+.tlacitko[disabled]{opacity:.45;}
+.vedlejsi{background:transparent;border:1px solid var(--zl3);color:var(--zl1);}
+.zelene{background:linear-gradient(180deg,#b9ffcb,#3fcf6a);}
+#ceka{border:1px solid #6b5a1c;background:#1a1405;border-radius:12px;padding:12px;margin:0 0 12px;}
+#ceka b{color:var(--zl1);}
+#cekaText{font-size:13.5px;line-height:1.5;margin:4px 0 0;color:var(--text);}
+.kolecko{display:inline-block;width:26px;height:26px;border:3px solid rgba(255,227,154,.2);border-top-color:var(--zl1);border-radius:50%;animation:toc 1s linear infinite;vertical-align:middle;}
+@keyframes toc{to{transform:rotate(360deg);}}
+#platbaStav{font-size:14px;line-height:1.5;color:var(--tlumene);text-align:center;padding:10px 0;}
+#platbaStav.chyba{color:var(--cervena);}
+.skryte{display:none!important;}
+.pata{text-align:center;font-size:11px;color:#8c805f;margin-top:6px;}
+</style>
+</head>
+<body>
+<div class="okno">
+  <div class="hlava">
+    <div class="logo">★ N&amp;P VISION ★</div>
+    <div class="pod">ODEMKNOUT</div>
+    <div class="konzole" id="konzole" data-nepreklad>SEGA MEGA DRIVE</div>
+  </div>
+
+  <div class="blok"><div id="stav"><div id="stavIkona">🔒</div><div id="stavText">Načítám…</div></div>
+    <button id="spustit" class="tlacitko zelene skryte" type="button">SPUSTIT</button>
+    <button id="naSegu" class="tlacitko skryte" type="button">ODEMKNOUT SEGU</button>
+  </div>
+
+  <div class="blok" id="zdarma">
+    <div class="stitek">ZDARMA</div>
+    <div class="ukol" id="ukol"></div>
+    <div class="pruh"><i id="pruh"></i></div>
+    <div class="pruhText" id="pruhText"></div>
+    <div class="mal" id="ukolRada"></div>
+  </div>
+
+  <div class="blok" id="hned">
+    <div class="stitek">ODEMKNOUT HNED</div>
+    <div id="platbaStav"><span class="kolecko"></span><br>Načítám platební údaje ze serveru N&amp;P…</div>
+    <button id="znovu" class="tlacitko vedlejsi skryte" type="button">ZKUSIT ZNOVU</button>
+    <div id="platba" class="skryte">
+      <div class="cena"><b id="cenaHlavni" data-nepreklad></b><span id="cenaVedlejsi"></span></div>
+      <div id="ceka" class="skryte"><b>⏳ ČEKÁ NA POTVRZENÍ</b><div id="cekaText">Správce N&amp;P platbu zkontroluje v bance a appka se odemkne sama – stačí ji mít zapnutou.</div>
+        <button id="zkontroluj" class="tlacitko vedlejsi" type="button">ZKONTROLOVAT</button></div>
+      <div class="zalozky">
+        <button class="zalozka on" type="button" data-druh="cz">QR PLATBA · Kč</button>
+        <button class="zalozka" type="button" data-druh="eu">SEPA · €</button>
+      </div>
+      <div class="qr"><canvas id="qr" width="10" height="10"></canvas></div>
+      <div class="udaje" id="udaje"></div>
+      <button id="ulozit" class="tlacitko vedlejsi" type="button">📷 ULOŽIT QR DO GALERIE</button>
+      <div class="mal" id="radaQr">V bankovní appce zvol platbu QR kódem a načti ho z obrázku (z galerie). Nebo QR naskenuj z jiného telefonu, či údaje opiš.</div>
+      <button id="zaplatil" class="tlacitko" type="button">✅ ZAPLATIL JSEM</button>
+      <div class="mal">Po zaplacení klepni na ZAPLATIL JSEM. Odemčení potvrzuje správce N&amp;P ručně, když platbu uvidí v bance – může to chvíli trvat.</div>
+    </div>
+  </div>
+
+  <button id="doMenu" class="tlacitko vedlejsi" type="button">◀ DO MENU</button>
+</div>
+<script>
+(function () {
+  'use strict';
+  var H = window.AHHRY || null;
+  var $ = function (id) { return document.getElementById(id); };
+  function tx(t) { return window.NapJazyk && NapJazyk.tr ? NapJazyk.tr(t) : t; }
+  var co = /[?&]co=ps1\b/.test(location.search) ? 'ps1' : 'sega';
+  var NAZEV = co === 'ps1' ? 'PS1' : 'SEGA';
+  var m = {};           // postup z appky (odemknuti)
+  var p = null;         // platebni udaje ze serveru
+  var druh = 'cz';      // cz = QR Platba v Kc, eu = SEPA v eurech
+  var hlidac = null;
+
+  document.documentElement.style.setProperty('--barva', co === 'ps1' ? '#B26BFF' : '#3FA9FF');
+  $('konzole').textContent = co === 'ps1' ? 'PLAYSTATION · PS1' : 'SEGA MEGA DRIVE';
+
+  function radku(n) { return n === 1 ? 'řádek' : (n >= 2 && n <= 4 ? 'řádky' : 'řádků'); }
+  function hodiny(ms) {
+    var min = Math.floor(Math.max(0, ms) / 60000), h = Math.floor(min / 60);
+    return h ? h + ' h ' + (min % 60) + ' min' : min + ' min';
+  }
+  function stav(ikona, text, druhTextu) {
+    $('stavIkona').textContent = ikona;
+    $('stavText').textContent = tx(text);
+    $('stavText').className = druhTextu || '';
+  }
+  function ukaz(id, ano) { $(id).className = $(id).className.replace(/\s*skryte/g, '') + (ano ? '' : ' skryte'); }
+
+  // ---------------------------------------------------------------- postup z appky
+  function vykresliPostup() {
+    var segaOtevrena = !!m.sega, otevrena = co === 'ps1' ? !!m.ps1 : segaOtevrena;
+    ukaz('spustit', otevrena);
+    ukaz('naSegu', co === 'ps1' && !segaOtevrena);
+    if (otevrena) {
+      stav('✔', co === 'ps1' ? 'PS1 je odemčená.' : 'SEGA je odemčená.', 'ok');
+      $('spustit').textContent = tx(co === 'ps1' ? 'SPUSTIT PS1' : 'SPUSTIT SEGU');
+    } else if (co === 'ps1' && !segaOtevrena) {
+      stav('🔒', 'PS1 jde až po Seze. Nejdřív odemkni Segu.', '');
+    } else {
+      stav('🔒', co === 'ps1' ? 'PS1 je zamčená.' : 'SEGA je zamčená.', '');
+    }
+    ukaz('zdarma', !otevrena);
+    ukaz('hned', !otevrena && (co === 'sega' || segaOtevrena));
+    if (co === 'sega') {
+      var r = m.radku || 0, potreba = m.potrebaRadku || 1500;
+      $('ukol').textContent = tx('Napiš v Atari ' + potreba + ' řádků programu.');
+      $('pruh').style.width = Math.min(100, 100 * r / potreba) + '%';
+      $('pruhText').textContent = tx('Napsáno ' + r + ' z ' + potreba + ' ' + radku(potreba) + '.');
+      $('ukolRada').textContent = tx('Počítají se řádky s číslem (10 PRINT …), když dáš RUN nebo LIST – najednou aspoň 5 řádků. Vložený text se nepočítá.');
+    } else {
+      var ms = m.segaMs || 0, potrebaMs = m.potrebaMs || 432000000;
+      $('ukol').textContent = tx(segaOtevrena ? 'Hraj ' + Math.round(potrebaMs / 3600000) + ' hodin na Seze.'
+                                              : 'Nejdřív Sega, pak ' + Math.round(potrebaMs / 3600000) + ' hodin hraní na Seze.');
+      $('pruh').style.width = Math.min(100, 100 * ms / potrebaMs) + '%';
+      $('pruhText').textContent = tx('Odehráno ' + hodiny(ms) + ' ze ' + Math.round(potrebaMs / 3600000) + ' h.');
+      $('ukolRada').textContent = tx('Počítá se jen čas, kdy hra na Seze opravdu běží – minuty se sčítají.');
+    }
+    return otevrena;
+  }
+
+  // ---------------------------------------------------------------- platba
+  function platbaStav(text, chyba, znovu) {
+    ukaz('platba', false);
+    $('platbaStav').className = chyba ? 'chyba' : '';
+    $('platbaStav').textContent = tx(text);
+    ukaz('platbaStav', true);
+    ukaz('znovu', !!znovu);
+  }
+
+  function radek(nazev, hodnota, kopirovat) {
+    var d = document.createElement('div');
+    d.className = 'radek';
+    var a = document.createElement('div'); a.className = 'co'; a.textContent = tx(nazev);
+    var b = document.createElement('div'); b.className = 'hodnota'; b.setAttribute('data-nepreklad', ''); b.textContent = hodnota;
+    d.appendChild(a); d.appendChild(b);
+    if (kopirovat) {
+      var k = document.createElement('button');
+      k.className = 'kopie'; k.type = 'button'; k.textContent = tx('KOPÍROVAT');
+      k.addEventListener('click', function () { if (H) H.kopiruj(kopirovat); });
+      d.appendChild(k);
+    }
+    return d;
+  }
+
+  function eur(t) { return String(t || '').replace('.', ',') + ' €'; }
+
+  function vykresliPlatbu() {
+    if (!p) return;
+    var ud = $('udaje');
+    ud.innerHTML = '';
+    var tabs = document.querySelectorAll('.zalozka');
+    for (var i = 0; i < tabs.length; i++) tabs[i].className = 'zalozka' + (tabs[i].getAttribute('data-druh') === druh ? ' on' : '');
+    if (druh === 'cz') {
+      $('cenaHlavni').textContent = p.kc + ' Kč';
+      $('cenaVedlejsi').textContent = tx('z ciziny ' + eur(p.eur) + ' (SEPA)');
+      ud.appendChild(radek('Částka', p.kc + ' Kč', String(p.kc)));
+      if (p.ucet_cz) ud.appendChild(radek('Účet', p.ucet_cz, p.ucet_cz));
+      ud.appendChild(radek('IBAN', p.iban_hezky, p.iban));
+      ud.appendChild(radek('VS', p.vs, p.vs));
+      ud.appendChild(radek('Zpráva', p.zprava, p.zprava));
+      kresliQr(p.spd);
+    } else {
+      $('cenaHlavni').textContent = eur(p.eur);
+      $('cenaVedlejsi').textContent = tx('v Česku ' + p.kc + ' Kč (QR Platba)');
+      ud.appendChild(radek('Částka', eur(p.eur), String(p.eur)));
+      ud.appendChild(radek('IBAN', p.iban_hezky, p.iban));
+      if (p.bic) ud.appendChild(radek('BIC', p.bic, p.bic));
+      ud.appendChild(radek('Příjemce', p.jmeno, p.jmeno));
+      ud.appendChild(radek('Zpráva', '/VS/' + p.vs + ' N&P ' + NAZEV, '/VS/' + p.vs + ' N&P ' + NAZEV));
+      kresliQr(p.epc);
+    }
+    ukaz('ceka', !!p.zadost);
+    ukaz('zaplatil', !p.zadost);   // ceka na spravce - podruhe neposilat (ZKONTROLOVAT je v okenku CEKA)
+    $('zaplatil').disabled = false;
+  }
+
+  // co se na strance ukazuje - kdyz se nic nezmenilo, hlidac (kazdych 20 s) nic neprekresluje
+  function klic(d) { return [d.zadost, d.koupeno, d.vs, d.kc, d.eur, d.iban, d.bic, d.jmeno, d.spd, d.epc].join('|'); }
+
+  // QR kod: chyba M (doporuceni QR Platby i EPC), ctverecky ostre (cela cisla), tichy okraj 4 moduly
+  var qrModuly = null;
+  function kresliQr(text) {
+    var c = $('qr');
+    try {
+      var q = qrcode(0, 'M');
+      q.addData(text, 'Byte');
+      q.make();
+      var n = q.getModuleCount(), okraj = 4, poc = n + 2 * okraj;
+      var px = Math.max(3, Math.floor(600 / poc));
+      c.width = c.height = poc * px;
+      var g = c.getContext('2d');
+      g.fillStyle = '#fff'; g.fillRect(0, 0, c.width, c.height);
+      g.fillStyle = '#000';
+      for (var r = 0; r < n; r++) for (var s = 0; s < n; s++) if (q.isDark(r, s)) g.fillRect((s + okraj) * px, (r + okraj) * px, px, px);
+      qrModuly = { q: q, n: n };
+      c.setAttribute('data-text', text);
+    } catch (e) {
+      qrModuly = null;
+      c.width = c.height = 10;
+    }
+  }
+
+  // obrazek do Galerie: QR + popisek pod nim (at se v galerii pozna, co to je)
+  function pngProGalerii() {
+    if (!qrModuly) return '';
+    var q = qrModuly.q, n = qrModuly.n, okraj = 4, px = 10, w = (n + 2 * okraj) * px, popisH = 70;
+    var c = document.createElement('canvas');
+    c.width = w; c.height = w + popisH;
+    var g = c.getContext('2d');
+    g.fillStyle = '#fff'; g.fillRect(0, 0, c.width, c.height);
+    g.fillStyle = '#000';
+    for (var r = 0; r < n; r++) for (var s = 0; s < n; s++) if (q.isDark(r, s)) g.fillRect((s + okraj) * px, (r + okraj) * px, px, px);
+    g.textAlign = 'center';
+    g.font = 'bold 26px sans-serif';
+    g.fillText('N&P ' + NAZEV + ' · ' + (druh === 'cz' ? p.kc + ' Kč' : eur(p.eur)) + ' · VS ' + p.vs, w / 2, w + 30);
+    g.font = '18px sans-serif';
+    g.fillText(druh === 'cz' ? 'QR Platba' : 'SEPA (EPC QR)', w / 2, w + 56);
+    return c.toDataURL('image/png');
+  }
+
+  function nactiPlatbu() {
+    if (!H) { platbaStav('Platba běží jen v aplikaci.', true, false); return; }
+    platbaStav('Načítám platební údaje ze serveru N&P…', false, false);
+    H.platba(co);
+  }
+
+  function hlidej(zapnout) {
+    if (hlidac) { clearInterval(hlidac); hlidac = null; }
+    if (zapnout) hlidac = setInterval(function () { if (!document.hidden && H) H.platba(co); }, 20000);
+  }
+
+  window.napHry = {
+    platba: function (r) {
+      if (r && r.mistni && r.mistni.radku !== undefined) m = r.mistni;
+      var otevrena = vykresliPostup();
+      if (otevrena) { hlidej(false); return; }
+      if (!r || !r.ok || !r.data) {
+        hlidej(false);
+        if (r && r.kod === 0) platbaStav('Server N&P je nedostupný. Zkontroluj připojení a zkus to znovu.', true, true);
+        else platbaStav((r && r.zprava) ? r.zprava : 'Platební údaje nejdou načíst.', true, true);
+        return;
+      }
+      var d = r.data;
+      if (d.koupeno) {   // server uz rika zaplaceno (Java to mezitim zapamatovala) - ukazat odemceno
+        if (co === 'ps1') m.ps1 = true; else m.sega = true;
+        hlidej(false);
+        vykresliPostup();
+        return;
+      }
+      if (!d.nastaveno) { hlidej(false); platbaStav('Platby zatím nejsou nastavené. Napiš správci N&P.', true, false); return; }
+      if (co === 'ps1' && !m.sega) { ukaz('hned', false); return; }
+      var bylaZadost = !!(p && p.zadost), stejne = p && klic(p) === klic(d);
+      p = d;
+      ukaz('platbaStav', false);
+      ukaz('znovu', false);
+      ukaz('platba', true);
+      if (!stejne) vykresliPlatbu();
+      if (!!d.zadost !== bylaZadost || (!!d.zadost && !hlidac)) hlidej(!!d.zadost);
+    },
+    zaplatil: function (r) {
+      $('zaplatil').disabled = false;
+      if (r && r.ok) {
+        if (p) p.zadost = true;
+        vykresliPlatbu();
+        hlidej(true);
+        try { window.scrollTo({ top: 0, behavior: 'smooth' }); } catch (e) { window.scrollTo(0, 0); }
+        return;
+      }
+      var d = r && r.duvod;
+      if (d === 'nejdriv_sega') stav('🔒', 'PS1 jde až po Seze. Nejdřív odemkni Segu.', 'chyba');
+      else if (r && r.kod === 0) stav('📡', 'Server N&P je nedostupný. Zkontroluj připojení a zkus to znovu.', 'chyba');
+      else stav('⚠', (r && r.zprava) || 'Nepovedlo se. Zkus to znovu.', 'chyba');
+    },
+    obnov: function () {   // Java: neco se odemklo (spravce potvrdil platbu)
+      cekejNaMost(function () { vykresliPostup(); if (!(co === 'ps1' ? m.ps1 : m.sega)) nactiPlatbu(); else hlidej(false); });
+    }
+  };
+
+  // B322: oprava z testu B321 - pri startu appky muze stranka zavolat most driv, nez ji appka
+  // zaregistruje (odpoved "{}"). Pockat, az most odpovi (nejvys 3 s).
+  function cekejNaMost(hotovo, pokus) {
+    pokus = pokus || 0;
+    var t = '{}';
+    try { t = H ? String(H.odemknuti() || '{}') : '{}'; } catch (e) {}
+    var o = {};
+    try { o = JSON.parse(t) || {}; } catch (e) {}
+    if ((o && o.radku !== undefined) || !H || pokus >= 30) { if (o && o.radku !== undefined) m = o; hotovo(); return; }
+    setTimeout(function () { cekejNaMost(hotovo, pokus + 1); }, 100);
+  }
+
+  var tabs = document.querySelectorAll('.zalozka');
+  for (var i = 0; i < tabs.length; i++) tabs[i].addEventListener('click', function () { druh = this.getAttribute('data-druh'); vykresliPlatbu(); });
+  $('ulozit').addEventListener('click', function () {
+    if (!H || !p) return;
+    var kam = H.ulozQr(pngProGalerii(), NAZEV + '_' + (druh === 'cz' ? 'CZ' : 'EU'));
+    $('radaQr').textContent = kam ? tx('Uloženo do galerie: ' + kam + '. V bankovní appce zvol platbu QR kódem a načti ho z obrázku.')
+                                  : tx('QR se nepovedlo uložit. Naskenuj ho z jiného telefonu, nebo údaje opiš.');
+  });
+  $('zaplatil').addEventListener('click', function () {
+    if (!H) return;
+    $('zaplatil').disabled = true;
+    H.zaplatil(co);
+  });
+  $('zkontroluj').addEventListener('click', function () { if (H) { H.zkontroluj(); H.platba(co); } });
+  $('znovu').addEventListener('click', nactiPlatbu);
+  $('spustit').addEventListener('click', function () { if (H) H.spustKonzoli(co); });
+  $('naSegu').addEventListener('click', function () { if (H) H.odemknout('sega'); });
+  $('doMenu').addEventListener('click', function () { if (H) H.menu(); else history.back(); });
+  document.addEventListener('visibilitychange', function () { if (!document.hidden && p && p.zadost && H) H.platba(co); });
+
+  cekejNaMost(function () {
+    if (!H) { stav('⚠', 'Odemknutí běží jen v aplikaci.', 'chyba'); ukaz('hned', false); ukaz('zdarma', false); return; }
+    var otevrena = vykresliPostup();
+    if (!otevrena && (co === 'sega' || m.sega)) nactiPlatbu();
+  });
+})();
+</script>
+</body>
+</html>

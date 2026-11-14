@@ -1,0 +1,40 @@
+B322 - regrese (starsi testy na kodu B322; s B321 = srovnani se stejnymi testy na commitu aab4eed)
+
+== b311/kontrola_odkazu.py: VYSLEDEK: 0 chyb
+   B321: VYSLEDEK: 0 chyb
+== b311/kontrola_navodu.py: VYSLEDEK: 191 nazvu, 0 CHYBA (nazev v navodu, ktery v appce neni)
+   B321: VYSLEDEK: 182 nazvu, 0 CHYBA (nazev v navodu, ktery v appce neni)
+== b314/kontrola_navodu_en.py: VYSLEDEK: 185 nazvu tlacitek, 0 CHYBA
+   B321: VYSLEDEK: 176 nazvu tlacitek, 0 CHYBA
+== b312/kontrola_zamku.py: VYSLEDEK: 18 kontrol, 0 CHYBA
+   B321: VYSLEDEK: 18 kontrol, 0 CHYBA
+== b314/kontrola_zamku_texty.py: 
+   B321: 
+== b312/kontrola_mostu.py: VYSLEDEK: 114 volani v poradku, 0 CHYBA
+   B321: VYSLEDEK: 114 volani v poradku, 0 CHYBA
+== b311/kontrola_mostu.py: 
+   B321: 
+== b320/test_b320_stranky.py: VYSLEDEK: 13 kontrol, 0 CHYB
+   B321: VYSLEDEK: 13 kontrol, 0 CHYB
+== b314/test_b314_jazyk_navod.py: VYSLEDEK: 34 kontrol, 2 CHYBA
+   B321: VYSLEDEK: 34 kontrol, 2 CHYBA
+   stejna jako na B321: CHYBA  2) klepnuti v obsahu na OPTIONS: stranka dojede na kapitolu, historie 2 -> 2, adresa beze zmeny
+   stejna jako na B321: CHYBA  5) cesky navod: texty jako v B313, zmeneno jen zamerne 
+== b314/test_b314_jazyk_stranky.py sega ps1: VYSLEDEK: 6 kontrol, 1 CHYBA
+   B321: VYSLEDEK: 6 kontrol, 1 CHYBA
+   stejna jako na B321: CHYBA  ps1 a) cesky: 24 stavu stranky - texty jako v B313
+== b314/test_b314_jazyk_menu.py: 
+   B321: VYSLEDEK: 9 kontrol, 1 CHYBA
+== b311/test_b311_menu.py: 
+   B321: 
+   NOVA CHYBA (na B321 nebyla): CHYBA  A6) sipka vpravo -> SEGA zamcena: "LOCKED · Type 45 more program lines on the Atari – or unlock it now." / 🔓 UNLOCK
+== b321/test_b321_stranky.py: VYSLEDEK: 39 OK, 0 CHYBA
+   B321: VYSLEDEK: 39 OK, 0 CHYBA
+== javac --release 17 -cp android.jar (API 34), cela appka: 0 chyb, trid 97
+
+Zamerne zmeny B322, ktere starsi testy (porovnani s texty B312 - B321) hlasi jako rozdil: zamky Segy a PS1
+(1500 radku / 120 hodin misto 50 radku / 30 minut, '- nebo odemkni hned'), tlacitko zamcene karty ODEMKNOUT
+misto ZAMCENO, navod CZ / EN (kapitola ODEMYKANI s platbou, zaloha postupu na serveru).
+b311/test_b311_menu.py A6 a b314/test_b314_jazyk_menu.py: tlacitko u zamcene karty v HTML zaloze menu uz neukazuje
+hlasku, ale otevre stranku hry/odemknout.html (zamerne) - test b314 po tom kroku dal nepokracuje (je na jine strance).
+VYSLEDEK: 1 testu s NOVOU chybou proti B321

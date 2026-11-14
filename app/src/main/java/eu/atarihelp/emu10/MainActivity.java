@@ -366,21 +366,44 @@ public class MainActivity extends Activity {
      * Cas se pocita JEN kdyz hra opravdu bezi - ne kdyz je aplikace
      * na pozadi nebo v jinem emulatoru.
      */
+    // B322: cas Segy se pricita prubezne kazdou minutu. PS1 chce 120 hodin - dlouha hra se
+    // nesmi ztratit (drive se sezeni nad 6 hodin zahodilo cele) a zaloha na serveru je cerstva.
+    private final Runnable segaCasTik = new Runnable() {
+        @Override public void run() {
+            if (segaHrajeOd == 0L) return;
+            segaCasPricti(false);
+            ui.postDelayed(this, 60000L);
+        }
+    };
+
     private void segaCasStart() {
         if (segaHrajeOd == 0L) {
             segaHrajeOd = System.currentTimeMillis();
-            appendNativeLog("BUILD2SA40 SEGA_CAS start");
+            appendNativeLog("BUILD2SA40 SEGA_CAS start | " + NapPostup.stav(MainActivity.this));
+            ui.removeCallbacks(segaCasTik);
+            ui.postDelayed(segaCasTik, 60000L);
         }
     }
-    private void segaCasStop() {
-        if (segaHrajeOd == 0L) return;
-        long ms = System.currentTimeMillis() - segaHrajeOd;
-        segaHrajeOd = 0L;
-        if (ms < 1000L || ms > 6L*60L*60L*1000L) return;   // pojistka
+
+    /** Pricte cas od posledniho tiku - nejvys 2 minuty najednou (pojistka proti skoku hodin). */
+    private void segaCasPricti(boolean konec) {
+        final long ted = System.currentTimeMillis(), od = segaHrajeOd;
+        if (od == 0L) return;
+        segaHrajeOd = konec ? 0L : ted;
+        long ms = ted - od;
+        if (ms < 1000L) return;
+        if (ms > 120000L) ms = 120000L;
         boolean otevreno = NapPostup.pripocitejSegu(MainActivity.this, ms);
-        appendNativeLog("BUILD2SA40 SEGA_CAS +" + (ms/1000) + "s -> "
-                + NapPostup.stav(MainActivity.this)
-                + (otevreno ? "  *** PS1 PRAVE OTEVRENA ***" : ""));
+        if (konec || otevreno)
+            appendNativeLog("BUILD2SA40 SEGA_CAS +" + (ms / 1000) + "s -> " + NapPostup.stav(MainActivity.this)
+                    + (otevreno ? "  *** PS1 PRAVE OTEVRENA ***" : ""));
+        if (otevreno) ui.post(this::menuZamky);
+        napPostupOdesli(konec);
+    }
+
+    private void segaCasStop() {
+        ui.removeCallbacks(segaCasTik);
+        segaCasPricti(true);
     }
 
     private void segaPlochaVypni() {
@@ -5176,14 +5199,9 @@ public class MainActivity extends Activity {
          * Davka kratsi nez pet radku se nepocita.
          */
         @JavascriptInterface public void napsanoRadku(int kolik) {
-            try {
-                boolean otevreno = NapPostup.pripocitejRadky(MainActivity.this, kolik);
-                appendNativeLog("BUILD2SA68 ATARI_RADKY +" + kolik + " -> "
-                        + NapPostup.stav(MainActivity.this)
-                        + (otevreno ? "  *** SEGA PRAVE OTEVRENA ***" : ""));
-            } catch (Throwable t) {
-                appendNativeLog("BUILD2SA68 ATARI_RADKY_CHYBA " + safeMsg(t));
-            }
+            // B322: radky pocita jen C++ Atari (atariCppPostupHrace). Tahle stara cesta z JavaScriptu
+            // (stare Atari smazane v B310) by sla zavolat z kterekoli stranky - Sega je ted i placena.
+            appendNativeLog("B322 ATARI_RADKY z JavaScriptu ignorovano (+" + kolik + ") - pocita C++ Atari");
         }
 
         /** Hrac napsal kod v Atari - overit a pripadne otevrit Segu. */
@@ -5191,8 +5209,9 @@ public class MainActivity extends Activity {
             try {
                 boolean ok = NapPostup.kodSedi(napsano);
                 if (ok) {
-                    NapPostup.otevriSegu(MainActivity.this);
-                    appendNativeLog("BUILD2SA40 KOD SEDI - SEGA OTEVRENA");
+                    // B322: Segu otevre 1500 radku nebo platba - samotny listing z intra uz ne
+                    appendNativeLog("BUILD2SA40 KOD SEDI - B322: Segu otevre 1500 radku nebo platba, kod sam ne");
+                    return false;
                 } else {
                     appendNativeLog("BUILD2SA40 KOD NESEDI (" 
                         + (napsano == null ? 0 : napsano.length()) + " znaku)");
@@ -5278,6 +5297,7 @@ public class MainActivity extends Activity {
             }
             NapPostup.zamkniVse(MainActivity.this);
             appendNativeLog("BUILD2SA40 ZAMCENO VSE -> " + NapPostup.stav(MainActivity.this));
+            napPostupReset();   // B322: i zaloha postupu na serveru N&P (zaplacene odemceni zustava - to vraci jen spravce)
             return "OK";
         }
 
@@ -8437,8 +8457,13 @@ public class MainActivity extends Activity {
     private void menuAkce(int kod, String odkud) {
         if (kod >= NativeMenuBridge.AKCE_ZAMCENO) {
             final int i = kod - NativeMenuBridge.AKCE_ZAMCENO;
-            appendNativeLog("B311 MENU_ZAMCENO karta " + i + " [" + NativeMenuBridge.kartaSafe(i) + "] (" + odkud + ") "
+            final String karta = NativeMenuBridge.kartaSafe(i);
+            appendNativeLog("B311 MENU_ZAMCENO karta " + i + " [" + karta + "] (" + odkud + ") "
                     + NapPostup.stav(this));
+            // B322: zamcena karta se zatrese (0,5 s) a otevre se ODEMKNOUT HNED - kolik chybi nebo platba
+            final String[] pk = karta == null ? new String[0] : karta.split("\\|", -1);
+            final String zamek = pk.length > 3 ? pk[3].trim() : "";
+            if ("sega".equals(zamek) || "ps1".equals(zamek)) ui.postDelayed(() -> napOtevriOdemknuti(zamek, "karta menu"), 550);
             return;
         }
         if (kod == NativeMenuBridge.AKCE_NASTAVENI) {
@@ -8648,6 +8673,7 @@ public class MainActivity extends Activity {
         boolean otevreno = NapPostup.pripocitejDavky(this, p, log);
         for (String r : log.toString().split("\n")) if (r.length() > 0) appendNativeLog(r);
         if (otevreno) NativeAtariCoreBridge.devStatusSafe(tx("SEGA ODEMČENA! JE V MENU", "SEGA UNLOCKED! IT IS IN THE MENU"), 8000);
+        napPostupOdesli(otevreno);   // B322: zaloha postupu na serveru N&P (jinak nejvys jednou za 5 minut)
     }
 
     /** Stejny zapis WAV jako BUILD2SB81 (16-bit PCM mono 44100 Hz) - vraci cestu nebo popis chyby. */
@@ -10742,18 +10768,23 @@ public class MainActivity extends Activity {
     }
 
     /** Kontrola u serveru: blokace, zprava pro vsechny, nova verze appky. Na pozadi; bez site appka jede dal. */
-    private void napOverStav(final String proc) {
+    private void napOverStav(final String proc) { napOverStav(proc, false); }
+
+    /** ticho = hlidani platby kazdou minutu: do logu jen zmeny. */
+    private void napOverStav(final String proc, final boolean ticho) {
         if (napServer == null || !napServer.sparovano()) return;
         napStavCas = android.os.SystemClock.uptimeMillis();
         new Thread(() -> {
             NapServerKlient.Odpoved o = napServer.get("/api/v1/stav");
-            if (o.kod == 0) { appendNativeLog("B321 STAV server nedostupny (" + proc + ") - appka jede dal"); return; }
+            if (o.kod == 0) { if (!ticho) appendNativeLog("B321 STAV server nedostupny (" + proc + ") - appka jede dal"); return; }
             if (napZamceno()) {
                 appendNativeLog("B321 STAV " + o.kod + " " + o.duvod() + " -> aktivace");
                 ui.post(() -> { try { if (web != null && napZamekStranky(web.getUrl())) web.loadUrl(NAP_AKTIVACE_URL); } catch (Throwable ignored) {} });
                 return;
             }
             if (!o.ok()) return;
+            napSlucServer(NapJson.mapa(o.json, "odemceno"), NapJson.mapa(o.json, "postup"), NapJson.mapa(o.json, "zadost"), proc);
+            if (ticho) return;
             final String zprava = NapJson.text(o.json, "zprava");
             final int nova = (int) NapJson.cislo(o.json, "apk_verze", 0);
             final String nazev = NapJson.text(o.json, "apk_nazev");
@@ -10777,6 +10808,137 @@ public class MainActivity extends Activity {
                 } catch (Throwable ignored) {}
             });
         }, "nap-stav").start();
+    }
+
+    // ================= B322: ODEMKNUTI PLATBOU A ZALOHA POSTUPU NA SERVERU N&P =================
+    // Sega po 1500 radcich, PS1 po 120 hodinach Segy - nebo hned po zaplaceni. Clovek zaplati QR
+    // kodem (hry/odemknout.html), klepne ZAPLATIL JSEM, spravce platbu uvidi v bance a v okne serveru
+    // klikne ODEMKNOUT. Appka se to dozvi z /api/v1/stav (pri cekani na platbu kazdou minutu).
+    private static final String NAP_ODEMKNOUT_URL = "file:///android_asset/hry/odemknout.html";
+    private volatile boolean napCekaPlatba = false;
+    private volatile boolean napViditelna = false;   // appka je na obrazovce (onResume .. onPause)
+    private volatile long napPostupPoslanoMs = 0L;
+    private volatile String napPostupPoslano = "";
+
+    private void napOtevriOdemknuti(String co, String proc) {
+        if (web == null) return;
+        final String c = "ps1".equals(co) ? "ps1" : "sega";
+        appendNativeLog("B322 ODEMKNOUT " + c + " (" + proc + ") | " + NapPostup.stav(this));
+        menuSkryj("odemknout " + c);
+        applyWebViewVisualMode(NAP_ODEMKNOUT_URL, "odemknout");
+        web.loadUrl(NAP_ODEMKNOUT_URL + "?co=" + c);
+    }
+
+    /**
+     * Zaplacene odemceni (odemceno) a zaloha postupu (postup) ze serveru - na pozadi.
+     * Kdyz se tim neco otevrelo: menu, hlaska a obnoveni stranky ODEMKNOUT.
+     */
+    private void napSlucServer(java.util.Map<String, Object> odemceno, java.util.Map<String, Object> postup, java.util.Map<String, Object> zadost, String proc) {
+        final boolean segaPred = NapPostup.segaOdemcena(this), ps1Pred = NapPostup.ps1Odemcena(this);
+        boolean zmena = false;
+        if (odemceno != null) zmena |= NapPostup.nastavKoupeno(this, NapJson.ano(odemceno, "sega"), NapJson.ano(odemceno, "ps1"));
+        long srvRadku = -1, srvMs = -1;
+        if (postup != null) {
+            srvRadku = NapJson.cislo(postup, "radku", 0);
+            srvMs = NapJson.cislo(postup, "sega_ms", 0);
+            zmena |= NapPostup.slucPostup(this, srvRadku, srvMs);
+        }
+        if (zadost != null) {
+            boolean ceka = NapJson.ano(zadost, "sega") || NapJson.ano(zadost, "ps1");
+            if (ceka != napCekaPlatba) ui.post(() -> napHlidejPlatbu(ceka));
+        }
+        final boolean segaPo = NapPostup.segaOdemcena(this), ps1Po = NapPostup.ps1Odemcena(this);
+        if (zmena || segaPo != segaPred || ps1Po != ps1Pred) {
+            appendNativeLog("B322 POSTUP podle serveru (" + proc + ") -> " + NapPostup.stav(this));
+            final String hlaska = (!ps1Pred && ps1Po) ? tx("PS1 ODEMČENA – díky! Najdeš ji v menu.", "PS1 UNLOCKED – thank you! It is in the menu.")
+                    : (!segaPred && segaPo) ? tx("SEGA ODEMČENA – díky! Najdeš ji v menu.", "SEGA UNLOCKED – thank you! It is in the menu.") : null;
+            ui.post(() -> {
+                try {
+                    menuZamky();
+                    if (hlaska != null) android.widget.Toast.makeText(MainActivity.this, hlaska, android.widget.Toast.LENGTH_LONG).show();
+                    if (web != null && web.getUrl() != null && web.getUrl().startsWith(NAP_ODEMKNOUT_URL))
+                        web.evaluateJavascript("window.napHry&&napHry.obnov&&napHry.obnov()", null);
+                } catch (Throwable ignored) {}
+            });
+        }
+        // na serveru je mene nez v telefonu (prvni start B322, hra bez site) -> poslat
+        if (srvRadku >= 0 && (NapPostup.napsanoRadku(this) > srvRadku || NapPostup.segaOdehranoMs(this) > srvMs + 60000L)) napPostupOdesli(true);
+    }
+
+    /** Zaloha postupu na serveru N&P (bere se vyssi). Nejvys jednou za 5 minut, hned = pri konci hry / pauze. */
+    private void napPostupOdesli(boolean hned) {
+        if (napServer == null || !napServer.sparovano()) return;
+        final int radku = NapPostup.napsanoRadku(this);
+        final long ms = NapPostup.segaOdehranoMs(this);
+        final boolean sega = NapPostup.segaOdemcena(this), ps1 = NapPostup.ps1Odemcena(this);
+        final String co = radku + "|" + (ms / 60000L) + "|" + sega + "|" + ps1;
+        final long ted = android.os.SystemClock.uptimeMillis();
+        if (co.equals(napPostupPoslano)) return;
+        if (!hned && napPostupPoslanoMs != 0L && ted - napPostupPoslanoMs < 5L * 60 * 1000) return;
+        napPostupPoslanoMs = ted;
+        napPostupPoslano = co;
+        new Thread(() -> {
+            NapServerKlient.Odpoved o = napServer.post("/api/v1/postup?radku=" + radku + "&sega_ms=" + ms + "&sega=" + (sega ? 1 : 0) + "&ps1=" + (ps1 ? 1 : 0));
+            if (!o.ok() || o.json == null) { napPostupPoslano = ""; return; }   // priste znovu
+            java.util.HashMap<String, Object> p = new java.util.HashMap<>();
+            p.put("radku", o.json.get("radku"));
+            p.put("sega_ms", o.json.get("sega_ms"));
+            napSlucServer(NapJson.mapa(o.json, "odemceno"), p, null, "zaloha postupu");
+        }, "nap-postup").start();
+    }
+
+    /** Servis ZAMKNOUT VSE: i zaloha postupu na serveru na nulu (zaplacene odemceni vraci jen spravce). */
+    private void napPostupReset() {
+        if (napServer == null || !napServer.sparovano()) return;
+        napPostupPoslano = "0|0|false|false";
+        new Thread(() -> {
+            NapServerKlient.Odpoved o = napServer.post("/api/v1/postup?radku=0&sega_ms=0&sega=0&ps1=0&reset=1");
+            appendNativeLog("B322 POSTUP na serveru vynulovan: " + (o.ok() ? "ok" : o.kod + " " + o.duvod()));
+        }, "nap-postup-reset").start();
+    }
+
+    /** Pri cekani na potvrzeni platby: kazdou minutu (jen kdyz je appka videt) zeptat se serveru. */
+    private final Runnable napPlatbaTik = new Runnable() {
+        @Override public void run() {
+            if (!napCekaPlatba || !napViditelna || napServer == null || !napServer.sparovano()) return;   // na pozadi ne (baterie)
+            napOverStav("ceka na platbu", true);
+            ui.postDelayed(this, 60000L);
+        }
+    };
+
+    private void napHlidejPlatbu(boolean zapnout) {
+        ui.removeCallbacks(napPlatbaTik);
+        if (zapnout != napCekaPlatba) appendNativeLog("B322 PLATBA " + (zapnout ? "ceka na potvrzeni spravcem - hlidam kazdou minutu" : "nic neceka"));
+        napCekaPlatba = zapnout;
+        if (zapnout) ui.postDelayed(napPlatbaTik, 60000L);
+    }
+
+    /** QR kod platby do Galerie (Obrazky/AtariHelp) - bankovni appka si ho nacte "z obrazku / z galerie". */
+    private String napUlozObrazek(byte[] png, String jmeno) throws IOException {
+        if (Build.VERSION.SDK_INT >= 29) {
+            android.content.ContentValues v = new android.content.ContentValues();
+            v.put(android.provider.MediaStore.MediaColumns.DISPLAY_NAME, jmeno);
+            v.put(android.provider.MediaStore.MediaColumns.MIME_TYPE, "image/png");
+            v.put(android.provider.MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_PICTURES + "/AtariHelp");
+            v.put(android.provider.MediaStore.MediaColumns.IS_PENDING, 1);
+            android.content.ContentResolver cr = getContentResolver();
+            Uri u = cr.insert(android.provider.MediaStore.Images.Media.EXTERNAL_CONTENT_URI, v);
+            if (u == null) throw new IOException("MediaStore nevratil misto pro obrazek");
+            OutputStream out = cr.openOutputStream(u);
+            if (out == null) throw new IOException("obrazek nejde zapsat");
+            try { out.write(png); } finally { out.close(); }
+            v.clear();
+            v.put(android.provider.MediaStore.MediaColumns.IS_PENDING, 0);
+            cr.update(u, v, null, null);
+            return Environment.DIRECTORY_PICTURES + "/AtariHelp/" + jmeno;
+        }
+        File dir = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES), "AtariHelp");
+        if (!dir.isDirectory() && !dir.mkdirs()) throw new IOException("slozka Pictures/AtariHelp nejde vytvorit");
+        File f = new File(dir, jmeno);
+        FileOutputStream out = new FileOutputStream(f);
+        try { out.write(png); } finally { out.close(); }
+        android.media.MediaScannerConnection.scanFile(this, new String[] { f.getAbsolutePath() }, new String[] { "image/png" }, null);
+        return Environment.DIRECTORY_PICTURES + "/AtariHelp/" + jmeno;
     }
 
     /** Po uspesne aktivaci: intro (poprve) nebo rovnou menu - jako pri beznem startu. */
@@ -10925,6 +11087,113 @@ public class MainActivity extends Activity {
 
         @JavascriptInterface public void web() {
             if (nase()) ui.post(() -> napOtevriVProhlizeci("https://atarihelp.eu/", "stranka hry"));
+        }
+
+        // ---------------- B322: stranka hry/odemknout.html ----------------
+
+        /** Postup a zamky z appky (bez site). */
+        @JavascriptInterface public String odemknuti() {
+            if (!nase()) return "{}";
+            final MainActivity c = MainActivity.this;
+            return "{\"sega\":" + NapPostup.segaOdemcena(c) + ",\"ps1\":" + NapPostup.ps1Odemcena(c)
+                    + ",\"segaKoupena\":" + NapPostup.segaKoupena(c) + ",\"ps1Koupena\":" + NapPostup.ps1Koupena(c)
+                    + ",\"radku\":" + NapPostup.napsanoRadku(c) + ",\"potrebaRadku\":" + NapPostup.SEGA_POTREBA_RADKU
+                    + ",\"segaMs\":" + NapPostup.segaOdehranoMs(c) + ",\"potrebaMs\":" + NapPostup.PS1_POTREBA_MS
+                    + ",\"ceka\":" + napCekaPlatba + ",\"sparovano\":" + (napServer != null && napServer.sparovano())
+                    + ",\"jazyk\":" + NapJson.uvoz(NapJazyk.kod(c)) + "}";
+        }
+
+        /** Platebni udaje ze serveru (ucet, VS, texty QR kodu). Vysledek do napHry.platba({...}). */
+        @JavascriptInterface public void platba(final String co) {
+            if (!nase()) return;
+            final String c = "ps1".equals(co) ? "ps1" : "sega";
+            new Thread(() -> {
+                NapServerKlient.Odpoved o = napServer.get("/api/v1/platba?co=" + c);
+                boolean ok = o.ok() && o.json != null;
+                if (ok && NapJson.ano(o.json, "koupeno")) {
+                    // spravce mezitim odemkl - zapamatovat hned (a obnovit menu)
+                    final MainActivity a = MainActivity.this;
+                    java.util.HashMap<String, Object> od = new java.util.HashMap<>();
+                    od.put("sega", "sega".equals(c) || NapPostup.segaKoupena(a));
+                    od.put("ps1", "ps1".equals(c) || NapPostup.ps1Koupena(a));
+                    napSlucServer(od, null, null, "stranka odemknout");
+                }
+                if (ok && NapJson.ano(o.json, "zadost") && !napCekaPlatba) ui.post(() -> napHlidejPlatbu(true));
+                napOdpovedStrance("platba", "{\"ok\":" + ok + ",\"kod\":" + o.kod + ",\"duvod\":" + NapJson.uvoz(o.duvod())
+                        + ",\"zprava\":" + NapJson.uvoz(o.zprava()) + ",\"data\":" + (ok ? o.text() : "null") + ",\"mistni\":" + odemknuti() + "}");
+            }, "nap-platba").start();
+        }
+
+        /** Clovek zaplatil: server rozsviti u spravce CEKA. Vysledek do napHry.zaplatil({...}). */
+        @JavascriptInterface public void zaplatil(final String co) {
+            if (!nase()) return;
+            final String c = "ps1".equals(co) ? "ps1" : "sega";
+            final boolean sega = NapPostup.segaOdemcena(MainActivity.this);
+            new Thread(() -> {
+                NapServerKlient.Odpoved o = napServer.post("/api/v1/zaplatil?co=" + c + "&sega=" + (sega ? 1 : 0));
+                appendNativeLog("B322 ZAPLATIL JSEM " + c + " -> " + (o.ok() ? "server ceka na potvrzeni spravcem" : o.kod + " " + o.duvod()));
+                if (o.ok()) ui.post(() -> napHlidejPlatbu(true));
+                napOdpovedStrance("zaplatil", "{\"ok\":" + o.ok() + ",\"kod\":" + o.kod + ",\"duvod\":" + NapJson.uvoz(o.duvod())
+                        + ",\"zprava\":" + NapJson.uvoz(o.zprava()) + "}");
+            }, "nap-zaplatil").start();
+        }
+
+        /** QR kod (PNG z platna stranky) do Galerie. Vraci cestu pro hlasku, "" = nepovedlo se. */
+        @JavascriptInterface public String ulozQr(String dataUrl, String nazev) {
+            if (!nase() || dataUrl == null || !dataUrl.startsWith("data:image/png;base64,")) return "";
+            try {
+                byte[] png = android.util.Base64.decode(dataUrl.substring(22), android.util.Base64.DEFAULT);
+                if (png.length < 100 || png.length > 4 * 1024 * 1024 || (png[1] & 0xFF) != 'P' || (png[2] & 0xFF) != 'N') return "";
+                String jm = "NaP_platba_" + (nazev == null ? "QR" : nazev.replaceAll("[^A-Za-z0-9_-]", "")) + ".png";
+                String kam = napUlozObrazek(png, jm);
+                appendNativeLog("B322 QR platby ulozen: " + kam);
+                return kam;
+            } catch (Throwable t) {
+                appendNativeLog("B322 QR platby nejde ulozit: " + safeMsg(t));
+                return "";
+            }
+        }
+
+        /** Text do schranky (cislo uctu, VS, castka). */
+        @JavascriptInterface public void kopiruj(String text) {
+            if (!nase() || text == null) return;
+            final String t = text.length() > 300 ? text.substring(0, 300) : text;
+            ui.post(() -> {
+                try {
+                    android.content.ClipboardManager cm = (android.content.ClipboardManager) getSystemService(CLIPBOARD_SERVICE);
+                    cm.setPrimaryClip(android.content.ClipData.newPlainText("N&P", t));
+                    if (Build.VERSION.SDK_INT < 33)   // Android 13+ ukaze vlastni potvrzeni
+                        android.widget.Toast.makeText(MainActivity.this, tx("Zkopírováno: ", "Copied: ") + t, android.widget.Toast.LENGTH_SHORT).show();
+                } catch (Throwable ignored) {}
+            });
+        }
+
+        /** Jina konzole (z PS1: nejdriv ODEMKNOUT SEGU). */
+        @JavascriptInterface public void odemknout(final String co) {
+            if (nase()) ui.post(() -> napOtevriOdemknuti(co, "stranka odemknout"));
+        }
+
+        /** Otevrena konzole -> rovnou do ni (zamky hlida konzoleZamcena). */
+        @JavascriptInterface public void spustKonzoli(final String co) {
+            if (!nase()) return;
+            ui.post(() -> {
+                if (web == null) return;
+                final boolean ps1 = "ps1".equals(co);
+                final String url = ps1 ? PS1_URL : SEGA_URL;
+                if (konzoleZamcena(ps1 ? NapPravidla.PS1 : NapPravidla.SEGA, "odemknout - spustit", url)) return;
+                applyWebViewVisualMode(url, "odemknout");
+                web.loadUrl(url);
+            });
+        }
+
+        /** Zpet do hlavniho menu. */
+        @JavascriptInterface public void menu() {
+            if (nase()) ui.post(() -> { if (web != null) web.loadUrl("file:///android_asset/index.html"); });
+        }
+
+        /** Znovu se zeptat serveru (tlacitko ZKONTROLOVAT). Vysledek: obnovi se stranka (napHry.obnov). */
+        @JavascriptInterface public void zkontroluj() {
+            if (nase()) napOverStav("stranka odemknout");
         }
     }
 
@@ -14220,6 +14489,9 @@ public class MainActivity extends Activity {
     protected void onPause() {
         zapisOdchod("PAUZA");
         super.onPause();
+        napViditelna = false;
+        ui.removeCallbacks(napPlatbaTik);   // B322: hlidani platby jen kdyz je appka videt
+        napPostupOdesli(true);              // B322: cerstva zaloha postupu na serveru
         // B304: demo na pozadi nehraje - ukoncit (po navratu je videt menu)
         if (demoPlocha != null) demoKonec("appka na pozadi");
         if (ps1GameWindowOwnsCore) {
@@ -14267,9 +14539,12 @@ public class MainActivity extends Activity {
     @Override
     protected void onResume() {
         super.onResume();
+        napViditelna = true;   // B322
         if (web != null) web.onResume();
         // B321: po navratu do appky (nejdriv po 30 min) zkontrolovat server: blokace, zprava, nova verze
         if (napStavCas != 0 && android.os.SystemClock.uptimeMillis() - napStavCas > 30L * 60 * 1000) napOverStav("navrat do appky");
+        else if (napCekaPlatba) napOverStav("navrat do appky - ceka na platbu", true);
+        if (napCekaPlatba) napHlidejPlatbu(true);   // B322: dal hlidat potvrzeni platby
         // B311: navrat do appky (napr. z prohlizece po karte s webem) na index.html -> menu zpet
         try {
             if (menuPlocha == null && demoPlocha == null && !menuSkryteProOptions && web != null && jeMenuUrl(web.getUrl()))

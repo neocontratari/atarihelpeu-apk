@@ -836,7 +836,8 @@ class Kresba {
       } else {
         c.zamek.push_back(TextTex());
       }
-      c.tlac.push_back(text1(pBold_, k.zamceno ? (en_ ? std::string("LOCKED") : std::string(u8"ZAMČENO")) : k.tlacitko, r.tlacPx, 0.12f, c.w * 0.62f, 0.f));
+      // B322: zamcena karta ma tlacitko ODEMKNOUT - klepnuti otevre platbu / kolik chybi (Java, hry/odemknout.html)
+      c.tlac.push_back(text1(pBold_, k.zamceno ? (en_ ? std::string("UNLOCK") : std::string("ODEMKNOUT")) : k.tlacitko, r.tlacPx, 0.12f, c.w * 0.62f, 0.f));
     }
     c.textW = c.w; c.textH = c.h; c.textVerze = verze_;
   }

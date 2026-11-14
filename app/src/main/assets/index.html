@@ -245,13 +245,15 @@ function postup(){
   return st;
 }
 function radku(n){ return n===1?'řádek':(n>=2&&n<=4?'řádky':'řádků'); }
-// stejna slova jako Java (NapPravidla.duvodKarty) - cesky / anglicky
+// B322: "118 h 47 min" (stejne jako NapPravidla.casText)
+function casText(m){ m=Math.max(0,m|0); var h=Math.floor(m/60); return h?h+' h'+(m%60?' '+(m%60)+' min':''):m+' min'; }
+// stejna slova jako Java (NapPravidla.duvodKarty) - cesky / anglicky. B322: Sega 1500 radku, PS1 120 h - nebo hned
 function zamekKarty(k,st){
   var r=st.zbyvaRadku||0, m=st.zbyvaMinut||0;
-  if(k.zamek==='sega'&&!st.sega) return J('Napiš v Atari ještě '+r+' '+radku(r)+' programu (řádky s číslem, počítají se při RUN nebo LIST).',
-                                          'Type '+r+' more program '+(r===1?'line':'lines')+' on the Atari (numbered lines \u2013 they count on RUN or LIST).');
-  if(k.zamek==='ps1'&&!st.ps1) return st.sega?J('Hraj na Seze ještě '+m+' min.','Play the Sega for '+m+' more min.')
-                                             :J('Nejdřív odemkni Segu, pak 30 minut hraní na Seze.','Unlock the Sega first, then play it for 30 minutes.');
+  if(k.zamek==='sega'&&!st.sega) return J('Napiš v Atari ještě '+r+' '+radku(r)+' programu \u2013 nebo odemkni hned.',
+                                          'Type '+r+' more program '+(r===1?'line':'lines')+' on the Atari \u2013 or unlock it now.');
+  if(k.zamek==='ps1'&&!st.ps1) return st.sega?J('Hraj na Seze ještě '+casText(m)+' \u2013 nebo odemkni hned.','Play the Sega for '+casText(m)+' more \u2013 or unlock it now.')
+                                             :J('Nejdřív odemkni Segu, pak 120 hodin hraní na Seze.','Unlock the Sega first, then play it for 120 hours.');
   return '';
 }
 var kar=$('karusel'), tecky=$('tecky');
@@ -311,13 +313,14 @@ function ukazVybranou(i){
   var p=$('popis'), b=$('spustit');
   p.textContent=k.duvod?(J('ZAMČENO','LOCKED')+' · '+k.duvod):k.popis;
   p.className=k.duvod?'zamceno':'';
-  b.innerHTML=(k.duvod?'&#128274; '+J('ZAMČENO','LOCKED'):'&#9654; '+k.tlacitko.replace(/[<>&]/g,''));
+  b.innerHTML=(k.duvod?'&#128275; '+J('ODEMKNOUT','UNLOCK'):'&#9654; '+k.tlacitko.replace(/[<>&]/g,''));
   b.className=k.duvod?'zamceno':'';
   for(var t=0;t<tecky.children.length;t++) tecky.children[t].className=t===i?'on':'';
 }
 function spust(i){
   var k=karty[i]; if(!k) return;
-  if(k.duvod){ toast(J('ZAMČENO','LOCKED')+'\n'+k.duvod,3200); return; }
+  // B322: zamcena konzole -> ODEMKNOUT HNED (kolik chybi, nebo platba)
+  if(k.duvod){ if(k.zamek==='sega'||k.zamek==='ps1'){ log('ODEMKNOUT '+k.zamek); location.href='hry/odemknout.html?co='+k.zamek; } else toast(J('ZAMČENO','LOCKED')+'\n'+k.duvod,3200); return; }
   if(!k.cil){ toast(k.nazev,1200); return; }
   log('SPUSTIT '+k.id+' -> '+k.cil);
   if(k.cil.indexOf('akce:')===0){ if(k.cil==='akce:nastaveni') openSettings(); return; }

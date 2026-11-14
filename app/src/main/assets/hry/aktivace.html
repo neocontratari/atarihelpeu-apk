@@ -201,7 +201,17 @@ label{display:block;font-size:13px;letter-spacing:.12em;color:var(--zl2);margin-
     H.nastavServer(novy);
     cti();
   });
-  start();
+  // B322: oprava z testu B321 - pri prvnim startu appky stranka zavolala most driv, nez ji appka
+  // zaregistrovala (odpoved "{}"), a automaticke sparovani klicem z APK se vubec nezkusilo.
+  // Pockat, az most odpovi (nejvys 3 s).
+  function cekejNaMost(hotovo, pokus) {
+    pokus = pokus || 0;
+    var t = '{}';
+    try { t = H ? String(H.stav() || '{}') : '{}'; } catch (e) {}
+    if (!H || t.length > 2 || pokus >= 30) { hotovo(); return; }
+    setTimeout(function () { cekejNaMost(hotovo, pokus + 1); }, 100);
+  }
+  cekejNaMost(start);
 })();
 </script>
 </body>

@@ -1,0 +1,38 @@
+OK     O1 stav: SEGA je zamčená
+OK     O1 zdarma: 1500 řádků, napsáno 123, pruh 8,2 %
+OK     O1 cena 75 Kč (z ciziny 2,99 €)
+OK     O1 údaje: částka, účet, IBAN, VS, zpráva
+OK     O1 QR na stránce (ZXing) = QR Platba ze serveru
+OK     O1 ZAPLATIL JSEM vidět, ČEKÁ ne
+OK     O2 SEPA: QR (ZXing) = evropský QR ze serveru (EUR2.99, /VS/10011)
+OK     O2 SEPA: 2,99 €, IBAN, příjemce, zpráva
+OK     O3 KOPÍROVAT: VS, účet, částka
+OK     O4 ULOŽIT QR: PNG pro Galerii nese stejnou QR Platbu
+OK     O4 hláška, kam se QR uložil
+OK     O5 ZAPLATIL JSEM -> AHHRY.zaplatil(sega), ČEKÁ NA POTVRZENÍ, tlačítko zmizí
+OK     O5 ZKONTROLOVAT -> AHHRY.zkontroluj() + platba()
+OK     O6 odemčeno: SEGA je odemčená, SPUSTIT SEGU, platba schovaná
+OK     O6 SPUSTIT SEGU -> AHHRY.spustKonzoli(sega)
+OK     O14 DO MENU -> AHHRY.menu()
+OK     O5 už čeká (po restartu appky): ČEKÁ vidět a každých 20 s se ptá serveru
+OK     O7 PS1 bez Segy: PS1 až po Seze, žádná platba
+OK     O7 ODEMKNOUT SEGU -> AHHRY.odemknout(sega)
+OK     O8 PS1 se Segou: 3 h 12 min ze 120 h, 125 Kč, QR PS1
+OK     O8 PS1 SEPA: 4,99 € (EPC)
+OK     O9 server nedostupný: hláška + ZKUSIT ZNOVU
+OK     O9 ZKUSIT ZNOVU -> platba se načte
+OK     O10 platby nenastavené na serveru
+OK     O11 server: PS1 nejdřív_sega -> hláška, tlačítko znovu aktivní
+OK     O12 most odpoví až po 0,6 s: stránka počká a funguje
+OK     O13 anglicky: stav, úkol, postup, cena, tlačítka
+OK     O13 anglicky: žádná čeština (kromě Kč, QR Platba, jména)
+OK     O13 anglicky: čeká na potvrzení
+OK     O13 anglicky PS1: hodiny
+OK     R1 AKTIVACE: most odpoví "{}" (start appky) -> stránka počká a spáruje se SAMA klíčem z APK
+OK     R1 bez klíče v APK: po čekání formulář kódu (jako dřív)
+OK     R2 N&P HRY: most odpoví "{}" -> NEskočí na aktivaci, načte seznam
+OK     M1 HTML záloha menu (index.html): texty zámků jako Java (B2-B4)
+OK     M1 HTML záloha menu: tlačítko ODEMKNOUT -> hry/odemknout.html?co=sega|ps1
+OK     žádná chyba JavaScriptu
+
+VYSLEDEK: 36 OK, 0 CHYBA

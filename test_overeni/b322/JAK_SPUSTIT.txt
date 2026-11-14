@@ -1,0 +1,36 @@
+B322 - ODEMKNOUT HNED (PLATBA), SEGA 1500 RADKU, PS1 120 HODIN, ZALOHA POSTUPU NA SERVERU - overeni na PC
+=========================================================================================================
+
+Rene: "sega se otevre az po 1500 radcich - jinak donate 2,99 euro a ps1 se otevre az za 120 hodin
+hrani segy jinak donate 4,99 ... osetrit i to, ze kdyz zaplati, at se to odemce".
+Ceny pro ceske banky (QR Platba v Kc): 75 Kc a 125 Kc. PS1 jde koupit az po Seze.
+Platbu potvrzuje Rene rucne v okne serveru N&P v11 (jeho banka nema API jako Fio).
+Server N&P v11 (C#, Reneho PC) neni v tomhle verejnem repozitari - zdrojak a testy ma Rene
+(NapServer_v11.zip). Testy C) a 3) ho potrebuji. Cislo uctu neni v appce ani v repozitari -
+appka ho dostane od serveru (/api/v1/platba).
+
+1) Tridy appky bez Androidu (NapPostupJadro, NapPravidla, NapServerKlient.post, NapJson.mapa):
+     javac -d out ../../app/src/main/java/eu/atarihelp/emu10/{NapJson,NapServerKlient,NapPostupJadro,NapPravidla}.java \
+         jvm/TestB322.java
+     java -cp out eu.atarihelp.emu10.TestB322 [NapTest.exe <pracovni slozka>]     -> VYSTUP_TestB322.txt (42 OK)
+   A) prahy 1500 radku / 120 h, davka od 5 radku, PS1 az po Seze, koupeno ze serveru (i zrusene),
+      zaloha postupu (bere se vyssi), servis ODEMKNOUT DALSI / ZAMKNOUT VSE, hrac z B321 nic neztrati
+   B) texty zamku cesky / anglicky ("Hraj na Seze jeste 118 h 47 min - nebo odemkni hned.")
+   C) proti SKUTECNEMU jadru serveru v11 (mono): platba (VS, SPD, EPC), ZAPLATIL JSEM, PS1 nejdriv_sega,
+      spravce odemkne -> stav.odemceno, zaloha postupu, preinstalace vrati zaplacene i postup,
+      reset (ZAMKNOUT VSE), POST se spatnymi hodinami telefonu (opraveno: prazdne telo bez streamovani)
+
+2) Stranka ODEMKNOUT HNED + oprava aktivace (Chromium, stranky presne z assets, falesny most AHHRY):
+     pip install zxing-cpp opencv-python-headless
+     python3 test_b322_stranky.py                                    -> VYSTUP_test_b322_stranky.txt (36 OK)
+   QR kody (na strance i obrazek pro Galerii) cte ZXing - musi dat presne text QR Platby / EPC ze serveru.
+   R1 = chyba z testu Reneho 14. 11. (B321): pri startu appky stranka aktivace zavolala most driv,
+   nez ji appka zaregistrovala ("{}") - klic v APK se vubec nezkusil. Ted stranka pocka (nejvys 3 s).
+
+3) Server v11 (u serveru, soukrome): test_server.py S0-S37 -> 203 OK (S28-S37 platby a postup:
+   VS z cisla kodu, cesky ucet -> IBAN + kontrolni soucty, presne texty SPD / EPC, ZAPLATIL -> CEKA,
+   PS1 az po Seze, ODEMKNOUT / PLATBA NEPRISLA / ZRUSIT ODEMCENI, zaloha postupu, restart, platby.txt).
+
+4) Regrese (starsi testy, kterych se B322 dotyka) a srovnani s B321:
+     git worktree add /tmp/b321 aab4eed
+     bash regrese.sh <android-34.jar> /tmp/b321                        -> VYSTUP_regrese.txt

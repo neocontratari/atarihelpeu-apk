@@ -3551,3 +3551,68 @@
        9 obrazku s odkazem na Sonic ZIP (Reneho web).
 
 ===============================================================================
+
+   B322: ODEMKNOUT HNED (PLATBA QR), SEGA 1500 RADKU, PS1 120 HODIN; SERVER
+     v11 S PLATBAMI A ZALOHOU POSTUPU; OPRAVA AUTOMATICKE AKTIVACE. (14. 11. 2026)
+     Rene po prvnim ostrem testu B321 (vse slape): "sega se otevre az po 1500
+     radcich - jinak donate 2,99 euro a ps1 se otevre az za 120 hodin hrani
+     segy jinak donate 4,99 ... osetrit i to, ze kdyz zaplati, at se to odemce.
+     Apka je zdarma, ale pro rychliky a nedockavce ne." Odpovedi Reneho (dotaz
+     AskUserQuestion): banka NENI Fio (= potvrzuje rucne v okne serveru), ceny
+     pro QR Platbu 75 Kc / 125 Kc (cizinci 2,99 / 4,99 EUR pres SEPA QR), PS1
+     jde koupit AZ PO SEZE, web = zive karty z C++ (WebAssembly).
+     - ZAMKY: NapPostupJadro (ciste Java, test v JVM) + NapPostup (obal nad
+       SharedPreferences "nap_postup", synchronized). Sega = ziskana (1500 radku,
+       davka >= 5, pocita jen C++ Atari) NEBO koupena (sega_koupeno = pamet toho,
+       co rekl server); PS1 = Sega otevrena A (120 h Segy NEBO ps1_koupeno).
+       Stare otevrene zustava. Cas Segy prubezne kazdou minutu (segaCasTik, max
+       2 min na tik) - drive sezeni > 6 h zahozeno cele. Stare JS cesty
+       AHINTRO.napsanoRadku / overKod uz nic neodemykaji (sly volat z kazde
+       stranky). NapPravidla: texty "... - nebo odemkni hned", casText (h/min).
+     - MENU: zamcena karta ma tlacitko ODEMKNOUT / UNLOCK (C++ nap_menu_kresba.h);
+       AKCE_ZAMCENO -> po zatreseni (550 ms) napOtevriOdemknuti -> stranka
+       hry/odemknout.html?co=sega|ps1 (HTML zaloha menu index.html taky).
+     - STRANKA hry/odemknout.html (most AHHRY, jen stranky hry/): odemknuti()
+       (postup z appky), platba(co) -> GET /api/v1/platba, zaplatil(co) -> POST
+       /api/v1/zaplatil, ulozQr (PNG z platna -> MediaStore Pictures/AtariHelp,
+       Android < 10 soubor + MediaScanner), kopiruj, odemknout, spustKonzoli
+       (hlida konzoleZamcena), menu, zkontroluj. QR kod: assets/spolecne/qrcode.js
+       (npm qrcode-generator 2.0.4, MIT, licence/qrcode-generator_MIT.txt),
+       chyba M, tichy okraj 4. Texty QR (SPD, EPC) sklada SERVER - appka je jen
+       kresli. CISLO UCTU NENI V APPCE ANI V REPU (repo je verejne).
+     - SERVER v11 (soukromy, NapServer_v11.zip u Reneho): platby.txt (iban,
+       jmeno, bic, sega_kc/eur, ps1_kc/eur; okno KODY -> 💳 PLATBY, cesky ucet
+       "pred-cislo/banka" -> IBAN + kontrolni soucty), NapKod + 9 sloupcu v
+       kody.txt (cislo, koupeno_sega/ps1, zadost_sega/ps1, radku, sega_ms,
+       postup_cas, otevreno S/P); kody z v10 dostanou cislo podle data (1001..).
+       VS = cislo*10 + 1 (Sega) / 2 (PS1). /api/v1/stav + odemceno, zadost,
+       postup, platby; GET /api/v1/platba?co= (vs, iban, ucet_cz, spd
+       "SPD*1.0*ACC:..*AM:75.00*CC:CZK*X-VS:..*MSG:..*RN:..", epc "BCD\n002\n1\n
+       SCT\n<bic>\n<jmeno>\n<iban>\nEUR2.99\n\n\n/VS/.. N&P SEGA"); POST
+       /api/v1/zaplatil?co=[&sega=1] (409 nejdriv_sega | platby_nejsou; log
+       "💳 ZAPLATIL?" + zvuk, radek v okne zluty "⏳ CEKA"); POST
+       /api/v1/postup?radku&sega_ms&sega&ps1[&reset=1] (bere vyssi). Parametry
+       POST jsou v adrese = kryje je podpis. Spravce: ODEMKNOUT SEGU / PS1 (PS1
+       jen kdyz ma Segu), PLATBA NEPRISLA, ZRUSIT ODEMCENI.
+     - APPKA x SERVER: napSlucServer (ze stavu: nastavKoupeno + slucPostup +
+       zadost -> napHlidejPlatbu = kazdou minutu stav, jen kdyz je appka videt),
+       napPostupOdesli (nejvys 1x za 5 min, hned pri konci Segy / pauze; kdyz
+       ma server mene nez telefon -> poslat), napPostupReset (servis ZAMKNOUT
+       VSE). NapServerKlient.post (prazdne telo BEZ streamovani - jinak 401
+       "cas" bez tela a appka by se nesrovnala; overeno testem C13).
+     - OPRAVA Z TESTU RENEHO (B321, log 14. 11. 16:11): "klic v APK: ano", ale
+       PAROVANI jen "(zadany kod)" a zadne "PAROVANI ne" = automaticke
+       parovani se nezkusilo. Pricina: stranka aktivace zavolala AHHRY.stav()
+       driv, nez onPageStarted nastavil napAktualniUrl (nase() -> "{}"). Ted
+       aktivace.html, hry/index.html i odemknout.html cekaji na most (max 3 s).
+     - build.gradle: versionCode 365 "EMU10-B322-PLATBY". Navod CZ / EN kapitola
+       10 ODEMYKANI + FAQ "Zaplatil jsem, ale ...".
+     - TESTY test_overeni/b322 (JAK_SPUSTIT.txt): jvm/TestB322.java 42 OK
+       (NapPostupJadro, texty, proti serveru v11), test_b322_stranky.py 36 OK
+       (QR cte ZXing = presne SPD / EPC; R1 = oprava aktivace), regrese.sh proti
+       B321 aab4eed (zamerne: b311 menu A6 a b314 menu - tlacitko u zamcene
+       karty otevre stranku ODEMKNOUT). Server: 203 OK (u serveru).
+     - DALSI KROK: Rene zada ucet v 💳 PLATBY, test na telefonu (QR z galerie v
+       jeho bance), WEB stranka 1130 se zivymi kartami (WebAssembly).
+
+===============================================================================

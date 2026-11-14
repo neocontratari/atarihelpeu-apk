@@ -246,12 +246,24 @@ footer a{color:var(--azur);text-decoration:none;}
   $('web').addEventListener('click', function (e) { e.preventDefault(); if (H) H.web(); });
   window.addEventListener('pageshow', function () { $('prekryv').className = ''; });
 
-  try {
-    var st = JSON.parse(H ? H.stav() : '{}') || {};
-    if (H && (!st.sparovano || st.zablokovano)) { location.replace('aktivace.html'); return; }
-  } catch (e) {}
-  prepni(system);
-  nacti();
+  // B322: oprava z testu B321 - pri prvnim startu appky stranka zavolala most driv, nez ji appka
+  // zaregistrovala (odpoved "{}"), a automaticke sparovani klicem z APK se vubec nezkusilo.
+  // Pockat, az most odpovi (nejvys 3 s).
+  function cekejNaMost(hotovo, pokus) {
+    pokus = pokus || 0;
+    var t = '{}';
+    try { t = H ? String(H.stav() || '{}') : '{}'; } catch (e) {}
+    if (!H || t.length > 2 || pokus >= 30) { hotovo(); return; }
+    setTimeout(function () { cekejNaMost(hotovo, pokus + 1); }, 100);
+  }
+  cekejNaMost(function () {
+    try {
+      var st = JSON.parse(H ? H.stav() : '{}') || {};
+      if (H && st.server !== undefined && (!st.sparovano || st.zablokovano)) { location.replace('aktivace.html'); return; }
+    } catch (e) {}
+    prepni(system);
+    nacti();
+  });
 })();
 </script>
 </body>

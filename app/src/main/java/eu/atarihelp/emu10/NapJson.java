@@ -55,6 +55,13 @@ public final class NapJson {
         return m != null && Boolean.TRUE.equals(m.get(klic));
     }
 
+    /** B322: vnoreny objekt ("odemceno":{...}), nebo null. */
+    @SuppressWarnings("unchecked")
+    public static Map<String, Object> mapa(Map<String, Object> m, String klic) {
+        Object o = m == null ? null : m.get(klic);
+        return o instanceof Map ? (Map<String, Object>) o : null;
+    }
+
     /** Text do JSON vcetne uvozovek. */
     public static String uvoz(String t) {
         StringBuilder b = new StringBuilder("\"");
