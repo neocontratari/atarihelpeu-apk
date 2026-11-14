@@ -43,7 +43,17 @@ Apka je zdarma, ale pro rychlíky a nedočkavce ne.“
   Stránka aktivace se zeptala appky o chvilku dřív, než ji appka zaregistrovala. **Teď počká.**
   Stejná pojistka je v N&P HRY a na obrazovce ODEMKNOUT.
 
-## 5. Další
+## 5. Web atarihelp.eu – živé menu místo GIFů
+
+- Na stránce stahování (page_id=1130) jsou místo GIFů **4 živé panely hlavního menu appky** (WEB, ATARI,
+  SEGA, PS1). Kreslí je **přesně ten samý C++ kód jako menu v telefonu**, přeložený do WebAssembly
+  (`web/menu`). Karty jdou táhnout do stran, klepnutí na kartu otevře okno pro kód (stažení appky),
+  ATARIHELP.EU otevře hlavní stránku webu.
+- Stránka: `web/stranka_1130/html_kod_www_stranky_B322.txt` (vložit do bloku Vlastní HTML místo staré).
+- Soubor menu (2 MB) si stránka bere z GitHubu (pevná verze, kontrola SHA-256). Záloha přes FTP:
+  `wp-content/uploads/nap/nap_menu_web.js`. Bez WebGL ukáže tvoje původní GIFy.
+
+## 6. Další
 
 - Staré cesty z JavaScriptu, které uměly přidat řádky nebo otevřít Segu bez placení
   (z dob starého Atari v JS), jsou zavřené. Řádky počítá jen C++ Atari.
@@ -53,8 +63,10 @@ Apka je zdarma, ale pro rychlíky a nedočkavce ne.“
 ## Na rovinu
 
 - **Ověřeno na PC:** server 203 kontrol (54 nových), třídy appky proti skutečnému serveru 42, stránka
-  ODEMKNOUT + aktivace v Chromiu 36 (QR kódy přečtené ZXingem = přesně text pro banku), staré testy
-  bez nové chyby kromě záměrných změn, celá appka přeložená proti Androidu 34.
+  ODEMKNOUT + aktivace v Chromiu 36 (QR kódy přečtené ZXingem = přesně text pro banku), web se živým
+  menu 16, staré testy bez nové chyby kromě záměrných změn, celá appka přeložená proti Androidu 34.
+- **Ověřeno v GitHubu na skutečném APK B322:** verze 365, podpis N&P (v2 + v3 s rotací), vložený klíč
+  podpis nerozbije.
 - **Na telefonu zatím ne** – hlavně načtení QR kódu ze skutečné bankovní appky (ČS, Fio, KB…).
 - **Potvrzuješ ručně.** Když spíš, člověk čeká. Automat by šel jen s bankou, která má API (Fio).
 - QR v telefonu se nedá naskenovat tím samým telefonem – proto ULOŽIT DO GALERIE. Ne každá

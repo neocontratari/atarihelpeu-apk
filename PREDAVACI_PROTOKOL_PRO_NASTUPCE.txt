@@ -3612,7 +3612,25 @@
        (QR cte ZXing = presne SPD / EPC; R1 = oprava aktivace), regrese.sh proti
        B321 aab4eed (zamerne: b311 menu A6 a b314 menu - tlacitko u zamcene
        karty otevre stranku ODEMKNOUT). Server: 203 OK (u serveru).
+     - WEB atarihelp.eu/?page_id=1130: misto 4 GIFu ZIVE MENU APPKY. web/menu/
+       nap_menu_web.cpp = most misto Androidu (nap_menu_gl.cpp): WebGL 2 (jinak 1)
+       na platne, emscripten_set_main_loop, vic panelu (kazdy vlastni kontext a
+       karusel, kresli jen viditelne - IntersectionObserver), prst / mys ->
+       napDotyk (jako menuDotyk). Kresli app/src/main/cpp/menu BEZE ZMENY.
+       vyrob.sh: Emscripten 3.1.6 (apt) -> jeden soubor web/menu/vystup/
+       nap_menu_web.js (2,1 MB: wasm + assets/menu + logo). Stranka
+       web/stranka_1130/html_kod_www_stranky_B322.txt (u Reneho + JAK_NA_WEB):
+       soubor bere z raw.githubusercontent.com (pevne commit 954508c; GitHub
+       posila text/plain + nosniff, proto fetch -> kontrola SHA-256 -> Blob ->
+       <script>), zaloha https://atarihelp.eu/wp-content/uploads/nap/ (SRI),
+       bez WebGL / souboru Reneho GIFy. jsDelivr NEJDE (repozitar 240 MB, limit
+       50 MB). Po zmene menu v appce: vyrob.sh, commit, nova adresa + SHA-256 ve
+       strance. Test test_web_page1130_b322.py 16 OK (Chromium SwiftShader,
+       stranka na https://atarihelp.eu = bezpecny kontext pro crypto.subtle).
+     - SERVER v11 dodan: NapServer_v11.zip (exe proti .NET 4.0, NAVOD_SERVER_v11),
+       testy 203 OK, GUI test pod Xvfb (sloupce VS / Sega / PS1, zluty CEKA).
      - DALSI KROK: Rene zada ucet v 💳 PLATBY, test na telefonu (QR z galerie v
-       jeho bance), WEB stranka 1130 se zivymi kartami (WebAssembly).
+       jeho bance, ZAPLATIL -> ODEMKNOUT), stranka 1130 vlozit a zkontrolovat
+       v mobilu.
 
 ===============================================================================

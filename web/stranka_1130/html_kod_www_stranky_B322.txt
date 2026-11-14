@@ -1,0 +1,336 @@
+<style>
+    h1, h2, h3, .entry-title, .page-title, .entry-header, .post-title, #masthead, .site-header, #navigation, .main-navigation, #colophon, .site-footer { display: none !important; opacity: 0 !important; height: 0 !important; margin: 0 !important; }
+    body, html, .site-content, .site, #page, #content, .entry-content { background-color: #000000 !important; margin: 0 !important; padding: 0 !important; }
+    body { padding: 20px 0; font-family: Arial, sans-serif; }
+    .release-banner { text-align: center; max-width: 800px; margin: 20px auto 30px auto; padding: 15px; box-sizing: border-box; }
+    .release-text-cz { color: #ffb347; font-size: 24px; font-weight: bold; letter-spacing: 1px; margin-bottom: 6px; text-transform: uppercase; text-shadow: 0 0 10px rgba(255, 179, 71, 0.4); }
+    .release-text-en { color: #cca04c; font-size: 16px; font-weight: 500; letter-spacing: 1px; text-transform: uppercase; opacity: 0.9; margin-bottom: 20px; }
+    .countdown-container { display: inline-flex; gap: 15px; background: #080808; border: 2px solid #ffb347; padding: 12px 25px; border-radius: 12px; box-shadow: 0 0 20px rgba(255, 179, 71, 0.2); margin-bottom: 30px; }
+    .time-segment { text-align: center; }
+    .time-num { color: #ffffff; font-family: 'Courier New', Courier, monospace; font-size: 32px; font-weight: bold; letter-spacing: 2px; }
+    .time-label { color: #cca04c; font-size: 10px; text-transform: uppercase; letter-spacing: 1px; margin-top: 4px; }
+    .time-separator { color: #ffb347; font-size: 32px; font-weight: bold; font-family: 'Courier New', Courier, monospace; animation: countdownBlink 1s infinite; }
+    @keyframes countdownBlink { 50% { opacity: 0; } }
+    .download-action-btn { display: inline-block; background: linear-gradient(180deg, #f7d589 0%, #cca04c 100%); color: #000000 !important; text-decoration: none !important; font-weight: bold; font-size: 20px; letter-spacing: 2px; padding: 16px 50px; border-radius: 50px; border: 2px solid #ffebbe; box-shadow: 0 0 20px rgba(204, 160, 76, 0.4); text-transform: uppercase; transition: all 0.3s ease; margin: 10px auto 12px auto; animation: pulseGlow 2s infinite ease-in-out; cursor: pointer; }
+    .download-action-btn:hover { transform: scale(1.05); box-shadow: 0 0 30px rgba(255, 179, 71, 0.8); }
+    @keyframes pulseGlow { 0% { box-shadow: 0 0 15px rgba(204, 160, 76, 0.4); } 50% { box-shadow: 0 0 30px rgba(255, 179, 71, 0.7); } 100% { box-shadow: 0 0 15px rgba(204, 160, 76, 0.4); } }
+    .download-note-cz { color: #ffb347; font-size: 13px; margin: 0 0 3px 0; }
+    .download-note-en { color: #cca04c; font-size: 12px; font-style: italic; opacity: 0.85; margin: 0 0 30px 0; }
+
+    .game-grid { display: flex; flex-wrap: wrap; max-width: 800px; margin: 0 auto; gap: 40px; justify-content: center; padding: 0 20px; box-sizing: border-box; }
+    .game-wrapper { flex: 1; min-width: 340px; max-width: 360px; text-align: center; }
+    .game-box { position: relative; width: 100%; height: 786px; border-radius: 24px; overflow: hidden; box-shadow: 0 0 25px rgba(255, 179, 71, 0.15); margin-bottom: 12px; }
+    .retro-render { width: 100%; height: 100%; object-fit: cover; display: block; image-rendering: pixelated; }
+    .click-zone { position: absolute; left: 26%; bottom: 5.2%; width: 48%; height: 6.5%; background-color: rgba(255, 255, 255, 0); border-radius: 20px; cursor: pointer; }
+    /* B322: ZIVE MENU Z APPKY - presne ten samy C++ jako hlavni menu v aplikaci (WebAssembly + WebGL) */
+    .nap-menu { position: absolute; left: 0; top: 0; width: 100%; height: 100%; display: none; background: #000; touch-action: pan-y; cursor: grab; outline: none; }
+    .nap-menu:active { cursor: grabbing; }
+    .game-box.zive .nap-menu { display: block; }
+    .game-box.zive .retro-render, .game-box.zive .click-zone { display: none; }
+    .game-box.ceka { background: radial-gradient(ellipse at 50% 35%, rgba(255, 179, 71, 0.22), #000 70%); }
+    .nap-nacita { position: absolute; left: 0; right: 0; top: 46%; text-align: center; color: #cca04c; font-size: 12px; letter-spacing: 3px; text-transform: uppercase; display: none; }
+    .game-box.ceka .nap-nacita { display: block; }
+    .zive-napoveda-cz { color: #ffb347; font-size: 12px; margin: 14px 0 0 0; opacity: 0.85; }
+    .zive-napoveda-en { color: #cca04c; font-size: 11px; font-style: italic; opacity: 0.75; margin: 2px 0 22px 0; }
+    .panel-caption-cz { color: #ffb347; font-size: 14px; font-weight: bold; line-height: 1.4; margin: 5px 0 2px 0; }
+    .panel-caption-en { color: #cca04c; font-size: 12px; font-style: italic; line-height: 1.4; opacity: 0.85; margin-bottom: 15px; }
+    .history-section { max-width: 800px; margin: 60px auto 40px auto; text-align: center; padding: 0 20px; box-sizing: border-box; }
+    .qr-container { background: #ffffff; padding: 10px; width: 130px; height: 130px; margin: 0 auto 25px auto; border-radius: 12px; box-shadow: 0 0 25px rgba(255, 179, 71, 0.3); }
+    .qr-img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .history-title-cz { color: #ffb347; font-size: 20px; font-weight: bold; margin-bottom: 4px; }
+    .history-title-en { color: #cca04c; font-size: 16px; font-style: italic; margin-bottom: 35px; opacity: 0.9; }
+    .lunar-dialog-box { border-top: 1px solid #333; padding-top: 35px; margin-bottom: 25px; }
+    .lunar-text-cz { color: #ffb347; font-size: 16px; line-height: 1.6; margin-bottom: 20px; }
+    .lunar-title-en { color: #cca04c; font-size: 12px; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 10px; }
+    .lunar-text-en { color: #cca04c; font-size: 14px; font-style: italic; line-height: 1.6; opacity: 0.85; }
+    .custom-modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.85); backdrop-filter: blur(5px); z-index: 9999; justify-content: center; align-items: center; }
+    .custom-modal { background: #0c0c0c; border: 2px solid #ffb347; border-radius: 16px; padding: 25px; width: 90%; max-width: 440px; text-align: center; box-shadow: 0 0 35px rgba(255, 179, 71, 0.4); box-sizing: border-box; }
+    .modal-btn { background: linear-gradient(180deg, #f7d589 0%, #cca04c 100%); color: #000; border: none; padding: 11px 26px; font-weight: bold; border-radius: 6px; cursor: pointer; text-transform: uppercase; font-size: 13px; margin: 6px; }
+    .modal-btn.secondary { background: #1c1c1c; color: #ffb347; border: 1px solid #ffb347; }
+    .modal-input { width: 100%; background: #151515; border: 1px solid #cca04c; color: #fff; padding: 12px; border-radius: 6px; text-align: center; font-size: 20px; font-weight: bold; font-family: 'Courier New', Courier, monospace; letter-spacing: 2px; text-transform: uppercase; margin: 15px 0 10px 0; box-sizing: border-box; }
+    .modal-hint-cz { color: #ffffff; font-size: 12.5px; line-height: 1.5; margin: 0 0 4px 0; text-align: left; }
+    .modal-hint-en { color: #cca04c; font-size: 11.5px; font-style: italic; line-height: 1.5; opacity: 0.85; margin: 0 0 12px 0; text-align: left; }
+    @media (max-width: 740px) { .game-grid { flex-direction: column; align-items: center; gap: 30px; } .game-wrapper { width: 100%; } .game-box { height: auto; aspect-ratio: 514 / 1120; } }
+</style>
+
+<div class="release-banner">
+    <div id="status-cz" class="release-text-cz">Aplikace bude dostupná 20. listopadu 2026 v 18:00</div>
+    <div id="status-en" class="release-text-en">The application will be available on November 20, 2026 at 6:00 PM</div>
+
+    <div class="countdown-container">
+        <div class="time-segment"><div id="days" class="time-num">00</div><div class="time-label">Dny / Days</div></div>
+        <div class="time-separator">:</div>
+        <div class="time-segment"><div id="hours" class="time-num">00</div><div class="time-label">Hod / Hrs</div></div>
+        <div class="time-separator">:</div>
+        <div class="time-segment"><div id="minutes" class="time-num">00</div><div class="time-label">Min / Min</div></div>
+        <div class="time-separator">:</div>
+        <div class="time-segment"><div id="seconds" class="time-num">00</div><div class="time-label">Vteř / Sec</div></div>
+    </div>
+
+    <br>
+    <a href="javascript:void(0)" onclick="openCodePrompt()" id="mainDownloadBtn" class="download-action-btn">Stáhnout / Download</a>
+    <div class="download-note-cz">Ke stažení potřebuješ svůj osobní kód od správce N&amp;P.</div>
+    <div class="download-note-en">To download you need your personal code from the N&amp;P admin.</div>
+
+    <!-- CHYBOVÝ BOX PŘI ŠPATNĚ NAPSANÉM KÓDU (jestli kód opravdu platí, ověří až server N&P) -->
+    <div id="codeErrorBox" style="display: none; max-width: 500px; margin: 20px auto; background: #0c0c0c; border: 2px solid #ff3c3c; padding: 20px; border-radius: 12px; box-shadow: 0 0 25px rgba(255, 60, 60, 0.3); text-align: center;">
+        <div style="color: #ff3c3c; font-weight: bold; font-size: 15px; margin-bottom: 12px; text-transform: uppercase;">🔒 ŠPATNÝ TVAR KÓDU / INVALID CODE FORMAT</div>
+        <p style="color: #ffffff; font-size: 13.5px; margin-bottom: 6px; line-height: 1.5;">Kód má tvar NAP-XXXX-XXXX (bez 0 a O, bez 1 a I).</p>
+        <p style="color: #cca04c; font-size: 12.5px; font-style: italic; margin: 0; line-height: 1.5;">The code looks like NAP-XXXX-XXXX (no 0 or O, no 1 or I).</p>
+    </div>
+
+    <!-- MODÁLNÍ OKNO PRO ZADÁNÍ OSOBNÍHO KÓDU -->
+    <div id="promptModal" class="custom-modal-overlay">
+        <div class="custom-modal">
+            <div style="color: #ffb347; font-weight: bold; font-size: 14px; text-transform: uppercase; letter-spacing: 1px;">ZADEJ SVŮJ OSOBNÍ KÓD:</div>
+            <div style="color: #cca04c; font-size: 12px; font-style: italic; text-transform: uppercase; letter-spacing: 1px; margin-top: 4px;">Enter your personal code:</div>
+            <input type="text" id="codeInput" class="modal-input" placeholder="NAP-XXXX-XXXX" maxlength="16" autocomplete="off" autocapitalize="characters" autocorrect="off" spellcheck="false">
+            <div class="modal-hint-cz">Otevři tuhle stránku v telefonu, do kterého chceš aplikaci. Jeden kód = jeden telefon. Stahuje se ze serveru N&amp;P – prohlížeč může upozornit, že spojení není zabezpečené, zvol Pokračovat.</div>
+            <div class="modal-hint-en">Open this page on the phone you want the app on. One code = one phone. It downloads from the N&amp;P server – your browser may warn that the connection is not secure, choose Continue.</div>
+            <button class="modal-btn" onclick="submitCode()">Pokračovat / Continue</button>
+            <button class="modal-btn secondary" onclick="closeCustomModal('promptModal')">Zrušit / Cancel</button>
+        </div>
+    </div>
+
+    <div id="alertModal" class="custom-modal-overlay">
+        <div class="custom-modal">
+            <div id="alertModalTextCz" style="color: #ffffff; font-size: 15px; font-weight: bold; margin-bottom: 8px;"></div>
+            <div id="alertModalTextEn" style="color: #ffb347; font-size: 13px; font-style: italic; margin-bottom: 15px;"></div>
+            <button class="modal-btn" onclick="closeCustomModal('alertModal')">OK</button>
+        </div>
+    </div>
+
+<div class="game-grid">
+    <div class="game-wrapper">
+        <div class="game-box" data-karta="web"><canvas class="nap-menu" tabindex="0" aria-label="N&amp;P Vision – Web"></canvas><div class="nap-nacita">N&amp;P VISION…</div><img id="screenWeb" class="retro-render" alt="Web"><a href="https://atarihelp.eu" class="click-zone"></a></div>
+        <div class="panel-caption-cz">Oficiální webové rozhraní komunity</div>
+        <div class="panel-caption-en">Official web interface of the community</div>
+    </div>
+    <div class="game-wrapper">
+        <div class="game-box" data-karta="atari"><canvas class="nap-menu" tabindex="0" aria-label="N&amp;P Vision – Atari"></canvas><div class="nap-nacita">N&amp;P VISION…</div><img id="screenAtari" class="retro-render" alt="Atari"><a href="#" class="click-zone"></a></div>
+        <div class="panel-caption-cz">Nativní 8-bitový emulátor Atari 130XE</div>
+        <div class="panel-caption-en">Native 8-bit Atari 130XE emulator</div>
+    </div>
+    <div class="game-wrapper">
+        <div class="game-box" data-karta="sega"><canvas class="nap-menu" tabindex="0" aria-label="N&amp;P Vision – Sega"></canvas><div class="nap-nacita">N&amp;P VISION…</div><img id="screenSega" class="retro-render" alt="Sega"><a href="#" class="click-zone"></a></div>
+        <div class="panel-caption-cz">Integrované 16-bitové herní jádro Sega</div>
+        <div class="panel-caption-en">Integrated 16-bit Sega gaming core</div>
+    </div>
+    <div class="game-wrapper">
+        <div class="game-box" data-karta="ps1"><canvas class="nap-menu" tabindex="0" aria-label="N&amp;P Vision – PS1"></canvas><div class="nap-nacita">N&amp;P VISION…</div><img id="screenPS1" class="retro-render" alt="PS1"><a href="#" class="click-zone"></a></div>
+        <div class="panel-caption-cz">3D emulační subsystém pro PlayStation 1</div>
+        <div class="panel-caption-en">3D Emulation subsystem for PlayStation 1</div>
+    </div>
+</div>
+
+<div class="zive-napoveda-cz">Tohle je živé menu aplikace – stejný kód jako v telefonu. Táhni karty do stran, klepni na kartu.</div>
+<div class="zive-napoveda-en">This is the app's live menu – the same code as on the phone. Drag the cards sideways, tap a card.</div>
+
+<div class="history-section">
+    <div class="qr-container"><img id="screenQR" class="qr-img" alt="QR"></div>
+    <div class="history-title-cz">Díky, že nám pomáháte dělat historii</div>
+    <div class="history-title-en">Thanks for being part of this history</div>
+    <div class="lunar-dialog-box">
+        <div class="lunar-text-cz">„Je to malej krok pro člověka…“ „A máš tam drobné na parkování, Neile?“</div>
+        <div class="lunar-title-en">MEZINÁRODNÍ N&amp;P LUNÁRNÍ DIALOG:</div>
+        <div class="lunar-text-en">"It's a small step for a man…"<br>"And do you have some spare change for parking, Neil?"</div>
+    </div>
+</div>
+
+<script>
+    // ADRESA SERVERU N&P (Renéovo PC). Když se změní veřejná IP nebo port, změň jen tenhle řádek.
+    var NAP_SERVER = 'http://46.33.114.139:8080';
+    // Kód tady nikdy neověřujeme (v kódu stránky by ho viděl každý) - jestli platí, rozhodne server N&P.
+    function openCodePrompt() {
+        document.getElementById('codeInput').value = '';
+        document.getElementById('codeErrorBox').style.display = 'none';
+        document.getElementById('promptModal').style.display = 'flex';
+        document.getElementById('codeInput').focus();
+    }
+    function closeCustomModal(id) {
+        document.getElementById(id).style.display = 'none';
+    }
+    function showCustomAlert(cz, en) {
+        document.getElementById('alertModalTextCz').innerText = cz;
+        document.getElementById('alertModalTextEn').innerText = en;
+        document.getElementById('alertModal').style.display = 'flex';
+    }
+    // "nap 7k3q m9xd" -> "NAP-7K3Q-M9XD", 8 znaků bez NAP -> doplní NAP (stejně jako aplikace)
+    function formatCode(v) {
+        var c = String(v || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+        if (c.length === 8 && c.indexOf('NAP') !== 0) c = 'NAP' + c;
+        if (c.indexOf('NAP') !== 0) return c.slice(0, 13);
+        c = c.slice(0, 11);
+        if (c.length <= 3) return c;
+        if (c.length <= 7) return 'NAP-' + c.slice(3);
+        return 'NAP-' + c.slice(3, 7) + '-' + c.slice(7);
+    }
+    function submitCode() {
+        var k = formatCode(document.getElementById('codeInput').value);
+        if (k === '') return;
+        if (!/^NAP-[A-HJ-NP-Z2-9]{4}-[A-HJ-NP-Z2-9]{4}$/.test(k)) {
+            closeCustomModal('promptModal');
+            document.getElementById('codeErrorBox').style.display = 'block';
+            showCustomAlert('ŠPATNÝ TVAR KÓDU!', 'INVALID CODE FORMAT!');
+            return;
+        }
+        closeCustomModal('promptModal');
+        // Server N&P kód ověří, schválí tuhle síť a nabídne aplikaci s osobním klíčem (v Androidu se rovnou stáhne).
+        window.location.href = NAP_SERVER + '/aktivace?kod=' + encodeURIComponent(k);
+    }
+    document.getElementById('codeInput').addEventListener('input', function () {
+        var p = this.value, n = formatCode(p);
+        if (n !== p) this.value = n;
+    });
+    document.getElementById('codeInput').addEventListener('keyup', function (e) {
+        if (e.key === 'Enter') submitCode();
+    });
+    // ================= B322: ZIVE MENU Z APPKY =================
+    // Karty WEB / ATARI / SEGA / PS1 kresli PRESNE ten samy C++ jako hlavni menu v aplikaci
+    // (WebAssembly + WebGL, soubor nap_menu_web.js, 2 MB). Kdyz prohlizec WebGL neumi nebo se soubor
+    // nenacte, ukazou se puvodni GIFy. Klepnuti na kartu = stahnout aplikaci (WEB = atarihelp.eu).
+    // Soubor: z GitHubu (verejny repozitar appky, pevne tahle verze) - nebo kopie na webu (FTP).
+    // Obsah se overi otiskem SHA-256 - jiny soubor se nespusti.
+    var NAP_MENU_GITHUB = 'https://raw.githubusercontent.com/neocontratari/atarihelpeu-apk/954508c07a0a29f99875b44e940a7c62fa45d9b8/web/menu/vystup/nap_menu_web.js';
+    var NAP_MENU_WEB = 'https://atarihelp.eu/wp-content/uploads/nap/nap_menu_web.js';
+    var NAP_MENU_SHA256 = 'a9a5f9e1daec4d71ebff867aac9f7dcebc77ccac3cd95e0f1c24c1ea839ca5fa';
+    var NAP_MENU_SRI = 'sha256-qaX54drsTXHr/4Z6rJ99zrx3zKw82V4PHCTB6oOcpfo=';
+    var napGify = {
+        web: "SmartSelect_20261102-223504.gif", atari: "atari.gif",
+        sega: "SmartSelect_20261102-221930.gif", ps1: "SmartSelect_20261102-222013.gif"
+    };
+    function napZalohaGif(box) {
+        box.className = box.className.replace(/\s*(zive|ceka)/g, '');
+        var img = box.querySelector('img.retro-render');
+        if (img && !img.getAttribute('src')) img.src = "https://atarihelp.eu/wp-content/uploads/2026/11/" + napGify[box.getAttribute('data-karta')];
+    }
+    function napMaWebGL() {
+        try { var c = document.createElement('canvas'); return !!(c.getContext('webgl2') || c.getContext('webgl')); } catch (e) { return false; }
+    }
+    function napZiveMenu() {
+        var boxy = document.querySelectorAll('.game-box[data-karta]');
+        if (!boxy.length) return;
+        if (!napMaWebGL() || !window.WebAssembly) { for (var i = 0; i < boxy.length; i++) napZalohaGif(boxy[i]); return; }
+        for (var j = 0; j < boxy.length; j++) boxy[j].className += ' ceka';
+        var en = !/^(cs|sk)/i.test(navigator.language || '');
+        var hotovo = false;
+        window.Module = {
+            print: function () {}, printErr: function () {},
+            napPripraveno: function () {
+                hotovo = true;
+                var M = window.Module, pocet = M._napPocet(), indexKarty = {};
+                for (var k = 0; k < pocet; k++) indexKarty[M.UTF8ToString(M._napKarta(k)).split('|')[0]] = k;
+                for (var b = 0; b < boxy.length; b++) napPanel(M, boxy[b], b, indexKarty, en);
+            }
+        };
+        var gify = function () { for (var i = 0; i < boxy.length; i++) napZalohaGif(boxy[i]); };
+        // 1) GitHub: stahnout, overit SHA-256, spustit (GitHub posila text/plain - primo jako <script> nejde)
+        // 2) kopie na webu atarihelp.eu (kontrola integrity prohlizecem), 3) GIFy
+        var zWebu = function () {
+            if (hotovo) return;
+            var sc = document.createElement('script');
+            sc.src = NAP_MENU_WEB;
+            sc.integrity = NAP_MENU_SRI;
+            sc.crossOrigin = 'anonymous';
+            sc.async = true;
+            sc.onerror = gify;
+            document.body.appendChild(sc);
+        };
+        if (!window.fetch || !window.crypto || !crypto.subtle || !window.Blob || !window.URL) { zWebu(); }
+        else {
+            fetch(NAP_MENU_GITHUB, { mode: 'cors', credentials: 'omit' }).then(function (r) {
+                if (!r.ok) throw new Error('HTTP ' + r.status);
+                return r.arrayBuffer();
+            }).then(function (data) {
+                return crypto.subtle.digest('SHA-256', data).then(function (h) {
+                    var b = new Uint8Array(h), x = '';
+                    for (var i = 0; i < b.length; i++) x += (b[i] < 16 ? '0' : '') + b[i].toString(16);
+                    if (x !== NAP_MENU_SHA256) throw new Error('jiny soubor');
+                    return data;
+                });
+            }).then(function (data) {
+                var sc = document.createElement('script');
+                sc.src = URL.createObjectURL(new Blob([data], { type: 'text/javascript' }));
+                sc.async = true;
+                sc.onerror = zWebu;
+                document.body.appendChild(sc);
+            })['catch'](zWebu);
+        }
+        setTimeout(function () { if (!hotovo) for (var i = 0; i < boxy.length; i++) napZalohaGif(boxy[i]); }, 25000);
+    }
+    function napPanel(M, box, poradi, indexKarty, en) {
+        var karta = box.getAttribute('data-karta'), cv = box.querySelector('canvas.nap-menu');
+        if (indexKarty[karta] === undefined || !cv) { napZalohaGif(box); return; }
+        cv.id = 'napMenu' + poradi;
+        function rozmer() {
+            var r = cv.getBoundingClientRect(), dpr = Math.min(window.devicePixelRatio || 1, 2);
+            var w = Math.max(64, Math.round(r.width * dpr)), h = Math.max(64, Math.round(r.height * dpr));
+            if (cv.width !== w || cv.height !== h) { cv.width = w; cv.height = h; }
+            return [w, h];
+        }
+        box.className = box.className.replace(/\s*ceka/g, '') + ' zive';
+        var wh = rozmer();
+        var p = M.ccall('napPanel', 'number', ['string', 'number', 'number', 'number', 'number'], ['#' + cv.id, indexKarty[karta], en ? 1 : 0, wh[0], wh[1]]);
+        if (p < 0) { napZalohaGif(box); return; }
+        if (window.ResizeObserver) new ResizeObserver(function () { var x = rozmer(); M._napVelikost(p, x[0], x[1]); }).observe(cv);
+        else window.addEventListener('resize', function () { var x = rozmer(); M._napVelikost(p, x[0], x[1]); });
+        if (window.IntersectionObserver) new IntersectionObserver(function (z) { M._napViditelny(p, z[0].isIntersecting ? 1 : 0); }).observe(cv);
+        function bod(e) { var r = cv.getBoundingClientRect(); return [(e.clientX - r.left) * cv.width / r.width, (e.clientY - r.top) * cv.height / r.height]; }
+        var prst = null;
+        function akce(a) {
+            if (a >= 1000 && a < 2000) {
+                var id = M.UTF8ToString(M._napKarta(a - 1000)).split('|')[0];
+                setTimeout(function () {
+                    M._napPust(p);
+                    if (id === 'web') window.location.href = 'https://atarihelp.eu';
+                    else openCodePrompt();
+                }, 330);
+            }
+        }
+        cv.addEventListener('pointerdown', function (e) {
+            if (prst !== null) return;
+            prst = e.pointerId;
+            try { cv.setPointerCapture(e.pointerId); } catch (x) {}
+            var b = bod(e); M._napDotyk(p, 0, b[0], b[1], e.timeStamp);
+        });
+        cv.addEventListener('pointermove', function (e) { if (e.pointerId !== prst) return; var b = bod(e); M._napDotyk(p, 1, b[0], b[1], e.timeStamp); });
+        cv.addEventListener('pointerup', function (e) { if (e.pointerId !== prst) return; prst = null; var b = bod(e); akce(M._napDotyk(p, 2, b[0], b[1], e.timeStamp)); });
+        cv.addEventListener('pointercancel', function (e) { if (e.pointerId !== prst) return; prst = null; M._napDotyk(p, 3, 0, 0, e.timeStamp); });
+        cv.addEventListener('keydown', function (e) {
+            var kl = e.key === 'ArrowLeft' ? 1 : e.key === 'ArrowRight' ? 2 : e.key === 'Enter' ? 3 : 0;
+            if (!kl) return;
+            e.preventDefault();
+            akce(M._napKlavesa(p, kl));
+        });
+    }
+
+    window.addEventListener('DOMContentLoaded', function () {
+        var d = "https://atarihelp.eu", s2 = "/wp-content/uploads/2026/04/";
+        document.getElementById("screenQR").src = d + s2 + "qrkod.jpg";
+        napZiveMenu();
+        // 20. 11. 2026 v 18:00 českého času (+01:00) - stejně pro návštěvníky z jiných časových pásem
+        var targetDate = new Date("2026-11-20T18:00:00+01:00").getTime();
+        var pad = function (n) { return (n < 10 ? '0' : '') + n; };
+        var timer = null;
+        var tick = function () {
+            var distance = targetDate - new Date().getTime();
+            if (distance <= 0) {
+                document.getElementById("status-cz").innerHTML = "N&amp;P VISION JE ONLINE!";
+                document.getElementById("status-en").innerHTML = "DOWNLOAD ACTIVE NOW";
+                document.getElementById("days").innerHTML = "00";
+                document.getElementById("hours").innerHTML = "00";
+                document.getElementById("minutes").innerHTML = "00";
+                document.getElementById("seconds").innerHTML = "00";
+                if (timer) clearInterval(timer);
+                return;
+            }
+            document.getElementById("days").innerHTML = pad(Math.floor(distance / 86400000));
+            document.getElementById("hours").innerHTML = pad(Math.floor((distance % 86400000) / 3600000));
+            document.getElementById("minutes").innerHTML = pad(Math.floor((distance % 3600000) / 60000));
+            document.getElementById("seconds").innerHTML = pad(Math.floor((distance % 60000) / 1000));
+        };
+        tick();
+        timer = setInterval(tick, 1000);
+    });
+</script>
+</div>
