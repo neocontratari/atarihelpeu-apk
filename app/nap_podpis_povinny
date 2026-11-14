@@ -1,0 +1,5 @@
+B321 (14. 11. 2026): tajemstvi NAP_PODPIS je v GitHubu (Settings -> Secrets and variables -> Actions).
+Dokud tenhle soubor existuje, build bez tajemstvi SKONCI CHYBOU (.github/workflows/build.yml).
+Duvod: appka je podepsana soukromym klicem N&P s rotaci (app/nap_rodokmen.bin). APK podepsane jen
+starym verejnym debug klicem by na Androidu 9+ neslo nainstalovat pres verzi s klicem N&P.
+Zaloha klice: NAP_PODPIS_TAJNE.txt u Reneho (1. radek heslo, zbytek base64 PKCS12, alias nap).

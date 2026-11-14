@@ -79,6 +79,12 @@ jobs:
           BT="$ANDROID_HOME/build-tools/34.0.0"
           APK=$(ls app/build/outputs/apk/debug/*.apk | head -1)
           if [ -z "$NAP_PODPIS" ]; then
+            if [ -f app/nap_podpis_povinny ]; then
+              # od 14. 11. 2026 je tajemstvi v GitHubu: APK jen s debug klicem by na Androidu 9+ neslo
+              # nainstalovat pres verzi podepsanou klicem N&P - radsi zastavit build, nez ho vydat
+              echo "::error::Chybi tajemstvi NAP_PODPIS (Settings -> Secrets and variables -> Actions). Build zastaven."
+              exit 1
+            fi
             echo "::warning::Chybi tajemstvi NAP_PODPIS - APK zustava podepsane jen starym verejnym debug klicem."
             exit 0
           fi
@@ -104,6 +110,8 @@ jobs:
           APK=$(ls app/build/outputs/apk/debug/*.apk | head -1)
           "$BT/aapt2" dump badging "$APK" | head -1
           "$BT/apksigner" verify -v --print-certs --min-sdk-version 24 "$APK" | grep -E "^Verif|certificate DN|Number of signers"
+          echo "--- Android 7 a 8 (v2):"
+          "$BT/apksigner" verify --print-certs --min-sdk-version 24 --max-sdk-version 27 "$APK" | grep "certificate DN" || true
           echo "--- Android 9 a novejsi (v3):"
           "$BT/apksigner" verify --print-certs --min-sdk-version 28 "$APK" | grep "certificate DN" || true
           "$BT/apksigner" lineage --in "$APK" --print-certs 2>/dev/null | grep "DN" || echo "(APK bez rotace klice)"
