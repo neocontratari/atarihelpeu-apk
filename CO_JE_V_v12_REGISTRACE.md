@@ -39,3 +39,15 @@ Appka se **nemění** (zůstává B325). Mění se server (v12, jen u tebe) a st
 - **Se skutečným Seznamem a tvým webem ne** – návod NAVOD_SERVER_v12.txt (v balíčku serveru) má krok
   „Vyzkoušej to sám“.
 - Server běží přes http (ne https) – jméno a e-mail jdou sítí nešifrovaně, stejně jako dosud zadání kódu.
+
+## v12.1 – oprava: země podle IP (15. 11. 2026)
+
+Tvůj log: „⚠️ ZEMĚ PODLE IP … soubor má jen 0 rozsahů“. **Moje chyba** ve v12: stažený soubor se jmenoval
+`geoip_zeme.csv.gz.tmp` a server podle koncovky nepoznal, že je zabalený.
+
+- Server teď pozná zabalený soubor podle obsahu.
+- Když stránka DB-IP nejde, stáhne stejnou databázi ze zálohy (GitHub, projekt ip-location-db).
+- Když nejde ani to, v logu je u každého zdroje důvod.
+- Ověřeno na PC: 331 kontrol serveru (17 nových přes falešný web), původní chybu test najde; celá cesta zálohy
+  se skutečnými daty DB-IP Lite (732 778 rozsahů, Seznam → CZ). **Na tvém PC zatím ne.**
+- Co udělat: zavřít server, přepsat jen `NapServer.exe`, spustit jako správce → v logu „🌍 ZEMĚ PODLE IP … stažena“.

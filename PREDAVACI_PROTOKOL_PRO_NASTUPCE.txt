@@ -3800,5 +3800,35 @@
      - Rene: schranka na Seznamu (doporuceno nova), dvoufazove overeni + heslo pro
        aplikace, server v12 -> ⚙ POSTA -> ZKUSEBNI E-MAIL, stranka 1130 vymenit.
        Se skutecnym Seznamem a webem neovereno.
+     - U RENEHO OVERENO (15. 11. 2026 odpoledne): schranka registrace@ na jeho
+       webhostingu WEDOS (Hosting WP, preposilani na jeho osobni adresu), server
+       ⚙ POSTA pres SMTP WEDOS 465, zkusebni e-mail, registrace z LAN -> potvrzeni
+       odkazem pres stranku 1130 -> SCHVALIT -> e-mail s kodem: vse doslo do
+       Doruceno. Do DNS domeny pridan SPF (TXT v=spf1 mx a include:_spf.we.wedos.net
+       ~all). Registrace zvenku (jina sit) zatim neoverena.
+
+   v12.1 (bez nove APK): OPRAVA STAHOVANI ZEMI PODLE IP (15. 11. 2026)
+     Log u Reneho: "⚠️ ZEMĚ PODLE IP ... soubor má jen 0 rozsahů". Moje chyba ve
+     v12: stazeny soubor se jmenoval geoip_zeme.csv.gz.tmp a server podle KONCOVKY
+     (.gz) rozhodoval, jestli rozbalit -> cetl gzip jako text -> 0 rozsahu.
+     - Gzip se pozna podle OBSAHU (bajty 1F 8B), ne podle jmena.
+     - Zaloha: kdyz DB-IP selze (chyba, stranka misto dat, malo rozsahu), stahne se
+       tataz DB-IP Lite ze zrcadla na GitHubu (sapics/ip-location-db, dbip-country-
+       ipv4.csv + ipv6.csv, server je spoji do gzipu). Prijima se az od 100 000
+       rozsahu. V logu je u chyby duvod u kazdeho zdroje + velikost a zacatek
+       stazeneho souboru (u gzipu rozbaleny).
+     - Adresy v nastaveni.txt: geoip_dbip=, geoip_zrcadlo=, jednorazove_url=
+       (pro testy; i kdyby se adresy zmenily). User-Agent jako prohlizec.
+     - Testy u serveru: test_server.py 331 OK (S61-S62 = 17 novych pres falesny
+       web: DB-IP gzip ulozeny jako .tmp, minuly mesic, stranka misto dat ->
+       zrcadlo, vse rozbite -> varovani a plati dosavadni, poskozeny gzip, restart;
+       seznam jednorazovych: stazeni, odmitnuti registrace, rozbity seznam, 404).
+       Puvodni chyba vracena do kodu (mutace) -> test ji najde ("0 rozsahů").
+       Cela cesta zrcadla se skutecnymi daty DB-IP Lite: 732 778 rozsahu za 2,8 s,
+       soubor 4,8 MB, po restartu nacteni 1,7 s, Seznam -> CZ, 8.8.8.8 -> US.
+       NapGuiTest OK (spoustet do prazdne slozky - se starou slozkou z minuleho
+       behu hlasi ZAPLATIL 403).
+     - Rene: zavrit server, prepsat jen NapServer.exe, spustit jako spravce, v logu
+       "🌍 ZEMĚ PODLE IP ... stažena". Na jeho PC zatim neovereno.
 
 ===============================================================================

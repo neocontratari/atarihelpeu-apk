@@ -31,3 +31,7 @@ Spoustet z adresare test_overeni/v12 (potrebuje python3 + playwright s Chromiem)
 Server v12 (u serveru, soukromy): test_server.py 314 OK (S43-S60 registrace: falesny SMTP s TLS jako Seznam
 465 i 587, falesny DNS, zeme podle IP z maleho CSV), 4 umyslne zanesene chyby (GET potvrdi, AUTH bez
 sifrovani, bez blokace, bez skryteho pole) testy najdou; NapGuiTest (Xvfb) okno REGISTRACE + dialog POSTA OK.
+
+Server v12.1 (oprava stahovani zemi podle IP - viz PREDAVACI_PROTOKOL): test_server.py 331 OK (S61-S62 pres
+falesny web: DB-IP gzip ulozeny jako .tmp, zaloha zrcadlo ip-location-db, chyby do logu, seznam jednorazovych
+e-mailu); puvodni chyba vracena do kodu -> test ji najde; NapGuiTest OK. Stranka 1130 se nemeni.
