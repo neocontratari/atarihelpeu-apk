@@ -1,0 +1,16 @@
+B326 - zapojeni volby jazyka pri prvnim spusteni (MainActivity, NapJazyk, hry/jazyk.html)
+
+OK     K1 onCreate konci: setContentView -> if (!NapJazyk.zvoleno(this)) napVolbaJazyka(); else napStartPoJazyku();
+OK     K1 v onCreate se zadna stranka nenacita primo (jen v obsluze WebView), takze volba jazyka je prvni obrazovka
+OK     K2 napVolbaJazyka: napCekaNaJazyk = true, nacte NAP_JAZYK_URL = hry/jazyk.html
+OK     K3 nesparovany telefon smi na stranku jazyka (napZamekStranky ji nepresmeruje na aktivaci)
+OK     K4 most AHJAZYK.prvniVolba: jen "cs" = cesky, cokoli jineho anglicky; ulozi (NapJazyk.nastav), jazyk do C++
+OK     K4 start pokracuje jen jednou (napCekaNaJazyk -> false -> napStartPoJazyku); stranka znovu (ZPET) = aktivace / menu
+OK     K4 most AHJAZYK je v appce zaregistrovany a OPTIONS (nastav) zustava
+OK     K5 puvodni start B325 (otazka na stazeni, aktivace, intro, menu) je v napStartPoJazyku znak po znaku stejny (6811 znaku)
+OK     K6 stranka hry/jazyk.html: ENGLISH (autofocus) pred CESTINA, vola AHJAZYK.prvniVolba
+OK     K6 NapJazyk: nezvoleno = EN (ne podle telefonu), zvoleno() = ulozena volba
+OK     K7 build.gradle: versionCode 369, versionName EMU10-B326-JAZYK
+OK     K8 skript stranky je ES5 (acorn ecmaVersion 5 - stare WebView)
+
+VYSLEDEK: 12 kontrol, 0 CHYBA

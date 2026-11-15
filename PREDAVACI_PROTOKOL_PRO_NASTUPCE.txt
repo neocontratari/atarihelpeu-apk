@@ -3851,5 +3851,27 @@
        najdou. Chromium 412 px en-US i cs-CZ: nic nepretece. NapGuiTest OK.
      - Stranka 1130 se nemeni (oba jazyky tam uz jsou). Rene: vymenit jen
        NapServer.exe. Na jeho PC zatim neovereno.
+       Rene po v12.2 (log): "🌍 ZEMĚ PODLE IP - Databáze DB-IP načtena (DB-IP,
+       staženo 15.11.2026, 732796 rozsahů)" - stahovani zemi u nej funguje.
+
+   B326: VOLBA JAZYKA HNED PRI PRVNIM SPUSTENI, PRIORITNI ANGLICTINA (15. 11. 2026)
+     Rene: "neslo by to udelat v apce tak - ze vyber jazyka bude hned na zacatku
+     pri spusteni aplikace? Mel jsem pripominku ze jazyk prijoritni by mela byt
+     ang. ... Jinak v nastaveni to muze klidne zustat taky".
+     - assets/hry/jazyk.html: prvni obrazovka (vzhled jako aktivace) ENGLISH
+       nahore a vybrana / CESTINA, dvojjazycne, sipky + OK, ES5 -> most
+       AHJAZYK.prvniVolba. MainActivity: konec onCreate -> kdyz NapJazyk.zvoleno()
+       neni: napVolbaJazyka, jinak napStartPoJazyku (= puvodni start B325 znak po
+       znaku: otazka na stazeni, aktivace, intro, menu). prvniVolba ulozi jazyk,
+       jazykDoKnihoven, pokracuje jen jednou (napCekaNaJazyk); stranka znovu
+       (ZPET z aktivace) = jen ulozit a zpet. napZamekStranky pousti stranku
+       jazyka i nesparovany telefon. NapJazyk: nezvoleno = ANGLICKY (ne podle
+       telefonu). Napoveda CZ / EN: prvni spusteni = nejdriv jazyk.
+     - Ukaze se jen jednou (stejny zaznam nap_jazyk jako OPTIONS): kdo v OPTIONS
+       uz volil, neuvidi ji; Rene a bratr (nevolili) ji po aktualizaci uvidi jednou.
+     - test_overeni/b326: stranka v Chromiu 12 OK, NapJazyk v JVM 13 OK, zapojeni
+       + ES5 12 OK, javac proti android.jar 0 chyb, navod CZ 0 / EN 0 chyb;
+       test_b314_jazyk_navod 2 CHYBA stejne uz na B325 (navod se od B315 menil).
+     - build.gradle: versionCode 369 "EMU10-B326-JAZYK". Na telefonu neovereno.
 
 ===============================================================================

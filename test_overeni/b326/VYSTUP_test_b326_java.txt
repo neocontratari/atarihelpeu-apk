@@ -1,0 +1,17 @@
+B326 - NapJazyk: nezvoleno = anglicky, volba pri prvnim spusteni (skutecny NapJazyk.java)
+
+OK     J1 nova instalace, telefon cs-CZ: nezvoleno -> obrazovka volby, do te doby anglicky
+OK     J1 nova instalace, telefon sk-SK: nezvoleno -> obrazovka volby, do te doby anglicky
+OK     J1 nova instalace, telefon en-US: nezvoleno -> obrazovka volby, do te doby anglicky
+OK     J1 nova instalace, telefon de-DE: nezvoleno -> obrazovka volby, do te doby anglicky
+OK     J2 log pri startu: "en (zatim nezvoleno - anglicky, telefon cs-CZ)"
+OK     J3 volba CESTINA (prvniVolba -> nastav): zmena, cesky, zvoleno, ulozeno jazyk=cs
+OK     J4 dalsi start: cesky z pameti, obrazovka volby uz ne
+OK     J5 volba ENGLISH na anglictine = bez zmeny jazyka (menu se neprekresluje), ale ulozena -> zvoleno
+OK     J5 dalsi start: anglicky, obrazovka volby uz ne
+OK     J6 neplatna volba ("de", null) se neulozi
+OK     J7 aktualizace z B325, kde se v OPTIONS volilo cesky: zvoleno -> obrazovka volby NE, zustava cesky
+OK     J8 poskozeny zaznam = nezvoleno -> obrazovka volby, anglicky
+OK     J9 bez kontextu (null): anglicky, nezvoleno
+
+VYSLEDEK: 13 kontrol, 0 CHYBA

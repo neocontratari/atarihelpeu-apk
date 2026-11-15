@@ -4906,8 +4906,8 @@ public class MainActivity extends Activity {
 
     // ===== B314: JAZYK CZ / EN =====
     // Rene: "slo by dat vyber jazyka - volbu Cze a Ang? ... po volbe na ang by byla apka
-    // v anglictine? a naopak?" Volba v OPTIONS (JAZYK · LANGUAGE), jinak podle telefonu
-    // (NapJazyk). Stranky: assets/spolecne/nap_jazyk.js + slovniky assets/jazyk/en_*.js,
+    // v anglictine? a naopak?" Volba v OPTIONS (JAZYK · LANGUAGE) a od B326 i hned pri prvnim
+    // spusteni (hry/jazyk.html, AHJAZYK.prvniVolba); nezvoleno = anglicky (NapJazyk). Stranky: assets/spolecne/nap_jazyk.js + slovniky assets/jazyk/en_*.js,
     // C++: menu (karty.txt ma anglicke sloupce), Atari (hlasky na pristroji), intro.
 
     /** Text podle jazyka appky. */
@@ -4944,6 +4944,28 @@ public class MainActivity extends Activity {
                 android.content.pm.PackageInfo pi = getPackageManager().getPackageInfo(getPackageName(), 0);
                 return pi.versionName + "|" + pi.versionCode;
             } catch (Throwable t) { return ""; }
+        }
+        /**
+         * B326: volba na obrazovce jazyka pri prvnim spusteni (hry/jazyk.html): ulozit a pokracovat ve
+         * startu appky. Cokoli jineho nez "cs" = anglictina (prioritni jazyk). Kdyz start na volbu
+         * neceka (stranka znovu - tlacitko ZPET z aktivace), jen ulozit a vratit se tam, kam appka patri.
+         */
+        @JavascriptInterface public void prvniVolba(String novy) {
+            final String k = NapJazyk.CS.equals(novy == null ? "" : novy.trim().toLowerCase(java.util.Locale.ROOT))
+                    ? NapJazyk.CS : NapJazyk.EN;
+            ui.post(() -> {
+                final boolean zmena = NapJazyk.nastav(MainActivity.this, k);
+                jazykDoKnihoven("prvni spusteni");
+                if (zmena) menuZamky();
+                if (napCekaNaJazyk) {
+                    napCekaNaJazyk = false;
+                    appendNativeLog("B326 JAZYK_PRVNI_VOLBA -> " + k + " -> start appky");
+                    napStartPoJazyku();
+                } else {
+                    appendNativeLog("B326 JAZYK_VOLBA_ZNOVU -> " + k + " (start uz bezi)");
+                    if (web != null) web.loadUrl(napZamceno() ? NAP_AKTIVACE_URL : "file:///android_asset/index.html");
+                }
+            });
         }
         @JavascriptInterface public String nastav(String novy) {
             final String k = novy == null ? "" : novy.trim().toLowerCase(java.util.Locale.ROOT);
@@ -10590,6 +10612,10 @@ public class MainActivity extends Activity {
     // ===================================================================================
     private static final String NAP_HRY_URL = "file:///android_asset/hry/index.html";
     private static final String NAP_AKTIVACE_URL = "file:///android_asset/hry/aktivace.html";
+    /** B326: volba jazyka pri prvnim spusteni (ENGLISH / CESTINA) - pred stazenim, aktivaci a intrem. */
+    private static final String NAP_JAZYK_URL = "file:///android_asset/hry/jazyk.html";
+    /** B326: start appky ceka na volbu jazyka (napVolbaJazyka -> AHJAZYK.prvniVolba -> napStartPoJazyku). */
+    private boolean napCekaNaJazyk = false;
     private NapServerKlient napServer;
     private volatile String napAktualniUrl = "";
     private volatile String napTajemstviApk = null;
@@ -10664,7 +10690,8 @@ public class MainActivity extends Activity {
 
     private boolean napZamekStranky(String url) {
         if (url == null || !napZamceno() || !url.startsWith("file:///android_asset/")) return false;
-        return !url.startsWith(NAP_AKTIVACE_URL) && !url.startsWith("file:///android_asset/napoveda/");
+        // B326: volba jazyka je pred aktivaci - nesparovany telefon ji musi videt
+        return !url.startsWith(NAP_AKTIVACE_URL) && !url.startsWith(NAP_JAZYK_URL) && !url.startsWith("file:///android_asset/napoveda/");
     }
 
     private void napOtevriHry(String system) {
@@ -11772,7 +11799,7 @@ public class MainActivity extends Activity {
         } catch (Throwable t) {
             appendNativeLog("VERZE APKY = nezjistena: " + safeMsg(t));
         }
-        // B314: jazyk appky (OPTIONS -> JAZYK · LANGUAGE, jinak podle telefonu)
+        // B314: jazyk appky (OPTIONS -> JAZYK · LANGUAGE). B326: nezvoleno = anglicky + volba hned po startu
         appendNativeLog("B314 JAZYK_PRI_STARTU " + NapJazyk.popis(this));
         jazykDoKnihoven("start");
         napServerInit();               // B321: server her N&P - stav parovani telefonu do logu
@@ -12012,6 +12039,25 @@ public class MainActivity extends Activity {
         // pro vyskoceni z PS1. Pomer stran se ted prepina sam podle otoceni.
 
         setContentView(rootFrame);
+        // B326: Rene - "neslo by to udelat v apce tak, ze vyber jazyka bude hned na zacatku pri
+        // spusteni aplikace? ... jazyk prioritni by mela byt ang ... v nastaveni to muze zustat taky".
+        // Dokud jazyk nikdo nezvolil (nova instalace, nebo appka, kde se v OPTIONS nikdy nevolilo),
+        // je PRVNI obrazovka volba jazyka (hry/jazyk.html: ENGLISH nahore a vybrana, pod ni CESTINA).
+        // Az po volbe zbytek startu uz ve zvolenem jazyce: otazka na stazeni, aktivace, intro, menu.
+        if (!NapJazyk.zvoleno(this)) napVolbaJazyka();
+        else napStartPoJazyku();
+    }
+
+    /** B326: obrazovka volby jazyka pri prvnim spusteni. Volba -> AHJAZYK.prvniVolba -> napStartPoJazyku. */
+    private void napVolbaJazyka() {
+        napCekaNaJazyk = true;
+        appendNativeLog("B326 START -> VOLBA JAZYKA (" + NapJazyk.popis(this) + ")");
+        applyWebViewVisualMode(NAP_JAZYK_URL, "volba jazyka");
+        web.loadUrl(NAP_JAZYK_URL);
+    }
+
+    /** Start appky (do B325 konec onCreate; B326 az po volbe jazyka): otazka na stazeni, aktivace, intro, menu. */
+    private void napStartPoJazyku() {
         // BUILD2SA21: uvodni intro pro sraz klanu KKT. Ukaze se jen jednou
         // za spusteni aplikace - po nem uz se jde rovnou do rozcestniku,
         // aby to pri navratu z her neotravovalo.

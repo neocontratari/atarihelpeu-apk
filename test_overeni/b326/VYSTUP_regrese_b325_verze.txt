@@ -1,0 +1,7 @@
+OK     V1 cesky: pod nadpisem OPTIONS "VERZE EMU10-B325-VERZE (368)"
+OK     V1 radek je hned pod nadpisem OPTIONS
+OK     V2 anglicky: "VERSION EMU10-B325-VERZE (368)"
+OK     V3 bez mostu radek neni videt, OPTIONS funguje (ZAVRIT videt, zadna chyba JS)
+CHYBA  V4 build.gradle: versionCode 368, versionName EMU10-B325-VERZE
+
+VYSLEDEK: 4 OK, 1 CHYBA

@@ -11,10 +11,14 @@ import java.util.Locale;
  * René: "šlo by dát výběr jazyka - volbu Cze a Ang? Myslím tím, že by po volbě
  * na ang byla apka v angličtině? a naopak?"
  *
- * Volba je v OPTIONS (JAZYK · LANGUAGE). Dokud ji nikdo nezmění, platí jazyk
- * telefonu: čeština nebo slovenština = česky, cokoli jiného = anglicky.
- * Uloženo v SharedPreferences "nap_jazyk" (záloha Androidu je od B313 vypnutá,
- * takže nová instalace začne zase podle telefonu).
+ * Volba je v OPTIONS (JAZYK · LANGUAGE). Uloženo v SharedPreferences "nap_jazyk"
+ * (záloha Androidu je od B313 vypnutá, takže nová instalace začne bez volby).
+ *
+ * B326: René - "výběr jazyka hned na začátku při spuštění aplikace ... jazyk
+ * prioritní by měla být ang ... v nastavení to může klidně zůstat taky".
+ * Dokud jazyk nikdo nezvolil, je první obrazovka appky volba jazyka
+ * (assets/hry/jazyk.html: ENGLISH nahoře a vybraná, pod ní ČEŠTINA) a do té doby
+ * platí ANGLIČTINA - už ne jazyk telefonu (B314 - B325: cs / sk = česky).
  *
  * Kdo jazyk používá:
  *   Java       NapJazyk.t(c, "česky", "English") - dialogy, hlášky, stránka TV / PC
@@ -37,7 +41,7 @@ public final class NapJazyk {
         return c.getApplicationContext().getSharedPreferences(PREF, Context.MODE_PRIVATE);
     }
 
-    /** Jazyk telefonu: cs / sk = čeština, jinak angličtina. */
+    /** Jazyk telefonu: cs / sk = čeština, jinak angličtina. B326: jen do logu (výchozí je angličtina). */
     public static String podleTelefonu() {
         try {
             String j = Locale.getDefault().getLanguage();
@@ -58,14 +62,19 @@ public final class NapJazyk {
         return null;
     }
 
-    /** "cs" nebo "en". */
+    /** "cs" nebo "en". B326: nezvoleno = angličtina (René: prioritní jazyk je angličtina). */
     public static String kod(Context c) {
         String k = kod;
         if (k != null) return k;
         k = c == null ? null : ulozeny(c);
-        if (k == null) k = podleTelefonu();
+        if (k == null) k = EN;
         kod = k;
         return k;
+    }
+
+    /** B326: zvolil už někdo jazyk (obrazovka při prvním spuštění nebo OPTIONS)? */
+    public static boolean zvoleno(Context c) {
+        return c != null && ulozeny(c) != null;
     }
 
     public static boolean en(Context c) {
@@ -86,12 +95,12 @@ public final class NapJazyk {
         return en(c) ? en : cs;
     }
 
-    /** Pro log: "en (volba v OPTIONS)" / "cs (podle telefonu cs-CZ)". */
+    /** Pro log: "en (zvoleno)" / "en (zatim nezvoleno - anglicky, telefon cs-CZ)". */
     public static String popis(Context c) {
         String u = c == null ? null : ulozeny(c);
-        if (u != null) return u + " (volba v OPTIONS)";
+        if (u != null) return u + " (zvoleno)";
         String tel = "?";
         try { tel = Locale.getDefault().toLanguageTag(); } catch (Throwable ignored) {}
-        return kod(c) + " (podle telefonu " + tel + ")";
+        return kod(c) + " (zatim nezvoleno - anglicky, telefon " + tel + ")";
     }
 }

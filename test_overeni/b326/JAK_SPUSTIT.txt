@@ -1,0 +1,44 @@
+B326 - VOLBA JAZYKA HNED PRI PRVNIM SPUSTENI, PRIORITNI ANGLICTINA (15. 11. 2026)
+==================================================================================
+
+Rene: "neslo by to udelat v apce tak - ze vyber jazyka bude hned na zacatku pri spusteni aplikace?
+Mel jsem pripominku ze jazyk prijoritni by mela byt ang. Pujde to ? Jinak v nastaveni to muze klidne
+zustat taky"
+
+Co se zmenilo:
+  assets/hry/jazyk.html     nova PRVNI obrazovka (vzhled jako aktivace): ENGLISH nahore a vybrana, CESTINA
+                            pod ni, dvojjazycne, sipky + OK (herni ovladac / TV), skript ES5;
+                            klepnuti -> most AHJAZYK.prvniVolba('en' | 'cs')
+  MainActivity.java         konec onCreate: jazyk nikdo nezvolil -> napVolbaJazyka (stranka jazyka),
+                            jinak napStartPoJazyku = puvodni start B325 BEZE ZMENY (otazka na stazeni,
+                            aktivace, intro, menu). Most AHJAZYK.prvniVolba: ulozit, jazyk do C++
+                            (jazykDoKnihoven), pokracovat ve startu - jen jednou; stranka znovu (tlacitko
+                            ZPET z aktivace) = jen ulozit a zpet na aktivaci / do menu. napZamekStranky
+                            pusti stranku jazyka i nesparovany telefon (volba je pred aktivaci).
+  NapJazyk.java             nezvoleno = ANGLICKY (do B325 podle telefonu: cs / sk = cesky); zvoleno()
+  napoveda index.html, en.html   Prvni spusteni: nejdriv jazyk; "dokud nevybereš, mluví anglicky"
+  build.gradle              versionCode 369 "EMU10-B326-JAZYK"
+Volba se ukaze jen jednou (ulozena v nap_jazyk jako volba v OPTIONS). Kdo uz v OPTIONS volil (B314 - B325),
+ten ji neuvidi; kdo nevolil, uvidi ji po aktualizaci jednou. OPTIONS -> JAZYK · LANGUAGE zustava.
+
+Spoustet z adresare test_overeni/b326:
+1) Stranka v Chromiu (falesny most AHJAZYK): python3 test_b326_jazyk_start.py
+   telefon 412 px na vysku, 892x412 na sirku, TV 1280x720; ENGLISH nahore a s fokusem; klepnuti = jedna
+   volba; sipky + Enter; bez mostu nic nespadne                -> VYSTUP_test_b326_jazyk_start.txt (12 OK)
+2) NapJazyk v JVM (skutecny NapJazyk.java, Android jen nahrada v jvm/stub):
+   javac -d OUT jvm/stub/android/content/*.java ../../app/src/main/java/eu/atarihelp/emu10/NapJazyk.java jvm/TestB326Jazyk.java
+   java -cp OUT TestB326Jazyk                                   -> VYSTUP_test_b326_java.txt (13 OK)
+   ceska / slovenska / anglicka / nemecka instalace = nezvoleno a anglicky; volba cs / en; restart;
+   aktualizace z B325 s volbou v OPTIONS (obrazovka se neukaze); poskozeny zaznam
+3) Zapojeni v kodu + ES5: python3 kontrola_b326.py [PRAC]      -> VYSTUP_kontrola_b326.txt (12 OK)
+   (K5: puvodni start B325 je v napStartPoJazyku znak po znaku stejny)
+4) javac vsech zdroju appky proti android.jar API 34 (jako ../b320/regrese.sh krok 4): 0 chyb.
+5) Regrese napovedy a verze (vystupy sem jako VYSTUP_regrese_*):
+   ../b311/kontrola_navodu.py: 191 nazvu, 0 chyb; ../b314/kontrola_navodu_en.py: 185 nazvu, 0 chyb;
+   ../b314/test_b314_jazyk_navod.py: 2 CHYBA - STEJNE uz na B325 (VYSTUP_regrese_b314_jazyk_navod_NA_B325.txt):
+   kontrola 5 porovnava cesky navod s B313 (od B315 pribylo ODEMKNOUT atd.), kontrola 2 historie stranky;
+   B326 pridava jen zamerne vety o jazyku. ../b325/test_b325_verze.py: V4 hlida versionCode 368 - na B326
+   (369) je ta "CHYBA" spravne, V1-V3 OK. Puvodni VYSTUP_* starsich verzi vraceny z gitu.
+
+Na telefonu NEOVERENO (tady neni emulator Androidu). Rene: APK B326 na server, telefon OPTIONS ->
+AKTUALIZOVAT APLIKACI; po restartu appky se ukaze volba jazyka (jen jednou).

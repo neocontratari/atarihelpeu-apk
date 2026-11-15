@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>N&amp;P – language · jazyk</title>
+<!-- B326: VOLBA JAZYKA PRI PRVNIM SPUSTENI. Rene: "neslo by to udelat v apce tak, ze vyber jazyka bude
+     hned na zacatku pri spusteni aplikace? Mel jsem pripominku, ze jazyk prioritni by mela byt ang. ...
+     Jinak v nastaveni to muze klidne zustat taky."
+     Ukaze se jen jednou - dokud jazyk nikdo nezvolil (nova instalace, nebo appka, kde se v OPTIONS nikdy
+     nevolilo). ENGLISH je nahore a vybrana (prioritni), pod ni CESTINA. Klepnuti -> most
+     AHJAZYK.prvniVolba('en' | 'cs') -> Java volbu ulozi a pokracuje ve startu (stazeni, aktivace, intro,
+     menu). Stranka je dvojjazycna a NEPREKLADA se (bez nap_jazyk.js). Herni ovladac / TV: sipky + OK.
+     Skript ES5 (stare WebView). Vzhled jako hry/aktivace.html. -->
+<style>
+@font-face{font-family:"Chakra Petch";src:url(../pisma/chakra_semibold.woff2) format("woff2");font-weight:400 600;font-style:normal;font-display:swap;}
+@font-face{font-family:"Chakra Petch";src:url(../pisma/chakra_bold.woff2) format("woff2");font-weight:700 900;font-style:normal;font-display:swap;}
+:root{--zl1:#ffe39a;--zl2:#d79a2e;--zl3:#7a4a10;--text:#efe6cf;--tlumene:#b7aa8a;--azur:#8fdcff;--bg:#050302;--karta:#0f0b06;}
+*{box-sizing:border-box;}
+html,body{margin:0;min-height:100%;background:var(--bg);color:var(--text);font-family:"Chakra Petch","Segoe UI",Roboto,Arial,sans-serif;}
+body{display:flex;align-items:center;justify-content:center;min-height:100vh;padding:max(14px,env(safe-area-inset-top)) 14px 14px;
+  background:radial-gradient(ellipse at 50% 0%,rgba(215,154,46,.18),transparent 60%),var(--bg);}
+.okno{width:100%;max-width:440px;background:linear-gradient(180deg,#17110a,var(--karta));border:1px solid var(--zl3);border-radius:18px;
+  padding:22px 20px 18px;box-shadow:0 0 0 1px rgba(255,227,154,.06) inset,0 18px 50px rgba(0,0,0,.6),0 0 40px rgba(215,154,46,.12);text-align:center;}
+.logo{font-weight:900;font-size:26px;letter-spacing:.12em;color:var(--zl1);text-shadow:0 0 18px rgba(255,227,154,.35);margin:2px 0 2px;}
+.pod{font-size:12px;letter-spacing:.28em;color:var(--zl2);margin-bottom:18px;}
+#ikona{font-size:34px;line-height:1;margin:2px 0 10px;}
+.otazka{font-size:18px;font-weight:700;line-height:1.35;margin:0 0 2px;}
+.otazka-cz{font-size:14px;color:var(--tlumene);line-height:1.35;margin:0 0 8px;}
+.tlacitko{display:block;width:100%;margin-top:12px;padding:15px 14px;border:0;border-radius:12px;cursor:pointer;
+  background:linear-gradient(180deg,var(--zl1),var(--zl2));color:#120b02;font:800 17px "Chakra Petch",sans-serif;letter-spacing:.14em;
+  -webkit-tap-highlight-color:transparent;outline:none;}
+.tlacitko:active{filter:brightness(.9);}
+.vedlejsi{background:transparent;border:1px solid var(--zl3);color:var(--zl1);}
+.tlacitko:focus{box-shadow:0 0 0 3px rgba(143,220,255,.85);}
+.tlacitko[disabled]{opacity:.45;cursor:default;}
+.tlacitko.zvoleno{opacity:1;box-shadow:0 0 0 3px rgba(125,255,155,.85);}
+.rada{font-size:12.5px;color:var(--tlumene);line-height:1.55;margin-top:16px;border-top:1px solid rgba(122,74,16,.45);padding-top:12px;}
+.rada b{color:var(--zl1);font-weight:700;white-space:nowrap;}
+</style>
+</head>
+<body>
+<div class="okno">
+  <div class="logo">★ N&amp;P VISION ★</div>
+  <div class="pod">LANGUAGE · JAZYK</div>
+  <div id="ikona">🌐</div>
+  <div class="otazka">Choose the app language</div>
+  <div class="otazka-cz" lang="cs">Vyber jazyk aplikace</div>
+  <button id="en" class="tlacitko" type="button" autofocus>ENGLISH</button>
+  <button id="cs" class="tlacitko vedlejsi" type="button" lang="cs">ČEŠTINA</button>
+  <div class="rada">You can change it any time: <b>OPTIONS → JAZYK · LANGUAGE</b>
+    <br><span lang="cs">Změnit ho můžeš kdykoli: <b>OPTIONS → JAZYK · LANGUAGE</b></span></div>
+</div>
+<script>
+(function () {
+  'use strict';
+  var $ = function (id) { return document.getElementById(id); };
+  var hotovo = false;
+
+  function vyber(k) {
+    if (hotovo) return;
+    hotovo = true;
+    $('en').disabled = true;
+    $('cs').disabled = true;
+    $(k).className += ' zvoleno';
+    try {
+      if (window.AHJAZYK && window.AHJAZYK.prvniVolba) { window.AHJAZYK.prvniVolba(k); return; }
+    } catch (e) {}
+    // bez mostu (prohlizec) nebo chyba: tlacitka zase povolit, at se jde zkusit znovu
+    setTimeout(function () {
+      hotovo = false;
+      $('en').disabled = false;
+      $('cs').disabled = false;
+      $(k).className = $(k).className.replace(' zvoleno', '');
+    }, 800);
+  }
+
+  $('en').onclick = function () { vyber('en'); };
+  $('cs').onclick = function () { vyber('cs'); };
+
+  // herni ovladac / dalkovy ovladac TV: sipky prepinaji, OK / Enter vybira (Enter na tlacitku umi prohlizec sam)
+  document.addEventListener('keydown', function (e) {
+    var k = e.key || '', c = e.keyCode || 0;
+    if (k === 'ArrowUp' || k === 'ArrowLeft' || c === 38 || c === 37) { $('en').focus(); e.preventDefault(); }
+    else if (k === 'ArrowDown' || k === 'ArrowRight' || c === 40 || c === 39) { $('cs').focus(); e.preventDefault(); }
+  });
+
+  setTimeout(function () { try { if (!hotovo) $('en').focus(); } catch (e) {} }, 60);
+})();
+</script>
+</body>
+</html>
