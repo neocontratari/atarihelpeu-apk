@@ -1,0 +1,46 @@
+B327 - PREHLEDNA AKTUALIZACE + VOLBA JAZYKA JEDNOU KAZDEMU (15. 11. 2026)
+=========================================================================
+
+Rene po B326 (S8 Android 9 + synuv Galaxy A12 Android 12): "ja jsem vyber jazyka nevidel ... na androidu 12
+clovek nevi, jestli se provadi aktualizace, trva to docela dlouho, nez to pozada telefon o povoleni ... aplikace
+se nevypla a nedoslo k automatickemu restartu". Pak: "ano tu instalaci udelej jak si psal".
+
+Co se zmenilo:
+  NapAktualizace.java      okno aktualizace zustava od stazeni az do instalace: "Stahuji ... 12,3 / 28,1 MB (43 %)
+                           · 1,2 MB/s" (obnova nejvys 4x za s), ZRUSIT (preruseni spojeni, relace zahozena, Toast
+                           "Aktualizace zrusena"), po predani Androidu text co dal (klepni na INSTALOVAT, appka se
+                           zavre - do Androidu 9 se otevre sama, jinak ikonou) a tlacitko ZAVRIT. Puvodni Toast
+                           "appka se sama zavre a otevre znovu" PRYC - Android to nedela (vysledek instalace s appkou
+                           zahodi). vysledekInstalace (z MainActivity.napInstalace): Android se pta = text "klepni na
+                           INSTALOVAT", konec = okno zavrit. poStartu: prvni start nove verze -> Toast "Nainstalovana
+                           nova verze: ..." (i prechod B326 -> B327: bez ulozene verze aktualizace mladsi nez 30 min).
+  NapAktualizaceTexty.java texty okna (cisty Java, testuje se v JVM), otevreSeSama(sdk) = API <= 28
+  NapPoAktualizaci.java    prijimac MY_PACKAGE_REPLACED (manifest): do Androidu 9 appku po aktualizaci otevre (od
+                           Androidu 10 system spousteni z pozadi nedovoli - tam ikonou + Toast pri startu)
+  NapJazyk.java            obrazovkaHotova / oznacObrazovku (zaznam obrazovka_volby): obrazovka volby jazyka
+                           JEDNOU KAZDEMU - i kdo vybral v OPTIONS (Rene S8), i kdo ji videl v B326 (nepamatovala si to)
+  MainActivity.java        onCreate: poStartu + log "APPKA OTEVRENA SAMA PO AKTUALIZACI"; konec onCreate podle
+                           obrazovkaHotova; prvniVolba oznaci obrazovku; napInstalace -> vysledekInstalace, zruseni
+                           v okne Androidu = "Instalace zrusena - zustava dosavadni verze"
+  napoveda index.html / en.html   AKTUALIZOVAT APLIKACI + FAQ: pravda o zavreni / otevreni, okno ukazuje prubeh
+  build.gradle             versionCode 370 "EMU10-B327-INSTALACE"
+
+Spoustet z adresare test_overeni/b327:
+1) JVM (skutecne NapJazyk.java + NapAktualizaceTexty.java, Android jen nahrada jvm/stub):
+   javac -d OUT jvm/stub/android/content/*.java ../../app/src/main/java/eu/atarihelp/emu10/NapJazyk.java \
+         ../../app/src/main/java/eu/atarihelp/emu10/NapAktualizaceTexty.java jvm/eu/atarihelp/emu10/TestB327.java
+   java -cp OUT eu.atarihelp.emu10.TestB327                     -> VYSTUP_test_b327_java.txt (24 OK)
+   obrazovka jazyka (nova instalace, Reneho S8 s volbou z OPTIONS, synuv telefon po B326, pozdejsi OPTIONS),
+   texty okna (cesky carka / anglicky tecka, neznama velikost, max 100 %, Android 9 vs 12, zadny slib pro 10+),
+   prvni start po aktualizaci (369 -> 370, B326 -> B327 bez ulozene verze, nova instalace, stara aktualizace)
+2) Zapojeni v kodu: python3 kontrola_b327.py                   -> VYSTUP_kontrola_b327.txt (13 OK)
+   (vcetne: puvodni start B325 porad znak po znaku stejny, nikde uz neni slib "sama zavre a otevre")
+3) javac vsech zdroju appky proti android.jar API 34: 0 chyb; manifest je platne XML.
+4) Regrese (vystupy sem jako VYSTUP_regrese_*): navod CZ 191 nazvu 0 chyb, EN 185 0 chyb; test_b314_jazyk_navod
+   2 CHYBA jako uz na B325 a B326 (navod se od B315 menil); stranka jazyka B326 12 OK; NapJazyk B326 13 OK;
+   kontrola_b326: K1 (podminka zvoleno -> obrazovkaHotova) a K7 (verze 369 -> 370) jsou ZAMERNE zmeny B327.
+   Puvodni VYSTUP_* starsich verzi vraceny z gitu.
+
+Na telefonu NEOVERENO (tady neni Android). Overit: S8 (Android 9) - okno s MB a procenty, po instalaci se appka
+otevre sama, Toast "Nainstalovana nova verze", obrazovka volby jazyka; Android 12 - okno az do potvrzeni, pak
+otevrit ikonou -> Toast. PS1 se v B327 NEMENI (Rene: "pred zasahem dej vedet").

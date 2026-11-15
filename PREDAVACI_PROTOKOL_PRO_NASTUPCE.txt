@@ -3873,5 +3873,35 @@
        + ES5 12 OK, javac proti android.jar 0 chyb, navod CZ 0 / EN 0 chyb;
        test_b314_jazyk_navod 2 CHYBA stejne uz na B325 (navod se od B315 menil).
      - build.gradle: versionCode 369 "EMU10-B326-JAZYK". Na telefonu neovereno.
+     - Rene po B326: S8 (Android 9) volbu NEVIDEL - v logu "JAZYK_PRI_STARTU cs
+       (zvoleno)": cestinu mel vybranou v OPTIONS (moje predpoved "uvidis ji"
+       byla spatna). Synuv Galaxy A12 (Android 12) volbu videl. Aktualizace:
+       nevedeli, jestli bezi, appka se po instalaci sama neotevrela (ani S8).
+
+   B327: PREHLEDNA AKTUALIZACE + VOLBA JAZYKA JEDNOU KAZDEMU (15. 11. 2026)
+     Rene: "ano tu instalaci udelej jak si psal bude to prehlednejsi".
+     - NapAktualizace: okno zustava od stazeni do instalace (MB / % / MB/s,
+       ZRUSIT = preruseni spojeni, po predani Androidu navod a ZAVRIT);
+       vysledekInstalace z napInstalace; poStartu = Toast "Nainstalovana nova
+       verze" pri prvnim startu (i B326 -> B327 pres lastUpdateTime < 30 min).
+       Toast B324 "appka se sama zavre a otevre znovu" PRYC - Android appku pri
+       instalaci zavre a vysledek (PendingIntent) s ni zahodi, sam ji neotevre.
+     - NapPoAktualizaci (MY_PACKAGE_REPLACED, manifest): do Androidu 9 appku
+       otevre; od Androidu 10 system spousteni z pozadi nedovoli -> ikonou.
+       NapAktualizaceTexty = texty (cisty Java, JVM test).
+     - NapJazyk.obrazovkaHotova / oznacObrazovku: obrazovka volby jazyka
+       jednou KAZDEMU (B326 ji ukazovala jen bez ulozene volby a nepamatovala si
+       ji - syn ji uvidi znovu).
+     - Napoveda CZ / EN: pravda o zavreni / otevreni appky po aktualizaci.
+     - test_overeni/b327: JVM 24 OK, zapojeni 13 OK, javac 0 chyb, navod 0 / 0.
+     - PS1 BEZ ZMENY. SpongeBob (SLUS01352, Rene "divny zvuk"): v logu na dvou
+       mistech emulace jen 35-40 snimku/s (retro_run 23-27 ms misto 7), 340-400
+       vypadku zvuku za 10 s = trhany zpomaleny zvuk; jinde 60 a 0 vypadku,
+       Dune 2000 cista. Pricina zatim neznama (2x Enhanced Resolution ZUSTAVA -
+       SK142 "nedotknutelne"; TV proud 1 divak). Navrzeno: nejdriv jen mereni
+       (co zdrzuje), pak oprava bez vypnuti 2x - ceka na Reneho OK.
+       Hlaska denniku "XA NE, CD audio NE" je obracena (Config.Xa / Cdda = 1
+       znamena VYPNUTO) - XA i CD audio jsou ZAPNUTE; opravit textem pri PS1 zmene.
+     - build.gradle: versionCode 370 "EMU10-B327-INSTALACE". Na telefonu neovereno.
 
 ===============================================================================

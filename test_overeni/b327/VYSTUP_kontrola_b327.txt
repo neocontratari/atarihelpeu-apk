@@ -1,0 +1,17 @@
+B327 - zapojeni: volba jazyka jednou kazdemu, okno aktualizace, otevreni po aktualizaci
+
+OK     K1 onCreate konci: if (!NapJazyk.obrazovkaHotova(this)) napVolbaJazyka(); else napStartPoJazyku();
+OK     K2 prvniVolba: ulozi jazyk a oznaci obrazovku (priste uz ne), pak start appky
+OK     K2 NapJazyk: obrazovkaHotova = zaznam "obrazovka_volby" == "1" (B326 ho nemela -> jednou kazdy)
+OK     K3 puvodni start B325 (stazeni, aktivace, intro, menu) v napStartPoJazyku porad znak po znaku stejny
+OK     K4 manifest: prijimac NapPoAktualizaci na MY_PACKAGE_REPLACED
+OK     K5 NapPoAktualizaci: jen MY_PACKAGE_REPLACED, jen do Androidu 9 (otevreSeSama), otevre MainActivity s priznakem
+OK     K6 nikde (Java, napoveda) uz neni nepravdivy slib "appka se sama zavre a otevre znovu"
+OK     K7 napInstalace: okno aktualizace podle vysledku (NapAktualizace.vysledekInstalace), zruseni = srozumitelna hlaska
+OK     K8 onCreate: NapAktualizace.poStartu (Toast "Nainstalovana nova verze") + zapis "otevrena sama" do logu
+OK     K9 po predani Androidu okno ZUSTAVA (text poPredani, tlacitko ZAVRIT) - zavira se jen pri chybe / zruseni
+OK     K10 ZRUSIT behem stahovani: priznak + preruseni spojeni (necekat na data), relace se zahodi, hlaska "Aktualizace zrusena"
+OK     K11 behem stahovani text s MB / procenty / rychlosti (NapAktualizaceTexty.stahovani), obnova nejvys 4x za sekundu
+OK     K12 build.gradle: versionCode 370, versionName EMU10-B327-INSTALACE
+
+VYSLEDEK: 13 kontrol, 0 CHYBA

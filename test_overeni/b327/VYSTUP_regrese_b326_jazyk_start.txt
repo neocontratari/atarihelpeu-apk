@@ -1,0 +1,16 @@
+B326 - volba jazyka pri prvnim spusteni (hry/jazyk.html), Chromium, falesny most AHJAZYK
+
+OK     J1 telefon 412 px: ENGLISH nahore, CESTINA pod ni, obe cele na obrazovce bez posouvani
+OK     J1 ENGLISH je vybrana (fokus) a hlavni (zlate pozadi), CESTINA vedlejsi (jen ramecek)
+OK     J1 dvojjazycne: "Choose the app language" + "Vyber jazyk aplikace", rada OPTIONS -> JAZYK · LANGUAGE v obou
+OK     J1 stranka se neprekladata (bez nap_jazyk.js a slovniku)
+OK     J2 klepnuti ENGLISH -> AHJAZYK.prvniVolba("en") jednou; dalsi klepnuti uz nic (obe tlacitka zakazana)
+OK     J2 zadna chyba JavaScriptu, zadny chybejici soubor (pismo)
+OK     J3 klepnuti CESTINA -> prvniVolba("cs")
+OK     J4 TV 1280x720: obe tlacitka videt, nic nepreteka
+OK     J4 sipka dolu = CESTINA, nahoru = ENGLISH, doprava + Enter = vybrana CESTINA
+OK     J4 hned Enter (OK na ovladaci) = ENGLISH (vybrana)
+OK     J5 telefon na sirku 892x412: ENGLISH cela videt bez posouvani, do strany nic nepreteka
+OK     J6 bez mostu: zadna chyba JS, tlacitka se po chvili zase povoli
+
+VYSLEDEK: 12 kontrol, 0 CHYBA

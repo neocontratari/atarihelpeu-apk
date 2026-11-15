@@ -4955,6 +4955,7 @@ public class MainActivity extends Activity {
                     ? NapJazyk.CS : NapJazyk.EN;
             ui.post(() -> {
                 final boolean zmena = NapJazyk.nastav(MainActivity.this, k);
+                NapJazyk.oznacObrazovku(MainActivity.this);   // B327: obrazovka probehla - priste uz ne
                 jazykDoKnihoven("prvni spusteni");
                 if (zmena) menuZamky();
                 if (napCekaNaJazyk) {
@@ -11020,6 +11021,8 @@ public class MainActivity extends Activity {
         int st = i.getIntExtra(android.content.pm.PackageInstaller.EXTRA_STATUS, Integer.MIN_VALUE);
         String zprava = i.getStringExtra(android.content.pm.PackageInstaller.EXTRA_STATUS_MESSAGE);
         appendNativeLog("B321 INSTALACE stav=" + st + (zprava != null ? " " + zprava : ""));
+        // B327: okno aktualizace podle vysledku (Android se pta = "klepni na INSTALOVAT", jinak zavrit)
+        if (st != Integer.MIN_VALUE) NapAktualizace.vysledekInstalace(this, st);
         if (st == android.content.pm.PackageInstaller.STATUS_PENDING_USER_ACTION) {
             Intent potvrzeni = i.getParcelableExtra(Intent.EXTRA_INTENT);
             if (potvrzeni != null) {
@@ -11031,7 +11034,9 @@ public class MainActivity extends Activity {
                 }
             }
         } else if (st == android.content.pm.PackageInstaller.STATUS_SUCCESS) {
-            // B324: sem prijde uz NOVA verze (Android po instalaci appku spusti znovu)
+            // B324: sem prijde uz NOVA verze. B327: VETSINOU NEPRIJDE - Android appku pri instalaci zavre
+            // a vysledek s ni zahodi; novou verzi pak ohlasi NapAktualizace.poStartu (a do Androidu 9
+            // appku otevre NapPoAktualizaci)
             NapAktualizace.instalaceSkoncila();
             String verze = "";
             try { verze = getPackageManager().getPackageInfo(getPackageName(), 0).versionName; } catch (Throwable ignored) {}
@@ -11039,8 +11044,12 @@ public class MainActivity extends Activity {
                     android.widget.Toast.LENGTH_LONG).show();
         } else if (st != Integer.MIN_VALUE) {
             NapAktualizace.instalaceSkoncila();
-            android.widget.Toast.makeText(MainActivity.this, tx("Aktualizace se nenainstalovala", "The update was not installed")
-                    + (zprava != null ? ": " + zprava : ""), android.widget.Toast.LENGTH_LONG).show();
+            // B327: zruseno v okne Androidu = srozumitelne, ne jako chyba
+            final boolean zruseno = st == android.content.pm.PackageInstaller.STATUS_FAILURE_ABORTED;
+            android.widget.Toast.makeText(MainActivity.this, zruseno
+                    ? tx("Instalace zrušena – zůstává dosavadní verze.", "Installation cancelled – the current version stays.")
+                    : tx("Aktualizace se nenainstalovala", "The update was not installed") + (zprava != null ? ": " + zprava : ""),
+                    android.widget.Toast.LENGTH_LONG).show();
         }
     }
 
@@ -11799,6 +11808,14 @@ public class MainActivity extends Activity {
         } catch (Throwable t) {
             appendNativeLog("VERZE APKY = nezjistena: " + safeMsg(t));
         }
+        // B327: prvni start po aktualizaci -> Toast "Nainstalovana nova verze" (Android 10+ appku sam
+        // neotevre, at clovek vi, ze aktualizace prosla); do Androidu 9 ji otevrel NapPoAktualizaci
+        try {
+            final String nova = NapAktualizace.poStartu(this);
+            if (nova != null) appendNativeLog(nova);
+            if (getIntent() != null && getIntent().getBooleanExtra(NapPoAktualizaci.EXTRA, false))
+                appendNativeLog("B327 APPKA OTEVRENA SAMA PO AKTUALIZACI (Android " + Build.VERSION.RELEASE + ")");
+        } catch (Throwable ignored) {}
         // B314: jazyk appky (OPTIONS -> JAZYK · LANGUAGE). B326: nezvoleno = anglicky + volba hned po startu
         appendNativeLog("B314 JAZYK_PRI_STARTU " + NapJazyk.popis(this));
         jazykDoKnihoven("start");
@@ -12044,7 +12061,8 @@ public class MainActivity extends Activity {
         // Dokud jazyk nikdo nezvolil (nova instalace, nebo appka, kde se v OPTIONS nikdy nevolilo),
         // je PRVNI obrazovka volba jazyka (hry/jazyk.html: ENGLISH nahore a vybrana, pod ni CESTINA).
         // Az po volbe zbytek startu uz ve zvolenem jazyce: otazka na stazeni, aktivace, intro, menu.
-        if (!NapJazyk.zvoleno(this)) napVolbaJazyka();
+        // B327: jednou KAZDY (i kdo jazyk vybral v OPTIONS - Rene na S8 v B326 volbu nevidel)
+        if (!NapJazyk.obrazovkaHotova(this)) napVolbaJazyka();
         else napStartPoJazyku();
     }
 

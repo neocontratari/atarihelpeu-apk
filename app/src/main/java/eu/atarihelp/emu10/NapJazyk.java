@@ -19,6 +19,7 @@ import java.util.Locale;
  * Dokud jazyk nikdo nezvolil, je první obrazovka appky volba jazyka
  * (assets/hry/jazyk.html: ENGLISH nahoře a vybraná, pod ní ČEŠTINA) a do té doby
  * platí ANGLIČTINA - už ne jazyk telefonu (B314 - B325: cs / sk = česky).
+ * B327: obrazovku uvidí jednou KAŽDÝ (obrazovkaHotova), i kdo jazyk vybral v OPTIONS.
  *
  * Kdo jazyk používá:
  *   Java       NapJazyk.t(c, "česky", "English") - dialogy, hlášky, stránka TV / PC
@@ -34,6 +35,8 @@ public final class NapJazyk {
 
     private static final String PREF = "nap_jazyk";
     private static final String K_JAZYK = "jazyk";
+    /** B327: obrazovka volby jazyka uz probehla ("1"). B326 si to nepamatovala. */
+    private static final String K_OBRAZOVKA = "obrazovka_volby";
 
     private static volatile String kod = null;      // po prvnim cteni z pameti
 
@@ -75,6 +78,22 @@ public final class NapJazyk {
     /** B326: zvolil už někdo jazyk (obrazovka při prvním spuštění nebo OPTIONS)? */
     public static boolean zvoleno(Context c) {
         return c != null && ulozeny(c) != null;
+    }
+
+    /**
+     * B327: proběhla už obrazovka volby jazyka? René po B326: "já jsem výběr jazyka neviděl" - na S8
+     * měl jazyk vybraný dřív v OPTIONS, a B326 ji ukazovala jen tomu, kdo nevybral nikdy. Od B327 ji
+     * uvidí JEDNOU každý (i ten, kdo vybral v OPTIONS, i kdo ji viděl v B326 - B326 si to nepamatovala).
+     */
+    public static boolean obrazovkaHotova(Context c) {
+        try {
+            return c != null && "1".equals(p(c).getString(K_OBRAZOVKA, null));
+        } catch (Throwable ignored) { return false; }
+    }
+
+    /** B327: obrazovka volby jazyka proběhla (AHJAZYK.prvniVolba) - příště už ne. */
+    public static void oznacObrazovku(Context c) {
+        try { p(c).edit().putString(K_OBRAZOVKA, "1").apply(); } catch (Throwable ignored) {}
     }
 
     public static boolean en(Context c) {

@@ -213,9 +213,27 @@ public final class NapAktualizace {
     // ------------------------------------------------------------------
     //  Stazeni a instalace - bez souboru na disku
     // ------------------------------------------------------------------
+    // B327: okno aktualizace zustava otevrene od stazeni az do instalace (Rene po B326: "clovek nevi,
+    // jestli se provadi aktualizace ... trva to docela dlouho, nez to pozada telefon o povoleni").
+    // MainActivity.napInstalace ho podle vysledku instalace prepise nebo zavre (vysledekInstalace).
+    private static volatile AlertDialog okno;
+    private static volatile android.widget.TextView oknoText;
+    private static volatile android.widget.ProgressBar oknoPruh;
+    /** B327: ZRUSIT behem stahovani (relace se zahodi, nic se neinstaluje). */
+    private static volatile boolean zrusit = false;
+    /** B327: stazene APK uz je predane Androidu (tlacitko okna je pak jen ZAVRIT). */
+    private static volatile boolean predano = false;
+    /** B327: spojeni, ze ktereho se stahuje - ZRUSIT ho hned prerusi (necekat na dalsi data ze site). */
+    private static volatile HttpURLConnection spojeni;
+    /** B327: SharedPreferences - verze pri minulem startu (poStartu). */
+    private static final String PREF = "nap_aktualizace";
+
     private static void nainstaluj(final Activity a, final String zipUrl, final Hlaska log) {
         if (instalaceBezi()) { if (log != null) log.rekni("AKTUALIZACE uz bezi - druhe stazeni ne (B324)"); return; }
         instalaceOd = System.currentTimeMillis();
+        zrusit = false;
+        predano = false;
+        final boolean en = NapJazyk.en(a);
         final AlertDialog dlg;
         final android.widget.TextView popis = new android.widget.TextView(a);
         final android.widget.ProgressBar pruh = new android.widget.ProgressBar(
@@ -225,14 +243,27 @@ public final class NapAktualizace {
             box.setOrientation(android.widget.LinearLayout.VERTICAL);
             int p = (int) (16 * a.getResources().getDisplayMetrics().density);
             box.setPadding(p * 2, p, p * 2, p);
-            popis.setText(NapJazyk.t(a, "Pripojuji se...", "Connecting..."));
+            popis.setText(NapJazyk.t(a, "Připojuji se k serveru…", "Connecting to the server…"));
             popis.setTextSize(15f);
             box.addView(popis);
             pruh.setIndeterminate(true);
+            pruh.setMax(1000);
             box.addView(pruh);
+            // B327: ZRUSIT behem stahovani; po predani Androidu je to jen ZAVRIT (okno s navodem)
             dlg = new AlertDialog.Builder(a).setTitle(NapJazyk.t(a, "Aktualizace", "Update"))
-                    .setView(box).setCancelable(false).create();
+                    .setView(box).setCancelable(false)
+                    .setNegativeButton(NapJazyk.t(a, "ZRUŠIT", "CANCEL"), (d, w) -> {
+                        okno = null;
+                        if (predano) return;
+                        zrusit = true;
+                        final HttpURLConnection s0 = spojeni;
+                        if (s0 != null) new Thread(() -> { try { s0.disconnect(); } catch (Throwable ignored) {} }, "nap-zrusit").start();
+                    })
+                    .create();
             dlg.show();
+            okno = dlg;
+            oknoText = popis;
+            oknoPruh = pruh;
         } catch (Throwable t) {
             instalaceSkoncila();
             if (log != null) log.rekni("AKTUALIZACE okno: " + t.getClass().getSimpleName());
@@ -243,6 +274,7 @@ public final class NapAktualizace {
             String vysledek;
             HttpURLConnection c = null;
             PackageInstaller.Session relace = null;
+            long staženo = 0;
             try {
                 if (Build.VERSION.SDK_INT < 21) throw new Exception("stary Android");
                 final boolean primoApk = zipUrl == null;   // B321: ze serveru N&P rovnou APK (podepsany dotaz)
@@ -257,6 +289,8 @@ public final class NapAktualizace {
                     c.setRequestProperty("User-Agent", "AtariHelpEMU10");
                     c.setInstanceFollowRedirects(true);
                 }
+                spojeni = c;
+                if (zrusit) throw new java.io.InterruptedIOException("ZRUSENO");
                 int kod = c.getResponseCode();
                 if (kod != 200) {
                     if (primoApk) {
@@ -280,54 +314,47 @@ public final class NapAktualizace {
 
                 InputStream sit = c.getInputStream();
                 byte[] buf = new byte[65536];
-                long staženo = 0;
-                long zacatek = System.currentTimeMillis();
+                long zacatek = System.currentTimeMillis(), posledniUi = 0L;
                 boolean naslo = false;
-                if (primoApk) {   // B321: APK rovnou do instalacni relace
-                    naslo = true;
-                    OutputStream ven = relace.openWrite("emu10", 0, celkem > 0 ? celkem : -1);
-                    int n;
-                    while ((n = sit.read(buf)) > 0) {
-                        ven.write(buf, 0, n);
-                        staženo += n;
-                        final long mam = staženo;
-                        a.runOnUiThread(() -> {
-                            popis.setText(NapJazyk.t(a, "Instaluji přímo ze serveru N&P", "Installing straight from the N&P server"));
-                            pruh.setIndeterminate(celkem <= 0);
-                            if (celkem > 0) pruh.setProgress((int) (mam * 100 / celkem));
-                        });
-                    }
-                    relace.fsync(ven);
-                    ven.close();
-                    sit.close();
-                    if (celkem > 0 && staženo != celkem) throw new Exception(NapJazyk.t(a, "stahování se přerušilo", "the download was interrupted"));
-                }
+                // B327: zip -> APK uvnitr (web), primo -> APK ze serveru N&P; obe cesty stejne hlaseni
                 ZipInputStream zi = primoApk ? null : new ZipInputStream(sit);
-                ZipEntry e;
-                while (zi != null && (e = zi.getNextEntry()) != null) {
-                    if (e.isDirectory()) continue;
-                    if (!e.getName().toLowerCase(java.util.Locale.US).endsWith(".apk")) continue;
+                InputStream zdroj = primoApk ? sit : null;
+                if (!primoApk) {
+                    ZipEntry e;
+                    while ((e = zi.getNextEntry()) != null) {
+                        if (e.isDirectory() || !e.getName().toLowerCase(java.util.Locale.US).endsWith(".apk")) continue;
+                        zdroj = zi;
+                        break;
+                    }
+                }
+                if (zdroj != null) {
                     naslo = true;
-                    OutputStream ven = relace.openWrite("emu10", 0, -1);
+                    OutputStream ven = relace.openWrite("emu10", 0, primoApk && celkem > 0 ? celkem : -1);
                     int n;
-                    while ((n = zi.read(buf)) > 0) {
+                    while ((n = zdroj.read(buf)) > 0) {
+                        if (zrusit) throw new java.io.InterruptedIOException("ZRUSENO");
                         ven.write(buf, 0, n);
                         staženo += n;
                         long ted = System.currentTimeMillis();
-                        final long mam = staženo;
-                        final long rychlost = mam * 1000 / Math.max(1, ted - zacatek);
-                        a.runOnUiThread(() -> {
-                            popis.setText(NapJazyk.t(a, "Instaluji primo ze site", "Installing straight from the network"));
-                            pruh.setIndeterminate(celkem <= 0);
-                            if (celkem > 0) pruh.setProgress((int) (mam * 100 / celkem));
-                        });
+                        if (ted - posledniUi >= 250L) {
+                            posledniUi = ted;
+                            final long zaS = ted - zacatek >= 1000L ? staženo * 1000L / (ted - zacatek) : 0L;
+                            final String text = NapAktualizaceTexty.stahovani(en, primoApk, staženo, celkem, zaS);
+                            final int dil = celkem > 0 ? (int) Math.min(1000L, staženo * 1000L / celkem) : -1;
+                            a.runOnUiThread(() -> {
+                                popis.setText(text);
+                                if (dil >= 0) { pruh.setIndeterminate(false); pruh.setProgress(dil); }
+                            });
+                        }
                     }
+                    if (zrusit) throw new java.io.InterruptedIOException("ZRUSENO");
                     relace.fsync(ven);
                     ven.close();
-                    break;
+                    if (primoApk && celkem > 0 && staženo != celkem) throw new Exception(NapJazyk.t(a, "stahování se přerušilo", "the download was interrupted"));
                 }
-                if (zi != null) zi.close();
+                if (zi != null) zi.close(); else sit.close();
                 if (!naslo) throw new Exception("v ZIPu neni APK");
+                a.runOnUiThread(() -> { popis.setText(NapAktualizaceTexty.predavam(en)); pruh.setIndeterminate(true); });
 
                 Intent i = new Intent(a, MainActivity.class);
                 i.setAction("eu.atarihelp.emu10.INSTALACE");
@@ -339,36 +366,92 @@ public final class NapAktualizace {
                         a, 0, i,
                         (Build.VERSION.SDK_INT >= 31 ? android.app.PendingIntent.FLAG_MUTABLE : 0)
                                 | android.app.PendingIntent.FLAG_UPDATE_CURRENT);
+                predano = true;
                 relace.commit(pending.getIntentSender());
                 relace = null;               // relaci uz drzi system
                 vysledek = "OK (" + (staženo / 1024) + " kB, na disku nic)";
             } catch (Throwable t) {
-                vysledek = "CHYBA " + t.getClass().getSimpleName()
-                         + (t.getMessage() != null ? ": " + t.getMessage() : "");
+                // B327: ZRUSIT prerusi spojeni -> chyba cteni; to neni chyba, ale zruseni
+                vysledek = zrusit ? "ZRUSENO (" + (staženo / 1024) + " kB)"
+                         : "CHYBA " + t.getClass().getSimpleName() + (t.getMessage() != null ? ": " + t.getMessage() : "");
             } finally {
+                spojeni = null;
                 if (relace != null) try { relace.abandon(); } catch (Throwable ignored) {}
                 if (c != null) try { c.disconnect(); } catch (Throwable ignored) {}
             }
             final String v = vysledek;
-            if (!v.startsWith("OK")) instalaceSkoncila();
+            final long hotovo = staženo;
+            if (!v.startsWith("OK")) { instalaceSkoncila(); predano = false; }
             a.runOnUiThread(() -> {
-                try { dlg.dismiss(); } catch (Throwable ignored) {}
                 if (log != null) log.rekni("AKTUALIZACE " + v);
                 if (v.startsWith("OK")) {
+                    // B327: okno zustava - rika, co prijde (potvrdit INSTALOVAT, appka se zavre, ...).
+                    // Drive tu byl Toast "appka se sama zavre a otevre znovu" - to Android nedela.
                     try {
-                        android.widget.Toast.makeText(a, NapJazyk.t(a, "Instaluje se nová verze – appka se sama zavře a otevře znovu.",
-                                "Installing the new version – the app will close and open again by itself."), android.widget.Toast.LENGTH_LONG).show();
+                        popis.setText(NapAktualizaceTexty.poPredani(en, Build.VERSION.SDK_INT, hotovo));
+                        pruh.setIndeterminate(true);
+                        android.widget.Button b = dlg.getButton(AlertDialog.BUTTON_NEGATIVE);
+                        if (b != null) b.setText(NapJazyk.t(a, "ZAVŘÍT", "CLOSE"));
                     } catch (Throwable ignored) {}
+                    return;
                 }
-                if (!v.startsWith("OK")) {
+                okno = null;
+                try { dlg.dismiss(); } catch (Throwable ignored) {}
+                if (v.startsWith("ZRUSENO")) {
                     try {
-                        new AlertDialog.Builder(a).setTitle(NapJazyk.t(a, "Aktualizace nevysla", "The update failed"))
-                                .setMessage(v + NapJazyk.t(a, "\n\nZkus to znovu z nabidky OPTIONS.", "\n\nTry again from the OPTIONS menu."))
-                                .setPositiveButton("OK", null).show();
+                        android.widget.Toast.makeText(a, NapJazyk.t(a, "Aktualizace zrušena – nic se nenainstalovalo.",
+                                "Update cancelled – nothing was installed."), android.widget.Toast.LENGTH_LONG).show();
                     } catch (Throwable ignored) {}
+                    return;
                 }
+                try {
+                    new AlertDialog.Builder(a).setTitle(NapJazyk.t(a, "Aktualizace nevyšla", "The update failed"))
+                            .setMessage(v + NapJazyk.t(a, "\n\nZkus to znovu z nabídky OPTIONS.", "\n\nTry again from the OPTIONS menu."))
+                            .setPositiveButton("OK", null).show();
+                } catch (Throwable ignored) {}
             });
         }, "nap-instalace").start();
+    }
+
+    /**
+     * B327: vysledek instalace (MainActivity.napInstalace) - okno aktualizace podle nej.
+     * STATUS_PENDING_USER_ACTION = Android se pta -> text "klepni na INSTALOVAT", okno zustava;
+     * cokoli jineho (hotovo, chyba, zruseno) = okno zavrit (hlaseni dela MainActivity).
+     */
+    static void vysledekInstalace(Activity a, int stav) {
+        final AlertDialog d = okno;
+        if (stav == PackageInstaller.STATUS_PENDING_USER_ACTION) {
+            final android.widget.TextView t = oknoText;
+            if (t != null) try { t.setText(NapAktualizaceTexty.potvrd(NapJazyk.en(a), Build.VERSION.SDK_INT)); } catch (Throwable ignored) {}
+            return;
+        }
+        okno = null;
+        oknoText = null;
+        oknoPruh = null;
+        predano = false;
+        if (d != null) try { d.dismiss(); } catch (Throwable ignored) {}
+    }
+
+    /**
+     * B327: start appky - prvni start po aktualizaci? Toast "Nainstalovana nova verze ..." (Android 10+
+     * appku po aktualizaci sam neotevre, at clovek vi, ze to proslo) a verze se ulozi. Vraci radek
+     * do logu, nebo null.
+     */
+    public static String poStartu(Activity a) {
+        try {
+            android.content.pm.PackageInfo pi = a.getPackageManager().getPackageInfo(a.getPackageName(), 0);
+            android.content.SharedPreferences sp = a.getSharedPreferences(PREF, Context.MODE_PRIVATE);
+            final int byla = sp.getInt("verze", 0);
+            if (byla != pi.versionCode) sp.edit().putInt("verze", pi.versionCode).apply();
+            if (!NapAktualizaceTexty.prvniStartPoAktualizaci(byla, pi.versionCode, pi.firstInstallTime,
+                    pi.lastUpdateTime, System.currentTimeMillis())) return null;
+            android.widget.Toast.makeText(a, NapAktualizaceTexty.novaVerze(NapJazyk.en(a), pi.versionName),
+                    android.widget.Toast.LENGTH_LONG).show();
+            return "B327 NOVA VERZE NAINSTALOVANA " + (byla > 0 ? String.valueOf(byla) : "(do B326 neukladano)")
+                    + " -> " + pi.versionCode + " " + pi.versionName;
+        } catch (Throwable t) {
+            return "B327 NOVA VERZE kontrola: " + t.getClass().getSimpleName();
+        }
     }
 
     /** Umi telefon vubec instalovat z teto aplikace? */

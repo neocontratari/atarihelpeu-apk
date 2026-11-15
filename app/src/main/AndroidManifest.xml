@@ -53,5 +53,16 @@
             <meta-data android:name="android.app.lib_name" android:value="eglrender" />
         </activity>
 
+        <!-- B327: po vlastni aktualizaci appku zase otevrit (Android 9 a starsi). Od Androidu 10 system
+             spousteni z pozadi nedovoli - tam ji clovek otevre ikonou a appka pri startu ukaze
+             "Nainstalovana nova verze". MY_PACKAGE_REPLACED posila jen system (chranena zprava). -->
+        <receiver
+            android:name="eu.atarihelp.emu10.NapPoAktualizaci"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+            </intent-filter>
+        </receiver>
+
     </application>
 </manifest>

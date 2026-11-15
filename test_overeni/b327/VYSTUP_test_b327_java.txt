@@ -1,0 +1,28 @@
+B327 - volba jazyka jednou kazdemu + texty okna aktualizace (skutecne NapJazyk, NapAktualizaceTexty)
+
+OK     J1 nova instalace: obrazovka volby ANO, do te doby anglicky
+OK     J2 po volbe CESTINA na obrazovce: dalsi start obrazovka NE, cesky
+OK     J3 Reneho S8 (cestina vybrana v OPTIONS v B314-B325): po aktualizaci na B327 obrazovka ANO, zatim cesky
+OK     J3 tam zvoli ENGLISH: anglicky, obrazovka uz nikdy
+OK     J4 synuv telefon (obrazovka v B326, B326 si ji nepamatovala): obrazovka jeste jednou
+OK     J5 pozdejsi zmena v OPTIONS obrazovku nevrati (anglicky, obrazovka NE)
+OK     J6 poskozeny zaznam obrazovky = obrazovka ANO
+OK     J7 bez kontextu: obrazovka nehotova, nic nespadne
+OK     A1 stahovani cesky: odkud, MB s desetinnou carkou, procenta, rychlost, rada
+OK     A2 stahovani anglicky: desetinna tecka
+OK     A3 neznama velikost (zaloha atarihelp.eu): jen MB, bez procent a rychlosti
+OK     A4 nikdy pres 100 % (zip: stazeno > velikost spojeni)
+OK     A5 po predani Androidu, Android 9 (S8): INSTALOVAT + appka se sama znovu otevre
+OK     A6 po predani Androidu, Android 12 (syn): appka se zavre - otevrit ikonou, pri startu ukaze novou verzi
+OK     A7 anglicky Android 12
+OK     A8 zadny text uz neslibuje, ze se appka na Androidu 10+ otevre sama
+OK     A9 do Androidu 9 (API 28) se appka otevre sama, od Androidu 10 (API 29) ne
+OK     A10 toast nove verze
+OK     P1 ulozena 369, ted 370 = prvni start po aktualizaci
+OK     P2 ulozena 370, ted 370 = bezny start (zadny toast)
+OK     P3 B326 -> B327 (nic ulozeno), aktualizace pred 2 min = toast
+OK     P4 nic ulozeno, nova instalace (prvni = posledni) = zadny toast
+OK     P5 nic ulozeno, aktualizace pred 2 hodinami = zadny toast
+OK     P6 navrat na starsi verzi (ulozena 371, ted 370) = zadny toast
+
+VYSLEDEK: 24 kontrol, 0 CHYBA
