@@ -1,0 +1,21 @@
+Stara kontrola stranky B322 (test_web_page1130_b322.py) pustena na novou stranku v12 - zive menu, odpocet, okno kodu beze zmeny.
+Pozn.: Z4 (tazeni karuselu, animace WebGL) jednou neprosel kvuli casovani, pri opakovani 3x prosel (i na B322).
+
+OK     Z1 4 panely kresli zive menu z appky (WebAssembly + WebGL) z GitHubu (overeno SHA-256, Blob), zadny GIF
+OK     Z2 panely stoji na svych kartach (web tyrkys, atari zlata, sega modra, ps1 fialova)
+OK     Z3 obraz zije (Atari 130XE se toci - dva snimky se lisi)
+OK     Z4 tazeni do strany: karusel jede na dalsi kartu (SEGA -> PS1, fialova)
+OK     Z5 klepnuti na kartu ATARI = okno osobniho kodu (stahnout aplikaci)
+OK     Z6 klepnuti na kartu ATARIHELP.EU = web atarihelp.eu
+OK     Z7 GitHub nejde -> nacte se kopie z atarihelp.eu/wp-content/uploads/nap/ (integrity)
+OK     Z7b GitHub posle jiny soubor (otisk SHA-256 nesedi) -> nespusti se, GIFy
+OK     Z7c kopie na webu je jina -> prohlizec ji nespusti (integrity), GIFy
+OK     Z8 zadna adresa nejde -> puvodni GIFy
+OK     Z9 prohlizec bez WebGL -> GIFy, 2 MB soubor se ani nestahuje
+OK     Z9b anglicky prohlizec: menu anglicky (zive)
+OK     Z10 odpocet 14. 11. 15:00 CET -> 6 dni 3 hodiny
+OK     Z10 okno kodu: NAP-7K3Q-M9XD
+OK     zadna chyba JavaScriptu
+OK     v kodu stranky neni zadne porovnani s pevnym klicem (ani validKeys)
+
+VYSLEDEK: 16 OK, 0 CHYBA

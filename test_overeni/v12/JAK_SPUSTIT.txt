@@ -1,0 +1,33 @@
+v12 - REGISTRACE PRIMO V SERVERU N&P (15. 11. 2026) - overeni stranky 1130 na PC
+=================================================================================
+
+Rene: "chci registraci vestavet primo do meho Universe Enginu ... (IP, e-mail, tabulka, schvalit /
+zablokovat, kod az po kontrole, dekovny e-mail)". Appka se nemeni (B325). Server v12 je soukromy
+(neni v repu); tady je jen stranka atarihelp.eu/?page_id=1130 a jeji testy.
+
+Spoustet z adresare test_overeni/v12 (potrebuje python3 + playwright s Chromiem):
+
+1) Tlacitko REGISTRACE a odkazy z e-mailu registrace, stranka tak, jak ji posle WordPress
+   (surova, Gutenberg = wptexturize, klasicky editor = wptexturize + wpautop, doplnek "odlozit JavaScript"):
+     python3 test_web_registrace.py ../../web/stranka_1130/html_kod_www_stranky_v12.txt
+                                                       -> VYSTUP_test_web_registrace.txt (42 OK)
+   G0 adresa serveru ve skriptu = u tlacitka; G1 tlacitko videt pod STAHNOUT a vede na <server>/registrace;
+   G2 ...&nap_potvrdit=<32 hex> -> <server>/registrace/potvrdit?t=<token> (server tam ukaze tlacitko);
+   G3 ...&nap_kod=NAP-XXXX-XXXX -> okno kodu s vyplnenym kodem, Pokracovat -> <server>/aktivace?kod=...;
+   G4 podvrzene parametry -> nic; G5 telefon 412 px.
+   Tvar odkazu = presne to, co posila server v12 (test_server.py S46 / S48 u serveru).
+
+2) Stejna pravidla a rozlozeni jako B322 (WordPress meni ve skriptu & na &#038; - skripty tu zadny
+   ampersand ani znak mensi nemaji):
+     cd ../b322 && python3 test_web_wordpress.py ../../web/stranka_1130/html_kod_www_stranky_v12.txt
+                                                       -> VYSTUP_test_web_wordpress_v12.txt (12 OK)
+   POZOR (nalezeno timhle testem): HTML komentar na vlastnim radku pred inline <a> -> klasicky editor
+   (wpautop) z konce radku udela <br> a vse pod tlacitkem posune o 18 px (W9). Proto tam komentar neni.
+     python3 test_web_page1130_b322.py ../../web/stranka_1130/html_kod_www_stranky_v12.txt
+                                                       -> VYSTUP_test_web_page1130_na_v12.txt (16 OK)
+   (Z4 = tazeni karuselu, animace WebGL: jednou neprosel casovanim, pri opakovani 3x OK - i na B322.)
+   Vystupy b322 testu se zapisuji do ../b322 - po behu je vratit: git checkout test_overeni/b322/VYSTUP_*.
+
+Server v12 (u serveru, soukromy): test_server.py 314 OK (S43-S60 registrace: falesny SMTP s TLS jako Seznam
+465 i 587, falesny DNS, zeme podle IP z maleho CSV), 4 umyslne zanesene chyby (GET potvrdi, AUTH bez
+sifrovani, bez blokace, bez skryteho pole) testy najdou; NapGuiTest (Xvfb) okno REGISTRACE + dialog POSTA OK.

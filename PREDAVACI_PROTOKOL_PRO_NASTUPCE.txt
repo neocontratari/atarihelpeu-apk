@@ -3760,3 +3760,45 @@
        12+ mozna i bez potvrzeni - zalezi, jestli je appka installer of record).
 
 ===============================================================================
+
+   v12 (bez nove APK, appka zustava B325): REGISTRACE PRIMO V SERVERU N&P (15. 11. 2026)
+     Rene: "chci registraci vestavet primo do meho Universe Enginu - kontrola IP
+     (1 registrace z jedne IP), e-mailu (jednorazove, podezrele znaky, existence
+     domeny), tabulka (jmeno, mail, IP, zeme), hned zpetna vazba, schvalit nebo
+     jednim klikem zablokovat, kod az po kontrole, dekovny e-mail s mym jmenem"
+     + "veskere tyto inovace necham na tobe - od tebe budu potrebovat navod".
+     - SERVER v12 (soukromy, NENI v repu - NapServer.cs u Reneho / v osobnim
+       vystupu): stranka /registrace (CZ / EN podle prohlizece), kontroly (znaky
+       e-mailu a jmena, seznam jednorazovych domen CC0 10 236 + mesicne novy, DNS
+       MX / A vlastnim UDP klientem, 1 registrace z IP za 24 h (LAN ne) + varovani
+       "z teto IP uz", stejny e-mail i Gmail s teckami / +znackou, skryte pole a
+       podepsany cas formulare proti robotum, blokace e-mail + IP, 30 za hodinu,
+       10 chyb za hodinu), zeme podle IP = DB-IP Lite (CC BY 4.0, mesicne, odkaz
+       "IP Geolocation by DB-IP" na strance). Double opt-in: e-mail s odkazem ->
+       GET ukaze jen tlacitko, potvrzuje POST (nahledy v poste odkazy otviraji
+       samy). Okno 📝 REGISTRACE: SCHVALIT (= NovyKod + e-mail s kodem), ZABLOKOVAT
+       (i kod), ODBLOKOVAT, POSLAT ZNOVU, SMAZAT, auto-schvaleni jen bez varovani;
+       zvuk + bublina v liste, tlacitko v hlavnim okne s poctem. Posta: vlastni
+       SMTP klient (SmtpClient v .NET 4 neumi SSL 465): 465 TLS hned / jinak
+       STARTTLS povinne, TLS 1.2, AUTH PLAIN / LOGIN, UTF-8 text + HTML, fronta s
+       opakovanim (1, 5, 30 min). Heslo pro aplikace v posta.txt zasifrovane DPAPI
+       (CurrentUser). Odkazy v e-mailech defaultne pres https://atarihelp.eu/
+       ?page_id=1130&nap_potvrdit=... / &nap_kod=... (odkaz na holou IP = spam);
+       primo na server jde prepnout (http://IP:port -> /registrace/potvrdit,
+       /aktivace?vypln=KOD). Testy u serveru: test_server.py 314 OK (100 novych:
+       falesny SMTP s TLS 465 i 587, falesny DNS), 4 umyslne chyby testy najdou,
+       NapGuiTest (okno REGISTRACE + dialog POSTA) OK.
+     - WEB: web/stranka_1130/html_kod_www_stranky_v12.txt = B322 + tlacitko
+       "📝 Registrace / Register" (href i NAP_SERVER) a zpracovani nap_potvrdit
+       (32 hex -> server /registrace/potvrdit) a nap_kod (okno kodu s vyplnenym
+       kodem). Pravidla skriptu pro WordPress dodrzena (zadne <, &, zpetne lomitko,
+       prazdny radek, [pismeno). Pozor: HTML komentar pred inline <a> -> wpautop z
+       konce radku udela <br> (posun 18 px) - proto tam neni.
+       test_overeni/v12: test_web_registrace.py 42 OK; b322/test_web_wordpress.py
+       na v12 12 OK; b322/test_web_page1130_b322.py na v12 16 OK (Z4 = animace,
+       jednou neprosel casovanim, pak 3x OK i na B322).
+     - Rene: schranka na Seznamu (doporuceno nova), dvoufazove overeni + heslo pro
+       aplikace, server v12 -> ⚙ POSTA -> ZKUSEBNI E-MAIL, stranka 1130 vymenit.
+       Se skutecnym Seznamem a webem neovereno.
+
+===============================================================================

@@ -1,0 +1,16 @@
+test_web_wordpress.py (z b322) na nove strance v12 - WordPress (wptexturize, wpautop, odlozeny JS):
+
+OK     L1 skripty bez "<", "&", zpetneho lomitka, prazdnych radku a "[pismeno"; styl i stranka bez prazdnych radku (2 skripty)
+OK     L2 skripty projdou wptexturize (Gutenberg) i wptexturize + wpautop (klasicky editor) beze zmeny
+OK     W1 surova: odpocet bezi 05:05:53:56, QR je, 4 zive panely, okno kodu, zadna chyba JS, diagnostika skryta, GIFy se nestahuji
+OK     W2 Gutenberg - blok Vlastni HTML (wptexturize): odpocet bezi 05:05:53:45, QR je, 4 zive panely, okno kodu, zadna chyba JS, diagnostika skryta, GIFy se nestahuji
+OK     W3 klasicky editor (wptexturize + wpautop): odpocet bezi 05:05:53:35, QR je, 4 zive panely, okno kodu, zadna chyba JS, diagnostika skryta, GIFy se nestahuji
+OK     W4 Gutenberg + doplnek "odlozit JavaScript" (bez DOMContentLoaded): odpocet bezi 05:05:53:24, QR je, 4 zive panely, okno kodu, zadna chyba JS, diagnostika skryta
+OK     W5 Gutenberg, bez WebGL: 4 GIFy nactene a videt, odpocet, QR, diagnostika skryta
+OK     W5 Gutenberg, soubor menu nejde (GitHub ani kopie): 4 GIFy nactene a videt, odpocet, QR, diagnostika skryta
+OK     W6 chyba v cizim skriptu (sablona) -> stranka bezi, navstevnik diagnostiku nevidi
+OK     W7 ?nap_diag=1 -> nahore radek "skript stranky bezi | zive panely: 4 | ... selhalo: nic" (obnovuje se)
+OK     W8 umyslne rozbity skript -> diagnostika sama ukaze "SKRIPT STRANKY NEBEZI" + chybu, GIFy a QR videt, odpocet "--"
+OK     W9 rozlozeni surova / Gutenberg / klasicky editor stejne do 3 px (PC 1200 i telefon 412, 8 prvku)
+
+VYSLEDEK: 12 OK, 0 CHYBA

@@ -1,0 +1,44 @@
+v12 stranka 1130 - tlacitko REGISTRACE a odkazy z e-mailu (Chromium, podoby jako z WordPressu)
+OK     G0 adresa serveru ve skriptu = adresa u tlacitka (pro jistotu, kdyby skript nebezel)
+OK     G1 surova: tlacitko REGISTRACE videt pod Stahnout, vede na http://46.33.114.139:8080/registrace, text, zadna chyba JS
+OK     G1 surova: klik na tlacitko -> stranka registrace na serveru NAP
+OK     G2 surova: odkaz z e-mailu nap_potvrdit -> hned http://46.33.114.139:8080/registrace/potvrdit?t=TOKEN
+OK     G3 surova: odkaz z e-mailu nap_kod -> okno kodu s vyplnenym NAP-7K3Q-M9XD, nic se jeste neposlalo
+OK     G3 surova: Pokracovat -> http://46.33.114.139:8080/aktivace?kod=NAP-7K3Q-M9XD
+OK     G4 surova: kratky token -> nic (zadne okno, zadny server), stranka bezi
+OK     G4 surova: token velkymi (server dava male) -> nic (zadne okno, zadny server), stranka bezi
+OK     G4 surova: nap_kod s HTML -> nic (zadne okno, zadny server), stranka bezi
+OK     G4 surova: kod se znaky 0 a 1 -> nic (zadne okno, zadny server), stranka bezi
+OK     G4 surova: rozbite kodovani -> nic (zadne okno, zadny server), stranka bezi
+OK     G1 Gutenberg: tlacitko REGISTRACE videt pod Stahnout, vede na http://46.33.114.139:8080/registrace, text, zadna chyba JS
+OK     G1 Gutenberg: klik na tlacitko -> stranka registrace na serveru NAP
+OK     G2 Gutenberg: odkaz z e-mailu nap_potvrdit -> hned http://46.33.114.139:8080/registrace/potvrdit?t=TOKEN
+OK     G3 Gutenberg: odkaz z e-mailu nap_kod -> okno kodu s vyplnenym NAP-7K3Q-M9XD, nic se jeste neposlalo
+OK     G3 Gutenberg: Pokracovat -> http://46.33.114.139:8080/aktivace?kod=NAP-7K3Q-M9XD
+OK     G4 Gutenberg: kratky token -> nic (zadne okno, zadny server), stranka bezi
+OK     G4 Gutenberg: token velkymi (server dava male) -> nic (zadne okno, zadny server), stranka bezi
+OK     G4 Gutenberg: nap_kod s HTML -> nic (zadne okno, zadny server), stranka bezi
+OK     G4 Gutenberg: kod se znaky 0 a 1 -> nic (zadne okno, zadny server), stranka bezi
+OK     G4 Gutenberg: rozbite kodovani -> nic (zadne okno, zadny server), stranka bezi
+OK     G1 klasicky editor: tlacitko REGISTRACE videt pod Stahnout, vede na http://46.33.114.139:8080/registrace, text, zadna chyba JS
+OK     G1 klasicky editor: klik na tlacitko -> stranka registrace na serveru NAP
+OK     G2 klasicky editor: odkaz z e-mailu nap_potvrdit -> hned http://46.33.114.139:8080/registrace/potvrdit?t=TOKEN
+OK     G3 klasicky editor: odkaz z e-mailu nap_kod -> okno kodu s vyplnenym NAP-7K3Q-M9XD, nic se jeste neposlalo
+OK     G3 klasicky editor: Pokracovat -> http://46.33.114.139:8080/aktivace?kod=NAP-7K3Q-M9XD
+OK     G4 klasicky editor: kratky token -> nic (zadne okno, zadny server), stranka bezi
+OK     G4 klasicky editor: token velkymi (server dava male) -> nic (zadne okno, zadny server), stranka bezi
+OK     G4 klasicky editor: nap_kod s HTML -> nic (zadne okno, zadny server), stranka bezi
+OK     G4 klasicky editor: kod se znaky 0 a 1 -> nic (zadne okno, zadny server), stranka bezi
+OK     G4 klasicky editor: rozbite kodovani -> nic (zadne okno, zadny server), stranka bezi
+OK     G1 odlozeny JavaScript: tlacitko REGISTRACE videt pod Stahnout, vede na http://46.33.114.139:8080/registrace, text, zadna chyba JS
+OK     G1 odlozeny JavaScript: klik na tlacitko -> stranka registrace na serveru NAP
+OK     G2 odlozeny JavaScript: odkaz z e-mailu nap_potvrdit -> hned http://46.33.114.139:8080/registrace/potvrdit?t=TOKEN
+OK     G3 odlozeny JavaScript: odkaz z e-mailu nap_kod -> okno kodu s vyplnenym NAP-7K3Q-M9XD, nic se jeste neposlalo
+OK     G3 odlozeny JavaScript: Pokracovat -> http://46.33.114.139:8080/aktivace?kod=NAP-7K3Q-M9XD
+OK     G4 odlozeny JavaScript: kratky token -> nic (zadne okno, zadny server), stranka bezi
+OK     G4 odlozeny JavaScript: token velkymi (server dava male) -> nic (zadne okno, zadny server), stranka bezi
+OK     G4 odlozeny JavaScript: nap_kod s HTML -> nic (zadne okno, zadny server), stranka bezi
+OK     G4 odlozeny JavaScript: kod se znaky 0 a 1 -> nic (zadne okno, zadny server), stranka bezi
+OK     G4 odlozeny JavaScript: rozbite kodovani -> nic (zadne okno, zadny server), stranka bezi
+OK     G5 telefon 412 px: tlacitko cele na obrazovce, stranka nepreteka do strany
+VYSLEDEK: 42 OK, 0 CHYBA
