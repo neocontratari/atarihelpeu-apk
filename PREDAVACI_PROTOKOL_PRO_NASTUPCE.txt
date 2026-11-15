@@ -3926,5 +3926,22 @@
        SpongeBob na stejnem miste a log -> radky VYKON ukazou, co zdrzuje
        (kresleni 2x / hra / predani obrazu / zvuk / male jadro procesoru).
      - build.gradle: versionCode 371 "EMU10-B328-MERENI". Na telefonu neovereno.
+     - Rene po B328 (test jeste na B327): WarCraft II: The Dark Saga - "mys na
+       tlacitko snad reaguje, zachytit jde, ale ovladani jako u Dune nefunguje"
+       (vsechna 3 nastaveni), "aby nebyl problem i Diablo". ZJISTENO: obe hry mys
+       PlayStation NEPODPORUJI - psxdatacenter SLUS-00480 (WarCraft II), SLUS-00619
+       a SLPS-01416 (Diablo): jen standardni digitalni ovladac, zvlastni ovladace
+       "None"; Dune 2000 SLES-02247: "Mouse Controller"; seznam her s mysi na
+       Wikipedii (PlayStation Mouse) je take nema. Log: mys z PC zachycena, do
+       jadra slo 63 zprav / posun 1185 / 963 bodu, hra cte port 1 60x/s, ale pohyb
+       ignoruje; klik L / P = bit 11 / 10 = pro hru, ktera mys bere jako ovladac,
+       R1 / L1 (proto "snad reaguje"). Rezim 1: smery z dotyku ridi mys -> hra nic;
+       rezim 2: ovladac v portu 2 -> hra pro hrace 1 cte port 1; spravne je jen
+       rezim 0 (mys vypnuta, uklada se pro kazdou hru - u slus00480 posledni 0).
+       Kod se NEMENIL. Napad do budoucna jen s OK Reneho: rezim "mys jako sipky"
+       (presne jako Dune nikdy - kurzor posouva hra svou rychlosti) nebo seznam
+       her s mysi (upozorneni). Vykon WarCraft II ve hre na S8: retro_run
+       14.6-16.5 ms, rezerva 0-8 %, vypadky zvuku, 2x ANO, TV divaku 1 - stejne
+       jako SpongeBob -> radky VYKON z B328.
 
 ===============================================================================
