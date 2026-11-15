@@ -3830,5 +3830,26 @@
        behu hlasi ZAPLATIL 403).
      - Rene: zavrit server, prepsat jen NapServer.exe, spustit jako spravce, v logu
        "🌍 ZEMĚ PODLE IP ... stažena". Na jeho PC zatim neovereno.
+       Rene po vymene: nastaveni posty i hesla zustala (sam overil testem).
+
+   v12.2 (bez nove APK): STRANKY PO ZADANI KODU I ANGLICKY (15. 11. 2026)
+     Rene: "potvrzeni a podekovani jen v cze jazyce - je potreba dodelat ang".
+     Registrace (formular, Dekujeme, Potvrzeni, Hotovo) a oba e-maily anglicky UZ
+     BYLY (jazyk prohlizece; cs / sk = cesky, jinak anglicky; dole odkaz English;
+     potvrzeni a e-maily v jazyce registrace) - Rene ma cesky prohlizec, proto
+     videl jen cestinu. Opravdu jen cesky byly stranky po zadani kodu (/aktivace,
+     Kod prijat + navod k instalaci, chyby, Pristup odepren, Odkaz neplati) - tam
+     vede DOWNLOAD THE APP z e-mailu, cizinec dostal na konci cestinu.
+     - Server v12.2: tyto stranky cesky / anglicky stejne jako registrace (?lang=,
+       skryte pole lang ve formulari kodu, jinak Accept-Language), odkaz
+       English / Česky dole, odkaz na APK v anglictine s &lang=en (chybova
+       stranka). Bez hlavicky jazyka cesky jako dosud. Log a okna serveru cesky.
+     - Testy u serveru: 346 OK (S63 = 15 novych: anglicky / nemecky / slovensky
+       prohlizec, ?lang, skryte pole, Code accepted + iframe, APK s &lang=en,
+       zablokovany / pouzity kod, 429, portal, neplatny odkaz; anglicke stranky
+       bez jedineho ceskeho znaku). Mutace (bez anglictiny / zbyla cestina) testy
+       najdou. Chromium 412 px en-US i cs-CZ: nic nepretece. NapGuiTest OK.
+     - Stranka 1130 se nemeni (oba jazyky tam uz jsou). Rene: vymenit jen
+       NapServer.exe. Na jeho PC zatim neovereno.
 
 ===============================================================================

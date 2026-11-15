@@ -35,3 +35,5 @@ sifrovani, bez blokace, bez skryteho pole) testy najdou; NapGuiTest (Xvfb) okno 
 Server v12.1 (oprava stahovani zemi podle IP - viz PREDAVACI_PROTOKOL): test_server.py 331 OK (S61-S62 pres
 falesny web: DB-IP gzip ulozeny jako .tmp, zaloha zrcadlo ip-location-db, chyby do logu, seznam jednorazovych
 e-mailu); puvodni chyba vracena do kodu -> test ji najde; NapGuiTest OK. Stranka 1130 se nemeni.
+
+Server v12.2 (stranky po zadani kodu i anglicky): test_server.py 346 OK (S63 = 15 novych); stranka 1130 se nemeni.

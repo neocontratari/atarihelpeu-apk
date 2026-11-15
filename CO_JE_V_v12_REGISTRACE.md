@@ -51,3 +51,16 @@ Tvůj log: „⚠️ ZEMĚ PODLE IP … soubor má jen 0 rozsahů“. **Moje chy
 - Ověřeno na PC: 331 kontrol serveru (17 nových přes falešný web), původní chybu test najde; celá cesta zálohy
   se skutečnými daty DB-IP Lite (732 778 rozsahů, Seznam → CZ). **Na tvém PC zatím ne.**
 - Co udělat: zavřít server, přepsat jen `NapServer.exe`, spustit jako správce → v logu „🌍 ZEMĚ PODLE IP … stažena“.
+
+## v12.2 – angličtina na stránkách po zadání kódu (15. 11. 2026)
+
+Tvoje zpráva: „potvrzení a poděkování jen v CZ jazyce – je potřeba dodělat ANG“.
+
+- **Registrace a oba e-maily anglicky už byly**: server bere jazyk z prohlížeče (český / slovenský = česky,
+  jinak anglicky), dole na formuláři je odkaz English. Ty máš prohlížeč česky, proto jsi viděl jen češtinu.
+- **Opravdu jen česky byly stránky po zadání kódu** („Kód přijat“, STÁHNOUT APLIKACI, návod k instalaci, chyby) –
+  tam vede tlačítko DOWNLOAD THE APP z e-mailu. Teď jsou i anglicky, jazyk stejně jako u registrace, dole
+  odkaz English / Česky.
+- Ověřeno na PC: 346 kontrol serveru (15 nových), anglické stránky bez jediného českého znaku, v telefonu
+  (412 px) nic nepřeteče. **Na tvém PC zatím ne.** Stránka 1130 se nemění.
+- Co udělat: zavřít server, přepsat jen `NapServer.exe`, spustit jako správce → v logu „Jádro v12.2“.
