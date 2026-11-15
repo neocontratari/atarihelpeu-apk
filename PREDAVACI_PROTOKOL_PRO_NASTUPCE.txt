@@ -3662,3 +3662,56 @@
        tlacitkach, zakazane sede, nic mimo okno ani pres sebe).
 
 ===============================================================================
+
+   B323: AIR STRIKE A SONIC V ATARI; 🔒 ZAMKNOUT (TEST) ZE SERVERU (v11.2)
+     (15. 11. 2026) Rene: "v atari nefunguji 2 hry - zadna katastrofa - ale
+     opatrne at nerozbijeme skvele fungujici emu" (Air_Strike.xex,
+     SONIC_A8_AI.xex - jeho soubory, NEJSOU v repu) + "nechapu proc nejde
+     uzamcit segu a ps1 i tzv bez platby / uz treba kvuli testum".
+     - AIR STRIKE: XEX = obal na $BB00 (presun bootovaci hry, DOSINI = $3C20,
+       JMP $E474 teply start). OS vola DOSINI jen pri BOOT? ($09) bit 0 = 1
+       (= po zavedeni DOSu). XexLoader DOS neemuloval -> OS skoncil pres
+       DOSVEC v parkovaci smycce $0100. OPRAVA nap_atari_runtime.h
+       XexLoader::prostrediDos (pri prechodu START -> SEGMENT): BOOT? |= 1,
+       DOSINI = prvni $60 (RTS) v OS ROM $C000-$CFFF (= $C017), kdyz je 0;
+       bez OS ROM nic. Hra pak: titulek, START -> plocha, START -> hraje se.
+     - SONIC A8: INIT $972B meri pamet (PORTB pro vsech X s bity 0,4 = 0,
+       tabulka $3000, potrebuje >= 16 bank + 10 mimo 130XE) jinak
+       "NOT ENOUGH EXTENDED MEMORY - REQUIRES 320K RAMBO OR LARGER" a smycka
+       $97C7. OPRAVA nap_atari_machine.h: rozsirena pamet 320K COMPY SHOP -
+       AtariMem::ext[16 x 16 kB], bankaExt(pb) = ((pb>>2)&3) | ((~pb>>4)&0x0C)
+       (bity 6-7 INVERTOVANE -> banky 130XE s bity 6-7 = 1 jsou ext[0..64 kB]
+       presne jako drive; dump pameti B299 dal jen techto 64 kB). CPU bit 4,
+       ANTIC bit 5 jako 130XE (Rambo by bit 5 bral jako banku = rozbil ANTIC
+       pristup 130XE). Self-test ROM ($5000, bit 7 = 0) ma dal prednost.
+       Samotest: memHash B0649DC5 (NativeAtariCoreBridge.OCEKAVANY_MEM_HASH,
+       test_overeni/b323/memhash.cpp), procesor beze zmeny.
+     - OVERENI test_overeni/b323: test_b323_jadro.cpp 12 OK (proti jadru B322
+       8 CHYBA = test chybu pozna), regrese_her.cpp stare vs nove jadro
+       (16 programu, 40 s se vstupy, CRC obrazu): 14 beze zmeny, jinak jen
+       Air Strike a Sonic; regrese_jadra.sh (b292 / b291 / b316 testy) shodne;
+       test_b292_jni_host 81/0 v obou. Vizualne (snimky) Air Strike hrani,
+       Sonic titulek a level 1 (prstynky, cas).
+     - 🔒 ZAMKNOUT (TEST): server v11.2 (soukromy, NapServer_v11_2.zip) -
+       NapKod.ZamekCislo / ZamekPotvrzeno / ZamekSega (kody.txt sloupce 19-21
+       zamek, zamek_co S/SP, zamek_potvrzeno), ZamkniTest(kod, vse): vse =
+       Koupeno/Zadost Sega+PS1 pryc, PostupRadku = 0, PostupSegaMs = 0, App*
+       false; jen PS1 = PS1 + hodiny Segy. stav a postup vraci "zamek":
+       {cislo, sega, ps1}. POST /api/v1/postup&zamek=Z: Z < cislo -> postup se
+       nebere (pred zamkem), bez zamek (appka B322) taky ne, dokud zamek ceka;
+       Z > potvrzeno -> potvrzeno + log "🔒 ZAMČENO ... provedl"; Z > cislo ->
+       server cislo srovna (obnovena zaloha kody.txt). Okno KODY: tlacitko
+       🔒 ZAMKNOUT (TEST) (SestavZamek), sloupec "🔒 zamyka se - ceka na
+       telefon". test_server.py 214 OK (S38-S42), NapGuiTest i toto okno.
+       APPKA: NapPostupJadro.provedZamek(cislo, sega, ps1) (klic zamek_cislo,
+       kazde cislo jednou; sega = zamkniVse), MainActivity.napSlucServer
+       (parametr zamek - NEJDRIV zamek, pak odemceno a postup; po zamku hned
+       napPostupOdesli = potvrzeni; hlaska "Spravce N&P zamkl ... (test)"),
+       napPostupOdesli / napPostupReset posilaji &zamek=. TestB323 18 OK (proti
+       serveru v11.2), TestB322 42 OK proti v11.2.
+     - build.gradle: versionCode 366 "EMU10-B323-HRY-ZAMEK". Napoveda: "320 kB".
+     - DALSI KROK: Rene - APK B323 na server (AtariHelp_Vision_v1.apk), server
+       v11.2, na telefonu Air Strike a Sonic (plynulost Sonicu!), zamek z okna
+       KODY.
+
+===============================================================================

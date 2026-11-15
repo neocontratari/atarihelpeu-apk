@@ -1,0 +1,22 @@
+== A NapPostupJadro.provedZamek (🔒 ZAMKNOUT TEST ze serveru)
+OK     A1 hrac ma vse: Sega i PS1 zadarmo i zaplacene, zadny zamek
+OK     A2 zamek c. 1 Sega i PS1: vse zamcene, 0 radku, 0 min, nic koupene, zamek 1
+OK     A3 stejny zamek podruhe (dalsi stav ze serveru) = nic, postup po zamku zustane
+OK     A4 slouceni zalohy ze serveru (po zamku 0 / 0) nic neotevre
+OK     A5 hrac z B321 (otevreno po 50 radcich / 30 min - zadarmo): zamek ho zamkne
+OK     A6 zamek jen PS1: Sega (1500 radku) zustane, PS1 zamcena, hodiny Segy 0, PS1 nekoupena
+OK     A7 starsi zamek (c. 1 po c. 2) = nic
+OK     A8 cislo 0 (server bez zamku) = nic
+OK     A9 po zamku jde PS1 zase ziskat (120 h)
+== C zamek proti skutecnemu serveru N&P v11.2 (jako MainActivity.napSlucServer / napPostupOdesli)
+OK     C1 sparovano
+OK     C2 zaloha postupu se zamek=0 (zadny zamek) se bere: 1600 radku
+OK     C3 spravce 🔒 ZAMKNOUT Sega i PS1 -> stav.zamek {cislo 1, sega, ps1}
+OK     C4 postup z doby pred zamkem (zamek=0) server nebere a v odpovedi posle zamek
+OK     C5 appka zamek provedla: Sega i PS1 zamcene, 0 radku
+OK     C6 potvrzeni (postup se zamek=1) -> server: zamek potvrzen
+OK     C7 po zamku se postup zase zalohuje (20 radku)
+OK     C8 🔒 jen PS1: zamek c. 2 -> Sega zustane (zaplacena), PS1 zamcena, hodiny Segy 0
+OK     C9 log serveru: 🔒 ZAMKNOUT a 🔒 ZAMČENO (telefon Pixel 8 zamek c. 1 provedl)
+
+VYSLEDEK: 18 OK, 0 CHYBA

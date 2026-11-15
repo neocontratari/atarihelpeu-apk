@@ -136,6 +136,14 @@ public final class NapPostup {
         try { synchronized (ZAMEK) { return j(c).slucPostup(radku, ms); } } catch (Throwable ignored) { return false; }
     }
 
+    /** B323: kolikátý zámek ze serveru N&P už appka provedla. */
+    public static int zamekCislo(Context c) {
+        try { return j(c).zamekCislo(); } catch (Throwable t) { return 0; }
+    }
+    /** B323: zámek ze serveru (🔒 ZAMKNOUT TEST) - sega = Sega i PS1, jinak jen PS1. true = provedeno teď. */
+    public static boolean provedZamek(Context c, int cislo, boolean sega, boolean ps1) {
+        try { synchronized (ZAMEK) { return j(c).provedZamek(cislo, sega, ps1); } } catch (Throwable ignored) { return false; }
+    }
     /** B322: co je zaplacené podle serveru N&P. true = změna. */
     public static boolean nastavKoupeno(Context c, boolean sega, boolean ps1) {
         try { synchronized (ZAMEK) { return j(c).nastavKoupeno(sega, ps1); } } catch (Throwable ignored) { return false; }

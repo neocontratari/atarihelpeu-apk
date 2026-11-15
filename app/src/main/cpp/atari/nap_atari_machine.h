@@ -90,12 +90,20 @@ struct Pia { int orA = 0, ddrA = 0, orB = 0, ddrB = 0, ctlA = 0, ctlB = 0; };
 
 struct AtariMem {
   uint8_t ram[65536];
-  uint8_t ext[65536];                 // 130XE: 4 banky po 16 kB ($4000-$7FFF)
+  // B323: rozsirena pamet 320K "Compy Shop" = 16 bank po 16 kB v okne $4000-$7FFF (130XE ma 4).
+  // Banka = PORTB bity 2-3 + bity 6-7; procesor bit 4, ANTIC bit 5 jako na 130XE. Banky 130XE
+  // (bity 6-7 = 1, tak je nastavuje OS i bezne programy) lezi na zacatku ext[] presne jako drive,
+  // takze program pro 130XE se nezmeni. Navic banky 4-15 pro hry, ktere chteji 320K (Sonic A8:
+  // "NOT ENOUGH EXTENDED MEMORY - REQUIRES 320K RAMBO OR LARGER").
+  static const int EXT_BANK = 16;
+  uint8_t ext[EXT_BANK * 16384];
   const uint8_t *os = nullptr;        // 16 kB OS ROM
   const uint8_t *bas = nullptr;       // 8 kB BASIC ROM
   Pia pia;
   AtariMem() { std::memset(ram, 0, sizeof ram); std::memset(ext, 0, sizeof ext); }
   inline int portB() const { return (pia.orB | (~pia.ddrB)) & 0xFF; }
+  // cislo banky rozsirene pameti pro PORTB (0-3 = banky 130XE, 4-15 = 320K Compy Shop)
+  static inline int bankaExt(int pb) { return ((pb >> 2) & 3) | (((~pb) >> 4) & 0x0C); }
 };
 
 // ---------------------------------------------------------------------
@@ -1334,7 +1342,7 @@ public:
     memWrite(a, v);
   }
   // Poradi (kdo vyhraje): ROM (OS / cartridge / BASIC / self-test) > VBXE MEMAC >
-  // rozsirena pamet 130XE > zakladni pamet. ($D000-$D7FF = I/O resi volajici.)
+  // rozsirena pamet (B323: 320K Compy Shop, banky 130XE beze zmeny) > zakladni pamet. ($D000-$D7FF = I/O resi volajici.)
   // B316: cartridge ve slotu ($8000-$9FFF RD4, $A000-$BFFF RD5) ma prednost
   // pred vestavenym BASICem (na 130XE ho RD5 vypne) i pred RAM.
   inline uint8_t memRead(uint16_t a, bool antic) {
@@ -1355,7 +1363,7 @@ public:
       const int32_t o = (antic ? vbx.mapAntic : vbx.mapCpu)[a >> 12];
       if (o >= 0) return vbx.vram[(uint32_t)(o + (a & 0x0FFF)) & Vbxe::MASK];
     }
-    if (a >= 0x4000 && a < 0x8000 && !(pb & (antic ? 0x20 : 0x10))) return mem.ext[((pb >> 2) & 3) * 0x4000 + (a - 0x4000)];
+    if (a >= 0x4000 && a < 0x8000 && !(pb & (antic ? 0x20 : 0x10))) return mem.ext[AtariMem::bankaExt(pb) * 0x4000 + (a - 0x4000)];
     return mem.ram[a];
   }
   inline uint8_t anticRead(uint16_t a) {
@@ -1378,7 +1386,7 @@ public:
       const int32_t o = vbx.mapCpu[a >> 12];
       if (o >= 0) { vbx.vram[(uint32_t)(o + (a & 0x0FFF)) & Vbxe::MASK] = v; return; }
     }
-    if (a >= 0x4000 && a < 0x8000 && !(pb & 0x10)) { mem.ext[((pb >> 2) & 3) * 0x4000 + (a - 0x4000)] = v; return; }
+    if (a >= 0x4000 && a < 0x8000 && !(pb & 0x10)) { mem.ext[AtariMem::bankaExt(pb) * 0x4000 + (a - 0x4000)] = v; return; }
     mem.ram[a] = v;
   }
 

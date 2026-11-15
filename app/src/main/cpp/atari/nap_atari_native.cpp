@@ -1412,7 +1412,8 @@ Java_eu_atarihelp_emu10_NativeAtariCoreBridge_devStartNative(JNIEnv *, jclass, j
       char b[400];
       const unsigned osSum = (unsigned)NAP_OS_ROM[0] | ((unsigned)NAP_OS_ROM[1] << 8);
       snprintf(b, sizeof(b),
-               "B293 JADRO = ATARI 130XE PAL: RAM 64 kB + rozsirena 4x16 kB (PORTB bity 2-3, procesor bit 4, ANTIC bit 5), "
+               "B293 JADRO = ATARI 130XE PAL: RAM 64 kB + rozsirena 16x16 kB (B323: 320K Compy Shop - PORTB bity 2-3 a 6-7, "
+               "banky 130XE beze zmeny; procesor bit 4, ANTIC bit 5), "
                "OS XL/XE rev.%u (soucet $%04X), BASIC rev.C vestaveny, self-test ROM $5000, TRIG3 = RD5 cartridge (prazdny slot = 0), "
                "RESET = reset CPU+ANTIC+PIA/MMU, plovouci datova sbernice, ANTIC/GTIA PAL 312 radku, POKEY 1,773 MHz",
                (unsigned)NAP_OS_ROM[0x3FF7], osSum);
@@ -1892,7 +1893,7 @@ Java_eu_atarihelp_emu10_NativeAtariCoreBridge_devDiagNative(JNIEnv *env, jclass)
              "rozsirena pamet pro CPU %s banka %d), NMIEN=$%02X, DLIST=$%04X, SAVMSC=$%04X, DDEVIC=$%02X, D1: %s, rychly timeout SIO %s, "
              "XEX stav %d, psani TXT stav %d, snimek %lld, cartridge %s",
              m.cpu.pc, m.cpu.a, m.cpu.x, m.cpu.y, m.cpu.s, m.cpu.p, m.cpu.jam ? " JAM" : "", pb, (pb & 1) ? "zap" : "VYP",
-             (pb & 2) ? "vyp" : "ZAP", (pb & 0x10) ? "vyp" : "ZAP", (pb >> 2) & 3, m.nmien, w(0x230), w(0x58), r[0x300],
+             (pb & 2) ? "vyp" : "ZAP", (pb & 0x10) ? "vyp" : "ZAP", nap::AtariMem::bankaExt(pb), m.nmien, w(0x230), w(0x58), r[0x300],
              m.disk.mounted ? m.disk.name.c_str() : "prazdna", m.sioRychlyTimeout ? "ANO" : "ne", (int)g_xex.stav, (int)g_psani.stav,
              (long long)m.frame, cartPopis(m).c_str());
     out += b; out += "\n";
@@ -1902,7 +1903,8 @@ Java_eu_atarihelp_emu10_NativeAtariCoreBridge_devDiagNative(JNIEnv *env, jclass)
 }
 
 /** B299: cela pamet Atari (64 kB + rozsirenych 64 kB + registry) pro LOG/CHYBA -
- *  Java ji prilozi k logu. Hlavicka 16 B "NAP130XE-B299", 64 B registru. */
+ *  Java ji prilozi k logu. Hlavicka 16 B "NAP130XE-B299", 64 B registru.
+ *  B323: rozsirena pamet ma 320K (16 bank) - do vypisu jdou dal jen 4 banky 130XE (ext[0..64 kB]). */
 extern "C" JNIEXPORT jbyteArray JNICALL
 Java_eu_atarihelp_emu10_NativeAtariCoreBridge_devRamDumpNative(JNIEnv *env, jclass) {
   std::vector<uint8_t> d(16 + 64 + 65536 + 65536, 0);

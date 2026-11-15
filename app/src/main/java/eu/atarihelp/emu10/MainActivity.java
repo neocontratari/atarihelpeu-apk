@@ -10783,7 +10783,8 @@ public class MainActivity extends Activity {
                 return;
             }
             if (!o.ok()) return;
-            napSlucServer(NapJson.mapa(o.json, "odemceno"), NapJson.mapa(o.json, "postup"), NapJson.mapa(o.json, "zadost"), proc);
+            napSlucServer(NapJson.mapa(o.json, "odemceno"), NapJson.mapa(o.json, "postup"), NapJson.mapa(o.json, "zadost"),
+                    NapJson.mapa(o.json, "zamek"), proc);
             if (ticho) return;
             final String zprava = NapJson.text(o.json, "zprava");
             final int nova = (int) NapJson.cislo(o.json, "apk_verze", 0);
@@ -10833,9 +10834,21 @@ public class MainActivity extends Activity {
      * Zaplacene odemceni (odemceno) a zaloha postupu (postup) ze serveru - na pozadi.
      * Kdyz se tim neco otevrelo: menu, hlaska a obnoveni stranky ODEMKNOUT.
      */
-    private void napSlucServer(java.util.Map<String, Object> odemceno, java.util.Map<String, Object> postup, java.util.Map<String, Object> zadost, String proc) {
+    private void napSlucServer(java.util.Map<String, Object> odemceno, java.util.Map<String, Object> postup, java.util.Map<String, Object> zadost,
+                               java.util.Map<String, Object> zamek, String proc) {
         final boolean segaPred = NapPostup.segaOdemcena(this), ps1Pred = NapPostup.ps1Odemcena(this);
         boolean zmena = false;
+        // B323: spravce klikl 🔒 ZAMKNOUT (TEST) - zamknout i to, co je otevrene zadarmo (nejdriv, pak se slouci zbytek)
+        String zamceno = null;
+        if (zamek != null) {
+            final int cislo = (int) NapJson.cislo(zamek, "cislo", 0);
+            final boolean zS = NapJson.ano(zamek, "sega"), zP = NapJson.ano(zamek, "ps1");
+            if (cislo > 0 && NapPostup.provedZamek(this, cislo, zS, zP)) {
+                zamceno = zS ? "SEGA i PS1" : "PS1";
+                zmena = true;
+                appendNativeLog("B323 ZAMEK ze serveru c. " + cislo + " (" + zamceno + ", " + proc + ") -> " + NapPostup.stav(this));
+            }
+        }
         if (odemceno != null) zmena |= NapPostup.nastavKoupeno(this, NapJson.ano(odemceno, "sega"), NapJson.ano(odemceno, "ps1"));
         long srvRadku = -1, srvMs = -1;
         if (postup != null) {
@@ -10850,7 +10863,9 @@ public class MainActivity extends Activity {
         final boolean segaPo = NapPostup.segaOdemcena(this), ps1Po = NapPostup.ps1Odemcena(this);
         if (zmena || segaPo != segaPred || ps1Po != ps1Pred) {
             appendNativeLog("B322 POSTUP podle serveru (" + proc + ") -> " + NapPostup.stav(this));
-            final String hlaska = (!ps1Pred && ps1Po) ? tx("PS1 ODEMČENA – díky! Najdeš ji v menu.", "PS1 UNLOCKED – thank you! It is in the menu.")
+            final String hlaska = zamceno != null ? tx("Správce N&P zamkl " + zamceno + " (test) – postup je od začátku.",
+                                                      "The N&P admin locked " + zamceno + " (test) – progress starts over.")
+                    : (!ps1Pred && ps1Po) ? tx("PS1 ODEMČENA – díky! Najdeš ji v menu.", "PS1 UNLOCKED – thank you! It is in the menu.")
                     : (!segaPred && segaPo) ? tx("SEGA ODEMČENA – díky! Najdeš ji v menu.", "SEGA UNLOCKED – thank you! It is in the menu.") : null;
             ui.post(() -> {
                 try {
@@ -10861,8 +10876,10 @@ public class MainActivity extends Activity {
                 } catch (Throwable ignored) {}
             });
         }
+        // B323: zamek proveden -> hned potvrdit serveru (postup se zamek=N); jinak:
         // na serveru je mene nez v telefonu (prvni start B322, hra bez site) -> poslat
-        if (srvRadku >= 0 && (NapPostup.napsanoRadku(this) > srvRadku || NapPostup.segaOdehranoMs(this) > srvMs + 60000L)) napPostupOdesli(true);
+        if (zamceno != null) { napPostupPoslano = ""; napPostupOdesli(true); }
+        else if (srvRadku >= 0 && (NapPostup.napsanoRadku(this) > srvRadku || NapPostup.segaOdehranoMs(this) > srvMs + 60000L)) napPostupOdesli(true);
     }
 
     /** Zaloha postupu na serveru N&P (bere se vyssi). Nejvys jednou za 5 minut, hned = pri konci hry / pauze. */
@@ -10871,28 +10888,31 @@ public class MainActivity extends Activity {
         final int radku = NapPostup.napsanoRadku(this);
         final long ms = NapPostup.segaOdehranoMs(this);
         final boolean sega = NapPostup.segaOdemcena(this), ps1 = NapPostup.ps1Odemcena(this);
-        final String co = radku + "|" + (ms / 60000L) + "|" + sega + "|" + ps1;
+        final int zamek = NapPostup.zamekCislo(this);   // B323: server bere jen postup po poslednim zamku
+        final String co = radku + "|" + (ms / 60000L) + "|" + sega + "|" + ps1 + "|" + zamek;
         final long ted = android.os.SystemClock.uptimeMillis();
         if (co.equals(napPostupPoslano)) return;
         if (!hned && napPostupPoslanoMs != 0L && ted - napPostupPoslanoMs < 5L * 60 * 1000) return;
         napPostupPoslanoMs = ted;
         napPostupPoslano = co;
         new Thread(() -> {
-            NapServerKlient.Odpoved o = napServer.post("/api/v1/postup?radku=" + radku + "&sega_ms=" + ms + "&sega=" + (sega ? 1 : 0) + "&ps1=" + (ps1 ? 1 : 0));
+            NapServerKlient.Odpoved o = napServer.post("/api/v1/postup?radku=" + radku + "&sega_ms=" + ms + "&sega=" + (sega ? 1 : 0) + "&ps1=" + (ps1 ? 1 : 0)
+                    + "&zamek=" + zamek);
             if (!o.ok() || o.json == null) { napPostupPoslano = ""; return; }   // priste znovu
             java.util.HashMap<String, Object> p = new java.util.HashMap<>();
             p.put("radku", o.json.get("radku"));
             p.put("sega_ms", o.json.get("sega_ms"));
-            napSlucServer(NapJson.mapa(o.json, "odemceno"), p, null, "zaloha postupu");
+            napSlucServer(NapJson.mapa(o.json, "odemceno"), p, null, NapJson.mapa(o.json, "zamek"), "zaloha postupu");
         }, "nap-postup").start();
     }
 
     /** Servis ZAMKNOUT VSE: i zaloha postupu na serveru na nulu (zaplacene odemceni vraci jen spravce). */
     private void napPostupReset() {
         if (napServer == null || !napServer.sparovano()) return;
-        napPostupPoslano = "0|0|false|false";
+        final int zamek = NapPostup.zamekCislo(this);
+        napPostupPoslano = "0|0|false|false|" + zamek;
         new Thread(() -> {
-            NapServerKlient.Odpoved o = napServer.post("/api/v1/postup?radku=0&sega_ms=0&sega=0&ps1=0&reset=1");
+            NapServerKlient.Odpoved o = napServer.post("/api/v1/postup?radku=0&sega_ms=0&sega=0&ps1=0&reset=1&zamek=" + zamek);
             appendNativeLog("B322 POSTUP na serveru vynulovan: " + (o.ok() ? "ok" : o.kod + " " + o.duvod()));
         }, "nap-postup-reset").start();
     }
@@ -11116,7 +11136,7 @@ public class MainActivity extends Activity {
                     java.util.HashMap<String, Object> od = new java.util.HashMap<>();
                     od.put("sega", "sega".equals(c) || NapPostup.segaKoupena(a));
                     od.put("ps1", "ps1".equals(c) || NapPostup.ps1Koupena(a));
-                    napSlucServer(od, null, null, "stranka odemknout");
+                    napSlucServer(od, null, null, null, "stranka odemknout");
                 }
                 if (ok && NapJson.ano(o.json, "zadost") && !napCekaPlatba) ui.post(() -> napHlidejPlatbu(true));
                 napOdpovedStrance("platba", "{\"ok\":" + ok + ",\"kod\":" + o.kod + ",\"duvod\":" + NapJson.uvoz(o.duvod())

@@ -1,0 +1,21 @@
+B323 - regrese jadra Atari: stare jadro (B322) vs nove (B323) - stejne testy, porovnani vystupu
+
+STEJNE  boot (25 radku)
+STEJNE  xe130 (60 radku)
+STEJNE  kazeta (30 radku)
+STEJNE  bootkazeta (4 radku)
+STEJNE  pokey (11 radku)
+STEJNE  txt_basic (41 radku)
+STEJNE  txt_tbxl (42 radku)
+STEJNE  tbxl_disketa (16 radku)
+STEJNE  vlozeni (69 radku)
+STEJNE  pc_klav (105 radku)
+STEJNE  tv_proud (21 radku)
+STEJNE  popeye (7 radku)
+STEJNE  wolf3d (7 radku)
+STEJNE  b291_runtime (42 radku)
+STEJNE  b316_core (60 radku)
+
+VYSLEDEK: 15 stejne, 0 s rozdilem
+
+test_b292_jni_host (SKUTECNY nap_atari_native.cpp se stuby, cca 4 min): stare jadro VYSLEDEK: 81 kontrol, 0 chyb, nove jadro VYSLEDEK: 81 kontrol, 0 chyb; radky OK shodne

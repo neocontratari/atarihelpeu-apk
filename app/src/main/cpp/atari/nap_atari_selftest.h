@@ -12,7 +12,7 @@
 //     priznaky, obsah pameti z hashe) -> jedna instrukce -> soucet stavu,
 //     poctu cyklu na sbernici a vsech zapisu,
 //  2) pamet 130XE: vsech 256 hodnot PORTB, cteni procesoru i ANTICu z cele
-//     adresy (OS/BASIC/self-test ROM, 4 banky rozsirene pameti),
+//     adresy (OS/BASIC/self-test ROM, B323: 16 bank rozsirene pameti 320K),
 //  3) rychlost: 150 snimku skutecneho startu OS (3 s Atari) -> kolikrat
 //     rychleji nez skutecne Atari to telefon zvladne.
 #pragma once
@@ -82,11 +82,12 @@ inline uint32_t memHash(long long *outReads) {
   m.coldInit();
   m.mem.os = os; m.mem.bas = bas;
   for (int i = 0; i < 65536; i++) m.mem.ram[i] = (uint8_t)((i * 7 + 11) & 0xFF);
-  for (int i = 0; i < 65536; i++) m.mem.ext[i] = 0;
+  std::memset(m.mem.ext, 0, sizeof m.mem.ext);
   auto setPortB = [&](int v) { m.piaWrite(3, 0x00); m.piaWrite(1, 0xFF); m.piaWrite(3, 0x04); m.piaWrite(1, (uint8_t)v); };
-  // zapis vzoru do vsech 4 bank pres okno $4000-$7FFF (CPU vidi banku, kdyz bit 4 = 0)
-  for (int b = 0; b < 4; b++) {
-    setPortB(0xE3 | (b << 2));            // OS zap., BASIC vyp., CPU banka b, ANTIC hlavni
+  // zapis vzoru do vsech 16 bank pres okno $4000-$7FFF (CPU vidi banku, kdyz bit 4 = 0);
+  // B323: banky 0-3 = 130XE (bity 6-7 = 1), 4-15 = 320K Compy Shop (bity 6-7)
+  for (int b = 0; b < AtariMem::EXT_BANK; b++) {
+    setPortB(0x23 | ((b & 3) << 2) | ((~b & 0x0C) << 4));   // OS zap., BASIC vyp., CPU banka b, ANTIC hlavni
     for (int o = 0; o < 16384; o++) m.memWrite((uint16_t)(0x4000 + o), (uint8_t)((b * 16384 + o) * 13 + 29));
   }
   uint32_t h = 2166136261u; long long n = 0;

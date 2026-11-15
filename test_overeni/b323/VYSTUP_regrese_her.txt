@@ -1,0 +1,21 @@
+B323 - regrese her: stare jadro (B322) vs nove (B323), 2000 snimku (40 s), stejny scenar vstupu (START 600, FIRE 900 a 1300,
+joystick vpravo 1000-1100, vlevo 1150-1250), CRC32 obrazu kazdych 100 snimku (regrese_her.cpp). Hry Reneho nejsou v repu.
+
+STEJNE  6d8e58c8-Wonderboy_VBXE.car
+JINE    Air_Strike.xex   <- PC=$0100 PORTB=$FF jam=0 xex=5  -> PC=$1EC1 PORTB=$FF jam=0 xex=5 
+STEJNE  Donkey Kong Junior (Title Version).xex
+STEJNE  Popeye (VBXE, PAL Version)(2).xex
+STEJNE  Postcard_Atari_Rocky.xex
+JINE    SONIC_A8_AI.xex   <- PC=$97C7 PORTB=$FF jam=0 xex=4  -> PC=$24AB PORTB=$FE jam=0 xex=5 
+STEJNE  The Activision Decathlon.xex
+STEJNE  The_Activision_Decathlon.xex
+STEJNE  b8ee87c0-Ghostbusters.xex
+STEJNE  commando230810.xex
+STEJNE  f154f042-KITT_HRA47_V33Z_L1L2_LOCKED_L3_PNG_HORIZON_FIXED.xex
+STEJNE  mission.xex
+STEJNE  nightdriver_vbxe.xex
+STEJNE  rrumble.xex
+STEJNE  turbo_basic_xl.xex
+STEJNE  wolf3d(1).atr
+
+VYSLEDEK: 14 her beze zmeny, zmenily se jen Air_Strike a SONIC_A8_AI (ted jdou)

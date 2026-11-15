@@ -1,0 +1,52 @@
+B323 - DVE HRY V ATARI (Air Strike, Sonic A8) A ZAMEK ZE SERVERU (🔒 ZAMKNOUT TEST) - overeni na PC
+=====================================================================================================
+
+Rene: "zjistil sem ze nam v atari nefunguji 2 hry - zadna katastrofa - ale opatrne at nerozbijeme
+skvele fungujici emu" + "nechapu proc nejde uzamcit segu a ps1 i tzv bez platby / uz treba kvuli testum".
+
+PRICINY (rozbor XEX v jadru appky na PC):
+ - Air Strike: obal na $BB00 presune hru (bootovaci disketa / kazeta prevedena do XEX), do DOSINI da jeji
+   start $3C20 a skoci na teply start OS (JMP $E474). OS vola DOSINI jen kdyz BOOT? ($09) bit 0 = 1 - tak
+   je to po zavedeni DOSu. Nas zavadec XEX DOS neemuloval: BOOT? = 0 -> OS DOSINI preskocil a skoncil
+   pres DOSVEC v parkovaci smycce $0100 (cerna obrazovka). Oprava: XexLoader::prostrediDos - BOOT? bit 0
+   = 1, DOSINI = RTS v OS ROM ($C017), kdyz ho nic nenastavilo.
+ - Sonic A8: test pameti hlasi "NOT ENOUGH EXTENDED MEMORY - REQUIRES 320K RAMBO OR LARGER" (chce 16 bank,
+   130XE ma 4). Oprava: rozsirena pamet 320K "Compy Shop" (AtariMem::bankaExt: PORTB bity 2-3 + 6-7,
+   procesor bit 4, ANTIC bit 5 jako 130XE). Banky 130XE (bity 6-7 = 1) lezi v ext[0..64 kB] jako drive.
+
+Spoustet z adresare test_overeni/b323. Hry Reneho (Air_Strike.xex, SONIC_A8_AI.xex) v repozitari nejsou.
+
+1) Obe opravy jadra + hry (kdyz jsou):
+     g++ -std=c++17 -O2 -I../../app/src/main/cpp/atari -o test_b323_jadro test_b323_jadro.cpp
+     ./test_b323_jadro [Air_Strike.xex] [SONIC_A8_AI.xex]         -> VYSTUP_test_b323_jadro.txt (12 OK)
+   T1-T4 320K (16 bank, banky 130XE na miste, CPU bit 4 / ANTIC bit 5, self-test ROM ma prednost),
+   T5-T7 zavadec (BOOT?, DOSINI, program s vlastnim DOSINI + teply start), H1-H5 Air Strike a Sonic hraji.
+   Prelozeno proti jadru B322 (git worktree) dava 8 CHYBA = test chybu opravdu pozna.
+
+2) Regrese: stare jadro (B322) vs nove (B323) - stejne vstupy, otisky obrazu:
+     git worktree add /tmp/b322 9a72751
+     g++ -std=c++17 -O2 -I/tmp/b322/app/src/main/cpp/atari -o regrese_stare regrese_her.cpp
+     g++ -std=c++17 -O2 -I../../app/src/main/cpp/atari -o regrese_nove regrese_her.cpp
+     ./regrese_stare HRA 2000 > a.txt; ./regrese_nove HRA 2000 > b.txt; cmp a.txt b.txt
+                                                                  -> VYSTUP_regrese_her.txt
+   16 programu (test_assets + Reneho hry, XEX / ATR / CAR, VBXE, TBXL): 14 beze zmeny, zmenily se jen
+   Air Strike a Sonic.
+     bash regrese_jadra.sh /tmp/b322 <pracovni slozka>            -> VYSTUP_regrese_jadra.txt
+   starsi testy jadra (b292 boot, xe130, kazeta, TBXL disketa, Popeye VBXE, Wolfenstein ATR, b291, b316
+   cartridge...) ve starem i novem jadru: vystupy shodne. test_b292_jni_host (skutecny nap_atari_native.cpp)
+   81 kontrol, 0 chyb v obou.
+
+3) Samotest jadra v telefonu (NativeAtariCoreBridge.OCEKAVANY_MEM_HASH):
+     g++ -std=c++17 -O2 -I../../app/src/main/cpp/atari -o memhash memhash.cpp && ./memhash
+                                                                  -> VYSTUP_memhash.txt
+   memHash B0649DC5 (B322 D3949DC5 = 4 banky; procesor 29C55806 beze zmeny).
+
+4) 🔒 ZAMKNOUT (TEST) ze serveru - tridy appky proti SKUTECNEMU serveru N&P v11.2 (mono NapTest.exe):
+     javac -d out ../../app/src/main/java/eu/atarihelp/emu10/{NapJson,NapServerKlient,NapPostupJadro}.java \
+         jvm/TestB323.java
+     java -cp out eu.atarihelp.emu10.TestB323 [NapTest.exe <pracovni slozka>]   -> VYSTUP_TestB323.txt (18 OK)
+   A) provedZamek: Sega i PS1 / jen PS1, i otevrene zadarmo (radky, hodiny, B321), kazdy zamek jednou,
+   C) server: spravce zamkne -> stav.zamek -> appka zamkne -> postup se zamek=N -> server potvrdi,
+      postup z doby pred zamkem server nebere, jen PS1.
+   Server v11.2 (u serveru, soukromy): test_server.py 214 OK (S38-S42 zamek), NapGuiTest i okno ZAMKNOUT.
+   ../b322/jvm/TestB322.java proti serveru v11.2 dal 42 OK (zpetne kompatibilni).

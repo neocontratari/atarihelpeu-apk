@@ -1,0 +1,2 @@
+nove:  cpuHash 29C55806 cpuInstr 51200 memHash B0649DC5 memReads 16252928
+stare (B322): cpuHash 29C55806 cpuInstr 51200 memHash D3949DC5 memReads 16252928

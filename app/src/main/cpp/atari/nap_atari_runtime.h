@@ -297,6 +297,26 @@ struct XexLoader {
   }
   static void parkKod(Machine &m) { m.mem.ram[PARK] = 0x4C; m.mem.ram[PARK + 1] = PARK & 0xFF; m.mem.ram[PARK + 2] = PARK >> 8; }
 
+  // B323: stav jako po zavedeni DOSu. XEX se normalne nahrava z DOSu, a ten je zavedeny z diskety:
+  // BOOT? ($09) bit 0 = 1 a DOSINI ($0C) ukazuje na jeho start. Teply start OS (JMP $E474, RESET)
+  // pak zavola JSR (DOSINI). Hry prevedene z bootovaci diskety / kazety do XEX (Air Strike: obal
+  // na $BB00 presune hru, do DOSINI da jeji start $3C20 a skoci na teply start) na tom stoji - bez
+  // BOOT? OS DOSINI preskocil a skoncil pres DOSVEC v parkovaci smycce (cerna obrazovka).
+  // DOSINI, ktere nic nenastavilo (0), dostane RTS z OS ROM - teply start pak dopadne jako drive.
+  static int rtsVOs(const Machine &m) {
+    if (!m.mem.os) return 0;
+    for (int o = 0; o < 0x1000; o++) if (m.mem.os[o] == 0x60) return 0xC000 + o;   // $C000-$CFFF (bez self-testu)
+    return 0;
+  }
+  static void prostrediDos(Machine &m) {
+    if ((m.mem.ram[0x0C] | (m.mem.ram[0x0D] << 8)) == 0) {
+      const int rts = rtsVOs(m);
+      if (rts == 0) return;                                        // bez OS ROM nic (JSR $0000 by spadl)
+      m.mem.ram[0x0C] = rts & 0xFF; m.mem.ram[0x0D] = (rts >> 8) & 0xFF;
+    }
+    m.mem.ram[0x09] |= 0x01;                                       // BOOT?: disketa zavedena
+  }
+
   // Vola se po kazdem snimku (pod zamkem stroje).
   void poSnimku(Machine &m) {
     if (!aktivni() && stav != INIT_DLOUHO) return;
@@ -316,6 +336,7 @@ struct XexLoader {
         m.sioRychlyTimeout = false;
         m.consol = 7;                                  // OPTION pustit (hry ho ctou na titulce)
         m.mem.ram[0x2E0] = 0; m.mem.ram[0x2E1] = 0;    // RUNAD
+        prostrediDos(m);
         std::snprintf(b, sizeof(b), "B291 XEX OS nastartovan za %d snimku (BASIC=%s, RAMTOP=$%02X) - nahravam segmenty",
                       snimku, (m.mem.portB() & 2) ? "VYPNUTY" : "ZAPNUTY", m.mem.ram[0x6A]);
         log.push_back(b);
@@ -423,7 +444,7 @@ inline std::string napDiagPameti(const Machine &m) {
   out += b; out += "\n";
   std::snprintf(b, sizeof(b), "B299 PAMET CRC32: $00-$7F %08X, $80-$FF %08X, $0100-$01FF %08X, $0200-$03FF %08X, $0400-$06FF %08X, "
                 "$0700-$1FFF %08X, $2000-$3FFF %08X, $4000-$7FFF %08X, $8000-$BFFF %08X, RAM pod ROM $C000-$CFFF %08X, $D800-$FFFF %08X, "
-                "rozsirena 64 kB %08X; VBXE MEMAC A $%02X/$%02X B $%02X",
+                "rozsirena 320K (16 bank) %08X; VBXE MEMAC A $%02X/$%02X B $%02X",
                 crc(0x00, 0x7F), crc(0x80, 0xFF), crc(0x100, 0x1FF), crc(0x200, 0x3FF), crc(0x400, 0x6FF), crc(0x700, 0x1FFF),
                 crc(0x2000, 0x3FFF), crc(0x4000, 0x7FFF), crc(0x8000, 0xBFFF), crc(0xC000, 0xCFFF), crc(0xD800, 0xFFFF),
                 napCrc32(m.mem.ext, sizeof(m.mem.ext)), m.vbx.memacCtl, m.vbx.memacBankA, m.vbx.memacBankB);

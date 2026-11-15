@@ -30,6 +30,7 @@ final class NapPostupJadro {
     static final String K_RADKY = "napsano_radku";
     static final String K_SEGA_KOUPENO = "sega_koupeno"; // B322: zaplaceno (podle serveru N&P)
     static final String K_PS1_KOUPENO = "ps1_koupeno";
+    static final String K_ZAMEK = "zamek_cislo";         // B323: kolikaty zamek ze serveru uz appka provedla
 
     /** Kolik řádků kódu otevře Segu (B322: 1500, dřív 50). */
     static final int SEGA_POTREBA_RADKU = 1500;
@@ -108,6 +109,27 @@ final class NapPostupJadro {
             p.zapisB(K_PS1_KOUPENO, ps1);
         }
         return zmena;
+    }
+
+    // ------------------------------------------------------------------ B323: zámek ze serveru (🔒 ZAMKNOUT TEST)
+    /** Kolikátý zámek ze serveru N&P už appka provedla (0 = žádný). */
+    int zamekCislo() { return Math.max(0, p.ctiI(K_ZAMEK, 0)); }
+
+    /**
+     * Správce na serveru klikl 🔒 ZAMKNOUT (TEST) - i Sega / PS1 otevřená zadarmo se zamkne.
+     * sega = Sega i PS1 (jako servis ZAMKNOUT VŠE), jinak jen PS1 (Sega i řádky zůstanou).
+     * Každý zámek (číslo) se provede jen jednou. true = provedeno teď.
+     */
+    boolean provedZamek(int cislo, boolean sega, boolean ps1) {
+        if (cislo <= zamekCislo()) return false;
+        if (sega) zamkniVse();
+        else if (ps1) {
+            p.zapisB(K_PS1, false);
+            p.zapisB(K_PS1_KOUPENO, false);
+            p.zapisL(K_MINUTY, 0L);
+        }
+        p.zapisI(K_ZAMEK, cislo);
+        return true;
     }
 
     // ------------------------------------------------------------------ zadní vrátka pro Reného (servis)
