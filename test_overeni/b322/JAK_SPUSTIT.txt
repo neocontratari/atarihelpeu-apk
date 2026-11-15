@@ -43,3 +43,20 @@ appka ho dostane od serveru (/api/v1/platba).
    ten samy C++ jako menu appky, tazeni = karusel, klepnuti = okno kodu / web; soubor z GitHubu (text/plain
    + nosniff jako GitHub -> stranka overi SHA-256 a spusti pres Blob), jiny soubor se nespusti, kopie na webu
    s integrity, bez WebGL / bez souboru puvodni GIFy. Overeno i proti skutecnemu raw.githubusercontent.com.
+
+6) Oprava 15. 11. 2026 - stranka 1130 TAK, JAK JI POSLE WORDPRESS (u Reneho skript B322 vubec nebezel:
+   odpocet 00:00:00:00, rozbite obrazky). Pricina: wptexturize (bezi na KAZDOU stranku, i blok Vlastni
+   HTML) meni & na &#038; v kazdem useku od "<" po nejblizsi ">" - i ve skriptu. B322 mela "img && !img"
+   mezi "c.length <= 3" a ">" -> chyba syntaxe. wptexturize.py a wpautop.py = prepis algoritmu WordPressu.
+     git show 3d7c875:web/stranka_1130/html_kod_www_stranky_B322.txt > /tmp/B322_14_11.txt
+     python3 test_web_wordpress.py ../../web/stranka_1130/html_kod_www_stranky_B322.txt \
+         --rozbita /tmp/B322_14_11.txt [--funkcni html_kod_www_stranky_B321.txt]
+                                                              -> VYSTUP_test_web_wordpress.txt (14 OK)
+   L1/L2 skripty bez "<", "&", zpetneho lomitka, prazdnych radku, "[pismeno" a WordPress je nezmeni;
+   W1-W4 surova / Gutenberg / klasicky editor / doplnek "odlozit JavaScript": odpocet, QR, 4 zive panely,
+   okno kodu; W5 bez WebGL / bez souboru GIFy (ve strance primo); W6 cizi chyba = navstevnik nic nevidi;
+   W7 ?nap_diag=1 radek diagnostiky; W8 rozbity skript -> diagnostika sama; W9 rozlozeni stejne do 3 px;
+   R1 B322 z 14. 11. pres Gutenberg = presne priznaky u Reneho; R2 B321 bezi (u Reneho bezela).
+   Stejna stranka v testu 5) taky 16 OK.
+   Server v11.1 (u serveru, soukrome): citelna tlacitka oken PLATBY / SEGA nebo PS1 / NOVY KOD,
+   test_server.py 203 OK, NapGuiTest (Xvfb 1750x1150) kontroluje i ta okna (zlaty text na snimku).

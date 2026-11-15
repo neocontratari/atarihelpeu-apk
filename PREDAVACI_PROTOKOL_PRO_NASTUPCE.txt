@@ -3632,5 +3632,33 @@
      - DALSI KROK: Rene zada ucet v 💳 PLATBY, test na telefonu (QR z galerie v
        jeho bance, ZAPLATIL -> ODEMKNOUT), stranka 1130 vlozit a zkontrolovat
        v mobilu.
+     - OPRAVA 15. 11. (Rene: "Webova stranka nefunguje jak ma"): na webu skript
+       B322 vubec nebezel (odpocet 00:00:00:00, obrazky bez src). PRICINA:
+       WordPress wptexturize (filtr the_content, bezi I NA BLOK VLASTNI HTML)
+       rozseka obsah na "znacky" = od "<" po nejblizsi ">" (i porovnani v JS!)
+       a v kazde zmeni & na &#038; - i uvnitr <script>. B322: "img && !img"
+       mezi "c.length <= 3" a ">" -> SyntaxError -> cely skript nebezi. B321
+       mela & mezi < a > jen v komentari. (Moje prvni domnenka "prazdne radky /
+       wpautop" byla spatne - simulace wpautop chybu nedala.)
+       PRAVIDLO PRO KAZDY SKRIPT VKLADANY DO WORDPRESSU: zadne "<" (porovnani
+       jen pres ">"), zadne "&", zadne zpetne lomitko, zadny prazdny radek,
+       "[" nikdy pred pismenem (shortcode), zadne HTML v retezcich (<img by
+       prepsal wp_filter_content_tags). Hlida test_web_wordpress.py (L1/L2).
+       Stranka 1130 nove: IIFE, kazda cast v zkus() (odpocet, QR, policka, zive
+       menu), start hned / DOMContentLoaded / load (doplnky "Delay JS"), GIFy a
+       QR primo v HTML (loading=lazy; trida "ceka" je hned skryje, kdyz jde
+       WebGL), odpocet staticky "--", texty ONLINE v data-online. Diagnostika:
+       maly skript pred hlavnim chyta chyby (i syntaxe hlavniho skriptu) a kdyz
+       hlavni neprobehne, ukaze nahore #nap1130-diag; ?nap_diag=1 ukaze vzdy.
+       #nap1130-koren p { margin: 0 } = klasicky editor (wpautop) nic neposune.
+       Test test_web_wordpress.py 14 OK (Gutenberg, klasicky, odlozeny JS, bez
+       WebGL, cizi chyba, diagnostika, rozlozeni do 3 px, R1 = stara B322 dava
+       presne priznaky z webu, R2 = B321 bezi) + test_web_page1130_b322.py 16 OK.
+       SERVER v11.1 (soukromy, NapServer_v11_1.zip): okna PLATBY, SEGA nebo PS1
+       a NOVY KOD - tlacitka SciFiButton (drive Button s cernym textem na tmavem
+       pozadi okna = necitelne), popisky s vyskou podle textu (NapDialog),
+       okna sestavuje SestavPlatby / SestavVyber / SestavDotaz (kvuli testu).
+       203 OK + NapGuiTest kontroluje okna na snimku Xvfb (zlate body v
+       tlacitkach, zakazane sede, nic mimo okno ani pres sebe).
 
 ===============================================================================

@@ -53,6 +53,23 @@ Apka je zdarma, ale pro rychlíky a nedočkavce ne.“
 - Soubor menu (2 MB) si stránka bere z GitHubu (pevná verze, kontrola SHA-256). Záloha přes FTP:
   `wp-content/uploads/nap/nap_menu_web.js`. Bez WebGL ukáže tvoje původní GIFy.
 
+## 5b. Oprava 15. 11. – web nešel
+
+- **Co se stalo:** na tvém webu skript stránky vůbec neběžel (odpočet 00:00:00:00, místo obrázků
+  rozbité ikonky). WordPress každou stránku prožene úpravou textu (wptexturize – i blok Vlastní HTML)
+  a ta ve skriptu změní znaky `&&` na `&#038;&#038;`, pokud stojí mezi znaky `<` a `>`. B322 to tam
+  měla jednou → chyba → celý skript stál. B321 ne, proto běžela.
+- **Ověřeno:** přesný přepis toho, co WordPress dělá (`test_overeni/b322/wptexturize.py`), stará stránka
+  B322 přes něj dá přesně tvoje příznaky, B321 běží. Na tvém webu samotném jsem to vidět nemohl.
+- **Nová stránka** (`web/stranka_1130/html_kod_www_stranky_B322.txt`): skripty nemají žádné `<`, `&`,
+  zpětná lomítka ani prázdné řádky – WordPress na ně nesáhne. Odpočet, QR a okno kódu běží zvlášť,
+  GIFy a QR jsou ve stránce přímo (když by skript neběžel, aspoň se ukážou). Funguje i s doplňky,
+  které JavaScript odkládají.
+- **Diagnostika:** když skript neproběhne, nahoře se sám ukáže červený řádek s důvodem.
+  Kontrola kdykoliv: `https://atarihelp.eu/?page_id=1130&nap_diag=1`.
+- **Server v11.1:** tlačítka v oknech 💳 PLATBY, SEGA nebo PS1 a NOVÝ KÓD jsou čitelná (dřív černý text
+  na tmavém), úvod okna PLATBY celý. Jinak beze změny.
+
 ## 6. Další
 
 - Staré cesty z JavaScriptu, které uměly přidat řádky nebo otevřít Segu bez placení
@@ -64,7 +81,7 @@ Apka je zdarma, ale pro rychlíky a nedočkavce ne.“
 
 - **Ověřeno na PC:** server 203 kontrol (54 nových), třídy appky proti skutečnému serveru 42, stránka
   ODEMKNOUT + aktivace v Chromiu 36 (QR kódy přečtené ZXingem = přesně text pro banku), web se živým
-  menu 16, staré testy bez nové chyby kromě záměrných změn, celá appka přeložená proti Androidu 34.
+  menu 16 + web tak, jak ho pošle WordPress 14 (oprava 15. 11.), staré testy bez nové chyby kromě záměrných změn, celá appka přeložená proti Androidu 34.
 - **Ověřeno v GitHubu na skutečném APK B322:** verze 365, podpis N&P (v2 + v3 s rotací), vložený klíč
   podpis nerozbije.
 - **Na telefonu zatím ne** – hlavně načtení QR kódu ze skutečné bankovní appky (ČS, Fio, KB…).
