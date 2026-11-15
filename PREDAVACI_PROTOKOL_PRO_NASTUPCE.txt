@@ -3903,5 +3903,28 @@
        Hlaska denniku "XA NE, CD audio NE" je obracena (Config.Xa / Cdda = 1
        znamena VYPNUTO) - XA i CD audio jsou ZAPNUTE; opravit textem pri PS1 zmene.
      - build.gradle: versionCode 370 "EMU10-B327-INSTALACE". Na telefonu neovereno.
+     - Rene po B327 (S8): aktualizace prosla (jeste starym oknem B326), volbu
+       jazyka videl; Toast "Nainstalovana nova verze" asi nevidel, otevreni
+       samo nejiste ("nechci kecat") -> B328 okno + zapis prijimace do logu.
+
+   B328: MERENI VYKONU PS1 + NAPOVEDA RETROID POCKET 6 + PO AKTUALIZACI OKNO
+   (15. 11. 2026). Rene: "Muzes pridat to mereni a nezapomen pridat do helpu
+   nove veci jak v cze tak v ang, hlavne ten nas pocket 6".
+     - PS1 JEN MERI (chovani beze zmeny, 2x zustava): libretro.c obaly 7 GPU +
+       6 zvukovych ukazatelu plugins.h (puvodni funkce, stejne argumenty) +
+       vout_flip obal; nap_ps1_native.cpp po kazdem snimku rozpad hra /
+       kresleni / predani obrazu / zvuk + jadro procesoru (getcpu, takt z /sys)
+       -> denik "VYKON ..." (pri pomalych snimcich vzdy). Hlaska "XA NE, CD
+       audio NE" byla obracena -> "zvuk XA ZAPNUTY, CD audio ZAPNUTY".
+       Dukaz na PC se skutecnym jadrem: pamet PS1 po 900 snimcich S merenim i
+       BEZ nej stejna (test_overeni/b328/integrace_b328_vykon.cpp 11 OK).
+     - Napoveda CZ / EN: Herni ovladac a Retroid Pocket 6 (menu, Atari, Sega,
+       PS1 vcetne mysi pravou packou, OPTIONS HERNI OVLADAC, verze v OPTIONS).
+     - Po aktualizaci: NapPoAktualizaci zapise cas + vysledek, poStartu ho da do
+       logu ("prijimac: ...") a "Nainstalovana nova verze" je OKNO s OK.
+     - DALSI KROK: Rene - B328 na server, aktualizace (poprve nove okno), pak
+       SpongeBob na stejnem miste a log -> radky VYKON ukazou, co zdrzuje
+       (kresleni 2x / hra / predani obrazu / zvuk / male jadro procesoru).
+     - build.gradle: versionCode 371 "EMU10-B328-MERENI". Na telefonu neovereno.
 
 ===============================================================================

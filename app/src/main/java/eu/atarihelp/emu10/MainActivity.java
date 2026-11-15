@@ -11808,8 +11808,9 @@ public class MainActivity extends Activity {
         } catch (Throwable t) {
             appendNativeLog("VERZE APKY = nezjistena: " + safeMsg(t));
         }
-        // B327: prvni start po aktualizaci -> Toast "Nainstalovana nova verze" (Android 10+ appku sam
-        // neotevre, at clovek vi, ze aktualizace prosla); do Androidu 9 ji otevrel NapPoAktualizaci
+        // B327: prvni start po aktualizaci -> "Nainstalovana nova verze" (B328 okno s OK misto Toastu; Android 10+
+        // appku sam neotevre, at clovek vi, ze aktualizace prosla); do Androidu 9 ji otevrel NapPoAktualizaci
+        // (B328: co prijimac udelal, jde do logu - "PO AKTUALIZACI ... prijimac: ...")
         try {
             final String nova = NapAktualizace.poStartu(this);
             if (nova != null) appendNativeLog(nova);

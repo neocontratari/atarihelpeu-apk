@@ -72,9 +72,23 @@ final class NapAktualizaceTexty {
                         : "Appka se pak zavře – otevři ji znovu ikonou.");
     }
 
-    /** Toast při prvním startu nové verze. */
+    /** Hláška při prvním startu nové verze (B328 okno, B327 Toast). */
     static String novaVerze(boolean en, String nazev) {
         return (en ? "✔ New version installed: " : "✔ Nainstalována nová verze: ") + nazev;
+    }
+
+    /** B328: titulek okna při prvním startu nové verze. */
+    static String novaVerzeTitulek(boolean en) {
+        return en ? "Update done" : "Aktualizace hotová";
+    }
+
+    /**
+     * B328: do logu - co udělal přijímač MY_PACKAGE_REPLACED (NapPoAktualizaci). casMs = kdy (0 = žádná
+     * zpráva od systému nepřišla), nyni = teď, vysledek = co zapsal.
+     */
+    static String prijimacDoLogu(long casMs, String vysledek, long nyni) {
+        if (casMs <= 0) return "prijimac: zadna zprava od systemu (MY_PACKAGE_REPLACED neprisla)";
+        return "prijimac: zprava od systemu pred " + Math.max(0L, (nyni - casMs) / 1000L) + " s, " + (vysledek == null ? "?" : vysledek);
     }
 
     /**

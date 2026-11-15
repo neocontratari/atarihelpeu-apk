@@ -1,0 +1,90 @@
+2026-11-15 18:02:11.766  PS1 JADRO: Starting PCSX-ReARMed r26-nap-sa1 (cc 13.3.0 64bit pic ssse3 gpu=BUILTIN_GPU)
+2026-11-15 18:02:11.766  PS1 JADRO: build time: Nov 15 2026 17:57:05
+2026-11-15 18:02:11.766  PS1 JADRO: 2 cpu core(s) detected
+2026-11-15 18:02:11.767  PS1 JADRO: No BIOS files found.
+2026-11-15 18:02:11.767  PS1 JADRO: Using PIXEL_FORMAT 2
+2026-11-15 18:02:11.767  PS1 JADRO: plugin: /builtin_gpu
+2026-11-15 18:02:11.767  PS1 JADRO: plugin: /builtin_spu
+2026-11-15 18:02:11.767  PS1 JADRO: Plugins loaded.
+2026-11-15 18:02:11.767  PS1 JADRO: Loaded CD Image: PRAC/b328ps1/mys_test.exe (568 bytes).
+2026-11-15 18:02:11.767  PS1 JADRO: Track 01 DATA  - Start 00:02:00, Length 00:00:00
+2026-11-15 18:02:11.767  PS1 JADRO: End 00:02:00 (sector 150)
+2026-11-15 18:02:11.767  PS1 JADRO: memcard 1 is libretro-managed
+2026-11-15 18:02:11.767  PS1 JADRO: memcard 2 is libretro-managed
+2026-11-15 18:02:11.769  PS1 JADRO: HLE BIOS initialized.
+2026-11-15 18:02:11.769  PS1 JADRO: note: running with HLE BIOS, expect compatibility problems
+2026-11-15 18:02:11.769  PS1 JADRO: ----------------------------------------------------------
+2026-11-15 18:02:11.769  PS1 PAMETOVA KARTA nova (soubor zatim neni): PRAC/b328ps1/karta_b328/memory_card_1.srm, 131072 B prazdna
+2026-11-15 18:02:11.769  PS1 MYS: hra mys_test.exe - vypnuta, ovladac v portu 1 (zapne se tlacitkem MYS na sirku)
+2026-11-15 18:02:11.769  PS1 MERENI VYKONU: zapnuto (13 / 13 funkci GPU a zvuku) - jen meri, hra se nemeni (radky VYKON)
+2026-11-15 18:02:13.444  PS1 JADRO: Starting PCSX-ReARMed r26-nap-sa1 (cc 13.3.0 64bit pic ssse3 gpu=BUILTIN_GPU)
+2026-11-15 18:02:13.444  PS1 JADRO: build time: Nov 15 2026 17:57:05
+2026-11-15 18:02:13.444  PS1 JADRO: 2 cpu core(s) detected
+2026-11-15 18:02:13.445  PS1 JADRO: No BIOS files found.
+2026-11-15 18:02:13.445  PS1 JADRO: Using PIXEL_FORMAT 2
+2026-11-15 18:02:13.445  PS1 JADRO: plugin: /builtin_gpu
+2026-11-15 18:02:13.445  PS1 JADRO: plugin: /builtin_spu
+2026-11-15 18:02:13.445  PS1 JADRO: Plugins loaded.
+2026-11-15 18:02:13.445  PS1 JADRO: Loaded CD Image: PRAC/b328ps1/mys_test.exe (568 bytes).
+2026-11-15 18:02:13.445  PS1 JADRO: Track 01 DATA  - Start 00:02:00, Length 00:00:00
+2026-11-15 18:02:13.445  PS1 JADRO: End 00:02:00 (sector 150)
+2026-11-15 18:02:13.445  PS1 JADRO: memcard 1 is libretro-managed
+2026-11-15 18:02:13.445  PS1 JADRO: memcard 2 is libretro-managed
+2026-11-15 18:02:13.446  PS1 JADRO: HLE BIOS initialized.
+2026-11-15 18:02:13.446  PS1 JADRO: note: running with HLE BIOS, expect compatibility problems
+2026-11-15 18:02:13.446  PS1 JADRO: ----------------------------------------------------------
+2026-11-15 18:02:13.446  PS1 PAMETOVA KARTA nova (soubor zatim neni): PRAC/b328ps1/karta_b328/memory_card_1.srm, 131072 B prazdna
+2026-11-15 18:02:13.446  PS1 MYS: hra mys_test.exe - vypnuta, ovladac v portu 1 (zapne se tlacitkem MYS na sirku)
+2026-11-15 18:02:13.446  PS1 MERENI VYKONU: zapnuto (13 / 13 funkci GPU a zvuku) - jen meri, hra se nemeni (radky VYKON)
+2026-11-15 18:02:15.092  PS1 JADRO: Starting PCSX-ReARMed r26-nap-sa1 (cc 13.3.0 64bit pic ssse3 gpu=BUILTIN_GPU)
+2026-11-15 18:02:15.092  PS1 JADRO: build time: Nov 15 2026 17:57:05
+2026-11-15 18:02:15.092  PS1 JADRO: 2 cpu core(s) detected
+2026-11-15 18:02:15.093  PS1 JADRO: No BIOS files found.
+2026-11-15 18:02:15.093  PS1 JADRO: Using PIXEL_FORMAT 2
+2026-11-15 18:02:15.093  PS1 JADRO: plugin: /builtin_gpu
+2026-11-15 18:02:15.093  PS1 JADRO: plugin: /builtin_spu
+2026-11-15 18:02:15.093  PS1 JADRO: Plugins loaded.
+2026-11-15 18:02:15.093  PS1 JADRO: Loaded CD Image: PRAC/b328ps1/mys_test.exe (568 bytes).
+2026-11-15 18:02:15.093  PS1 JADRO: Track 01 DATA  - Start 00:02:00, Length 00:00:00
+2026-11-15 18:02:15.093  PS1 JADRO: End 00:02:00 (sector 150)
+2026-11-15 18:02:15.093  PS1 JADRO: memcard 1 is libretro-managed
+2026-11-15 18:02:15.093  PS1 JADRO: memcard 2 is libretro-managed
+2026-11-15 18:02:15.095  PS1 JADRO: HLE BIOS initialized.
+2026-11-15 18:02:15.095  PS1 JADRO: note: running with HLE BIOS, expect compatibility problems
+2026-11-15 18:02:15.095  PS1 JADRO: ----------------------------------------------------------
+2026-11-15 18:02:15.095  PS1 PAMETOVA KARTA nova (soubor zatim neni): PRAC/b328ps1/karta_b328/memory_card_1.srm, 131072 B prazdna
+2026-11-15 18:02:15.095  PS1 MYS: hra mys_test.exe - vypnuta, ovladac v portu 1 (zapne se tlacitkem MYS na sirku)
+2026-11-15 18:02:15.095  PS1 MERENI VYKONU: zapnuto (13 / 13 funkci GPU a zvuku) - jen meri, hra se nemeni (radky VYKON)
+2026-11-15 18:02:16.736  PS1 ==================== PS1 START: HRA ====================
+2026-11-15 18:02:16.736  PS1 HRA: mys_test.exe | typ .exe | 4 kB | cesta PRAC/b328ps1/mys_test.exe
+2026-11-15 18:02:16.736  PS1 BIOS ve slozce appky: ZADNY (jadro pojede s HLE - nahradnim BIOSem, nektere hry pak nejdou)
+2026-11-15 18:02:16.736  PS1 JADRO: Starting PCSX-ReARMed r26-nap-sa1 (cc 13.3.0 64bit pic ssse3 gpu=BUILTIN_GPU)
+2026-11-15 18:02:16.736  PS1 JADRO: build time: Nov 15 2026 17:57:05
+2026-11-15 18:02:16.736  PS1 JADRO: 2 cpu core(s) detected
+2026-11-15 18:02:16.736  PS1 JADRO: No BIOS files found.
+2026-11-15 18:02:16.736  PS1 JADRO: Using PIXEL_FORMAT 2
+2026-11-15 18:02:16.736  PS1 JADRO: plugin: /builtin_gpu
+2026-11-15 18:02:16.736  PS1 JADRO: plugin: /builtin_spu
+2026-11-15 18:02:16.737  PS1 JADRO: Plugins loaded.
+2026-11-15 18:02:16.737  PS1 JADRO: Loaded CD Image: PRAC/b328ps1/mys_test.exe (568 bytes).
+2026-11-15 18:02:16.737  PS1 JADRO: Track 01 DATA  - Start 00:02:00, Length 00:00:00
+2026-11-15 18:02:16.737  PS1 JADRO: End 00:02:00 (sector 150)
+2026-11-15 18:02:16.737  PS1 JADRO: memcard 1 is libretro-managed
+2026-11-15 18:02:16.737  PS1 JADRO: memcard 2 is libretro-managed
+2026-11-15 18:02:16.738  PS1 JADRO: HLE BIOS initialized.
+2026-11-15 18:02:16.738  PS1 JADRO: note: running with HLE BIOS, expect compatibility problems
+2026-11-15 18:02:16.738  PS1 JADRO: ----------------------------------------------------------
+2026-11-15 18:02:16.738  PS1 PAMETOVA KARTA nova (soubor zatim neni): PRAC/b328ps1/karta_b328/memory_card_1.srm, 131072 B prazdna
+2026-11-15 18:02:16.738  PS1 MYS: hra mys_test.exe - vypnuta, ovladac v portu 1 (zapne se tlacitkem MYS na sirku)
+2026-11-15 18:02:16.738  PS1 MERENI VYKONU: zapnuto (13 / 13 funkci GPU a zvuku) - jen meri, hra se nemeni (radky VYKON)
+2026-11-15 18:02:16.739  PS1 JADRO: BIOS HLE (vestaveny nahradni - soubor BIOSu nenalezen!) | region USA, NTSC 60 Hz | procesor interpret | disk ID "SLUS99999" nazev "SLUS_999.99" | zvuk XA ZAPNUTY, CD audio ZAPNUTY, pomaly start 1
+2026-11-15 18:02:16.739  PS1 NASTAVENI GRAFIKY: 2x (Enhanced Resolution) ZAPNUTO, bez 1x obrazu NE, uprava textur ANO | prokladani AUTO | dithering ZAPNUTO | kresleni ve vlakne NE | preskakovani snimku 0
+2026-11-15 18:02:16.739  PS1 CASOVANI: 60.000 snimku/s, zvuk jadra 44100 Hz -> reproduktor 44100 Hz | obraz zakladni 256x240, nejvic 1024x512
+2026-11-15 18:02:16.739  PS1 PAMETOVA KARTA 1: zasunuta, soubor PRAC/b328ps1/karta_b328/memory_card_1.srm (CHYBI)
+2026-11-15 18:02:16.739  PS1 BEZI HRA
+2026-11-15 18:02:16.739  PS1 start trval 2 ms
+2026-11-15 18:02:16.741  PS1 OBRAZ: obraz (test bez vykreslovace)
+2026-11-15 18:02:21.758  PS1 ZDRAVI 5 s: emulace 61.2 kroku/s (cil 60.00, rezerva 87 % casu) | retro_run prumer 2.2 ms, nejdele 4.4 ms | snimky 61.2/s (stejnych 61.2/s) | zvuk fronta 99 ms, vypadky 0 | obraz (test bez vykreslovace) | tlacitka nic (zmen 0, z klavesnice TV 0, z ovladace 0) | TV divaku 0
+2026-11-15 18:02:21.758  PS1 VYKON 5 s: snimek prumer 2.2 ms = hra (procesor PS1) 2.2 + kresleni 0.0 + predani obrazu 0.0 + zvuk 0.0 | jadro procesoru: cpu0 74 %, cpu1 25 % | TV divaku 0
+2026-11-15 18:02:26.772  PS1 ZDRAVI 10 s: emulace 59.8 kroku/s (cil 60.00, rezerva 87 % casu) | retro_run prumer 2.1 ms, nejdele 5.1 ms | snimky 59.8/s (stejnych 59.8/s) | zvuk fronta 84 ms, vypadky 0 | obraz (test bez vykreslovace) | tlacitka nic (zmen 0, z klavesnice TV 0, z ovladace 0) | TV divaku 0
+2026-11-15 18:02:26.772  PS1 VYKON 10 s: snimek prumer 2.1 ms = hra (procesor PS1) 2.1 + kresleni 0.0 + predani obrazu 0.0 + zvuk 0.0 | jadro procesoru: cpu0 59 %, cpu1 41 % | TV divaku 0

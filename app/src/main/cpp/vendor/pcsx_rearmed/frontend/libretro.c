@@ -440,7 +440,8 @@ static void CrosshairDimensions(int port, struct CrosshairInfo *info) {
    info->size_y = psx_h * (pl_rearmed_cbs.gpu_neon.enhancement_enable ? 2 : 1) * (4.0f / 3.0f) / 40.0f;
 }
 
-static void vout_flip(const void *vram_, int vram_ofs, int bgr24,
+/* atarihelp B328: puvodni vout_flip (prevod obrazu z VRAM do vout_buf) - meri ho obal vout_flip nize */
+static void nap_vout_flip_telo(const void *vram_, int vram_ofs, int bgr24,
       int x, int y, int w, int h, int dims_changed)
 {
    int bytes_pp = (current_fmt == RETRO_PIXEL_FORMAT_XRGB8888) ? 4 : 2;
@@ -509,6 +510,24 @@ static void vout_flip(const void *vram_, int vram_ofs, int bgr24,
 out:
    vout_fb_dirty = 1;
    pl_rearmed_cbs.flip_cnt++;
+}
+
+/* atarihelp B328: MERENI - predani obrazu (vout_flip) zvlast od kresleni. Jen meri cas,
+ * puvodni funkce dostane presne stejne argumenty. */
+static unsigned long long nap_m_vout_ns;
+static unsigned long long nap_m_ted(void)
+{
+   struct timespec t;
+   clock_gettime(CLOCK_MONOTONIC, &t);
+   return (unsigned long long)t.tv_sec * 1000000000ull + (unsigned long long)t.tv_nsec;
+}
+
+static void vout_flip(const void *vram_, int vram_ofs, int bgr24,
+      int x, int y, int w, int h, int dims_changed)
+{
+   unsigned long long t0 = nap_m_ted();
+   nap_vout_flip_telo(vram_, vram_ofs, bgr24, x, y, w, h, dims_changed);
+   nap_m_vout_ns += nap_m_ted() - t0;
 }
 
 #ifdef _3DS
@@ -3614,14 +3633,16 @@ int nap_ps1_jadro_popis(char *buf, int len) {
    if (!buf || len <= 0)
       return 0;
    return snprintf(buf, len,
-      "BIOS %s%s | region %s, %s | procesor %s | disk ID \"%s\" nazev \"%s\" | XA %s, CD audio %s, pomaly start %d",
+      "BIOS %s%s | region %s, %s | procesor %s | disk ID \"%s\" nazev \"%s\" | zvuk XA %s, CD audio %s, pomaly start %d",
       Config.HLE ? "HLE (vestaveny nahradni - soubor BIOSu nenalezen!)" : bios,
       Config.HLE ? "" : " (soubor)",
       (size_t)Config.PsxRegion < ARRAY_SIZE(regiony) ? regiony[Config.PsxRegion] : "?",
       Config.PsxType == PSX_TYPE_PAL ? "PAL 50 Hz" : "NTSC 60 Hz",
       Config.Cpu == CPU_DYNAREC ? "dynarec (rychly)" : "interpret",
       CdromId, CdromLabel,
-      Config.Xa ? "ANO" : "NE", Config.Cdda ? "ANO" : "NE", (int)Config.SlowBoot);
+      /* B328: Config.Xa / Config.Cdda = 1 znamena VYPNUTO (pcsx_rearmed_noxadecoding / nocdaudio) -
+         B308 tu psalo obracene "XA NE, CD audio NE", i kdyz oboje hralo */
+      Config.Xa ? "VYPNUTY" : "ZAPNUTY", Config.Cdda ? "VYPNUTY" : "ZAPNUTY", (int)Config.SlowBoot);
 }
 
 /* atarihelp B308: nastaveni grafiky, se kterym jadro bezi (pl_rearmed_cbs). */
@@ -4198,6 +4219,117 @@ void SysDLog(const char *fmt, ...)
 
    if (log_cb)
       log_cb(RETRO_LOG_DEBUG, "%s", msg);
+}
+
+/* ===================================================================================
+ * atarihelp B328: MERENI VYKONU PS1 - JEN MERI, EMULACI NEMENI.
+ * Rene (SpongeBob): "zvuk se nejak choval divne" - log B326: na dvou mistech snimek 23-27 ms
+ * misto 7 (35-40 snimku/s, vypadky zvuku). Co presne zdrzuje? Obaly kolem ukazatelu na
+ * GPU a SPU (plugins.h) secitaji cas v jejich volanich, vout_flip meri sam sebe (vyse).
+ * Zbytek snimku = procesor PS1 a ostatni (nap_ps1_native.cpp, radek VYKON v deniku).
+ * Obal zavola puvodni funkci se stejnymi argumenty a vrati jeji vysledek - chovani jadra
+ * je stejne (test B328: stejna pamet PS1 po stejnem poctu snimku s merenim i bez).
+ * LoadPlugins (retro_load_game) ukazatele nastavi znovu -> nap_mereni_zapni po kazdem
+ * startu hry; obal se nikdy neobali sam sebou. ReadStatus / ReadRegister (cteni stavu
+ * stokrat za snimek, nic nekresli) se nemeri.
+ * =================================================================================== */
+#include "../libpcsxcore/plugins.h"
+
+static unsigned long long nap_m_gpu_ns, nap_m_spu_ns, nap_m_gpu_volani;
+
+static GPUwriteStatus      nap_o_gpu_ws;
+static GPUwriteData        nap_o_gpu_wd;
+static GPUwriteDataMem     nap_o_gpu_wdm;
+static GPUreadData         nap_o_gpu_rd;
+static GPUreadDataMem      nap_o_gpu_rdm;
+static GPUdmaChain         nap_o_gpu_dma;
+static GPUvBlank           nap_o_gpu_vb;
+static SPUwriteRegister    nap_o_spu_wr;
+static SPUwriteDMAMem      nap_o_spu_wdm;
+static SPUreadDMAMem       nap_o_spu_rdm;
+static SPUplayADPCMchannel nap_o_spu_xa;
+static SPUasync            nap_o_spu_async;
+static SPUplayCDDAchannel  nap_o_spu_cdda;
+
+#define NAP_M_GPU_ZAC   unsigned long long nap_t0 = nap_m_ted();
+#define NAP_M_GPU_KON   nap_m_gpu_ns += nap_m_ted() - nap_t0; nap_m_gpu_volani++;
+#define NAP_M_SPU_ZAC   unsigned long long nap_t0 = nap_m_ted();
+#define NAP_M_SPU_KON   nap_m_spu_ns += nap_m_ted() - nap_t0;
+
+static void CALLBACK nap_w_gpu_ws(uint32_t a) { NAP_M_GPU_ZAC nap_o_gpu_ws(a); NAP_M_GPU_KON }
+static void CALLBACK nap_w_gpu_wd(uint32_t a) { NAP_M_GPU_ZAC nap_o_gpu_wd(a); NAP_M_GPU_KON }
+static void CALLBACK nap_w_gpu_wdm(uint32_t *a, int b) { NAP_M_GPU_ZAC nap_o_gpu_wdm(a, b); NAP_M_GPU_KON }
+static uint32_t CALLBACK nap_w_gpu_rd(void) { uint32_t r; NAP_M_GPU_ZAC r = nap_o_gpu_rd(); NAP_M_GPU_KON return r; }
+static void CALLBACK nap_w_gpu_rdm(uint32_t *a, int b) { NAP_M_GPU_ZAC nap_o_gpu_rdm(a, b); NAP_M_GPU_KON }
+static long CALLBACK nap_w_gpu_dma(uint32_t *a, uint32_t b, uint32_t *c, int32_t *d) { long r; NAP_M_GPU_ZAC r = nap_o_gpu_dma(a, b, c, d); NAP_M_GPU_KON return r; }
+static void CALLBACK nap_w_gpu_vb(int a, int b) { NAP_M_GPU_ZAC nap_o_gpu_vb(a, b); NAP_M_GPU_KON }
+static void CALLBACK nap_w_spu_wr(unsigned long a, unsigned short b, unsigned int c) { NAP_M_SPU_ZAC nap_o_spu_wr(a, b, c); NAP_M_SPU_KON }
+static void CALLBACK nap_w_spu_wdm(unsigned short *a, int b, unsigned int c) { NAP_M_SPU_ZAC nap_o_spu_wdm(a, b, c); NAP_M_SPU_KON }
+static void CALLBACK nap_w_spu_rdm(unsigned short *a, int b, unsigned int c) { NAP_M_SPU_ZAC nap_o_spu_rdm(a, b, c); NAP_M_SPU_KON }
+static void CALLBACK nap_w_spu_xa(xa_decode_t *a, unsigned int b, int c) { NAP_M_SPU_ZAC nap_o_spu_xa(a, b, c); NAP_M_SPU_KON }
+static void CALLBACK nap_w_spu_async(unsigned int a, unsigned int b) { NAP_M_SPU_ZAC nap_o_spu_async(a, b); NAP_M_SPU_KON }
+static int CALLBACK nap_w_spu_cdda(short *a, int b, unsigned int c, int d) { int r; NAP_M_SPU_ZAC r = nap_o_spu_cdda(a, b, c, d); NAP_M_SPU_KON return r; }
+
+/* obalit jen jednou a jen to, co existuje */
+#define NAP_M_OBAL(ukazatel, puvodni, obal) \
+   if ((ukazatel) != NULL && (ukazatel) != (obal)) { (puvodni) = (ukazatel); (ukazatel) = (obal); }
+#define NAP_M_VRAT(ukazatel, puvodni, obal) \
+   if ((ukazatel) == (obal)) (ukazatel) = (puvodni);
+
+/* Po kazdem retro_load_game. Vraci pocet obalenych funkci (13 = vse). */
+int nap_mereni_zapni(void)
+{
+   int n = 0;
+   NAP_M_OBAL(GPU_writeStatus, nap_o_gpu_ws, nap_w_gpu_ws)
+   NAP_M_OBAL(GPU_writeData, nap_o_gpu_wd, nap_w_gpu_wd)
+   NAP_M_OBAL(GPU_writeDataMem, nap_o_gpu_wdm, nap_w_gpu_wdm)
+   NAP_M_OBAL(GPU_readData, nap_o_gpu_rd, nap_w_gpu_rd)
+   NAP_M_OBAL(GPU_readDataMem, nap_o_gpu_rdm, nap_w_gpu_rdm)
+   NAP_M_OBAL(GPU_dmaChain, nap_o_gpu_dma, nap_w_gpu_dma)
+   NAP_M_OBAL(GPU_vBlank, nap_o_gpu_vb, nap_w_gpu_vb)
+   NAP_M_OBAL(SPU_writeRegister, nap_o_spu_wr, nap_w_spu_wr)
+   NAP_M_OBAL(SPU_writeDMAMem, nap_o_spu_wdm, nap_w_spu_wdm)
+   NAP_M_OBAL(SPU_readDMAMem, nap_o_spu_rdm, nap_w_spu_rdm)
+   NAP_M_OBAL(SPU_playADPCMchannel, nap_o_spu_xa, nap_w_spu_xa)
+   NAP_M_OBAL(SPU_async, nap_o_spu_async, nap_w_spu_async)
+   NAP_M_OBAL(SPU_playCDDAchannel, nap_o_spu_cdda, nap_w_spu_cdda)
+   n += GPU_writeStatus == nap_w_gpu_ws;   n += GPU_writeData == nap_w_gpu_wd;
+   n += GPU_writeDataMem == nap_w_gpu_wdm; n += GPU_readData == nap_w_gpu_rd;
+   n += GPU_readDataMem == nap_w_gpu_rdm;  n += GPU_dmaChain == nap_w_gpu_dma;
+   n += GPU_vBlank == nap_w_gpu_vb;        n += SPU_writeRegister == nap_w_spu_wr;
+   n += SPU_writeDMAMem == nap_w_spu_wdm;  n += SPU_readDMAMem == nap_w_spu_rdm;
+   n += SPU_playADPCMchannel == nap_w_spu_xa; n += SPU_async == nap_w_spu_async;
+   n += SPU_playCDDAchannel == nap_w_spu_cdda;
+   return n;
+}
+
+/* Vrati puvodni funkce (test: s merenim i bez musi byt stav PS1 stejny). */
+void nap_mereni_vypni(void)
+{
+   NAP_M_VRAT(GPU_writeStatus, nap_o_gpu_ws, nap_w_gpu_ws)
+   NAP_M_VRAT(GPU_writeData, nap_o_gpu_wd, nap_w_gpu_wd)
+   NAP_M_VRAT(GPU_writeDataMem, nap_o_gpu_wdm, nap_w_gpu_wdm)
+   NAP_M_VRAT(GPU_readData, nap_o_gpu_rd, nap_w_gpu_rd)
+   NAP_M_VRAT(GPU_readDataMem, nap_o_gpu_rdm, nap_w_gpu_rdm)
+   NAP_M_VRAT(GPU_dmaChain, nap_o_gpu_dma, nap_w_gpu_dma)
+   NAP_M_VRAT(GPU_vBlank, nap_o_gpu_vb, nap_w_gpu_vb)
+   NAP_M_VRAT(SPU_writeRegister, nap_o_spu_wr, nap_w_spu_wr)
+   NAP_M_VRAT(SPU_writeDMAMem, nap_o_spu_wdm, nap_w_spu_wdm)
+   NAP_M_VRAT(SPU_readDMAMem, nap_o_spu_rdm, nap_w_spu_rdm)
+   NAP_M_VRAT(SPU_playADPCMchannel, nap_o_spu_xa, nap_w_spu_xa)
+   NAP_M_VRAT(SPU_async, nap_o_spu_async, nap_w_spu_async)
+   NAP_M_VRAT(SPU_playCDDAchannel, nap_o_spu_cdda, nap_w_spu_cdda)
+}
+
+/* Soucty od startu procesu (ns): GPU (vcetne predani obrazu, ktere je uvnitr vBlank),
+ * predani obrazu zvlast, SPU, pocet volani GPU. Ctou se mezi snimky (stejne vlakno). */
+void nap_mereni_stav(unsigned long long *gpu, unsigned long long *vout, unsigned long long *spu,
+      unsigned long long *volani)
+{
+   if (gpu) *gpu = nap_m_gpu_ns;
+   if (vout) *vout = nap_m_vout_ns;
+   if (spu) *spu = nap_m_spu_ns;
+   if (volani) *volani = nap_m_gpu_volani;
 }
 
 // vim:sw=3:ts=3:expandtab

@@ -1,0 +1,57 @@
+B328 - MERENI VYKONU PS1 (JEN MERI) + NAPOVEDA RETROID POCKET 6 + PO AKTUALIZACI OKNO A LOG (15. 11. 2026)
+===================================================================================================
+
+Rene: "Muzes pridat to mereni a nezapomen pridat do helpu nove veci jak v cze tak v ang, hlavne ten nas
+pocket 6" + k B327: "myslim, ze se ta hlaska neukazala, ale nechci kecat". Predtim: "pred zasahem dej
+vedet, nerad bych prisel o funkcni PS1 kvuli spongebob".
+
+1) PS1 - MERENI VYKONU (zadna zmena chovani, 2x Enhanced Resolution zustava):
+   frontend/libretro.c   obaly 7 GPU (writeStatus, writeData, writeDataMem, readData, readDataMem, dmaChain,
+                         vBlank) a 6 zvukovych (writeRegister, writeDMAMem, readDMAMem, playADPCMchannel, async,
+                         playCDDAchannel) ukazatelu z plugins.h: zavolaji puvodni funkci se stejnymi argumenty
+                         a pricitaji cas; vout_flip = obal kolem nap_vout_flip_telo (predani obrazu zvlast);
+                         nap_mereni_zapni (po kazdem retro_load_game, neobali se sam sebou) / vypni / stav.
+                         Hlaska B308 "XA NE, CD audio NE" byla OBRACENE (Config.Xa = 1 = VYPNUTO) - ted
+                         "zvuk XA ZAPNUTY, CD audio ZAPNUTY".
+   nap_ps1_native.cpp    ps1_mereni_po_startu po kazdem startu (3 cesty), obal nap_video (cas prevzeti
+                         snimku), po kazdem snimku rozpad (hra = zbytek, kresleni = GPU bez predani, predani
+                         obrazu = vout + nap_video, zvuk) a jadro procesoru (syscall getcpu); v deniku radek
+                         "VYKON N s: snimek prumer X ms = hra (procesor PS1) A + kresleni B + predani obrazu C +
+                         zvuk D | pomalych snimku P z S (nad 16.7 ms), v nich prumer ... | jadro procesoru:
+                         cpu5 81 % (2314 MHz), ... | TV divaku T" - pri pomalych snimcich vzdy, jinak prvni
+                         minutu kazde okno a pak 1x za minutu.
+2) NAPOVEDA CZ i EN: kapitola menu - blok "Herni ovladac a Retroid Pocket 6" (tlacitka podle mista jako
+   PlayStation, schovani dotykovych tlacitek, menu L1 / R1 / A / START / L2 / R2 / SELECT / Y); Atari, Sega
+   a PS1 - cast "Herni ovladac (Retroid Pocket 6, Bluetooth, USB)" s mapou tlacitek (PS1 i mys pravou
+   packou); OPTIONS - blok HERNI OVLADAC (AUTOMATICKY / VZDY DOTYK / SKRYT DOTYK) a veta o verzi appky.
+   (Mapy podle B320: nap_ovladac.h ps1Bity / segaBity / atariBity, menu v MainActivity.)
+3) PO AKTUALIZACI: NapPoAktualizaci zapise do nastaveni "nap_aktualizace" cas a vysledek (otevreni zadano /
+   chyba / Android 10+ neotevira); NapAktualizace.poStartu to jednou zapise do logu ("B328 NOVA VERZE ...
+   | prijimac: zprava od systemu pred N s, ..." nebo "zadna zprava od systemu") a "Nainstalovana nova verze"
+   je OKNO s OK (1,5 s po startu) misto Toastu, ktery Rene asi prehledl.
+4) build.gradle: versionCode 371 "EMU10-B328-MERENI".
+
+Spoustet z adresare test_overeni/b328:
+A) PS1 se SKUTECNYM jadrem na PC (PRAC = pracovni slozka, JV = JDK):
+   bash ../b317/stavba_jadra.sh PRAC && python3 ../b317/udelej_exe.py PRAC
+   PS1="-DANDROID -I../b305/stub -I../b291/stub -I/usr/include -I$JV/include -I$JV/include/linux"
+   g++ -std=c++17 -O1 -g -pthread $PS1 -o PRAC/integrace_b328 integrace_b328_vykon.cpp PRAC/jadro/*.o \
+       -l:libEGL.so.1 -l:libGLESv2.so.2 -lz -ldl
+   cd PRAC && EGL_PLATFORM=surfaceless ./integrace_b328 PRAC PRAC/mys_test.exe
+                                                        -> VYSTUP_integrace_b328_vykon.txt (11 OK)
+   HLAVNI DUKAZ: stejna hra, 900 snimku - pamet PS1 (2 MB) S merenim i BEZ nej bajt po bajtu stejna;
+   druhy start = stejny pocet volani GPU (obal neobalil sam sebe); bez mereni se nic nepocita; cesta
+   telefonu (ps1BootDoMonitoru, vlakno emulace): radek VYKON, casti = cely snimek; radek JADRO "zvuk XA
+   ZAPNUTY". Ukazka deniku: UKAZKA_denik_vykon_b328.txt (na PC bez gpu_neon je kresleni 0 ms).
+B) Regrese ../b317 integrace (mys): na B328 19 OK / 11 CHYBA, na B327 (HEAD bez zmen) 18 / 12 - stejne
+   chyby uz pred B328 (test B317 ceka chovani mysi pred B318), lisi se jen casove citlivy "tuknuti 67 ms"
+   (VYSTUP_regrese_b317_integrace_na_B328.txt / _na_B327.txt).
+C) JVM: javac -d OUT ../../app/src/main/java/eu/atarihelp/emu10/NapAktualizaceTexty.java jvm/eu/atarihelp/emu10/TestB328.java
+   java -cp OUT eu.atarihelp.emu10.TestB328          -> VYSTUP_test_b328_java.txt (6 OK)
+   + ../b327 TestB327 na kodu B328: 24 OK            -> VYSTUP_regrese_b327_java.txt
+D) Zapojeni: python3 kontrola_b328.py                -> VYSTUP_kontrola_b328.txt (17 OK)
+E) javac vsech zdroju appky proti android.jar API 34: 0 chyb. Napoveda: CZ 195 nazvu 0 chyb, EN 189 0 chyb,
+   test_b314_jazyk_navod 2 CHYBA jako uz na B325 - B327. Puvodni VYSTUP_* starsich verzi vraceny z gitu.
+
+Na telefonu NEOVERENO (preklad pro ARM udela CI). Rene: B328 na server, aktualizace z OPTIONS = poprve nove
+okno aktualizace (B327 kod); SpongeBob na stejnem miste, pak log (radky VYKON) poslat.

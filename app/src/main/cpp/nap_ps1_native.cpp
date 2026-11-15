@@ -9,6 +9,9 @@
 #include <vector>
 #include <thread>
 #include <chrono>
+#include <algorithm>   // B328: VYKON (razeni jader procesoru)
+#include <sys/syscall.h>   // B328: getcpu - na kterem jadru procesoru bezi emulace
+#include <unistd.h>
 #include <cstring>
 #include <cstdio>
 #include <cstdarg>
@@ -198,6 +201,11 @@ static void ps1_denik(const char *fmt, ...) {
 // Popisy z jadra (C): frontend/libretro.c a plugins/gpu_neon/nap_most.c.
 // "weak" - starsi testy na PC, ktere jadro nemaji, se bez nich preloz i dal.
 extern "C" {
+  // B328: mereni vykonu (frontend/libretro.c) - jen meri, emulaci nemeni
+  int nap_mereni_zapni(void) __attribute__((weak));
+  void nap_mereni_vypni(void) __attribute__((weak));
+  void nap_mereni_stav(unsigned long long *gpu, unsigned long long *vout, unsigned long long *spu,
+                       unsigned long long *volani) __attribute__((weak));
   int nap_ps1_jadro_popis(char *buf, int len) __attribute__((weak));
   int nap_ps1_nastaveni_popis(char *buf, int len) __attribute__((weak));
   int nap_ps1_gpu_popis(char *buf, int len) __attribute__((weak));
@@ -572,7 +580,9 @@ static bool nap_env(unsigned cmd, void *data) {
     default: return false;
   }
 }
-static void nap_video(const void *data, unsigned w, unsigned h, size_t pitch) {
+// B328: cas v nap_video (prevzeti snimku z jadra) - meri obal nap_video nize, radek VYKON v deniku
+static std::atomic<unsigned long long> g_video_ns{0};
+static void nap_video_telo(const void *data, unsigned w, unsigned h, size_t pitch) {
   if (!data) { g_dupe_frames.fetch_add(1); g_frames.fetch_add(1); return; }
   std::lock_guard<std::mutex> lock(g_frame_mutex);
   // BUILD2SB70: Rene - "doom furt spatna grafika, super hratelny."
@@ -642,6 +652,13 @@ static void nap_video(const void *data, unsigned w, unsigned h, size_t pitch) {
   }
   g_fw.store((int)w); g_fh.store((int)h);
   g_frames.fetch_add(1);
+}
+
+static void nap_video(const void *data, unsigned w, unsigned h, size_t pitch) {
+  const auto t0 = std::chrono::steady_clock::now();
+  nap_video_telo(data, w, h, pitch);
+  g_video_ns.fetch_add((unsigned long long)std::chrono::duration_cast<std::chrono::nanoseconds>(
+      std::chrono::steady_clock::now() - t0).count(), std::memory_order_relaxed);
 }
 // BUILD2SA3/SA5P: audio FIFO (44100 Hz stereo z jadra -> Java AudioTrack)
 static std::mutex g_amutex;          // uz jen pro stara Java rozhrani
@@ -1037,6 +1054,44 @@ static void ps1_mys_po_startu(const std::string &hra) {
   else
     ps1_denik("MYS: hra %s - %s (zapne se tlacitkem MYS na sirku)", klic.c_str(), nap::Ps1Mys::popisRezimu(g_mys.rezim()));
   ps1_mys_denik();
+}
+
+// ===== B328: MERENI VYKONU (Rene - SpongeBob "divny zvuk": snimky 23-27 ms misto 7) =====
+// Jen meri, hra se nemeni: obaly GPU / SPU (frontend/libretro.c) + cas v nap_video + jadro procesoru
+// (getcpu po kazdem snimku). V deniku radek VYKON: z ceho se sklada snimek a kde bezel.
+static void ps1_mereni_po_startu() {
+  if (!nap_mereni_zapni) return;
+  const int n = nap_mereni_zapni();   // LoadPlugins v retro_load_game nastavil ukazatele znovu
+  ps1_denik("MERENI VYKONU: zapnuto (%d / 13 funkci GPU a zvuku) - jen meri, hra se nemeni (radky VYKON)", n);
+}
+
+// Na kterem jadre procesoru vlakno prave bezi (syscall getcpu - bez zavislosti na _GNU_SOURCE). -1 = nevi.
+static int ps1_jadro_ted() {
+#if defined(__NR_getcpu)
+  unsigned c = 0;
+  if (syscall(__NR_getcpu, &c, nullptr, nullptr) == 0) return (int)c;
+#endif
+  return -1;
+}
+
+// Na kterych jadrech procesoru telefonu bezela emulace a jejich takt (MHz, z /sys - jen cteni).
+// Male jadro nebo snizeny takt by vysvetlily pomale snimky, i kdyz hra dela porad totez.
+static std::string ps1_jadra_text(const unsigned *jadra, uint64_t snimku) {
+  std::vector<std::pair<unsigned, int>> v;
+  for (int i = 0; i < 32; i++) if (jadra[i]) v.push_back(std::make_pair(jadra[i], i));
+  std::sort(v.begin(), v.end(), [](const std::pair<unsigned, int> &a, const std::pair<unsigned, int> &b) { return a.first > b.first; });
+  std::string r;
+  for (size_t k = 0; k < v.size() && k < 3 && snimku > 0; k++) {
+    char f[96], cesta[96];
+    long khz = -1;
+    snprintf(cesta, sizeof(cesta), "/sys/devices/system/cpu/cpu%d/cpufreq/scaling_cur_freq", v[k].second);
+    if (FILE *soubor = fopen(cesta, "r")) { if (fscanf(soubor, "%ld", &khz) != 1) khz = -1; fclose(soubor); }
+    const unsigned proc = (unsigned)((uint64_t)v[k].first * 100u / snimku);
+    if (khz > 0) snprintf(f, sizeof(f), "%scpu%d %u %% (%ld MHz)", r.empty() ? "" : ", ", v[k].second, proc, khz / 1000);
+    else snprintf(f, sizeof(f), "%scpu%d %u %%", r.empty() ? "" : ", ", v[k].second, proc);
+    r += f;
+  }
+  return r.empty() ? std::string("?") : r;
 }
 // kazdy krok emulace PRED retro_run (pod zamkem jadra): zmena portu (mys / ovladac)
 // a co mys v tomhle snimku hlasi
@@ -1606,6 +1661,7 @@ Java_eu_atarihelp_emu10_NativePs1CoreBridge_ps1EglBoot(JNIEnv* env, jclass,
     nap_srm_set_path(game);
     nap_srm_load();
     ps1_mys_po_startu(game);   // B317
+    ps1_mereni_po_startu();    // B328
 
     retro_system_av_info av; memset(&av, 0, sizeof(av));
     retro_get_system_av_info(&av);
@@ -2181,6 +2237,7 @@ extern "C" int nap_ps1_egl_boot_c(const char* sys, const char* game) {
     nap_srm_set_path(game ? game : "");
     nap_srm_load();
     ps1_mys_po_startu(game ? game : "");   // B317
+    ps1_mereni_po_startu();                  // B328
     retro_system_av_info av; memset(&av, 0, sizeof(av));
     retro_get_system_av_info(&av);
     g_fps = av.timing.fps > 1 ? av.timing.fps : 60.0;
@@ -2223,6 +2280,11 @@ static void nap_core_thread_fn(void) {
     int zmenObrazu = 0, zamlcenoObrazu = 0, radkuTlacitek = 0, zamlcenoTlacitek = 0, zmenTlacitek = 0;
     unsigned cteniPortuOd[2] = {0, 0};      // B317: kolikrat hra cetla port 1 / 2 (kde hleda mys)
     { unsigned int *volatile pc = nap_pad_cteni; if (pc) { cteniPortuOd[0] = pc[0]; cteniPortuOd[1] = pc[1]; } }
+    // B328: VYKON - soucty za okno ZDRAVI (ms): hra (procesor PS1 a ostatni), kresleni, predani obrazu, zvuk;
+    // zvlast jen pomale snimky (nad 1000 / fps ms) a na kterych jadrech procesoru emulace bezela
+    double vyHra = 0.0, vyKr = 0.0, vyOb = 0.0, vyZv = 0.0, poHra = 0.0, poKr = 0.0, poOb = 0.0, poZv = 0.0, poCelk = 0.0;
+    int pomalych = 0, oknoVykonu = 0;
+    unsigned jadraCpu[32] = {0};
     char popis[600];
     while (g_core_run.load(std::memory_order_relaxed)) {
         if (!g_loaded.load()) { usleep(2000); continue; }
@@ -2234,6 +2296,9 @@ static void nap_core_thread_fn(void) {
             continue;
         }
         g_crash_stage = "retro_run(vlakno emulace)";
+        unsigned long long mGpu0 = 0, mOut0 = 0, mSpu0 = 0, mVol0 = 0;   // B328: mereni (jen cteni soucet)
+        if (nap_mereni_stav) nap_mereni_stav(&mGpu0, &mOut0, &mSpu0, &mVol0);
+        const unsigned long long mVid0 = g_video_ns.load(std::memory_order_relaxed);
         const hodiny::time_point runOd = hodiny::now();
         {
             // B308: ulozeni / nahrani pozice (ps1SaveState / ps1LoadState) drzi tenhle
@@ -2251,6 +2316,20 @@ static void nap_core_thread_fn(void) {
             runSoucet += ms;
             if (ms > runMax) runMax = ms;
             kroku++;
+            // B328: z ceho se snimek skladal (vout = predani obrazu je uvnitr GPU vBlank -> odecist od kresleni)
+            if (nap_mereni_stav) {
+                unsigned long long mGpu1 = 0, mOut1 = 0, mSpu1 = 0, mVol1 = 0;
+                nap_mereni_stav(&mGpu1, &mOut1, &mSpu1, &mVol1);
+                const double out = (double)(mOut1 - mOut0) / 1e6;
+                const double kr = std::max(0.0, (double)(mGpu1 - mGpu0) / 1e6 - out);
+                const double ob = out + (double)(g_video_ns.load(std::memory_order_relaxed) - mVid0) / 1e6;
+                const double zv = (double)(mSpu1 - mSpu0) / 1e6;
+                const double hra = std::max(0.0, ms - kr - ob - zv);
+                vyHra += hra; vyKr += kr; vyOb += ob; vyZv += zv;
+                if (ms > 1000.0 / g_fps) { pomalych++; poCelk += ms; poHra += hra; poKr += kr; poOb += ob; poZv += zv; }
+            }
+            const int cpu = ps1_jadro_ted();
+            if (cpu >= 0 && cpu < 32) jadraCpu[cpu]++;
         }
         g_crash_stage = "denik(vlakno emulace)";
         // zmena obrazu (rozliseni, 24 bit video, prokladani, PAL, 2x) - hned
@@ -2331,6 +2410,23 @@ static void nap_core_thread_fn(void) {
                   }
                   unsigned int *volatile pc = nap_pad_cteni;
                   if (pc) { cteniPortuOd[0] = pc[0]; cteniPortuOd[1] = pc[1]; }
+                }
+                {   // B328: VYKON - pri pomalych snimcich vzdy, jinak prvni minutu kazde okno a pak 1x za minutu
+                    oknoVykonu++;
+                    if (nap_mereni_stav && kroku > 0 && (pomalych > 0 || odStartu < 65.0 || oknoVykonu % 6 == 0)) {
+                        char pom[260] = "";
+                        if (pomalych > 0)
+                            snprintf(pom, sizeof(pom), " | pomalych snimku %d z %llu (nad %.1f ms), v nich prumer %.1f ms = hra %.1f + "
+                                     "kresleni %.1f + obraz %.1f + zvuk %.1f", pomalych, (unsigned long long)kroku, 1000.0 / g_fps,
+                                     poCelk / pomalych, poHra / pomalych, poKr / pomalych, poOb / pomalych, poZv / pomalych);
+                        ps1_denik("VYKON %.0f s: snimek prumer %.1f ms = hra (procesor PS1) %.1f + kresleni %.1f + predani obrazu %.1f"
+                                  " + zvuk %.1f%s | jadro procesoru: %s | TV divaku %d",
+                                  odStartu, runSoucet / kroku, vyHra / kroku, vyKr / kroku, vyOb / kroku, vyZv / kroku, pom,
+                                  ps1_jadra_text(jadraCpu, kroku).c_str(), g_ps1Proud.klientu());
+                    }
+                    vyHra = vyKr = vyOb = vyZv = poHra = poKr = poOb = poZv = poCelk = 0.0;
+                    pomalych = 0;
+                    std::fill(jadraCpu, jadraCpu + 32, 0u);
                 }
                 oknoOd = ted; kroku = 0; runSoucet = runMax = cekaniMs = 0.0;
                 snimkyOd = sn; duplOd = du; vypadkyOd = vy; tenkeOd = te;
@@ -2484,6 +2580,7 @@ Java_eu_atarihelp_emu10_NativePs1CoreBridge_ps1BootDoMonitoru(JNIEnv *env, jclas
   nap_srm_set_path(gamePath);
   nap_srm_load();
   ps1_mys_po_startu(gamePath);             // B317: mys zapamatovana pro tuto hru
+  ps1_mereni_po_startu();                  // B328: mereni vykonu (jen meri)
 
   retro_system_av_info av; memset(&av, 0, sizeof(av));
   retro_get_system_av_info(&av);

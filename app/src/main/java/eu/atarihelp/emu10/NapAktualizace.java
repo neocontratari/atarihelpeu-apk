@@ -437,20 +437,37 @@ public final class NapAktualizace {
      * appku po aktualizaci sam neotevre, at clovek vi, ze to proslo) a verze se ulozi. Vraci radek
      * do logu, nebo null.
      */
-    public static String poStartu(Activity a) {
+    public static String poStartu(final Activity a) {
         try {
-            android.content.pm.PackageInfo pi = a.getPackageManager().getPackageInfo(a.getPackageName(), 0);
+            final android.content.pm.PackageInfo pi = a.getPackageManager().getPackageInfo(a.getPackageName(), 0);
             android.content.SharedPreferences sp = a.getSharedPreferences(PREF, Context.MODE_PRIVATE);
             final int byla = sp.getInt("verze", 0);
             if (byla != pi.versionCode) sp.edit().putInt("verze", pi.versionCode).apply();
+            // B328: co udelal prijimac NapPoAktualizaci (stejny soubor nastaveni) - jednou do logu, pak smazat
+            final long casPrijimace = sp.getLong(NapPoAktualizaci.K_CAS, 0L);
+            final String vysledekPrijimace = sp.getString(NapPoAktualizaci.K_VYSLEDEK, null);
+            if (casPrijimace > 0) sp.edit().remove(NapPoAktualizaci.K_CAS).remove(NapPoAktualizaci.K_VYSLEDEK).apply();
             if (!NapAktualizaceTexty.prvniStartPoAktualizaci(byla, pi.versionCode, pi.firstInstallTime,
-                    pi.lastUpdateTime, System.currentTimeMillis())) return null;
-            android.widget.Toast.makeText(a, NapAktualizaceTexty.novaVerze(NapJazyk.en(a), pi.versionName),
-                    android.widget.Toast.LENGTH_LONG).show();
-            return "B327 NOVA VERZE NAINSTALOVANA " + (byla > 0 ? String.valueOf(byla) : "(do B326 neukladano)")
-                    + " -> " + pi.versionCode + " " + pi.versionName;
+                    pi.lastUpdateTime, System.currentTimeMillis())) {
+                return casPrijimace > 0 ? "B328 PO AKTUALIZACI " + NapAktualizaceTexty.prijimacDoLogu(casPrijimace,
+                        vysledekPrijimace, System.currentTimeMillis()) : null;
+            }
+            // B328: okno misto Toastu - Rene po B327: "myslim, ze se ta hlaska neukazala" (Toast je 3 s dole,
+            // pres volbu jazyka nebo intro snadno zapadne). Az kdyz appka nabehne (1,5 s), s tlacitkem OK.
+            final boolean en = NapJazyk.en(a);
+            new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(() -> {
+                try {
+                    if (a.isFinishing()) return;
+                    new AlertDialog.Builder(a).setTitle(NapAktualizaceTexty.novaVerzeTitulek(en))
+                            .setMessage(NapAktualizaceTexty.novaVerze(en, pi.versionName + " (" + pi.versionCode + ")"))
+                            .setPositiveButton("OK", null).show();
+                } catch (Throwable ignored) {}
+            }, 1500L);
+            return "B328 NOVA VERZE NAINSTALOVANA " + (byla > 0 ? String.valueOf(byla) : "(do B326 neukladano)")
+                    + " -> " + pi.versionCode + " " + pi.versionName + " (okno) | "
+                    + NapAktualizaceTexty.prijimacDoLogu(casPrijimace, vysledekPrijimace, System.currentTimeMillis());
         } catch (Throwable t) {
-            return "B327 NOVA VERZE kontrola: " + t.getClass().getSimpleName();
+            return "B328 NOVA VERZE kontrola: " + t.getClass().getSimpleName();
         }
     }
 
