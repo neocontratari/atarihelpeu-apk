@@ -3715,3 +3715,32 @@
        KODY.
 
 ===============================================================================
+
+   B324: AKTUALIZACE BEZ DRUHE NABIDKY A DRUHEHO STAHOVANI (15. 11. 2026)
+     Rene (B323 na telefonu - Air Strike i Sonic jedou): "po odsouhlaseni v apce
+     to skace z apky ven pro dalsi potvrzeni ... pak se to nesmyslne vraci zpet
+     do apky a stahuje to znova - tedy zada dalsi souhlas".
+     - PRICINA: NapAktualizace.nainstaluj -> relace.commit(PendingIntent.
+       getActivity(MainActivity, akce eu.atarihelp.emu10.INSTALACE)). MainActivity
+       je launchMode STANDARD -> kazdy vysledek (STATUS_PENDING_USER_ACTION, pak
+       uspech / chyba) = NOVA KOPIE MainActivity nad starou. Ta pri startu
+       (napOverStav "start") videla apk_verze > svoje (stara jeste nebyla
+       nainstalovana) a nabidla znovu (napNabidnutaVerze jen v instanci).
+     - OPRAVA: intent PendingIntentu FLAG_ACTIVITY_SINGLE_TOP | CLEAR_TOP (vysledek
+       -> onNewIntent bezici instance); NapAktualizace.instalaceBezi() 10 min
+       (nabidniZeServeru, zeptejSe, nainstaluj, napNabidniCekajici; konci chybou,
+       zrusenim i uspechem; spustRucne vzdy); napNabidnutaVerze static; onCreate
+       napInstalace jen bez savedInstanceState; Android 12+ SessionParams.
+       setRequireUserAction(USER_ACTION_NOT_REQUIRED) (installer of record = appka
+       po prvni vlastni aktualizaci -> dalsi bez potvrzeni); Toasty "Instaluje se
+       ..." a "Aktualizace hotova - <versionName>". launchMode v manifestu NEMENEN
+       (jine spousteni MainActivity v appce neni, zmena by sahla na vsechno).
+     - test_overeni/b324/kontrola_aktualizace.py 6 OK (K6 = logika hlidani v JVM).
+       Napoveda CZ / EN (AKTUALIZOVAT APLIKACI + FAQ) - kontroly napovedy 0 chyb.
+     - build.gradle: versionCode 367 "EMU10-B324-AKTUALIZACE".
+     - POZOR: prechod B323 -> B324 dela jeste kod B323 (chyba se projevi
+       naposledy - Rene na druhou nabidku TED NE). Overit na telefonu: zadna
+       druha nabidka, po instalaci Toast; Android 12+ dalsi aktualizace bez
+       potvrzeni.
+
+===============================================================================

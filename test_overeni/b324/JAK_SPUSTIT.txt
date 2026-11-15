@@ -1,0 +1,32 @@
+B324 - AKTUALIZACE APPKY ZE SERVERU N&P BEZ DRUHE NABIDKY A DRUHEHO STAHOVANI
+==============================================================================
+
+Rene (B323 na telefonu): "ta aktualizace telefonu je obra ale ma chybicky - po odsouhlaseni v apce to
+skace z apky ven pro dalsi potvrzeni - coz by asi nevadilo - ale pak se to nesmyslne vraci zpet do apky
+a stahuje to znova - tedy zada dalsi souhlas jestli chci stahnout aktualizaci".
+
+PRICINA: NapAktualizace.nainstaluj posila vysledek instalace (PackageInstaller -> IntentSender) na
+PendingIntent.getActivity(MainActivity). MainActivity ma v manifestu launchMode "standard", takze kazde
+zavolani (STATUS_PENDING_USER_ACTION, pak uspech / chyba) vytvorilo NOVOU kopii MainActivity nad tou
+starou. Nova kopie se pri startu zeptala serveru (napOverStav "start"), videla apk_verze vyssi nez
+svoji (stara verze jeste nebyla nainstalovana - Android ceka na potvrzeni) a nabidla aktualizaci
+znovu (napNabidnutaVerze byla jen v instanci). Potvrzeni Androidu ("skace z apky ven") je spravne.
+
+OPRAVA (NapAktualizace.java, MainActivity.java):
+ - PendingIntent vysledku: FLAG_ACTIVITY_SINGLE_TOP | FLAG_ACTIVITY_CLEAR_TOP -> bezici MainActivity
+   dostane onNewIntent, zadna nova kopie (uspech po instalaci prijde do NOVE verze = novy proces)
+ - instalaceBezi (10 min): behem stahovani / instalace se aktualizace znovu nenabizi ani nestahuje;
+   konci pri chybe, zruseni i uspechu; rucne z OPTIONS (spustRucne) jde vzdy
+ - napNabidnutaVerze static; onCreate zpracuje vysledek instalace jen bez savedInstanceState
+ - Android 12+ (API 31): SessionParams.setRequireUserAction(USER_ACTION_NOT_REQUIRED) - appka, ktera
+   se naposledy instalovala sama (installer of record), dalsi aktualizaci nainstaluje bez potvrzeni;
+   jinak se Android zepta jako drive (STATUS_PENDING_USER_ACTION)
+ - hlasky: "Instaluje se nova verze - appka se sama zavre a otevre znovu", "Aktualizace hotova - B324"
+
+Spoustet z adresare test_overeni/b324:
+     python3 kontrola_aktualizace.py <android-34.jar>             -> VYSTUP_kontrola_aktualizace.txt (6 OK)
+   K1-K5 zdrojak (priznaky PendingIntent, manifest, Android 12+, hlidani, onCreate), K6 logika hlidani
+   v JVM (NapAktualizace.instalaceBezi / instalaceSkoncila).
+   Napoveda CZ / EN: b311/kontrola_odkazu.py 0 chyb, b311/kontrola_navodu.py a b314/kontrola_navodu_en.py 0 CHYBA.
+   Chovani Androidu (nova kopie aktivity pri launchMode standard, USER_ACTION_NOT_REQUIRED) se na PC
+   pustit neda - overit na telefonu.

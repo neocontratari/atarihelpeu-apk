@@ -1,0 +1,8 @@
+OK     K1 PendingIntent vysledku instalace: FLAG_ACTIVITY_SINGLE_TOP | FLAG_ACTIVITY_CLEAR_TOP pred getActivity
+OK     K2 MainActivity v manifestu bez launchMode (standard) a jedine spousteni MainActivity je vysledek instalace
+OK     K3 Android 12+ bez potvrzovani (USER_ACTION_NOT_REQUIRED) jen pod SDK_INT >= 31, v try
+OK     K4 behem instalace se nenabizi znovu (nabidniZeServeru, zeptejSe, nainstaluj, napNabidniCekajici); rucne jde vzdy
+OK     K5 napNabidnutaVerze static, vysledek instalace jen pri novem startu (bez savedInstanceState), uspech i chyba ukonci hlidani
+OK     K6 JVM: bez instalace nabizi; behem instalace (i po 9 min) ne; po 10 min / po skonceni zase ano
+
+VYSLEDEK: 6 OK, 0 CHYBA

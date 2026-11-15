@@ -34,6 +34,14 @@ import java.util.zip.ZipInputStream;
  * (/api/v1/stav: apk_verze = versionCode APK na serveru) a novou verzi stahuje podepsane
  * z /api/v1/apk - primo, bez ZIPu. Web atarihelp.eu zustava jen jako zaloha.
  *
+ * B324: Rene - "po odsouhlaseni v apce to skace z apky ven pro dalsi potvrzeni ... pak se to
+ * nesmyslne vraci zpet do apky a stahuje to znova". Vysledek instalace (PendingIntent na
+ * MainActivity) spoustel KAZDYM zavolanim NOVOU kopii MainActivity (launchMode standard): ta se
+ * zeptala serveru, videla novejsi verzi (stara jeste nebyla nainstalovana) a nabidla ji znovu.
+ * Ted: FLAG_ACTIVITY_SINGLE_TOP | CLEAR_TOP (vysledek dostane bezici MainActivity.onNewIntent),
+ * behem instalace se nic znovu nenabizi (instalaceBezi) a Android 12+ (API 31) dalsi aktualizaci
+ * nainstaluje bez potvrzovani (USER_ACTION_NOT_REQUIRED - appka uz je "installer of record").
+ *
  * Kontrola verze (zaloha):
  *   https://atarihelp.eu/wp-content/uploads/2026/08/emu10_verze.txt
  * obsahuje jeden radek  "cislo|odkaz_na_zip".  Ma 69 bajtu, takze se
@@ -55,6 +63,17 @@ public final class NapAktualizace {
     public static volatile NapServerKlient server;
 
     private static final class Novinka { int verze; String zip; String nazev = ""; }
+
+    /** B324: od kdy bezi stazeni / instalace - mezitim se aktualizace znovu nenabizi (10 minut). */
+    private static volatile long instalaceOd = 0L;
+
+    static boolean instalaceBezi() {
+        final long t = instalaceOd;
+        return t != 0L && System.currentTimeMillis() - t < 10L * 60L * 1000L;
+    }
+
+    /** B324: instalace skoncila (hotovo, zruseno, chyba) - zase se smi nabizet. */
+    static void instalaceSkoncila() { instalaceOd = 0L; }
 
     private static boolean zeServeru() {
         NapServerKlient s = server;
@@ -123,6 +142,7 @@ public final class NapAktualizace {
 
     /** Rucni spusteni z nabidky OPTIONS - stahne i kdyz je verze stejna. */
     public static void spustRucne(final Activity a, final Hlaska log) {
+        instalaceSkoncila();   // B324: rucne = uzivatel to chce znovu (i po zaseknute instalaci)
         new Thread(() -> {
             Novinka v = zjistiNovinku();
             final boolean srv = zeServeru();
@@ -136,6 +156,7 @@ public final class NapAktualizace {
     /** B321: server N&P ma novejsi appku - nabidnout (bez povoleni instalace nejdriv nastaveni). */
     public static void nabidniZeServeru(final Activity a, int nova, String nazev, int moje, final Hlaska log) {
         if (log != null) log.rekni("AKTUALIZACE na serveru N&P " + nazev + " (" + nova + "), moje " + moje);
+        if (instalaceBezi()) { if (log != null) log.rekni("AKTUALIZACE uz se instaluje - znovu nenabizim (B324)"); return; }
         if (!smiInstalovat(a)) {
             try {
                 new AlertDialog.Builder(a)
@@ -156,6 +177,7 @@ public final class NapAktualizace {
 
     private static void zeptejSe(final Activity a, int nova, String nazev, int moje,
                                  final String zip, final Hlaska log) {
+        if (instalaceBezi()) { if (log != null) log.rekni("AKTUALIZACE uz se instaluje - druhy dotaz ne (B324)"); return; }
         try {
             // B314: cesky / anglicky (NapJazyk); B321: ze serveru N&P (zip == null)
             String odkud = zip == null ? NapJazyk.t(a, "Na serveru N&P", "The N&P server has")
@@ -192,6 +214,8 @@ public final class NapAktualizace {
     //  Stazeni a instalace - bez souboru na disku
     // ------------------------------------------------------------------
     private static void nainstaluj(final Activity a, final String zipUrl, final Hlaska log) {
+        if (instalaceBezi()) { if (log != null) log.rekni("AKTUALIZACE uz bezi - druhe stazeni ne (B324)"); return; }
+        instalaceOd = System.currentTimeMillis();
         final AlertDialog dlg;
         final android.widget.TextView popis = new android.widget.TextView(a);
         final android.widget.ProgressBar pruh = new android.widget.ProgressBar(
@@ -210,6 +234,7 @@ public final class NapAktualizace {
                     .setView(box).setCancelable(false).create();
             dlg.show();
         } catch (Throwable t) {
+            instalaceSkoncila();
             if (log != null) log.rekni("AKTUALIZACE okno: " + t.getClass().getSimpleName());
             return;
         }
@@ -245,6 +270,11 @@ public final class NapAktualizace {
                 PackageInstaller pi = a.getPackageManager().getPackageInstaller();
                 PackageInstaller.SessionParams sp = new PackageInstaller.SessionParams(
                         PackageInstaller.SessionParams.MODE_FULL_INSTALL);
+                // B324: Android 12+ - kdyz appku naposledy instalovala ona sama (aktualizace odsud),
+                // dalsi aktualizace jde bez potvrzovaciho okna Androidu. Jinak se Android zepta jako drive.
+                if (Build.VERSION.SDK_INT >= 31) {
+                    try { sp.setRequireUserAction(PackageInstaller.SessionParams.USER_ACTION_NOT_REQUIRED); } catch (Throwable ignored) {}
+                }
                 int id = pi.createSession(sp);
                 relace = pi.openSession(id);
 
@@ -301,6 +331,9 @@ public final class NapAktualizace {
 
                 Intent i = new Intent(a, MainActivity.class);
                 i.setAction("eu.atarihelp.emu10.INSTALACE");
+                // B324: vysledek dostane BEZICI MainActivity (onNewIntent) - bez tohohle Android
+                // pokazde vytvoril novou kopii appky, ta se zeptala serveru a nabidla aktualizaci znovu
+                i.addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP | Intent.FLAG_ACTIVITY_CLEAR_TOP);
                 // B321: vysledek (a hlavne potvrzeni instalace) zpracuje MainActivity.napInstalace
                 android.app.PendingIntent pending = android.app.PendingIntent.getActivity(
                         a, 0, i,
@@ -317,9 +350,16 @@ public final class NapAktualizace {
                 if (c != null) try { c.disconnect(); } catch (Throwable ignored) {}
             }
             final String v = vysledek;
+            if (!v.startsWith("OK")) instalaceSkoncila();
             a.runOnUiThread(() -> {
                 try { dlg.dismiss(); } catch (Throwable ignored) {}
                 if (log != null) log.rekni("AKTUALIZACE " + v);
+                if (v.startsWith("OK")) {
+                    try {
+                        android.widget.Toast.makeText(a, NapJazyk.t(a, "Instaluje se nová verze – appka se sama zavře a otevře znovu.",
+                                "Installing the new version – the app will close and open again by itself."), android.widget.Toast.LENGTH_LONG).show();
+                    } catch (Throwable ignored) {}
+                }
                 if (!v.startsWith("OK")) {
                     try {
                         new AlertDialog.Builder(a).setTitle(NapJazyk.t(a, "Aktualizace nevysla", "The update failed"))

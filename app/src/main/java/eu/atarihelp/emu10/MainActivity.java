@@ -10588,13 +10588,14 @@ public class MainActivity extends Activity {
     private volatile String napTajemstviApk = null;
     private long napStavCas = 0;
     private String napPosledniZprava = "";
-    private int napNabidnutaVerze = 0;
+    private static int napNabidnutaVerze = 0;   // B324: static - nova kopie aktivity uz nenabizi znovu
     private int napCekajiciVerze = 0, napCekajiciMoje = 0;
     private String napCekajiciNazev = "";
 
     /** B321: nova verze appky na serveru N&P - nabidnout, az je videt menu (a ne uvodni demo). */
     private void napNabidniCekajici() {
         if (napCekajiciVerze <= 0 || napCekajiciVerze == napNabidnutaVerze || demoPlocha != null || napZamceno()) return;
+        if (NapAktualizace.instalaceBezi()) return;   // B324: prave se instaluje - nenabizet znovu
         napNabidnutaVerze = napCekajiciVerze;
         NapAktualizace.nabidniZeServeru(this, napCekajiciVerze, napCekajiciNazev, napCekajiciMoje, z -> appendNativeLog("B321 " + z));
     }
@@ -10995,7 +10996,15 @@ public class MainActivity extends Activity {
                     appendNativeLog("B321 INSTALACE potvrzeni nejde otevrit: " + safeMsg(t));
                 }
             }
-        } else if (st != android.content.pm.PackageInstaller.STATUS_SUCCESS && st != Integer.MIN_VALUE) {
+        } else if (st == android.content.pm.PackageInstaller.STATUS_SUCCESS) {
+            // B324: sem prijde uz NOVA verze (Android po instalaci appku spusti znovu)
+            NapAktualizace.instalaceSkoncila();
+            String verze = "";
+            try { verze = getPackageManager().getPackageInfo(getPackageName(), 0).versionName; } catch (Throwable ignored) {}
+            android.widget.Toast.makeText(MainActivity.this, tx("Aktualizace hotová – ", "Update done – ") + verze,
+                    android.widget.Toast.LENGTH_LONG).show();
+        } else if (st != Integer.MIN_VALUE) {
+            NapAktualizace.instalaceSkoncila();
             android.widget.Toast.makeText(MainActivity.this, tx("Aktualizace se nenainstalovala", "The update was not installed")
                     + (zprava != null ? ": " + zprava : ""), android.widget.Toast.LENGTH_LONG).show();
         }
@@ -11760,7 +11769,9 @@ public class MainActivity extends Activity {
         appendNativeLog("B314 JAZYK_PRI_STARTU " + NapJazyk.popis(this));
         jazykDoKnihoven("start");
         napServerInit();               // B321: server her N&P - stav parovani telefonu do logu
-        napInstalace(getIntent());     // B321: appka spustena vysledkem instalace aktualizace
+        // B321: appka spustena vysledkem instalace aktualizace. B324: jen pri novem startu - po obnove
+        // aktivity (savedInstanceState) uz ne, jinak by se znovu otviralo potvrzeni stare instalace
+        if (savedInstanceState == null) napInstalace(getIntent());
         // BUILD2SK99: rekni PS1 nativnimu kodu, kam ma zapisovat pohotovostni
         // diagnostiku (napr. gpu-gles/EGL inicializace) - primo do STEJNEHO
         // souboru, co uz napTvWebLogFileInit prave zalozil. Musi byt AZ PO
