@@ -106,6 +106,8 @@ body{background:radial-gradient(120% 70% at 50% 40%,#1c1006 0%,#0a0603 45%,#0302
   background:#140c03;color:#ffe6a0;font:800 17px "Chakra Petch",Arial,sans-serif;letter-spacing:.22em;text-align:center;text-transform:uppercase;outline:none;}
 #settingsPanel #stKod:focus{border-color:#ffd479;box-shadow:0 0 14px rgba(255,190,60,.35);}
 #settingsPanel #stKodHlaska{min-height:1.2em;color:#ffb38a;opacity:1;}
+/* B325: verze appky v OPTIONS (Rene: "bude videt jaka je verze" - test aktualizace) */
+#settingsPanel #stVerze{display:none;margin:-6px 0 10px;text-align:center;color:#d9b878;font:700 12px "Chakra Petch",Arial,sans-serif;letter-spacing:.12em;opacity:.9;}
 </style>
 </head>
 <body>
@@ -126,6 +128,7 @@ body{background:radial-gradient(120% 70% at 50% 40%,#1c1006 0%,#0a0603 45%,#0302
 <div id="settingsPanel" aria-hidden="true">
   <div class="list">
     <div class="stlabel" id="stTitul">OPTIONS</div>
+    <div id="stVerze" data-nepreklad></div>
     <!-- B314: jazyk - nazvy jazyku vzdy ve svem jazyce (neprekladaji se) -->
     <div class="stlabel2" data-nepreklad>JAZYK · LANGUAGE</div>
     <div class="qrow" id="stJazyk" data-nepreklad>
@@ -360,7 +363,18 @@ function tvAdresaUkaz(adr){
 function tvAdresaObnov(){
   try{ tvAdresaUkaz((window.AHTVWEB&&typeof window.AHTVWEB.status==='function')?tvAdresaZ(window.AHTVWEB.status()):''); }catch(e){}
 }
+// B325: verze appky pod nadpisem OPTIONS ("EMU10-B325-VERZE|368" z Javy, AHJAZYK.verze)
+function verzeObnov(){
+  var el=$('stVerze'); if(!el) return;
+  var v='';
+  try{ v=(window.AHJAZYK&&typeof window.AHJAZYK.verze==='function')?String(AHJAZYK.verze()||''):''; }catch(e){ v=''; }
+  var c=v.split('|');
+  if(!c[0]){ el.style.display='none'; return; }
+  el.textContent=J('VERZE ','VERSION ')+c[0]+(c[1]?' ('+c[1]+')':'');
+  el.style.display='block';
+}
 function openSettings(){if(!sp)return;sp.classList.add('open');sp.setAttribute('aria-hidden','false');sp.scrollTop=0;napQualityRefresh();tvAdresaObnov();
+  try{ verzeObnov(); }catch(e){}
   try{ ovlObnov(); }catch(e){}
   try{ $('stServisKod').style.display='none'; servisUkaz(); }catch(e){}}
 // B320: HERNI OVLADAC (Retroid Pocket 6, Bluetooth / USB gamepad) - co s dotykovymi tlacitky ve hrach:

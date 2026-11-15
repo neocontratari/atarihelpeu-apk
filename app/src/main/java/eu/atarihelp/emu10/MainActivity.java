@@ -4938,6 +4938,13 @@ public class MainActivity extends Activity {
         @JavascriptInterface public String kod() {
             return NapJazyk.kod(MainActivity.this);
         }
+        /** B325: verze appky pro OPTIONS ("EMU10-B325-VERZE|368") - Rene vidi, ze aktualizace prosla. */
+        @JavascriptInterface public String verze() {
+            try {
+                android.content.pm.PackageInfo pi = getPackageManager().getPackageInfo(getPackageName(), 0);
+                return pi.versionName + "|" + pi.versionCode;
+            } catch (Throwable t) { return ""; }
+        }
         @JavascriptInterface public String nastav(String novy) {
             final String k = novy == null ? "" : novy.trim().toLowerCase(java.util.Locale.ROOT);
             if (!NapJazyk.CS.equals(k) && !NapJazyk.EN.equals(k)) return NapJazyk.kod(MainActivity.this);

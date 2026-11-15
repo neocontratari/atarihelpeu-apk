@@ -3744,3 +3744,19 @@
        potvrzeni.
 
 ===============================================================================
+
+   B325: VERZE APPKY V OPTIONS - ZKOUSKA AKTUALIZACE B324 -> B325 (15. 11. 2026)
+     Rene: "povedlo se mi nainstalovat B324 - ted udelej jeste dalsi build treba
+     s malou zmenou - napriklad v options bude videt jaka je verze - at muzu
+     testnout jestli to uz funguje".
+     - assets/index.html: pod nadpisem OPTIONS radek #stVerze "VERZE EMU10-B325-
+       VERZE (368)" / "VERSION ..." (verzeObnov pri openSettings, data-nepreklad);
+       most AHJAZYK.verze() = "versionName|versionCode". Bez mostu radek neni.
+     - test_overeni/b325/test_b325_verze.py 5 OK (Chromium, falesny most, CZ / EN /
+       bez mostu). b311/test_b311_menu a b314/test_b314_jazyk_menu: stejny vystup
+       jako na B324 (zname rozdily od B322 - zamcena karta otevre ODEMKNOUT).
+     - build.gradle: versionCode 368 "EMU10-B325-VERZE". Tohle je prvni
+       aktualizace, kterou dela uz opraveny kod B324 (zadna druha nabidka; Android
+       12+ mozna i bez potvrzeni - zalezi, jestli je appka installer of record).
+
+===============================================================================
