@@ -452,23 +452,66 @@ public final class NapAktualizace {
                 return casPrijimace > 0 ? "B328 PO AKTUALIZACI " + NapAktualizaceTexty.prijimacDoLogu(casPrijimace,
                         vysledekPrijimace, System.currentTimeMillis()) : null;
             }
-            // B328: okno misto Toastu - Rene po B327: "myslim, ze se ta hlaska neukazala" (Toast je 3 s dole,
-            // pres volbu jazyka nebo intro snadno zapadne). Az kdyz appka nabehne (1,5 s), s tlacitkem OK.
-            final boolean en = NapJazyk.en(a);
-            new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(() -> {
-                try {
-                    if (a.isFinishing()) return;
-                    new AlertDialog.Builder(a).setTitle(NapAktualizaceTexty.novaVerzeTitulek(en))
-                            .setMessage(NapAktualizaceTexty.novaVerze(en, pi.versionName + " (" + pi.versionCode + ")"))
-                            .setPositiveButton("OK", null).show();
-                } catch (Throwable ignored) {}
-            }, 1500L);
-            return "B328 NOVA VERZE NAINSTALOVANA " + (byla > 0 ? String.valueOf(byla) : "(do B326 neukladano)")
-                    + " -> " + pi.versionCode + " " + pi.versionName + " (okno) | "
+            // B329: okno "Aktualizace hotova" ceka, az bude videt menu (oznamNovouVerzi z MainActivity), a ukazuje
+            // se, dokud na nem clovek neklepne OK. B328 ho ukazal 1,5 s po startu jen jednou - Rene ho po B328
+            // nevidel (prvni start probehl schovany, nebo se appka hned zavrela) a podruhe uz neprislo.
+            sp.edit().putInt(K_OZNAMIT, pi.versionCode).putInt(K_OZNAMIT_UKAZANO, 0).apply();
+            return "B329 NOVA VERZE NAINSTALOVANA " + (byla > 0 ? String.valueOf(byla) : "(do B326 neukladano)")
+                    + " -> " + pi.versionCode + " " + pi.versionName + " (okno az bude videt menu, do OK) | "
                     + NapAktualizaceTexty.prijimacDoLogu(casPrijimace, vysledekPrijimace, System.currentTimeMillis());
         } catch (Throwable t) {
-            return "B328 NOVA VERZE kontrola: " + t.getClass().getSimpleName();
+            return "B329 NOVA VERZE kontrola: " + t.getClass().getSimpleName();
         }
+    }
+
+    /** B329: cekajici oznameni "Aktualizace hotova" (versionCode) a kolikrat uz bylo ukazano bez OK. */
+    private static final String K_OZNAMIT = "oznamit", K_OZNAMIT_UKAZANO = "oznamit_ukazano";
+    private static AlertDialog oznameni;   // prave ukazane okno (vlakno UI)
+
+    /**
+     * B329: ukazat "Aktualizace hotova", kdyz ceka (MainActivity: az je videt menu - ne pres intro nebo
+     * volbu jazyka). Okno nejde zavrit jinak nez OK; teprve OK oznameni smaze. Vlakno UI.
+     */
+    public static void oznamNovouVerzi(final Activity a, final String proc, final Hlaska log) {
+        try {
+            if (a == null || a.isFinishing()) return;
+            if (oznameni != null && oznameni.isShowing()) return;
+            final android.content.pm.PackageInfo pi = a.getPackageManager().getPackageInfo(a.getPackageName(), 0);
+            final android.content.SharedPreferences sp = a.getSharedPreferences(PREF, Context.MODE_PRIVATE);
+            final int ceka = sp.getInt(K_OZNAMIT, 0), ukazano = sp.getInt(K_OZNAMIT_UKAZANO, 0);
+            final int co = NapAktualizaceTexty.oznameni(ceka, pi.versionCode, ukazano);
+            if (co == NapAktualizaceTexty.OZN_NIC) return;
+            if (co == NapAktualizaceTexty.OZN_SMAZAT) {
+                sp.edit().remove(K_OZNAMIT).remove(K_OZNAMIT_UKAZANO).apply();
+                if (log != null) log.rekni("B329 NOVA VERZE: oznameni smazano (" + (ceka != pi.versionCode
+                        ? "patrilo verzi " + ceka : ukazano + "x ukazano bez OK") + ")");
+                return;
+            }
+            sp.edit().putInt(K_OZNAMIT_UKAZANO, ukazano + 1).apply();
+            final boolean en = NapJazyk.en(a);
+            final AlertDialog d = new AlertDialog.Builder(a).setTitle(NapAktualizaceTexty.novaVerzeTitulek(en))
+                    .setMessage(NapAktualizaceTexty.novaVerze(en, pi.versionName + " (" + pi.versionCode + ")"))
+                    .setCancelable(false)
+                    .setPositiveButton("OK", (dlg, w) -> {
+                        try { sp.edit().remove(K_OZNAMIT).remove(K_OZNAMIT_UKAZANO).apply(); } catch (Throwable ignored) {}
+                        if (log != null) log.rekni("B329 NOVA VERZE: klepnuto OK - oznameni hotovo");
+                    })
+                    .create();
+            d.setCanceledOnTouchOutside(false);
+            d.setOnDismissListener(x -> { if (oznameni == d) oznameni = null; });
+            oznameni = d;
+            d.show();
+            if (log != null) log.rekni("B329 NOVA VERZE: okno ukazano (" + proc + ", " + (ukazano + 1) + ". ukazani)");
+        } catch (Throwable t) {
+            if (log != null) log.rekni("B329 NOVA VERZE okno: chyba " + t.getClass().getSimpleName());
+        }
+    }
+
+    /** B329: aktivita konci - okno zavrit (oznameni zustava cekat, ukaze se pri dalsim startu). */
+    public static void zavriOznameni() {
+        final AlertDialog d = oznameni;
+        oznameni = null;
+        if (d != null) try { d.dismiss(); } catch (Throwable ignored) {}
     }
 
     /** Umi telefon vubec instalovat z teto aplikace? */

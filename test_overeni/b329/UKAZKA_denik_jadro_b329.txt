@@ -1,0 +1,37 @@
+==================== PS1 START: HRA ====================
+2026-11-15 20:43:02.505  PS1 HRA: mys_test.exe | typ .exe | 4 kB | cesta ./mys_test.exe
+2026-11-15 20:43:02.505  PS1 BIOS ve slozce appky: ZADNY (jadro pojede s HLE - nahradnim BIOSem, nektere hry pak nejdou)
+2026-11-15 20:43:02.505  PS1 JADRO: Starting PCSX-ReARMed r26-nap-sa1 (cc 13.3.0 64bit pic ssse3 gpu=BUILTIN_GPU)
+2026-11-15 20:43:02.505  PS1 JADRO: build time: Nov 15 2026 17:57:05
+2026-11-15 20:43:02.505  PS1 JADRO: 2 cpu core(s) detected
+2026-11-15 20:43:02.505  PS1 JADRO: No BIOS files found.
+2026-11-15 20:43:02.505  PS1 JADRO: Using PIXEL_FORMAT 2
+2026-11-15 20:43:02.505  PS1 JADRO: plugin: /builtin_gpu
+2026-11-15 20:43:02.505  PS1 JADRO: plugin: /builtin_spu
+2026-11-15 20:43:02.505  PS1 JADRO: Plugins loaded.
+2026-11-15 20:43:02.505  PS1 JADRO: Loaded CD Image: ./mys_test.exe (568 bytes).
+2026-11-15 20:43:02.505  PS1 JADRO: Track 01 DATA  - Start 00:02:00, Length 00:00:00
+2026-11-15 20:43:02.505  PS1 JADRO: End 00:02:00 (sector 150)
+2026-11-15 20:43:02.505  PS1 JADRO: memcard 1 is libretro-managed
+2026-11-15 20:43:02.505  PS1 JADRO: memcard 2 is libretro-managed
+2026-11-15 20:43:02.506  PS1 JADRO: HLE BIOS initialized.
+2026-11-15 20:43:02.506  PS1 JADRO: note: running with HLE BIOS, expect compatibility problems
+2026-11-15 20:43:02.506  PS1 JADRO: ----------------------------------------------------------
+2026-11-15 20:43:02.506  PS1 PAMETOVA KARTA nova (soubor zatim neni): ./karta_b329/memory_card_1.srm, 131072 B prazdna
+2026-11-15 20:43:02.507  PS1 MYS: hra mys_test.exe - vypnuta, ovladac v portu 1 (zapne se tlacitkem MYS na sirku)
+2026-11-15 20:43:02.507  PS1 MERENI VYKONU: zapnuto (13 / 13 funkci GPU a zvuku) - jen meri, hra se nemeni (radky VYKON)
+2026-11-15 20:43:02.507  PS1 JADRO: BIOS HLE (vestaveny nahradni - soubor BIOSu nenalezen!) | region USA, NTSC 60 Hz | procesor interpret | disk ID "SLUS99999" nazev "SLUS_999.99" | zvuk XA ZAPNUTY, CD audio ZAPNUTY, pomaly start 1
+2026-11-15 20:43:02.507  PS1 NASTAVENI GRAFIKY: 2x (Enhanced Resolution) ZAPNUTO, bez 1x obrazu NE, uprava textur ANO | prokladani AUTO | dithering ZAPNUTO | kresleni ve vlakne NE | preskakovani snimku 0
+2026-11-15 20:43:02.507  PS1 CASOVANI: 60.000 snimku/s, zvuk jadra 44100 Hz -> reproduktor 44100 Hz | obraz zakladni 256x240, nejvic 1024x512
+2026-11-15 20:43:02.507  PS1 PAMETOVA KARTA 1: zasunuta, soubor ./karta_b329/memory_card_1.srm (CHYBI)
+2026-11-15 20:43:02.507  PS1 BEZI HRA
+2026-11-15 20:43:02.507  PS1 start trval 3 ms
+2026-11-15 20:43:02.507  PS1 JADRO PROCESORU: emulace pripnuta na cpu1 (nejrychlejsi, umi 2000 MHz, nejpomalejsi jadro 1000 MHz, jader 2) - hra se nemeni, 2x zustava | takt ted: cpu1 1500 MHz (smi 2000, umi 2000 MHz, schedutil)
+2026-11-15 20:43:02.509  PS1 OBRAZ: obraz (test bez vykreslovace)
+2026-11-15 20:43:07.525  PS1 ZDRAVI 5 s: emulace 61.2 kroku/s (cil 60.00, rezerva 88 % casu) | retro_run prumer 2.0 ms, nejdele 3.4 ms | snimky 61.2/s (stejnych 61.2/s) | zvuk fronta 99 ms, vypadky 0 | obraz (test bez vykreslovace) | tlacitka nic (zmen 0, z klavesnice TV 0, z ovladace 0) | TV divaku 0
+2026-11-15 20:43:07.525  PS1 VYKON 5 s: snimek prumer 2.0 ms = hra (procesor PS1) 2.0 + kresleni 0.0 + predani obrazu 0.0 + zvuk 0.0 | jadro procesoru: cpu1 100 % (1500 MHz) | takt: cpu1 1500 MHz (smi 2000, umi 2000 MHz, schedutil) (pripnuto) | TV divaku 0
+2026-11-15 20:43:10.407  PS1 JADRO PROCESORU: Android vlaknu emulace zmenil jadra - pripinam znovu na cpu1
+2026-11-15 20:43:12.540  PS1 ZDRAVI 10 s: emulace 59.8 kroku/s (cil 60.00, rezerva 88 % casu) | retro_run prumer 2.1 ms, nejdele 3.9 ms | snimky 59.8/s (stejnych 59.8/s) | zvuk fronta 84 ms, vypadky 0 | obraz (test bez vykreslovace) | tlacitka nic (zmen 0, z klavesnice TV 0, z ovladace 0) | TV divaku 0
+2026-11-15 20:43:12.540  PS1 VYKON 10 s: snimek prumer 2.1 ms = hra (procesor PS1) 2.1 + kresleni 0.0 + predani obrazu 0.0 + zvuk 0.0 | jadro procesoru: cpu1 97 % (1500 MHz), cpu0 2 % (1500 MHz) | takt: cpu1 1500 MHz (smi 2000, umi 2000 MHz, schedutil) (pripnuto) | TV divaku 0
+2026-11-15 20:43:17.555  PS1 ZDRAVI 15 s: emulace 60.0 kroku/s (cil 60.00, rezerva 87 % casu) | retro_run prumer 2.2 ms, nejdele 3.2 ms | snimky 60.0/s (stejnych 60.0/s) | zvuk fronta 85 ms, vypadky 0 | obraz (test bez vykreslovace) | tlacitka nic (zmen 0, z klavesnice TV 0, z ovladace 0) | TV divaku 0
+2026-11-15 20:43:17.556  PS1 VYKON 15 s: snimek prumer 2.2 ms = hra (procesor PS1) 2.2 + kresleni 0.0 + predani obrazu 0.0 + zvuk 0.0 | jadro procesoru: cpu1 100 % (1500 MHz) | takt: cpu1 1500 MHz (smi 2000, umi 2000 MHz, schedutil) (pripnuto) | TV divaku 0

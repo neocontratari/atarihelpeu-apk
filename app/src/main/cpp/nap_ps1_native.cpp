@@ -11,6 +11,7 @@
 #include <chrono>
 #include <algorithm>   // B328: VYKON (razeni jader procesoru)
 #include <sys/syscall.h>   // B328: getcpu - na kterem jadru procesoru bezi emulace
+#include <cerrno>          // B329: chyba pripnuti na jadro
 #include <unistd.h>
 #include <cstring>
 #include <cstdio>
@@ -1074,6 +1075,7 @@ static int ps1_jadro_ted() {
   return -1;
 }
 
+static const char *g_ps1_cpu_koren = "/sys/devices/system/cpu";   // test na PC podstrci vlastni slozku
 // Na kterych jadrech procesoru telefonu bezela emulace a jejich takt (MHz, z /sys - jen cteni).
 // Male jadro nebo snizeny takt by vysvetlily pomale snimky, i kdyz hra dela porad totez.
 static std::string ps1_jadra_text(const unsigned *jadra, uint64_t snimku) {
@@ -1082,9 +1084,9 @@ static std::string ps1_jadra_text(const unsigned *jadra, uint64_t snimku) {
   std::sort(v.begin(), v.end(), [](const std::pair<unsigned, int> &a, const std::pair<unsigned, int> &b) { return a.first > b.first; });
   std::string r;
   for (size_t k = 0; k < v.size() && k < 3 && snimku > 0; k++) {
-    char f[96], cesta[96];
+    char f[96], cesta[256];
     long khz = -1;
-    snprintf(cesta, sizeof(cesta), "/sys/devices/system/cpu/cpu%d/cpufreq/scaling_cur_freq", v[k].second);
+    snprintf(cesta, sizeof(cesta), "%s/cpu%d/cpufreq/scaling_cur_freq", g_ps1_cpu_koren, v[k].second);
     if (FILE *soubor = fopen(cesta, "r")) { if (fscanf(soubor, "%ld", &khz) != 1) khz = -1; fclose(soubor); }
     const unsigned proc = (unsigned)((uint64_t)v[k].first * 100u / snimku);
     if (khz > 0) snprintf(f, sizeof(f), "%scpu%d %u %% (%ld MHz)", r.empty() ? "" : ", ", v[k].second, proc, khz / 1000);
@@ -1093,6 +1095,98 @@ static std::string ps1_jadra_text(const unsigned *jadra, uint64_t snimku) {
   }
   return r.empty() ? std::string("?") : r;
 }
+// ===== B329: EMULACE NA JEDNOM NEJRYCHLEJSIM JADRE (Rene: "ano muzes samozrejme") =====
+// B328 VYKON ze SpongeBoba na S8: snimek ~23 ms = kresleni 2x ~20 ms, velka jadra jen 741-962 MHz
+// (umi 2,3 GHz) a emulace preskakovala mezi cpu4-7 (kazde ~25-60 % snimku) - telefon asi nevidel plnou
+// zatez a nezrychlil. Vlakno emulace se pripne na jedno nejrychlejsi jadro (jen telefon s ruzne rychlymi
+// jadry); hra se nemeni, 2x zustava. Android muze masku vlakna prepsat (zmena skupiny procesu) - proto
+// se v behu kontroluje znovu. Do VYKON jde takt: kolik jadro jede, kolik smi a kolik umi.
+struct Ps1Jadro { int cpu = -1; long maxKhz = 0, minKhz = 0; int jader = 0; };
+static long ps1_cpu_cislo(const char *koren, int cpu, const char *soubor) {
+  char cesta[192];
+  long v = -1;
+  snprintf(cesta, sizeof(cesta), "%s/cpu%d/cpufreq/%s", koren, cpu, soubor);
+  if (FILE *f = fopen(cesta, "r")) { if (fscanf(f, "%ld", &v) != 1) v = -1; fclose(f); }
+  return v;
+}
+static std::string ps1_cpu_text(const char *koren, int cpu, const char *soubor) {
+  char cesta[192], b[64] = "";
+  snprintf(cesta, sizeof(cesta), "%s/cpu%d/cpufreq/%s", koren, cpu, soubor);
+  if (FILE *f = fopen(cesta, "r")) { if (fscanf(f, "%63s", b) != 1) b[0] = '\0'; fclose(f); }
+  return std::string(b);
+}
+// nejrychlejsi jadro podle cpuinfo_max_freq; pri stejnem taktu vyssi cislo (S8 cpu7, Snapdragon = hlavni jadro)
+static Ps1Jadro ps1_nejrychlejsi_jadro(const char *koren) {
+  Ps1Jadro r;
+  for (int i = 0; i < 64; i++) {
+    const long khz = ps1_cpu_cislo(koren, i, "cpuinfo_max_freq");
+    if (khz <= 0) continue;
+    r.jader++;
+    if (r.minKhz == 0 || khz < r.minKhz) r.minKhz = khz;
+    if (khz >= r.maxKhz) { r.maxKhz = khz; r.cpu = i; }
+  }
+  return r;
+}
+// pripnout VOLAJICI vlakno na jedno jadro (syscall - bez zavislosti na _GNU_SOURCE / cpu_set_t)
+static bool ps1_pripni_vlakno(int cpu) {
+#if defined(__NR_sched_setaffinity)
+  if (cpu < 0 || cpu >= 256) return false;
+  unsigned long m[256 / (8 * sizeof(unsigned long))] = {0};
+  m[cpu / (8 * sizeof(unsigned long))] = 1UL << (cpu % (8 * sizeof(unsigned long)));
+  return syscall(__NR_sched_setaffinity, 0, sizeof(m), m) == 0;
+#else
+  (void)cpu; return false;
+#endif
+}
+// je volajici vlakno porad pripnute jen na tohle jadro?
+static bool ps1_vlakno_pripnute(int cpu) {
+#if defined(__NR_sched_getaffinity)
+  if (cpu < 0 || cpu >= 256) return false;
+  unsigned long m[256 / (8 * sizeof(unsigned long))] = {0};
+  if (syscall(__NR_sched_getaffinity, 0, sizeof(m), m) <= 0) return false;
+  for (size_t i = 0; i < sizeof(m) / sizeof(m[0]); i++) {
+    const unsigned long chci = (i == cpu / (8 * sizeof(unsigned long))) ? 1UL << (cpu % (8 * sizeof(unsigned long))) : 0UL;
+    if (m[i] != chci) return false;
+  }
+  return true;
+#else
+  (void)cpu; return false;
+#endif
+}
+// takt jadra do VYKON: "cpu7 962 MHz (smi 2314, umi 2314 MHz, governor)"
+static std::string ps1_takt_text(const char *koren, int cpu) {
+  if (cpu < 0) return std::string("?");
+  const long ted = ps1_cpu_cislo(koren, cpu, "scaling_cur_freq"), smi = ps1_cpu_cislo(koren, cpu, "scaling_max_freq"),
+             umi = ps1_cpu_cislo(koren, cpu, "cpuinfo_max_freq");
+  const std::string gov = ps1_cpu_text(koren, cpu, "scaling_governor");
+  char b[192];
+  if (ted <= 0 && smi <= 0 && umi <= 0) {   // nektere telefony takt aplikacim neukazuji
+    snprintf(b, sizeof(b), "cpu%d takt nejde zjistit", cpu);
+    return std::string(b);
+  }
+  snprintf(b, sizeof(b), "cpu%d %ld MHz (smi %ld, umi %ld MHz%s%s)", cpu, ted > 0 ? ted / 1000 : -1, smi > 0 ? smi / 1000 : -1,
+           umi > 0 ? umi / 1000 : -1, gov.empty() ? "" : ", ", gov.c_str());
+  return std::string(b);
+}
+static int g_ps1_pripnute_jadro = -1;          // jen vlakno emulace
+// start vlakna emulace: vybrat a pripnout; vraci jadro (-1 = nepripnuto) a pise do deniku proc
+static int ps1_pripni_emulaci(const char *koren) {
+  const Ps1Jadro j = ps1_nejrychlejsi_jadro(koren);
+  if (j.jader == 0) { ps1_denik("JADRO PROCESORU: takt jader nejde zjistit - emulaci nepripinam"); return -1; }
+  if (j.jader < 2 || j.minKhz >= j.maxKhz) {
+    ps1_denik("JADRO PROCESORU: vsechna jadra stejne rychla (%d x %ld MHz) - emulaci nepripinam", j.jader, j.maxKhz / 1000);
+    return -1;
+  }
+  if (!ps1_pripni_vlakno(j.cpu)) {
+    ps1_denik("JADRO PROCESORU: pripnout na cpu%d nejde (chyba %d) - emulace bezi jako drive", j.cpu, errno);
+    return -1;
+  }
+  ps1_denik("JADRO PROCESORU: emulace pripnuta na cpu%d (nejrychlejsi, umi %ld MHz, nejpomalejsi jadro %ld MHz, jader %d)"
+            " - hra se nemeni, 2x zustava | takt ted: %s", j.cpu, j.maxKhz / 1000, j.minKhz / 1000, j.jader,
+            ps1_takt_text(koren, j.cpu).c_str());
+  return j.cpu;
+}
+
 // kazdy krok emulace PRED retro_run (pod zamkem jadra): zmena portu (mys / ovladac)
 // a co mys v tomhle snimku hlasi
 static void ps1_mys_pred_krokem(void) {
@@ -2266,6 +2360,8 @@ static void nap_core_thread_fn(void) {
     // n2_init() si sam hlida, jestli uz hotovo je, takze je to levne.
     { int rc = n2_init(); if (rc != 0) nap_diag_log("NAPLES2: renderer se nepodarilo pripravit (kod %d)", rc); }
     nap_diag_log("CESTA_A EMULACE MA VLASTNI VLAKNO (kresleni ji uz nebrzdi)");
+    g_ps1_pripnute_jadro = ps1_pripni_emulaci(g_ps1_cpu_koren);   // B329: jedno nejrychlejsi jadro
+    unsigned pripnutiKontrola = 0, pripnutoZnovu = 0;
     int slot = 0;
     // ---- B308: denik PS1 (zdravi, zmeny obrazu, tlacitka) ----
     using hodiny = std::chrono::steady_clock;
@@ -2330,6 +2426,16 @@ static void nap_core_thread_fn(void) {
             }
             const int cpu = ps1_jadro_ted();
             if (cpu >= 0 && cpu < 32) jadraCpu[cpu]++;
+            // B329: porad pripnuto? (Android muze vlaknu jadra zmenit) - kontrola zhruba kazde 2 s
+            if (g_ps1_pripnute_jadro >= 0 && ++pripnutiKontrola >= 120) {
+                pripnutiKontrola = 0;
+                if (!ps1_vlakno_pripnute(g_ps1_pripnute_jadro)) {
+                    const bool ok = ps1_pripni_vlakno(g_ps1_pripnute_jadro);
+                    if (pripnutoZnovu++ < 5)
+                        ps1_denik("JADRO PROCESORU: Android vlaknu emulace zmenil jadra - %s na cpu%d",
+                                  ok ? "pripinam znovu" : "znovu pripnout NEJDE,", g_ps1_pripnute_jadro);
+                }
+            }
         }
         g_crash_stage = "denik(vlakno emulace)";
         // zmena obrazu (rozliseni, 24 bit video, prokladani, PAL, 2x) - hned
@@ -2419,10 +2525,14 @@ static void nap_core_thread_fn(void) {
                             snprintf(pom, sizeof(pom), " | pomalych snimku %d z %llu (nad %.1f ms), v nich prumer %.1f ms = hra %.1f + "
                                      "kresleni %.1f + obraz %.1f + zvuk %.1f", pomalych, (unsigned long long)kroku, 1000.0 / g_fps,
                                      poCelk / pomalych, poHra / pomalych, poKr / pomalych, poOb / pomalych, poZv / pomalych);
+                        // B329: takt jadra, kde emulace bezi (pripnute, jinak nejcastejsi): ted / smi / umi
+                        int taktCpu = g_ps1_pripnute_jadro;
+                        if (taktCpu < 0) { unsigned nej = 0; for (int i = 0; i < 32; i++) if (jadraCpu[i] > nej) { nej = jadraCpu[i]; taktCpu = i; } }
                         ps1_denik("VYKON %.0f s: snimek prumer %.1f ms = hra (procesor PS1) %.1f + kresleni %.1f + predani obrazu %.1f"
-                                  " + zvuk %.1f%s | jadro procesoru: %s | TV divaku %d",
+                                  " + zvuk %.1f%s | jadro procesoru: %s | takt: %s%s | TV divaku %d",
                                   odStartu, runSoucet / kroku, vyHra / kroku, vyKr / kroku, vyOb / kroku, vyZv / kroku, pom,
-                                  ps1_jadra_text(jadraCpu, kroku).c_str(), g_ps1Proud.klientu());
+                                  ps1_jadra_text(jadraCpu, kroku).c_str(), ps1_takt_text(g_ps1_cpu_koren, taktCpu).c_str(),
+                                  g_ps1_pripnute_jadro >= 0 ? " (pripnuto)" : "", g_ps1Proud.klientu());
                     }
                     vyHra = vyKr = vyOb = vyZv = poHra = poKr = poOb = poZv = poCelk = 0.0;
                     pomalych = 0;

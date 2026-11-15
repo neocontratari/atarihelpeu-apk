@@ -1,0 +1,82 @@
+B320 - herni ovladac v JVM: NapOvladac (ciste casti) + NativePs1CoreBridge se skutecnym nap_ps1_native.cpp
+OK     A1) herni tlacitka: BUTTON_A .. MODE, BUTTON_1 .. 16; ZPET, Enter a sipky ne
+OK     A2) udalost z ovladace: herni tlacitko vzdy; sipka jen ze zdroje GAMEPAD / JOYSTICK nebo ze zarizeni, ktere je ovladac (sipky klavesnice jdou jako drive); Enter ne
+OK     A3) herni ovladac: GAMEPAD / JOYSTICK s tlacitky A a B (nebo packa + A); virtualni, klavesnice a "gamepad" telefonu bez tlacitek NE (dotyk zustava)
+OK     A4) Xbox / 8BitDo: prava packa Z/RZ, spouste LTRIGGER+BRAKE / RTRIGGER+GAS, krizek HAT - leva packa X/Y, krizek HAT, prava packa Z/RZ, spoust L2 LTRIGGER+BRAKE, R2 RTRIGGER+GAS
+OK     A5) DualShock 4: prava packa Z/RZ (RX/RY jsou tam taky - prednost ma Z/RZ), spouste LTRIGGER / RTRIGGER - leva packa X/Y, krizek HAT, prava packa Z/RZ, spoust L2 LTRIGGER, R2 RTRIGGER
+OK     A6) ovladac s pravou packou na RX/RY a spoustemi na Z/RZ (0..1): spravne rozpoznano - leva packa X/Y, krizek HAT, prava packa RX/RY, spoust L2 Z, R2 RZ
+OK     A7) jednoduchy ovladac (jen leva packa, tlacitka): maska jen leva packa - leva packa X/Y, krizek klavesy, prava packa ne, spoust L2 ne (jen tlacitko), R2 ne (jen tlacitko)
+OK     A8) osy -> 8 cisel pro C++: packy, spoust BRAKE v klidu (-1) = 0, GAS 0,6; maska 14
+OK     A9) spoust BRAKE naplno = 1; pohyb() = zamerny pohyb (packa / spoust pres polovinu), klid ne
+OK     A10) AUTOMATICKY: ovladac hraje -> schovano; dalsi stisk nic nemeni; dotyk na misto tlacitka -> videt; dalsi stisk -> zase schovano; odpojen -> videt
+OK     A11) OPTIONS: VZDY DOTYK = videt i kdyz ovladac hraje; SKRYT DOTYK = schovano vzdy (dotyk nic); AUTOMATICKY s pripojenym ovladacem = schovano, bez = videt; nesmysl = AUTOMATICKY
+OK     A12) texty do logu: rezimy, zdroje (GAMEPAD JOYSTICK (0x01000411)), osy
+OK     B1) knihovna napps1core nactena skutecnou tridou NativePs1CoreBridge
+OK     B2) native metod ve tride: 32 (29 z B319 + ps1OvladacKlavesa / ps1OvladacOsy / ps1OvladacPust B320)
+OK     B3) podpisy: int ps1OvladacKlavesa(int, boolean), void ps1OvladacOsy(float[], int), void ps1OvladacPust() - private static native
+2026-11-15 20:40:10.696  PS1 ==================== PS1 START: HRA ====================
+2026-11-15 20:40:10.697  PS1 HRA: Dune 2000.cue | typ .cue | 50 B | cesta /tmp/claude-0/-home-claude/f18ee946-4d04-5887-9748-32ca8d8e6a6f/scratchpad/b329/reg_b320/prac/hra/Dune 2000.cue
+2026-11-15 20:40:10.697  PS1 CUE: 1 stop (data 1, hudba 0), souboru 1, na disku 0 (0 B): Dune 2000.bin CHYBI
+2026-11-15 20:40:10.697  PS1 CHYBA CUE: 1 soubor(u) chybi -> hra nepujde nebo bez hudby: Dune 2000.bin
+2026-11-15 20:40:10.697  PS1 BIOS ve slozce appky: ZADNY (jadro pojede s HLE - nahradnim BIOSem, nektere hry pak nejdou)
+BUILD2SK99 GLES_INIT_ENTER
+BUILD2SK98 GLES_INIT egl version=1.5
+BUILD2SK98 GLES_INIT_OK pbuffer=1024x768 initial=320x240
+[1] CD-ROM Label: DOOM                            
+
+2026-11-15 20:40:10.727  PS1 JADRO: CD-ROM Label: DOOM
+[1] CD-ROM ID: SLUS00077
+
+2026-11-15 20:40:10.727  PS1 JADRO: CD-ROM ID: SLUS00077
+[0] ladici hlaska - do deniku nema
+
+[2] warning: test varovani jadra
+
+2026-11-15 20:40:10.727  PS1 JADRO VAROVANI: warning: test varovani jadra
+2026-11-15 20:40:10.728  PS1 PAMETOVA KARTA nova (soubor zatim neni): /tmp/claude-0/-home-claude/f18ee946-4d04-5887-9748-32ca8d8e6a6f/scratchpad/b329/reg_b320/prac/memory_card_1.srm, 131072 B prazdna
+2026-11-15 20:40:10.728  PS1 MYS: hra Dune 2000.cue - vypnuta, ovladac v portu 1 (zapne se tlacitkem MYS na sirku)
+CESTA_A ZVUK OpenSL ES otevren (44100/2/i16, z g_afifo, bez Javy, funguje od API 9)
+2026-11-15 20:40:10.728  PS1 JADRO: BIOS scph5501.bin (soubor) | region USA, NTSC 60 Hz | procesor dynarec (rychly) | disk ID "SLUS00077" nazev "DOOM" | XA ANO, CD audio ANO, pomaly start 0
+2026-11-15 20:40:10.728  PS1 NASTAVENI GRAFIKY: 2x (Enhanced Resolution) ZAPNUTO, bez 1x obrazu NE, uprava textur ANO | prokladani AUTO
+2026-11-15 20:40:10.728  PS1 CASOVANI: 59.940 snimku/s, zvuk jadra 44100 Hz -> reproduktor 44100 Hz | obraz zakladni 320x240, nejvic 1024x512
+2026-11-15 20:40:10.728  PS1 PAMETOVA KARTA 1: zasunuta, soubor /tmp/claude-0/-home-claude/f18ee946-4d04-5887-9748-32ca8d8e6a6f/scratchpad/b329/reg_b320/prac/memory_card_1.srm (CHYBI)
+2026-11-15 20:40:10.728  PS1 BEZI HRA
+2026-11-15 20:40:10.728  PS1 start trval 32 ms
+OK     B4) bootGameSafe -> PS1_HRA_OK
+2026-11-15 20:40:10.729  PS1 JADRO PROCESORU: takt jader nejde zjistit - emulaci nepripinam
+BUILD2SB70 PS1_VIDEO_ZMENA w=320 h=240 pitch=1280 ocekavanyPitch=1280 fmt=1 bpp=4 shoda_pitch=ANO
+BUILD2SK118 PS1_PIXFMT_CHECK fmt=1 (0=0RGB1555 1=XRGB8888_ocekavano 2=RGB565)
+2026-11-15 20:40:10.729  PS1 OBRAZ: obraz 320x240, 15 bit, NTSC | 2x ANO
+BUILD2SK118 PS1_PIXFMT_CHECK fmt=1 (0=0RGB1555 1=XRGB8888_ocekavano 2=RGB565)
+BUILD2SK118 PS1_PIXFMT_CHECK fmt=1 (0=0RGB1555 1=XRGB8888_ocekavano 2=RGB565)
+BUILD2SK118 PS1_PIXFMT_CHECK fmt=1 (0=0RGB1555 1=XRGB8888_ocekavano 2=RGB565)
+BUILD2SK118 PS1_PIXFMT_CHECK fmt=1 (0=0RGB1555 1=XRGB8888_ocekavano 2=RGB565)
+BUILD2SK118 PS1_PIXFMT_CHECK fmt=1 (0=0RGB1555 1=XRGB8888_ocekavano 2=RGB565)
+BUILD2SK118 PS1_PIXFMT_CHECK fmt=1 (0=0RGB1555 1=XRGB8888_ocekavano 2=RGB565)
+BUILD2SK118 PS1_PIXFMT_CHECK fmt=1 (0=0RGB1555 1=XRGB8888_ocekavano 2=RGB565)
+BUILD2SK118 PS1_PIXFMT_CHECK fmt=1 (0=0RGB1555 1=XRGB8888_ocekavano 2=RGB565)
+BUILD2SK118 PS1_PIXFMT_CHECK fmt=1 (0=0RGB1555 1=XRGB8888_ocekavano 2=RGB565)
+BUILD2SK118 PS1_PIXFMT_CHECK fmt=1 (0=0RGB1555 1=XRGB8888_ocekavano 2=RGB565)
+BUILD2SK118 PS1_PIXFMT_CHECK fmt=1 (0=0RGB1555 1=XRGB8888_ocekavano 2=RGB565)
+BUILD2SK118 PS1_PIXFMT_CHECK fmt=1 (0=0RGB1555 1=XRGB8888_ocekavano 2=RGB565)
+BUILD2SK118 PS1_PIXFMT_CHECK fmt=1 (0=0RGB1555 1=XRGB8888_ocekavano 2=RGB565)
+BUILD2SK118 PS1_PIXFMT_CHECK fmt=1 (0=0RGB1555 1=XRGB8888_ocekavano 2=RGB565)
+BUILD2SK118 PS1_PIXFMT_CHECK fmt=1 (0=0RGB1555 1=XRGB8888_ocekavano 2=RGB565)
+BUILD2SK118 PS1_PIXFMT_CHECK fmt=1 (0=0RGB1555 1=XRGB8888_ocekavano 2=RGB565)
+BUILD2SK118 PS1_PIXFMT_CHECK fmt=1 (0=0RGB1555 1=XRGB8888_ocekavano 2=RGB565)
+BUILD2SK118 PS1_PIXFMT_CHECK fmt=1 (0=0RGB1555 1=XRGB8888_ocekavano 2=RGB565)
+BUILD2SK118 PS1_PIXFMT_CHECK fmt=1 (0=0RGB1555 1=XRGB8888_ocekavano 2=RGB565)
+2026-11-15 20:40:11.029  PS1 OVLADAC: klavesa 96 dolu -> A(spodni) -> PS1 KRIZEK
+2026-11-15 20:40:11.029  PS1 OVLADAC: klavesa 97 dolu -> B(prave) -> PS1 KOLECKO
+2026-11-15 20:40:11.031  PS1 TLACITKA: +KRIZEK +KOLECKO -> drzeno: KRIZEK KOLECKO
+2026-11-15 20:40:11.229  PS1 OVLADAC: klavesa 96 nahoru -> A(spodni) -> PS1 KRIZEK
+2026-11-15 20:40:11.229  PS1 OVLADAC: klavesa 97 nahoru -> B(prave) -> PS1 KOLECKO
+OK     B5) ovladacKlavesaSafe za behu hry: A -> 1 (T_A), B -> 2 (T_B), ZPET -> 0; ovladacOsySafe (i kratke pole a null) a ovladacPustSafe bez chyby JNI
+2026-11-15 20:40:11.333  PS1 TLACITKA: -KRIZEK -KOLECKO -> drzeno: nic
+OK     B6) denik PS1: "OVLADAC: klavesa 96 dolu -> A(spodni) -> PS1 KRIZEK"
+2026-11-15 20:40:11.543  PS1 ==================== PS1 KONEC po 1 s, snimku 55 ====================
+OK     C1) most Atari bez knihovny: devOvladac*Safe vraci 0 a nespadne
+OK     C2) most Segy bez knihovny: trida se nenacte (System.loadLibrary bez try) - proto ji MainActivity vola jen v Seze a pri odpojeni ovladace jen kdyz Sega ovladac dostala (ovlPouzitSega); ExceptionInInitializerError zachycena
+
+VYSLEDEK: 20 OK, 0 chyb
+terminate called without an active exception

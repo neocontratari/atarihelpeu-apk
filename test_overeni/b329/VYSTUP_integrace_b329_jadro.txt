@@ -1,0 +1,158 @@
+B329 - PS1 emulace na jednom nejrychlejsim jadre, SKUTECNE jadro PS1 (PCSX-ReARMed z appky, BIOS HLE, mys_test.exe)
+OK      C1) jako Galaxy S8 (4 x 1690 + 4 x 2314 MHz): nejrychlejsi cpu7 2314 MHz, jader 8
+OK      C2) jako Retroid Pocket 6 / Snapdragon 8 Gen 2 (3 + 4 + 1 hlavni 3187 MHz): cpu7
+OK      C3) rychla jadra na zacatku (2 x 2400 + 2 x 1800 MHz): vybrano cpu1 (ne posledni jadro)
+OK      C4) jadra bez cpufreq (vypnuta) se preskoci: cpu3, jader s taktem 2
+2026-11-15 20:42:59.091  PS1 JADRO PROCESORU: vsechna jadra stejne rychla (4 x 2000 MHz) - emulaci nepripinam
+OK      C5) stejna jadra: nepripina se, denik "JADRO PROCESORU: vsechna jadra stejne rychla (4 x 2000 MHz) - emulaci nepripinam"
+2026-11-15 20:42:59.094  PS1 JADRO PROCESORU: takt jader nejde zjistit - emulaci nepripinam
+OK      C6) takt nejde zjistit (jako tenhle kontejner): nepripina se, denik "JADRO PROCESORU: takt jader nejde zjistit - emulaci nepripinam"
+2026-11-15 20:42:59.097  PS1 JADRO PROCESORU: pripnout na cpu7 nejde (chyba 22) - emulace bezi jako drive
+OK      C7) jadro, ktere system nepovoli (cpu7 tu neni): chyba se zapise a emulace bezi jako drive ("JADRO PROCESORU: pripnout na cpu7 nejde (chyba 22) - emulace bezi jako drive")
+OK      C8) takt do logu: "cpu1 962 MHz (smi 2000, umi 2000 MHz, interactive)"
+2026-11-15 20:42:59.101  PS1 JADRO PROCESORU: emulace pripnuta na cpu1 (nejrychlejsi, umi 2000 MHz, nejpomalejsi jadro 1000 MHz, jader 2) - hra se nemeni, 2x zustava | takt ted: cpu1 962 MHz (smi 2000, umi 2000 MHz, interactive)
+OK      C9) skutecne pripnuti (Linux, sched_setaffinity): vlakno bezi jen na cpu1, maska jen cpu1
+OK      C10) ostatni vlakna se nemeni (hlavni vlakno porad cpu0 + cpu1, maska 3)
+OK      C11) denik: "JADRO PROCESORU: emulace pripnuta na cpu1 (nejrychlejsi, umi 2000 MHz, nejpomalejsi jadro 1000 MHz, jader 2) - hra se nemeni, 2x zustava | takt ted: cpu1 962 MHz (smi 2000, umi 2000 MHz, interactive)"
+BUILD2SK99 GLES_INIT_ENTER
+BUILD2SK98 GLES_INIT egl version=1.5
+BUILD2SK98 GLES_INIT_OK pbuffer=1024x768 initial=320x240
+
+2026-11-15 20:42:59.218  PS1 JADRO: Starting PCSX-ReARMed r26-nap-sa1 (cc 13.3.0 64bit pic ssse3 gpu=BUILTIN_GPU)
+
+2026-11-15 20:42:59.218  PS1 JADRO: build time: Nov 15 2026 17:57:05
+
+2026-11-15 20:42:59.218  PS1 JADRO: 2 cpu core(s) detected
+
+2026-11-15 20:42:59.219  PS1 JADRO: No BIOS files found.
+
+2026-11-15 20:42:59.219  PS1 JADRO: Using PIXEL_FORMAT 2
+
+2026-11-15 20:42:59.219  PS1 JADRO: plugin: /builtin_gpu
+
+2026-11-15 20:42:59.219  PS1 JADRO: plugin: /builtin_spu
+
+2026-11-15 20:42:59.219  PS1 JADRO: Plugins loaded.
+
+2026-11-15 20:42:59.219  PS1 JADRO: Loaded CD Image: ./mys_test.exe (568 bytes).
+
+2026-11-15 20:42:59.219  PS1 JADRO: Track 01 DATA  - Start 00:02:00, Length 00:00:00
+
+2026-11-15 20:42:59.219  PS1 JADRO: End 00:02:00 (sector 150)
+
+2026-11-15 20:42:59.219  PS1 JADRO: memcard 1 is libretro-managed
+
+2026-11-15 20:42:59.219  PS1 JADRO: memcard 2 is libretro-managed
+
+2026-11-15 20:42:59.221  PS1 JADRO: HLE BIOS initialized.
+
+2026-11-15 20:42:59.221  PS1 JADRO: note: running with HLE BIOS, expect compatibility problems
+
+2026-11-15 20:42:59.221  PS1 JADRO: ----------------------------------------------------------
+2026-11-15 20:42:59.221  PS1 PAMETOVA KARTA nova (soubor zatim neni): ./karta_b329/memory_card_1.srm, 131072 B prazdna
+2026-11-15 20:42:59.221  PS1 MYS: hra mys_test.exe - vypnuta, ovladac v portu 1 (zapne se tlacitkem MYS na sirku)
+2026-11-15 20:42:59.221  PS1 MERENI VYKONU: zapnuto (13 / 13 funkci GPU a zvuku) - jen meri, hra se nemeni (radky VYKON)
+CESTA_A BOOT_OK gpuGles=ANO fps=60.00 zvukJadra=44100 Hz vystup=44100 Hz
+CESTA_A EGL_STOP
+BUILD2SK99 GLES_INIT_ENTER
+BUILD2SK98 GLES_INIT egl version=1.5
+BUILD2SK98 GLES_INIT_OK pbuffer=1024x768 initial=320x240
+
+2026-11-15 20:43:00.866  PS1 JADRO: Starting PCSX-ReARMed r26-nap-sa1 (cc 13.3.0 64bit pic ssse3 gpu=BUILTIN_GPU)
+
+2026-11-15 20:43:00.866  PS1 JADRO: build time: Nov 15 2026 17:57:05
+
+2026-11-15 20:43:00.866  PS1 JADRO: 2 cpu core(s) detected
+
+2026-11-15 20:43:00.866  PS1 JADRO: No BIOS files found.
+
+2026-11-15 20:43:00.866  PS1 JADRO: Using PIXEL_FORMAT 2
+
+2026-11-15 20:43:00.866  PS1 JADRO: plugin: /builtin_gpu
+
+2026-11-15 20:43:00.866  PS1 JADRO: plugin: /builtin_spu
+
+2026-11-15 20:43:00.867  PS1 JADRO: Plugins loaded.
+
+2026-11-15 20:43:00.867  PS1 JADRO: Loaded CD Image: ./mys_test.exe (568 bytes).
+
+2026-11-15 20:43:00.867  PS1 JADRO: Track 01 DATA  - Start 00:02:00, Length 00:00:00
+
+2026-11-15 20:43:00.867  PS1 JADRO: End 00:02:00 (sector 150)
+
+2026-11-15 20:43:00.867  PS1 JADRO: memcard 1 is libretro-managed
+
+2026-11-15 20:43:00.867  PS1 JADRO: memcard 2 is libretro-managed
+
+2026-11-15 20:43:00.868  PS1 JADRO: HLE BIOS initialized.
+
+2026-11-15 20:43:00.868  PS1 JADRO: note: running with HLE BIOS, expect compatibility problems
+
+2026-11-15 20:43:00.868  PS1 JADRO: ----------------------------------------------------------
+2026-11-15 20:43:00.868  PS1 PAMETOVA KARTA nova (soubor zatim neni): ./karta_b329/memory_card_1.srm, 131072 B prazdna
+2026-11-15 20:43:00.868  PS1 MYS: hra mys_test.exe - vypnuta, ovladac v portu 1 (zapne se tlacitkem MYS na sirku)
+2026-11-15 20:43:00.868  PS1 MERENI VYKONU: zapnuto (13 / 13 funkci GPU a zvuku) - jen meri, hra se nemeni (radky VYKON)
+CESTA_A BOOT_OK gpuGles=ANO fps=60.00 zvukJadra=44100 Hz vystup=44100 Hz
+CESTA_A EGL_STOP
+OK      E) hra 900 snimku na vlaknu pripnutem na cpu1: pamet PS1 (2 MB) bajt po bajtu stejna jako bez pripnuti - pripnuti hru nemeni
+2026-11-15 20:43:02.505  PS1 ==================== PS1 START: HRA ====================
+2026-11-15 20:43:02.505  PS1 HRA: mys_test.exe | typ .exe | 4 kB | cesta ./mys_test.exe
+2026-11-15 20:43:02.505  PS1 BIOS ve slozce appky: ZADNY (jadro pojede s HLE - nahradnim BIOSem, nektere hry pak nejdou)
+
+2026-11-15 20:43:02.505  PS1 JADRO: Starting PCSX-ReARMed r26-nap-sa1 (cc 13.3.0 64bit pic ssse3 gpu=BUILTIN_GPU)
+
+2026-11-15 20:43:02.505  PS1 JADRO: build time: Nov 15 2026 17:57:05
+
+2026-11-15 20:43:02.505  PS1 JADRO: 2 cpu core(s) detected
+
+2026-11-15 20:43:02.505  PS1 JADRO: No BIOS files found.
+
+2026-11-15 20:43:02.505  PS1 JADRO: Using PIXEL_FORMAT 2
+
+2026-11-15 20:43:02.505  PS1 JADRO: plugin: /builtin_gpu
+
+2026-11-15 20:43:02.505  PS1 JADRO: plugin: /builtin_spu
+
+2026-11-15 20:43:02.505  PS1 JADRO: Plugins loaded.
+
+2026-11-15 20:43:02.505  PS1 JADRO: Loaded CD Image: ./mys_test.exe (568 bytes).
+
+2026-11-15 20:43:02.505  PS1 JADRO: Track 01 DATA  - Start 00:02:00, Length 00:00:00
+
+2026-11-15 20:43:02.505  PS1 JADRO: End 00:02:00 (sector 150)
+
+2026-11-15 20:43:02.505  PS1 JADRO: memcard 1 is libretro-managed
+
+2026-11-15 20:43:02.505  PS1 JADRO: memcard 2 is libretro-managed
+
+2026-11-15 20:43:02.506  PS1 JADRO: HLE BIOS initialized.
+
+2026-11-15 20:43:02.506  PS1 JADRO: note: running with HLE BIOS, expect compatibility problems
+
+2026-11-15 20:43:02.506  PS1 JADRO: ----------------------------------------------------------
+2026-11-15 20:43:02.506  PS1 PAMETOVA KARTA nova (soubor zatim neni): ./karta_b329/memory_card_1.srm, 131072 B prazdna
+2026-11-15 20:43:02.507  PS1 MYS: hra mys_test.exe - vypnuta, ovladac v portu 1 (zapne se tlacitkem MYS na sirku)
+2026-11-15 20:43:02.507  PS1 MERENI VYKONU: zapnuto (13 / 13 funkci GPU a zvuku) - jen meri, hra se nemeni (radky VYKON)
+CESTA_A ZVUK OpenSL ES otevren (44100/2/i16, z g_afifo, bez Javy, funguje od API 9)
+2026-11-15 20:43:02.507  PS1 JADRO: BIOS HLE (vestaveny nahradni - soubor BIOSu nenalezen!) | region USA, NTSC 60 Hz | procesor interpret | disk ID "SLUS99999" nazev "SLUS_999.99" | zvuk XA ZAPNUTY, CD audio ZAPNUTY, pomaly start 1
+2026-11-15 20:43:02.507  PS1 NASTAVENI GRAFIKY: 2x (Enhanced Resolution) ZAPNUTO, bez 1x obrazu NE, uprava textur ANO | prokladani AUTO | dithering ZAPNUTO | kresleni ve vlakne NE | preskakovani snimku 0
+2026-11-15 20:43:02.507  PS1 CASOVANI: 60.000 snimku/s, zvuk jadra 44100 Hz -> reproduktor 44100 Hz | obraz zakladni 256x240, nejvic 1024x512
+2026-11-15 20:43:02.507  PS1 PAMETOVA KARTA 1: zasunuta, soubor ./karta_b329/memory_card_1.srm (CHYBI)
+2026-11-15 20:43:02.507  PS1 BEZI HRA
+2026-11-15 20:43:02.507  PS1 start trval 3 ms
+2026-11-15 20:43:02.507  PS1 JADRO PROCESORU: emulace pripnuta na cpu1 (nejrychlejsi, umi 2000 MHz, nejpomalejsi jadro 1000 MHz, jader 2) - hra se nemeni, 2x zustava | takt ted: cpu1 1500 MHz (smi 2000, umi 2000 MHz, schedutil)
+2026-11-15 20:43:02.509  PS1 OBRAZ: obraz (test bez vykreslovace)
+2026-11-15 20:43:07.525  PS1 ZDRAVI 5 s: emulace 61.2 kroku/s (cil 60.00, rezerva 88 % casu) | retro_run prumer 2.0 ms, nejdele 3.4 ms | snimky 61.2/s (stejnych 61.2/s) | zvuk fronta 99 ms, vypadky 0 | obraz (test bez vykreslovace) | tlacitka nic (zmen 0, z klavesnice TV 0, z ovladace 0) | TV divaku 0
+2026-11-15 20:43:07.525  PS1 VYKON 5 s: snimek prumer 2.0 ms = hra (procesor PS1) 2.0 + kresleni 0.0 + predani obrazu 0.0 + zvuk 0.0 | jadro procesoru: cpu1 100 % (1500 MHz) | takt: cpu1 1500 MHz (smi 2000, umi 2000 MHz, schedutil) (pripnuto) | TV divaku 0
+OK      D1) telefonni cesta: hra bezi (PS1_HRA_OK), vlakno emulace pripnute: "JADRO PROCESORU: emulace pripnuta na cpu1 (nejrychlejsi, umi 2000 MHz, nejpomalejsi jadro ..."
+OK      D2) radek VYKON: emulace jen na cpu1 a takt (| jadro procesoru: cpu1 100 % (1500 MHz) | takt: cpu1 1500 MHz (smi 2000, umi 2000 MHz, schedutil) (pripnuto) | TV divaku 0)
+OK      D3) radek VYKON z B328 dal plati: casti daji dohromady cely snimek
+2026-11-15 20:43:10.407  PS1 JADRO PROCESORU: Android vlaknu emulace zmenil jadra - pripinam znovu na cpu1
+OK      D4) vlaknum zmenena jadra (7 vlaken, jako Android) -> do 2 s znovu pripnuto: "JADRO PROCESORU: Android vlaknu emulace zmenil jadra - pripinam znovu na cpu1"
+2026-11-15 20:43:12.540  PS1 ZDRAVI 10 s: emulace 59.8 kroku/s (cil 60.00, rezerva 88 % casu) | retro_run prumer 2.1 ms, nejdele 3.9 ms | snimky 59.8/s (stejnych 59.8/s) | zvuk fronta 84 ms, vypadky 0 | obraz (test bez vykreslovace) | tlacitka nic (zmen 0, z klavesnice TV 0, z ovladace 0) | TV divaku 0
+2026-11-15 20:43:12.540  PS1 VYKON 10 s: snimek prumer 2.1 ms = hra (procesor PS1) 2.1 + kresleni 0.0 + predani obrazu 0.0 + zvuk 0.0 | jadro procesoru: cpu1 97 % (1500 MHz), cpu0 2 % (1500 MHz) | takt: cpu1 1500 MHz (smi 2000, umi 2000 MHz, schedutil) (pripnuto) | TV divaku 0
+2026-11-15 20:43:17.555  PS1 ZDRAVI 15 s: emulace 60.0 kroku/s (cil 60.00, rezerva 87 % casu) | retro_run prumer 2.2 ms, nejdele 3.2 ms | snimky 60.0/s (stejnych 60.0/s) | zvuk fronta 85 ms, vypadky 0 | obraz (test bez vykreslovace) | tlacitka nic (zmen 0, z klavesnice TV 0, z ovladace 0) | TV divaku 0
+2026-11-15 20:43:17.556  PS1 VYKON 15 s: snimek prumer 2.2 ms = hra (procesor PS1) 2.2 + kresleni 0.0 + predani obrazu 0.0 + zvuk 0.0 | jadro procesoru: cpu1 100 % (1500 MHz) | takt: cpu1 1500 MHz (smi 2000, umi 2000 MHz, schedutil) (pripnuto) | TV divaku 0
+OK      D5) po znovu pripnuti zase jen cpu1 (| jadro procesoru: cpu1 100 % (1500 MHz))
+2026-11-15 20:43:18.009  PS1 ==================== PS1 KONEC po 16 s, snimku 2735 ====================
+VYSLEDEK: 17 OK, 0 CHYBA

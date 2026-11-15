@@ -3943,5 +3943,32 @@
        her s mysi (upozorneni). Vykon WarCraft II ve hre na S8: retro_run
        14.6-16.5 ms, rezerva 0-8 %, vypadky zvuku, 2x ANO, TV divaku 1 - stejne
        jako SpongeBob -> radky VYKON z B328.
+     - Rene po B328 (S8): okno aktualizace B327 videl ("nacitani i upozorneni"),
+       "Aktualizace hotova" NE. B328 VYKON SpongeBob: snimek ~23 ms = hra 1,3 +
+       KRESLENI ~20 + obraz 2,2 + zvuk 0,2; velka jadra 741-962 MHz, emulace
+       skakala mezi cpu4-7. Battletron = "Pro Controller" 057e:2009, START
+       nefungoval (Android 9 = Generic.kl).
+
+   B329: OVLADAC PODLE MISTA + MENU NA POZADI + "AKTUALIZACE HOTOVA" DO OK + PS1
+   NA JEDNOM JADRE (15. 11. 2026). Rene: "ano muzes samozrejme" (PS1 jadro),
+   "jdeme na to" (ovladac, pak BT v appce = B330).
+     - NapOvladac.switchStaraTabulka (057e:2009 + tlacitko C) + klavesaSwitch
+       (Generic.kl -> mista jako Vendor_057e_Product_2009.kl Androidu 10+, HOME
+       zustava MODE); MainActivity.ovladacKlavesa posila kodPodleMista do PS1 /
+       Segy / Atari / menu. Log: kazde tlacitko poprve s kodem a prekladem.
+     - menuKontrola: na pozadi (napViditelna false) nehlida, po navratu 8 s znovu.
+     - NapAktualizace: poStartu ulozi cekajici oznameni, oznamNovouVerzi ukaze az
+       nad menu (demoKonec / menuUkaz / onResume), jen OK zavre a smaze, max 5x.
+     - nap_ps1_native.cpp: ps1_pripni_emulaci na zacatku nap_core_thread_fn
+       (nejrychlejsi jadro podle cpuinfo_max_freq, jen big.LITTLE), kontrola po
+       120 krocich, VYKON "takt: cpuN ted (smi, umi MHz, governor) (pripnuto)".
+       g_ps1_cpu_koren = slozka cpu (test ji podstrci). Hra beze zmeny (test E).
+     - Napoveda CZ / EN: Pro Controller na Androidu 9, po aktualizaci OK.
+     - DALSI KROK: Rene - log s Battletronem (kazde tlacitko jednou) a SpongeBob
+       (radky JADRO PROCESORU / VYKON: zrychlilo jadro po pripnuti?). Pak B330:
+       Bluetooth v appce (OPTIONS -> HERNI OVLADAC -> PRIPOJIT OVLADAC: hledani,
+       parovani, seznam ovladacu; Android 12+ povoleni "Zarizeni v okoli", starsi
+       mozna "Poloha"; zvazit CompanionDeviceManager), "VYZKOUSET TLACITKA".
+     - build.gradle: versionCode 372 "EMU10-B329-OVLADAC". Na telefonu neovereno.
 
 ===============================================================================

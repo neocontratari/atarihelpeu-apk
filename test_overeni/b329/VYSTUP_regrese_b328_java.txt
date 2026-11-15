@@ -1,0 +1,10 @@
+B328 - okno nove verze a log prijimace po aktualizaci (skutecny NapAktualizaceTexty)
+
+OK     T1 titulek okna cesky / anglicky
+OK     T2 text okna: verze i cislo
+OK     T3 zadna zprava od systemu = jasne v logu
+OK     T4 Android 9: kdy a co prijimac udelal
+OK     T5 Android 12: prijimac zpravu dostal, appku neotevira
+OK     T6 cas v budoucnosti (zmena hodin) = 0 s, bez vysledku = ?
+
+VYSLEDEK: 6 kontrol, 0 CHYBA

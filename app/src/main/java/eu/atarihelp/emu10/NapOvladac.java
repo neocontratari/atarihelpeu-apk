@@ -89,6 +89,70 @@ final class NapOvladac implements InputManager.InputDeviceListener {
         return (maA && maB) || (joystick && maOsyXY && (maA || maB));
     }
 
+    /**
+     * B329: "Pro Controller" (Nintendo Switch, vyrobce 057e produkt 2009 - hlasi se tak i levne ovladace,
+     * Reneho Battletron) na Androidu BEZ jeho tabulky tlacitek. Google ji pridal az pro Android 10
+     * (Vendor_057e_Product_2009.kl, 2019); Android 9 pouzije obecnou tabulku (Generic.kl) a tlacitka
+     * jdou pod jinymi jmeny - Rene na S8: "jedine, co nefunguje, je tlacitko START" (chodilo jako R2).
+     * Poznava se podle tlacitka C: obecna tabulka ho ma (kod 0x132), tabulka Androidu 10+ ne.
+     */
+    static boolean switchStaraTabulka(int vyrobce, int produkt, boolean maTlacitkoC) {
+        return vyrobce == 0x057e && produkt == 0x2009 && maTlacitkoC;
+    }
+
+    /**
+     * B329: kod z obecne tabulky Androidu (Generic.kl) -> kod podle MISTA na ovladaci, stejne jako
+     * tabulka Androidu 10+ (Vendor_057e_Product_2009.kl). Poradi tlacitek v hlaseni ovladace: B (spodni),
+     * A (prave), Y (leve), X (horni), L, R, ZL, ZR, minus, plus, leva packa, prava packa, HOME, snimek.
+     * Obecna tabulka z nich dela A, B, C, X, Y, Z, L1, R1, L2, R2, SELECT, START, MODE, THUMBL.
+     * HOME zustava MODE (tabulka Androidu 10 z nej dela systemove HOME = appka by odesla na plochu).
+     */
+    static int klavesaSwitch(int k) {
+        switch (k) {
+            case KeyEvent.KEYCODE_BUTTON_C: return KeyEvent.KEYCODE_BUTTON_X;           // leve (Y na Switchi, ctverec)
+            case KeyEvent.KEYCODE_BUTTON_X: return KeyEvent.KEYCODE_BUTTON_Y;           // horni (X na Switchi, trojuhelnik)
+            case KeyEvent.KEYCODE_BUTTON_Y: return KeyEvent.KEYCODE_BUTTON_L1;          // L
+            case KeyEvent.KEYCODE_BUTTON_Z: return KeyEvent.KEYCODE_BUTTON_R1;          // R
+            case KeyEvent.KEYCODE_BUTTON_L1: return KeyEvent.KEYCODE_BUTTON_L2;         // ZL
+            case KeyEvent.KEYCODE_BUTTON_R1: return KeyEvent.KEYCODE_BUTTON_R2;         // ZR
+            case KeyEvent.KEYCODE_BUTTON_L2: return KeyEvent.KEYCODE_BUTTON_SELECT;     // minus = SELECT
+            case KeyEvent.KEYCODE_BUTTON_R2: return KeyEvent.KEYCODE_BUTTON_START;      // plus = START
+            case KeyEvent.KEYCODE_BUTTON_SELECT: return KeyEvent.KEYCODE_BUTTON_THUMBL; // stisk leve packy
+            case KeyEvent.KEYCODE_BUTTON_START: return KeyEvent.KEYCODE_BUTTON_THUMBR;  // stisk prave packy
+            case KeyEvent.KEYCODE_BUTTON_THUMBL: return KeyEvent.KEYCODE_BUTTON_MODE;   // snimek obrazovky
+            default: return k;      // A (spodni), B (prave), MODE (HOME), krizek - stejne
+        }
+    }
+
+    /** B329: kratke jmeno herni klavesy do logu (bez Androidu - KeyEvent.keyCodeToString je az v telefonu). */
+    static String jmenoKlavesy(int k) {
+        switch (k) {
+            case KeyEvent.KEYCODE_BUTTON_A: return "A";
+            case KeyEvent.KEYCODE_BUTTON_B: return "B";
+            case KeyEvent.KEYCODE_BUTTON_C: return "C";
+            case KeyEvent.KEYCODE_BUTTON_X: return "X";
+            case KeyEvent.KEYCODE_BUTTON_Y: return "Y";
+            case KeyEvent.KEYCODE_BUTTON_Z: return "Z";
+            case KeyEvent.KEYCODE_BUTTON_L1: return "L1";
+            case KeyEvent.KEYCODE_BUTTON_R1: return "R1";
+            case KeyEvent.KEYCODE_BUTTON_L2: return "L2";
+            case KeyEvent.KEYCODE_BUTTON_R2: return "R2";
+            case KeyEvent.KEYCODE_BUTTON_THUMBL: return "L3";
+            case KeyEvent.KEYCODE_BUTTON_THUMBR: return "R3";
+            case KeyEvent.KEYCODE_BUTTON_START: return "START";
+            case KeyEvent.KEYCODE_BUTTON_SELECT: return "SELECT";
+            case KeyEvent.KEYCODE_BUTTON_MODE: return "MODE";
+            case KeyEvent.KEYCODE_DPAD_UP: return "nahoru";
+            case KeyEvent.KEYCODE_DPAD_DOWN: return "dolu";
+            case KeyEvent.KEYCODE_DPAD_LEFT: return "vlevo";
+            case KeyEvent.KEYCODE_DPAD_RIGHT: return "vpravo";
+            case KeyEvent.KEYCODE_DPAD_CENTER: return "stred";
+            default:
+                if (k >= KeyEvent.KEYCODE_BUTTON_1 && k <= KeyEvent.KEYCODE_BUTTON_16) return "BUTTON_" + (k - KeyEvent.KEYCODE_BUTTON_1 + 1);
+                return "kod " + k;
+        }
+    }
+
     /** Kde ovladac ma ktere osy (podle rozsahu os zarizeni). */
     static final class Rozlozeni {
         boolean leva, hat;
@@ -249,8 +313,12 @@ final class NapOvladac implements InputManager.InputDeviceListener {
             KeyEvent.KEYCODE_BUTTON_A, KeyEvent.KEYCODE_BUTTON_B, KeyEvent.KEYCODE_BUTTON_X, KeyEvent.KEYCODE_BUTTON_Y,
             KeyEvent.KEYCODE_BUTTON_L1, KeyEvent.KEYCODE_BUTTON_R1, KeyEvent.KEYCODE_BUTTON_L2, KeyEvent.KEYCODE_BUTTON_R2,
             KeyEvent.KEYCODE_BUTTON_THUMBL, KeyEvent.KEYCODE_BUTTON_THUMBR, KeyEvent.KEYCODE_BUTTON_START,
-            KeyEvent.KEYCODE_BUTTON_SELECT, KeyEvent.KEYCODE_BUTTON_MODE, KeyEvent.KEYCODE_DPAD_UP, KeyEvent.KEYCODE_BACK};
-    private static final String[] KLAVESY_JMENA = {"A", "B", "X", "Y", "L1", "R1", "L2", "R2", "L3", "R3", "START", "SELECT", "MODE", "DPAD", "BACK"};
+            KeyEvent.KEYCODE_BUTTON_SELECT, KeyEvent.KEYCODE_BUTTON_MODE, KeyEvent.KEYCODE_DPAD_UP, KeyEvent.KEYCODE_BACK,
+            KeyEvent.KEYCODE_BUTTON_C, KeyEvent.KEYCODE_BUTTON_Z};
+    private static final String[] KLAVESY_JMENA = {"A", "B", "X", "Y", "L1", "R1", "L2", "R2", "L3", "R3", "START", "SELECT", "MODE", "DPAD", "BACK", "C", "Z"};
+    private static final int I_TLACITKO_C = 15;     // index BUTTON_C v KLAVESY_LOG (B329: stara tabulka Pro Controlleru)
+    /** B329: nejvic ruznych tlacitek jednoho ovladace do logu (kazde poprve) */
+    private static final int MAX_TLACITEK_LOG = 40;
     private static final int[] OSY_VSE = {
             MotionEvent.AXIS_X, MotionEvent.AXIS_Y, MotionEvent.AXIS_Z, MotionEvent.AXIS_RX, MotionEvent.AXIS_RY,
             MotionEvent.AXIS_RZ, MotionEvent.AXIS_HAT_X, MotionEvent.AXIS_HAT_Y, MotionEvent.AXIS_LTRIGGER,
@@ -264,6 +332,8 @@ final class NapOvladac implements InputManager.InputDeviceListener {
         Rozlozeni rozlozeni = new Rozlozeni();
         int osyHlaseny = 0;          // bity os (index v OSY_VSE), ktere uz sly do logu
         boolean hralo;               // prisel z nej stisk / pohyb packou (i kdyz neni rozpoznany jako ovladac)
+        boolean switchStara;         // B329: Pro Controller se starou tabulkou Androidu - kody prekladat podle mista
+        java.util.HashSet<Integer> hlaseno = new java.util.HashSet<>();   // B329: tlacitka, ktera uz sla do logu
     }
 
     private final Context ctx;
@@ -273,7 +343,7 @@ final class NapOvladac implements InputManager.InputDeviceListener {
     private final Map<Integer, Zarizeni> zarizeni = new HashMap<>();
     private final Schovani schovani = new Schovani();
     private volatile String jmenoOvladace = "";
-    private int neznamychKlaves = 0, prvnichKlaves = 0;
+    private final java.util.HashSet<Integer> hlasenoBezZarizeni = new java.util.HashSet<>();   // B329
 
     NapOvladac(Context c, Handler ui, Posluchac p) {
         this.ctx = c;
@@ -335,7 +405,7 @@ final class NapOvladac implements InputManager.InputDeviceListener {
         if (d == null) return null;
         Zarizeni z = new Zarizeni();
         Zarizeni byl;
-        synchronized (this) { byl = zarizeni.get(id); if (byl != null) { z.hralo = byl.hralo; z.osyHlaseny = byl.osyHlaseny; } }
+        synchronized (this) { byl = zarizeni.get(id); if (byl != null) { z.hralo = byl.hralo; z.osyHlaseny = byl.osyHlaseny; z.hlaseno = byl.hlaseno; } }
         z.jmeno = String.valueOf(d.getName());
         final int zdroje = d.getSources();
         boolean[] ma = new boolean[KLAVESY_LOG.length];
@@ -361,6 +431,9 @@ final class NapOvladac implements InputManager.InputDeviceListener {
         boolean virt = false;
         try { virt = d.isVirtual(); } catch (Throwable ignored) {}
         z.ovladac = jeOvladac(zdroje, virt, ma[0], ma[1], z.rozlozeni.leva);
+        int vyrobce = 0, produkt = 0;
+        try { if (Build.VERSION.SDK_INT >= 19) { vyrobce = d.getVendorId(); produkt = d.getProductId(); } } catch (Throwable ignored) {}
+        z.switchStara = switchStaraTabulka(vyrobce, produkt, ma[I_TLACITKO_C]);
         synchronized (this) { zarizeni.put(id, z); }
         // do logu herni ovladace (a vse s GAMEPAD / JOYSTICK); zmena zarizeni (nektere ovladace ji hlasi
         // treba pri zmene baterie) jen kdyz se zmenilo, jestli je to ovladac
@@ -377,6 +450,9 @@ final class NapOvladac implements InputManager.InputDeviceListener {
             b.append(" | osy:").append(po.length() > 0 ? po.toString() : " zadne");
             b.append(" | ").append(z.rozlozeni.popis());
             b.append(" | ").append(z.ovladac ? "HERNI OVLADAC - dotykove ovladani se muze schovat" : "NENI herni ovladac (chybi tlacitka A/B) - dotyk zustava");
+            if (z.switchStara)
+                b.append(" | B329: Pro Controller se STAROU tabulkou tlacitek Androidu ").append(Build.VERSION.RELEASE)
+                 .append(" - appka tlacitka preklada podle mista (START, SELECT, trojuhelnik, ctverec, L1/R1, L2/R2, L3/R3)");
             log(b.toString());
         }
         return z;
@@ -453,21 +529,36 @@ final class NapOvladac implements InputManager.InputDeviceListener {
         return r;
     }
 
-    /** Klavesa ovladace zpracovana (sys = kam sla, t = logicka tlacitka z C++, 0 = nic). */
-    void klavesa(KeyEvent e, String kam, int t) {
+    /**
+     * B329: kod klavesy podle MISTA na ovladaci - Pro Controller se starou tabulkou Androidu prelozi
+     * (klavesaSwitch), ostatni ovladace beze zmeny. MainActivity ho posila do PS1 / Segy / Atari / menu.
+     */
+    int kodPodleMista(KeyEvent e) {
+        final int k = e.getKeyCode();
+        Zarizeni z = zarizeniUdalosti(e.getDeviceId());
+        return (z != null && z.switchStara) ? klavesaSwitch(k) : k;
+    }
+
+    /**
+     * Klavesa ovladace zpracovana (kod = podle mista - kodPodleMista, kam = kam sla, t = logicka tlacitka
+     * z C++, 0 = nic). B329: kazde tlacitko kazdeho ovladace POPRVE do logu, s kodem Androidu a prekladem
+     * (do B328 jen prvnich 12 stisku vubec - Reneho hledani START uz v logu nebylo).
+     */
+    void klavesa(KeyEvent e, int kod, String kam, int t) {
         final boolean dolu = e.getAction() == KeyEvent.ACTION_DOWN;
         Zarizeni z = zarizeniUdalosti(e.getDeviceId());
         if (dolu && e.getRepeatCount() == 0) {
-            if (t == 0) {
-                if (neznamychKlaves++ < 10)
-                    log("B320 OVLADAC klavesa " + KeyEvent.keyCodeToString(e.getKeyCode()) + " (" + e.getKeyCode() + ") z \""
-                            + (z != null ? z.jmeno : "?") + "\" -> " + kam + ": nic (jde dal Androidu)");
-            } else {
-                if (prvnichKlaves++ < 12)
-                    log("B320 OVLADAC klavesa " + KeyEvent.keyCodeToString(e.getKeyCode()) + " z \"" + (z != null ? z.jmeno : "?")
-                            + "\" -> " + kam);
-                ovladacHraje(z);
+            final int puvodni = e.getKeyCode();
+            boolean poprve;
+            synchronized (this) {
+                java.util.HashSet<Integer> h = z != null ? z.hlaseno : hlasenoBezZarizeni;
+                poprve = h.size() < MAX_TLACITEK_LOG && h.add(puvodni);
             }
+            if (poprve)
+                log("B329 OVLADAC tlacitko " + jmenoKlavesy(puvodni) + " (kod " + puvodni + ") z \"" + (z != null ? z.jmeno : "?") + "\""
+                        + (kod != puvodni ? " -> podle mista " + jmenoKlavesy(kod) : "")
+                        + " -> " + kam + (t == 0 ? ": nic (jde dal Androidu)" : ""));
+            if (t != 0) ovladacHraje(z);
         }
     }
 

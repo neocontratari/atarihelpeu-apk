@@ -1,0 +1,51 @@
+B329 - OVLADAC "PRO CONTROLLER" PODLE MISTA, KAZDE TLACITKO DO LOGU, MENU NA POZADI, "AKTUALIZACE HOTOVA" DO OK,
+       PS1 NA JEDNOM NEJRYCHLEJSIM JADRE (15. 11. 2026)
+====================================================================================================================
+
+Rene po B328: levny BT ovladac Battletron "funguje - jedine, co nefunguje, je tlacitko START" (S8, Android 9);
+"Aktualizace hotova" se po instalaci neukazalo ("nevim, jestli mam appku shodit, nebo se do ni vratit");
+k PS1: "ano muzes samozrejme" (pripnout emulaci na jedno velke jadro).
+
+1) OVLADAC (NapOvladac + MainActivity.ovladacKlavesa): ovladac se hlasi jako "Pro Controller" 057e:2009
+   (Nintendo Switch). Android 9 pro nej nema tabulku (Vendor_057e_Product_2009.kl pridal Google az pro
+   Android 10) a pouzije Generic.kl: tlacitka jdou pod jinymi jmeny (plus = R2, minus = L2, Y = C ...).
+   Pozna se podle tlacitka C (hasKeys) -> NapOvladac.klavesaSwitch preklada podle mista jako tabulka
+   Androidu 10+ (C->X, X->Y, Y->L1, Z->R1, L1->L2, R1->R2, L2->SELECT, R2->START, SELECT->L3, START->R3,
+   snimek->MODE; HOME zustava MODE). Kod podle mista jde do PS1, Segy, Atari i menu. Log: kazde tlacitko
+   kazdeho ovladace POPRVE (do 40), s kodem a prekladem ("B329 OVLADAC tlacitko R2 (kod 105) ... -> podle
+   mista START -> PS1"); pri pripojeni i tlacitka C / Z a "stara tabulka".
+2) MENU: hlidac C++ menu (menuKontrola) na pozadi nehlida (plocha zrusena = "nepripraveno" neni chyba) a po
+   navratu pocita 8 s znovu. Drive: Rene paroval ovladac v Androidu a menu se prepnulo na nahradni HTML (tam
+   ovladac menu neovlada a tlacitko B schova appku).
+3) AKTUALIZACE HOTOVA: poStartu jen ulozi cekajici oznameni; okno ukaze NapAktualizace.oznamNovouVerzi az kdyz
+   je videt menu (po intru, pri ukazani menu, pri navratu do appky), zavrit jde JEN tlacitkem OK (to oznameni
+   smaze), nejvic 5 ukazani. Texty okna aktualizace: nic nezavirat / nevypinat, po startu OK. Napoveda CZ+EN.
+4) PS1: vlakno emulace se pri startu pripne na nejrychlejsi jadro (cpuinfo_max_freq; jen telefon s ruzne
+   rychlymi jadry), v behu kontrola zhruba kazde 2 s (Android muze vlaknu jadra zmenit -> znovu). Radek VYKON:
+   "takt: cpu7 962 MHz (smi 2314, umi 2314 MHz, governor) (pripnuto)". Hra se nemeni, 2x zustava.
+5) build.gradle: versionCode 372 "EMU10-B329-OVLADAC".
+
+Spoustet z adresare test_overeni/b329 (AJ = android-34.jar, PRAC = pracovni slozka, JV = JDK):
+A) JVM: javac -encoding UTF-8 --release 17 -cp AJ -d OUT ../../app/src/main/java/eu/atarihelp/emu10/NapOvladac.java \
+        ../../app/src/main/java/eu/atarihelp/emu10/NapAktualizaceTexty.java jvm/eu/atarihelp/emu10/TestB329.java
+   java -Dstdout.encoding=UTF-8 -cp OUT:AJ eu.atarihelp.emu10.TestB329          -> VYSTUP_test_b329_java.txt (17 OK)
+   (vsech 14 tlacitek podle tabulek Androidu, plus = START, kdy prekladat a kdy ne, oznameni, texty okna)
+B) PS1 se SKUTECNYM jadrem (PRAC/jadro = ../b317/stavba_jadra.sh PRAC, mys_test.exe = ../b317/udelej_exe.py PRAC):
+   PS1="-DANDROID -I../b305/stub -I../b291/stub -I/usr/include -I$JV/include -I$JV/include/linux"
+   g++ -std=c++17 -O1 -g -pthread $PS1 -o PRAC/integrace_b329 integrace_b329_jadro.cpp PRAC/jadro/*.o \
+       -l:libEGL.so.1 -l:libGLESv2.so.2 -lz -ldl
+   cd PRAC && EGL_PLATFORM=surfaceless ./integrace_b329 . ./mys_test.exe      -> VYSTUP_integrace_b329_jadro.txt (17 OK)
+   vyber jadra (falesne slozky jako S8, Retroid Pocket 6, stejna jadra, bez taktu), chyba pripnuti, skutecne
+   pripnuti na Linuxu jen volajiciho vlakna, hra na pripnutem vlakne = pamet PS1 stejna jako bez pripnuti,
+   cesta telefonu: pripnuto, VYKON s taktem, po zmene jader (jako Android) do 2 s znovu pripnuto.
+   Ukazka deniku: UKAZKA_denik_jadro_b329.txt
+C) Zapojeni: python3 kontrola_b329.py                                          -> VYSTUP_kontrola_b329.txt (17 OK)
+D) Regrese na kodu B329: ../b328 integrace 11 OK, TestB328 6 OK, TestB327 (vlastni nahrady android.content)
+   24 OK, ../b320 TestB320Ovladac s knihovnou z ../b308/ps1_harness.cpp (-Xcheck:jni) 20 OK, kontrola_b328
+   16 OK + jen verze, napoveda CZ 197 nazvu 0 chyb, EN 191 0 chyb, test_b314_jazyk_navod stejne 2 CHYBA jako
+   na B328 (VYSTUP_regrese_*). javac vsech zdroju appky proti android.jar: 0 chyb (VYSTUP_javac_android.txt).
+   Puvodni VYSTUP_* starsich verzi vraceny z gitu.
+
+Na telefonu NEOVERENO (preklad pro ARM udela CI). Rene: B329 na server, aktualizace (okno "Aktualizace hotova"
+-> OK); Battletron: kazde tlacitko jednou ve hre + log; SpongeBob na stejnem miste + log (radky JADRO PROCESORU
+a VYKON s taktem).

@@ -1,0 +1,185 @@
+BUILD2SK99 GLES_INIT_ENTER
+BUILD2SK98 GLES_INIT egl version=1.5
+BUILD2SK98 GLES_INIT_OK pbuffer=1024x768 initial=320x240
+
+2026-11-15 20:43:18.057  PS1 JADRO: Starting PCSX-ReARMed r26-nap-sa1 (cc 13.3.0 64bit pic ssse3 gpu=BUILTIN_GPU)
+
+2026-11-15 20:43:18.057  PS1 JADRO: build time: Nov 15 2026 17:57:05
+
+2026-11-15 20:43:18.057  PS1 JADRO: 2 cpu core(s) detected
+
+2026-11-15 20:43:18.058  PS1 JADRO: No BIOS files found.
+
+2026-11-15 20:43:18.058  PS1 JADRO: Using PIXEL_FORMAT 2
+
+2026-11-15 20:43:18.058  PS1 JADRO: plugin: /builtin_gpu
+
+2026-11-15 20:43:18.058  PS1 JADRO: plugin: /builtin_spu
+
+2026-11-15 20:43:18.058  PS1 JADRO: Plugins loaded.
+
+2026-11-15 20:43:18.058  PS1 JADRO: Loaded CD Image: ./mys_test.exe (568 bytes).
+
+2026-11-15 20:43:18.058  PS1 JADRO: Track 01 DATA  - Start 00:02:00, Length 00:00:00
+
+2026-11-15 20:43:18.058  PS1 JADRO: End 00:02:00 (sector 150)
+
+2026-11-15 20:43:18.058  PS1 JADRO: memcard 1 is libretro-managed
+
+2026-11-15 20:43:18.058  PS1 JADRO: memcard 2 is libretro-managed
+
+2026-11-15 20:43:18.059  PS1 JADRO: HLE BIOS initialized.
+
+2026-11-15 20:43:18.060  PS1 JADRO: note: running with HLE BIOS, expect compatibility problems
+
+2026-11-15 20:43:18.060  PS1 JADRO: ----------------------------------------------------------
+2026-11-15 20:43:18.060  PS1 PAMETOVA KARTA nova (soubor zatim neni): ./karta_b328/memory_card_1.srm, 131072 B prazdna
+2026-11-15 20:43:18.060  PS1 MYS: hra mys_test.exe - vypnuta, ovladac v portu 1 (zapne se tlacitkem MYS na sirku)
+2026-11-15 20:43:18.060  PS1 MERENI VYKONU: zapnuto (13 / 13 funkci GPU a zvuku) - jen meri, hra se nemeni (radky VYKON)
+CESTA_A BOOT_OK gpuGles=ANO fps=60.00 zvukJadra=44100 Hz vystup=44100 Hz
+B328 - mereni vykonu PS1 se SKUTECNYM jadrem (PCSX-ReARMed z appky, BIOS HLE, hra mys_test.exe)
+OK      jadro nastartovalo hru mys_test.exe (ps1EglBoot = 1)
+OK      denik: "MERENI VYKONU: zapnuto (13 / 13 funkci GPU a zvuku) - jen meri, hra se nemeni"
+OK      s merenim: 900 snimku = 1799 volani GPU (0.1 ms), zvuk 1.1 ms
+CESTA_A EGL_STOP
+BUILD2SK99 GLES_INIT_ENTER
+BUILD2SK98 GLES_INIT egl version=1.5
+BUILD2SK98 GLES_INIT_OK pbuffer=1024x768 initial=320x240
+
+2026-11-15 20:43:19.757  PS1 JADRO: Starting PCSX-ReARMed r26-nap-sa1 (cc 13.3.0 64bit pic ssse3 gpu=BUILTIN_GPU)
+
+2026-11-15 20:43:19.757  PS1 JADRO: build time: Nov 15 2026 17:57:05
+
+2026-11-15 20:43:19.757  PS1 JADRO: 2 cpu core(s) detected
+
+2026-11-15 20:43:19.758  PS1 JADRO: No BIOS files found.
+
+2026-11-15 20:43:19.758  PS1 JADRO: Using PIXEL_FORMAT 2
+
+2026-11-15 20:43:19.758  PS1 JADRO: plugin: /builtin_gpu
+
+2026-11-15 20:43:19.758  PS1 JADRO: plugin: /builtin_spu
+
+2026-11-15 20:43:19.758  PS1 JADRO: Plugins loaded.
+
+2026-11-15 20:43:19.758  PS1 JADRO: Loaded CD Image: ./mys_test.exe (568 bytes).
+
+2026-11-15 20:43:19.758  PS1 JADRO: Track 01 DATA  - Start 00:02:00, Length 00:00:00
+
+2026-11-15 20:43:19.758  PS1 JADRO: End 00:02:00 (sector 150)
+
+2026-11-15 20:43:19.758  PS1 JADRO: memcard 1 is libretro-managed
+
+2026-11-15 20:43:19.758  PS1 JADRO: memcard 2 is libretro-managed
+
+2026-11-15 20:43:19.760  PS1 JADRO: HLE BIOS initialized.
+
+2026-11-15 20:43:19.760  PS1 JADRO: note: running with HLE BIOS, expect compatibility problems
+
+2026-11-15 20:43:19.760  PS1 JADRO: ----------------------------------------------------------
+2026-11-15 20:43:19.760  PS1 PAMETOVA KARTA nova (soubor zatim neni): ./karta_b328/memory_card_1.srm, 131072 B prazdna
+2026-11-15 20:43:19.760  PS1 MYS: hra mys_test.exe - vypnuta, ovladac v portu 1 (zapne se tlacitkem MYS na sirku)
+2026-11-15 20:43:19.760  PS1 MERENI VYKONU: zapnuto (13 / 13 funkci GPU a zvuku) - jen meri, hra se nemeni (radky VYKON)
+CESTA_A BOOT_OK gpuGles=ANO fps=60.00 zvukJadra=44100 Hz vystup=44100 Hz
+OK      druhy start, stejny pocet snimku: pamet PS1 stejna (hra je deterministicka - test ma smysl)
+OK      druhy start: stejny pocet volani GPU (1799) - obal neobalil sam sebe
+CESTA_A EGL_STOP
+BUILD2SK99 GLES_INIT_ENTER
+BUILD2SK98 GLES_INIT egl version=1.5
+BUILD2SK98 GLES_INIT_OK pbuffer=1024x768 initial=320x240
+
+2026-11-15 20:43:21.409  PS1 JADRO: Starting PCSX-ReARMed r26-nap-sa1 (cc 13.3.0 64bit pic ssse3 gpu=BUILTIN_GPU)
+
+2026-11-15 20:43:21.409  PS1 JADRO: build time: Nov 15 2026 17:57:05
+
+2026-11-15 20:43:21.409  PS1 JADRO: 2 cpu core(s) detected
+
+2026-11-15 20:43:21.410  PS1 JADRO: No BIOS files found.
+
+2026-11-15 20:43:21.410  PS1 JADRO: Using PIXEL_FORMAT 2
+
+2026-11-15 20:43:21.410  PS1 JADRO: plugin: /builtin_gpu
+
+2026-11-15 20:43:21.410  PS1 JADRO: plugin: /builtin_spu
+
+2026-11-15 20:43:21.410  PS1 JADRO: Plugins loaded.
+
+2026-11-15 20:43:21.410  PS1 JADRO: Loaded CD Image: ./mys_test.exe (568 bytes).
+
+2026-11-15 20:43:21.410  PS1 JADRO: Track 01 DATA  - Start 00:02:00, Length 00:00:00
+
+2026-11-15 20:43:21.411  PS1 JADRO: End 00:02:00 (sector 150)
+
+2026-11-15 20:43:21.411  PS1 JADRO: memcard 1 is libretro-managed
+
+2026-11-15 20:43:21.411  PS1 JADRO: memcard 2 is libretro-managed
+
+2026-11-15 20:43:21.412  PS1 JADRO: HLE BIOS initialized.
+
+2026-11-15 20:43:21.412  PS1 JADRO: note: running with HLE BIOS, expect compatibility problems
+
+2026-11-15 20:43:21.412  PS1 JADRO: ----------------------------------------------------------
+2026-11-15 20:43:21.412  PS1 PAMETOVA KARTA nova (soubor zatim neni): ./karta_b328/memory_card_1.srm, 131072 B prazdna
+2026-11-15 20:43:21.412  PS1 MYS: hra mys_test.exe - vypnuta, ovladac v portu 1 (zapne se tlacitkem MYS na sirku)
+2026-11-15 20:43:21.412  PS1 MERENI VYKONU: zapnuto (13 / 13 funkci GPU a zvuku) - jen meri, hra se nemeni (radky VYKON)
+CESTA_A BOOT_OK gpuGles=ANO fps=60.00 zvukJadra=44100 Hz vystup=44100 Hz
+OK      bez mereni: nic se nepocita (puvodni funkce GPU a zvuku zpet)
+OK      BEZ mereni presne stejna pamet PS1 (2 MB) jako S merenim po 900 snimcich - mereni hru nemeni
+CESTA_A EGL_STOP
+2026-11-15 20:43:23.031  PS1 ==================== PS1 START: HRA ====================
+2026-11-15 20:43:23.031  PS1 HRA: mys_test.exe | typ .exe | 4 kB | cesta ./mys_test.exe
+2026-11-15 20:43:23.031  PS1 BIOS ve slozce appky: ZADNY (jadro pojede s HLE - nahradnim BIOSem, nektere hry pak nejdou)
+
+2026-11-15 20:43:23.031  PS1 JADRO: Starting PCSX-ReARMed r26-nap-sa1 (cc 13.3.0 64bit pic ssse3 gpu=BUILTIN_GPU)
+
+2026-11-15 20:43:23.031  PS1 JADRO: build time: Nov 15 2026 17:57:05
+
+2026-11-15 20:43:23.032  PS1 JADRO: 2 cpu core(s) detected
+
+2026-11-15 20:43:23.032  PS1 JADRO: No BIOS files found.
+
+2026-11-15 20:43:23.032  PS1 JADRO: Using PIXEL_FORMAT 2
+
+2026-11-15 20:43:23.032  PS1 JADRO: plugin: /builtin_gpu
+
+2026-11-15 20:43:23.032  PS1 JADRO: plugin: /builtin_spu
+
+2026-11-15 20:43:23.032  PS1 JADRO: Plugins loaded.
+
+2026-11-15 20:43:23.032  PS1 JADRO: Loaded CD Image: ./mys_test.exe (568 bytes).
+
+2026-11-15 20:43:23.032  PS1 JADRO: Track 01 DATA  - Start 00:02:00, Length 00:00:00
+
+2026-11-15 20:43:23.032  PS1 JADRO: End 00:02:00 (sector 150)
+
+2026-11-15 20:43:23.032  PS1 JADRO: memcard 1 is libretro-managed
+
+2026-11-15 20:43:23.032  PS1 JADRO: memcard 2 is libretro-managed
+
+2026-11-15 20:43:23.033  PS1 JADRO: HLE BIOS initialized.
+
+2026-11-15 20:43:23.034  PS1 JADRO: note: running with HLE BIOS, expect compatibility problems
+
+2026-11-15 20:43:23.034  PS1 JADRO: ----------------------------------------------------------
+2026-11-15 20:43:23.034  PS1 PAMETOVA KARTA nova (soubor zatim neni): ./karta_b328/memory_card_1.srm, 131072 B prazdna
+2026-11-15 20:43:23.034  PS1 MYS: hra mys_test.exe - vypnuta, ovladac v portu 1 (zapne se tlacitkem MYS na sirku)
+2026-11-15 20:43:23.034  PS1 MERENI VYKONU: zapnuto (13 / 13 funkci GPU a zvuku) - jen meri, hra se nemeni (radky VYKON)
+CESTA_A ZVUK OpenSL ES otevren (44100/2/i16, z g_afifo, bez Javy, funguje od API 9)
+2026-11-15 20:43:23.034  PS1 JADRO: BIOS HLE (vestaveny nahradni - soubor BIOSu nenalezen!) | region USA, NTSC 60 Hz | procesor interpret | disk ID "SLUS99999" nazev "SLUS_999.99" | zvuk XA ZAPNUTY, CD audio ZAPNUTY, pomaly start 1
+2026-11-15 20:43:23.034  PS1 NASTAVENI GRAFIKY: 2x (Enhanced Resolution) ZAPNUTO, bez 1x obrazu NE, uprava textur ANO | prokladani AUTO | dithering ZAPNUTO | kresleni ve vlakne NE | preskakovani snimku 0
+2026-11-15 20:43:23.034  PS1 CASOVANI: 60.000 snimku/s, zvuk jadra 44100 Hz -> reproduktor 44100 Hz | obraz zakladni 256x240, nejvic 1024x512
+2026-11-15 20:43:23.034  PS1 PAMETOVA KARTA 1: zasunuta, soubor ./karta_b328/memory_card_1.srm (CHYBI)
+2026-11-15 20:43:23.034  PS1 BEZI HRA
+2026-11-15 20:43:23.034  PS1 start trval 3 ms
+2026-11-15 20:43:23.034  PS1 JADRO PROCESORU: takt jader nejde zjistit - emulaci nepripinam
+2026-11-15 20:43:23.036  PS1 OBRAZ: obraz (test bez vykreslovace)
+2026-11-15 20:43:28.051  PS1 ZDRAVI 5 s: emulace 61.2 kroku/s (cil 60.00, rezerva 87 % casu) | retro_run prumer 2.2 ms, nejdele 4.9 ms | snimky 61.2/s (stejnych 61.2/s) | zvuk fronta 99 ms, vypadky 0 | obraz (test bez vykreslovace) | tlacitka nic (zmen 0, z klavesnice TV 0, z ovladace 0) | TV divaku 0
+2026-11-15 20:43:28.051  PS1 VYKON 5 s: snimek prumer 2.2 ms = hra (procesor PS1) 2.2 + kresleni 0.0 + predani obrazu 0.0 + zvuk 0.0 | jadro procesoru: cpu0 74 %, cpu1 25 % | takt: cpu0 takt nejde zjistit | TV divaku 0
+2026-11-15 20:43:33.069  PS1 ZDRAVI 10 s: emulace 59.8 kroku/s (cil 60.00, rezerva 88 % casu) | retro_run prumer 2.0 ms, nejdele 3.5 ms | snimky 59.8/s (stejnych 59.8/s) | zvuk fronta 84 ms, vypadky 0 | obraz (test bez vykreslovace) | tlacitka nic (zmen 0, z klavesnice TV 0, z ovladace 0) | TV divaku 0
+2026-11-15 20:43:33.069  PS1 VYKON 10 s: snimek prumer 2.0 ms = hra (procesor PS1) 2.0 + kresleni 0.0 + predani obrazu 0.0 + zvuk 0.0 | jadro procesoru: cpu0 51 %, cpu1 49 % | takt: cpu0 takt nejde zjistit | TV divaku 0
+OK      telefonni cesta: hra bezi, mereni zapnuto (PS1_HRA_OK)
+OK      radek VYKON: casti daji dohromady cely snimek (VYKON 5 s: snimek prumer 2.2 ms = hra (procesor PS1) 2.2 + kresleni 0.0 + predani obrazu 0.0 + zvuk 0.0)
+OK      radek VYKON: na kterych jadrech procesoru emulace bezela (| jadro procesoru: cpu0 74 %, cpu1 25 % | takt: cpu0 takt nejde zjistit | TV divaku 0)
+OK      radek JADRO: "zvuk XA ZAPNUTY, CD audio ZAPNUTY" (B308 psalo obracene "XA NE, CD audio NE")
+2026-11-15 20:43:34.536  PS1 ==================== PS1 KONEC po 12 s, snimku 3396 ====================
+VYSLEDEK: 11 OK, 0 CHYBA

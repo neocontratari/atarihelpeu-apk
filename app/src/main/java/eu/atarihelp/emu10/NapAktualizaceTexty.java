@@ -49,27 +49,34 @@ final class NapAktualizaceTexty {
     /** Po předání Androidu: co přijde a co má člověk udělat. */
     static String poPredani(boolean en, int sdk, long stazeno) {
         final boolean sama = otevreSeSama(sdk);
+        // B329: Rene po B328 - "nevim, jestli mam po instalaci appku shodit, nebo se do ni vratit"
         if (en) return "✔ Downloaded (" + mb(true, stazeno) + " MB).\n\n"
                 + "Android is installing it now – it may take a while.\n\n"
                 + "• If the phone asks, tap INSTALL.\n"
-                + (sama ? "• The app then closes and opens again by itself (if not, open it from its icon)."
-                        : "• The app then closes – open it again from its icon. On start it shows that the new version is installed.");
+                + (sama ? "• Then don't close anything – the app closes and opens again by itself (if not, open it from its icon).\n"
+                          + "• After start it shows “" + novaVerzeTitulek(true) + "” – tap OK."
+                        : "• The app then closes by itself – don't force-stop it, just open it again from its icon.\n"
+                          + "• On start it shows that the new version is installed (“" + novaVerzeTitulek(true) + "”) – tap OK.");
         return "✔ Staženo (" + mb(false, stazeno) + " MB).\n\n"
                 + "Teď instaluje Android – může to chvíli trvat.\n\n"
                 + "• Když se telefon zeptá, klepni na INSTALOVAT.\n"
-                + (sama ? "• Appka se pak zavře a sama se znovu otevře (kdyby ne, otevři ji ikonou)."
-                        : "• Appka se pak zavře – otevři ji znovu ikonou. Při startu ukáže, že je nová verze nainstalovaná.");
+                + (sama ? "• Pak nic nezavírej – appka se zavře a sama se znovu otevře (kdyby ne, otevři ji ikonou).\n"
+                          + "• Po startu ukáže okno „" + novaVerzeTitulek(false) + "“ – klepni na OK."
+                        : "• Appka se pak sama zavře – nic nevypínej, otevři ji znovu ikonou.\n"
+                          + "• Po startu ukáže, že je nová verze nainstalovaná (okno „" + novaVerzeTitulek(false) + "“) – klepni na OK.");
     }
 
     /** Android otevřel své okno s povolením instalace (STATUS_PENDING_USER_ACTION). */
     static String potvrd(boolean en, int sdk) {
         final boolean sama = otevreSeSama(sdk);
         if (en) return "The phone asks whether to install – tap INSTALL.\n\n"
-                + (sama ? "The app then closes and opens again by itself."
-                        : "The app then closes – open it again from its icon.");
+                + (sama ? "The app then closes and opens again by itself – don't close anything."
+                        : "The app then closes – don't force-stop it, open it again from its icon.")
+                + "\nAfter start tap OK in “" + novaVerzeTitulek(true) + "”.";
         return "Telefon se ptá, jestli instalovat – klepni na INSTALOVAT.\n\n"
-                + (sama ? "Appka se pak zavře a sama se znovu otevře."
-                        : "Appka se pak zavře – otevři ji znovu ikonou.");
+                + (sama ? "Appka se pak zavře a sama se znovu otevře – nic nezavírej."
+                        : "Appka se pak zavře – nic nevypínej, otevři ji znovu ikonou.")
+                + "\nPo startu klepni v okně „" + novaVerzeTitulek(false) + "“ na OK.";
     }
 
     /** Hláška při prvním startu nové verze (B328 okno, B327 Toast). */
@@ -80,6 +87,20 @@ final class NapAktualizaceTexty {
     /** B328: titulek okna při prvním startu nové verze. */
     static String novaVerzeTitulek(boolean en) {
         return en ? "Update done" : "Aktualizace hotová";
+    }
+
+    /**
+     * B329: okno „Aktualizace hotová“ čeká, dokud na něm člověk neklepne OK - Rene po B328 ho neviděl
+     * (první start nové verze proběhl schovaný nebo se appka hned zavřela a podruhé už nepřišlo).
+     * ceka = versionCode, pro kterou oznámení čeká (0 = nic), verze = teď, ukazano = kolikrát už bylo
+     * ukázáno bez OK. Po MAX_OZNAMENI ukázáních (nebo pro jinou verzi) se oznámení smaže.
+     */
+    static final int OZN_NIC = 0, OZN_UKAZAT = 1, OZN_SMAZAT = 2;
+    static final int MAX_OZNAMENI = 5;
+    static int oznameni(int ceka, int verze, int ukazano) {
+        if (ceka <= 0) return OZN_NIC;
+        if (ceka != verze || ukazano >= MAX_OZNAMENI) return OZN_SMAZAT;
+        return OZN_UKAZAT;
     }
 
     /**

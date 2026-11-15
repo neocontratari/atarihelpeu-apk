@@ -8239,6 +8239,13 @@ public class MainActivity extends Activity {
         try { if (web != null) web.requestFocus(); } catch (Throwable ignored) {}
         // B311: pod demem uz je index.html - ted na nej C++ menu (karty prileti)
         try { if (web != null && jeMenuUrl(web.getUrl())) menuUkaz("po intru"); } catch (Throwable ignored) {}
+        napOznamVerzi("po intru");   // B329: i kdyz C++ menu nejde (menu v HTML)
+    }
+
+    /** B329: "Aktualizace hotova" (ceka-li) az kdyz je appka videt a dobehlo intro i volba jazyka. */
+    private void napOznamVerzi(String proc) {
+        if (demoPlocha != null || napCekaNaJazyk || !napViditelna) return;
+        NapAktualizace.oznamNovouVerzi(this, proc, this::appendNativeLog);
     }
 
     // ===== B311: HLAVNI MENU - KARUSEL VELKYCH KARET (cele v C++) =====
@@ -8419,6 +8426,7 @@ public class MainActivity extends Activity {
             }
             menuNativniVHtml(true);
             napNabidniCekajici();   // B321: nova verze appky na serveru N&P
+            napOznamVerzi("menu " + proc);   // B329: "Aktualizace hotova" az nad menu
             return true;
         } catch (Throwable t) {
             appendNativeLog("B311 MENU_CHYBA_UKAZ " + safeMsg(t));
@@ -8465,6 +8473,16 @@ public class MainActivity extends Activity {
     /** Hlidac: GPU menu nezvladlo (chyba GL) nebo se nepripravilo -> zpet na HTML menu. */
     private void menuKontrola() {
         if (menuPlocha == null) return;
+        // B329: appka na pozadi -> plocha menu je zrusena a C++ hlasi "nepripraveno" - to NENI chyba menu.
+        // Rene parovat ovladac v nastaveni Androidu: hlidac po 1 s prepnul na nahradni HTML menu (v nem
+        // ovladac menu neovlada a tlacitko B schova appku). Na pozadi nehlidat, po navratu pocitat znovu.
+        if (!napViditelna) {
+            if (menuStartMs != 0) appendNativeLog("B329 MENU hlidac: appka na pozadi - menu nechavam, po navratu hlidam znovu");
+            menuStartMs = 0;
+            ui.postDelayed(menuTik, 1000);
+            return;
+        }
+        if (menuStartMs == 0) menuStartMs = System.currentTimeMillis();
         final long bezi = System.currentTimeMillis() - menuStartMs;
         final boolean chyba = NativeMenuBridge.chybaSafe(), prip = NativeMenuBridge.pripravenoSafe();
         if (chyba || (!prip && bezi > 8000)) {
@@ -11678,7 +11696,8 @@ public class MainActivity extends Activity {
         final int akce = e.getAction();
         if (akce != KeyEvent.ACTION_DOWN && akce != KeyEvent.ACTION_UP) return false;
         final boolean dolu = akce == KeyEvent.ACTION_DOWN;
-        final int k = e.getKeyCode();
+        // B329: kod podle MISTA na ovladaci (Pro Controller se starou tabulkou Androidu 9 - START chodil jako R2)
+        final int k = ovladac != null ? ovladac.kodPodleMista(e) : e.getKeyCode();
         final int kam = ovladacKam();
         int t;
         switch (kam) {
@@ -11688,7 +11707,7 @@ public class MainActivity extends Activity {
             case OVL_MENU:  t = ovladacMenu(k, dolu, e.getRepeatCount()); break;
             default:        t = 0; break;   // stranky (OPTIONS, HELP ...): jako drive - A = klik, B = zpet
         }
-        if (ovladac != null) ovladac.klavesa(e, OVL_KAM[kam], t);
+        if (ovladac != null) ovladac.klavesa(e, k, OVL_KAM[kam], t);
         return t != 0;
     }
 
@@ -11808,8 +11827,8 @@ public class MainActivity extends Activity {
         } catch (Throwable t) {
             appendNativeLog("VERZE APKY = nezjistena: " + safeMsg(t));
         }
-        // B327: prvni start po aktualizaci -> "Nainstalovana nova verze" (B328 okno s OK misto Toastu; Android 10+
-        // appku sam neotevre, at clovek vi, ze aktualizace prosla); do Androidu 9 ji otevrel NapPoAktualizaci
+        // B327: prvni start po aktualizaci -> "Nainstalovana nova verze" (B329: okno az nad menu a do OK -
+        // napOznamVerzi; Android 10+ appku sam neotevre, at clovek vi, ze aktualizace prosla); do Androidu 9 ji otevrel NapPoAktualizaci
         // (B328: co prijimac udelal, jde do logu - "PO AKTUALIZACI ... prijimac: ...")
         try {
             final String nova = NapAktualizace.poStartu(this);
@@ -14626,6 +14645,7 @@ public class MainActivity extends Activity {
     protected void onDestroy() {
         zapisOdchod("ZRUSENA");
         try { if (ovladac != null) ovladac.stop(); } catch (Throwable ignored) {}   // B320
+        NapAktualizace.zavriOznameni();                        // B329 (oznameni ceka dal)
         if (demoPlocha != null) demoKonec("appka zrusena");   // B304
         menuSkryj("appka zrusena");                            // B311
         try { napTvWebStop("activityDestroy"); } catch (Throwable ignored) {} // BUILD2SA13C
@@ -14653,6 +14673,7 @@ public class MainActivity extends Activity {
             if (menuPlocha == null && demoPlocha == null && !menuSkryteProOptions && web != null && jeMenuUrl(web.getUrl()))
                 menuUkaz("navrat do appky");
         } catch (Throwable ignored) {}
+        napOznamVerzi("navrat do appky");   // B329: ceka-li "Aktualizace hotova" (napr. prvni start byl schovany)
         // ====== NÁVRAT Z OKNA HRY ======
         // Kdyz se sem vracime a PS1 relace je jeste "zapnuta", znamena to, ze
         // se okno hry zavrelo (jadro uz se vypnulo samo pres core_shutdown).
