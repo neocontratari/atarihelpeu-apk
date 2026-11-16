@@ -97,6 +97,23 @@ struct Orez {
   }
 };
 
+// B333: pomer stran ze skutecneho rozmeru snimku (ctverecne body - stranky appky na vysku i na sirku),
+// zkraceny na nejvys 255:255 (bajt v paketu): 582 x 1080 -> 97:180, 1920 x 1034 -> 255:137 (vetsi
+// cislo 255, druhe zaokrouhlene - odchylka pod 0,5 %)
+inline void pomerStran(int w, int h, int &px, int &py) {
+  px = 1; py = 1;
+  if (w <= 0 || h <= 0) return;
+  int a = w, b = h;
+  while (b) { const int t = a % b; a = b; b = t; }
+  px = w / a;
+  py = h / a;
+  if (px > 255 || py > 255) {
+    const double s = 255.0 / (double)std::max(px, py);
+    px = std::max(1, std::min(255, (int)(px * s + 0.5)));
+    py = std::max(1, std::min(255, (int)(py * s + 0.5)));
+  }
+}
+
 template <class Kodek>
 class Hub {
  public:
@@ -164,6 +181,9 @@ class Hub {
     zvZapis_ += shortu;
   }
 
+  // B333: pomer stran v paketu podle rozmeru PRAVE baleneho snimku (stranky appky: na vysku i na
+  // sirku) - obraz a pomer v jednom paketu vzdy k sobe, i kdyz se telefon prave otoci
+  void pomerZRozmeru(bool z) { pomerZRozmeru_.store(z, std::memory_order_relaxed); }
   // B313: nastaveni kodeku pro kazdeho noveho prohlizece (menu: vic pasu, vyssi kvalita)
   void nastavKodek(std::function<void(Kodek &)> f) {
     std::lock_guard<std::mutex> l(m_);
@@ -277,6 +297,8 @@ class Hub {
     k.poslMs = ted;
     if (orez_) k.orez.spocti(k.rgb.data(), W, H);
     else { k.orez.x0 = 0; k.orez.y0 = 0; k.orez.x1 = W; k.orez.y1 = H; }
+    int pX = pomerX_, pY = pomerY_;
+    if (pomerZRozmeru_.load(std::memory_order_relaxed)) pomerStran(W, H, pX, pY);   // B333
     pk.clear();
     pk.reserve(64 + k.zvuk.size() * 2 + (size_t)W * H / 2);
     p32(pk, 0);                                   // delka - doplni se
@@ -285,7 +307,7 @@ class Hub {
     p32(pk, (uint32_t)(seq & 0xFFFFFFFFull));
     p16(pk, (unsigned)k.orez.x0); p16(pk, (unsigned)k.orez.y0);
     p16(pk, (unsigned)(k.orez.x1 - k.orez.x0)); p16(pk, (unsigned)(k.orez.y1 - k.orez.y0));
-    p8(pk, (unsigned)pomerX_); p8(pk, (unsigned)pomerY_); p16(pk, 0);
+    p8(pk, (unsigned)pX); p8(pk, (unsigned)pY); p16(pk, 0);
     p32(pk, (uint32_t)vzorkovani_);
     const double t0 = tedMsPresne();
     const unsigned pr = k.kodek.zakoduj(k.rgb.data(), W, H, zapisMs, ted, pk);
@@ -311,7 +333,7 @@ class Hub {
       p32(pk, (uint32_t)(seq & 0xFFFFFFFFull));
       p16(pk, (unsigned)k.orez.x0); p16(pk, (unsigned)k.orez.y0);
       p16(pk, (unsigned)(k.orez.x1 - k.orez.x0)); p16(pk, (unsigned)(k.orez.y1 - k.orez.y0));
-      p8(pk, (unsigned)pomerX_); p8(pk, (unsigned)pomerY_); p16(pk, 0);
+      p8(pk, (unsigned)pX); p8(pk, (unsigned)pY); p16(pk, 0);
       p32(pk, (uint32_t)vzorkovani_);
       const std::vector<uint8_t> &c = k.kodek.dalsi[i];
       pk.insert(pk.end(), c.begin(), c.end());
@@ -415,6 +437,7 @@ class Hub {
   const char *jmeno_;
   int vzorkovani_, pomerX_, pomerY_;
   bool orez_ = true;
+  std::atomic<bool> pomerZRozmeru_{false};   // B333: stranka (pomer z rozmeru snimku)
   std::mutex m_;
   std::condition_variable cv_;
   std::vector<uint32_t> snimek_;

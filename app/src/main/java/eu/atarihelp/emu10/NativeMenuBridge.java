@@ -73,6 +73,14 @@ public final class NativeMenuBridge {
     private static native void proudZavriNative(int id);
     private static native int proudStavNative();
     private static native String proudLogNative();
+    // B333: stranky appky (OPTIONS, napoveda, seznam her, prehravac ...) na TV z C++ - bez Javy
+    private static native void strankaSnimekNative(java.nio.ByteBuffer rgba, int w, int h, int stride);
+    private static native void strankaZvukNative(byte[] pcm16le, int delka, int kanalu, int frekvence);
+    private static native int strankaOtevriNative();
+    private static native int strankaDalsiNative(int id, byte[] out, int cekejMs, int zapisMs);
+    private static native void strankaZavriNative(int id);
+    private static native int strankaStavNative();
+    private static native String strankaLogNative();
 
     // ---- bezpecne obaly (kdyz knihovna chybi, nic se nestane) ----
     /** Nacte karty z menu/karty.txt; vraci pocet karet (0 = menu v C++ nejde). */
@@ -186,5 +194,38 @@ public final class NativeMenuBridge {
     public static String proudLogSafe() {
         if (!nactena) return null;
         try { return proudLogNative(); } catch (Throwable t) { return null; }
+    }
+
+    // ===== B333: STRANKY APPKY NA TV Z C++ (/stranka.stream, NapTvStranka) =====
+    /** Snimek stranky: primy ByteBuffer s bajty R G B A (Bitmap ARGB_8888.copyPixelsToBuffer). */
+    public static void strankaSnimekSafe(java.nio.ByteBuffer rgba, int w, int h, int stride) {
+        if (!nactena || rgba == null || !rgba.isDirect()) return;
+        try { strankaSnimekNative(rgba, w, h, stride); } catch (Throwable ignored) {}
+    }
+    /** Zvuk stranky (prehravac MP3, YouTube): PCM 16 bit LE, 1-2 kanaly, libovolna frekvence. */
+    public static void strankaZvukSafe(byte[] pcm16le, int kanalu, int frekvence) {
+        if (!nactena || pcm16le == null || pcm16le.length == 0) return;
+        try { strankaZvukNative(pcm16le, pcm16le.length, kanalu, frekvence); } catch (Throwable ignored) {}
+    }
+    public static int strankaOtevriSafe() {
+        if (!nactena) return 0;
+        try { return strankaOtevriNative(); } catch (Throwable t) { return 0; }
+    }
+    public static int strankaDalsiSafe(int id, byte[] out, int cekejMs, int zapisMs) {
+        if (!nactena) return Integer.MIN_VALUE;
+        try { return strankaDalsiNative(id, out, cekejMs, zapisMs); } catch (Throwable t) { return Integer.MIN_VALUE; }
+    }
+    public static void strankaZavriSafe(int id) {
+        if (!nactena) return;
+        try { strankaZavriNative(id); } catch (Throwable ignored) {}
+    }
+    /** bit0 = Java posila snimky (posledni pred < 2 s), bit1 = nekdo se diva */
+    public static int strankaStavSafe() {
+        if (!nactena) return 0;
+        try { return strankaStavNative(); } catch (Throwable t) { return 0; }
+    }
+    public static String strankaLogSafe() {
+        if (!nactena) return null;
+        try { return strankaLogNative(); } catch (Throwable t) { return null; }
     }
 }

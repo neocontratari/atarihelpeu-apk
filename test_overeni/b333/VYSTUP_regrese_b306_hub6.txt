@@ -1,0 +1,9 @@
+za 3 s: 137 paketu, zvuk 144000 vzorku (48000/s), skoku ve zvuku 0, nejdelsi mezera mezi pakety 61 ms
+behem zastaveneho obrazu (1,1-1,95 s): 14 paketu, z toho jen se zvukem (beze zmeny) 14, zvuk 40800 vzorku
+B306 TV PROUD TEST: prohlizec 1 pripojen (celkem 1) - obraz a zvuk primo z C++ (paleta + LZ (bez ztraty)), kazdy snimek, zvuk 48000 Hz v tomtez paketu
+B306 TV PROUD TEST: prohlizec 1 odpojen po 3 s - 137 paketu (45.4/s), 0.6 MB celkem, klicovych 1, prestaveb palety 0, beze zmeny 17 z 137, zvuk preskoku 0, paketu jen se zvukem 17 (zbyva 0)
+OK     obraz stoji -> pakety jen se zvukem (obraz beze zmeny) kazdych ~60 ms
+OK     behem zastaveni prijde ~cely zvuk (nevypadne)
+OK     zvuk navazuje vzorek po vzorku po celou dobu (zadny skok)
+OK     zadna mezera v paketech delsi nez 120 ms (B305: cela doba zastaveni)
+VYSLEDEK: 0 chyb

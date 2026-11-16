@@ -1158,7 +1158,8 @@ public class MainActivity extends Activity {
                     // B301: Atari 130XE v HELP (C++) - pristroj kresli C++ primo
                     // na displej (SurfaceView), snimani okna ho nevidi a na TV/PC
                     // byla jen stranka s testy pod nim. Obraz i zvuk ted primo z jadra.
-                    if (atariZarizeni != null && !atariZarizeniSkryte && tvSmiZvuk() && napTvAtariProudKlientu.get() == 0) {
+                    // B333: stara cesta vypnuta - zvuk Atari jde jen v /atari.stream (kruhovy buffer v C++ se prepisuje sam)
+                    if (!NAP_TV_STARA_CESTA_VYPNUTA && atariZarizeni != null && !atariZarizeniSkryte && tvSmiZvuk() && napTvAtariProudKlientu.get() == 0) {
                         try {
                             if (tvAtariPcm == null) tvAtariPcm = new short[16384];
                             int gotA = NativeAtariCoreBridge.devPullTvAudioSafe(tvAtariPcm);
@@ -2850,6 +2851,7 @@ public class MainActivity extends Activity {
     }
 
     private void napTvWebAudioPush(short[] pcm, int offset, int shorts, int sampleRate, String source) {
+        if (NAP_TV_STARA_CESTA_VYPNUTA) return;   // B333: /audio.raw (stara cesta pres Javu) vypnuta - zvuk jde v proudu z C++
         if (!napTvWebRunning || pcm == null || shorts <= 0) return;
         try {
             int start = Math.max(0, offset);
@@ -3078,9 +3080,17 @@ public class MainActivity extends Activity {
     private final java.util.concurrent.atomic.AtomicInteger napTvPs1ProudKlientu = new java.util.concurrent.atomic.AtomicInteger();
     private final java.util.concurrent.atomic.AtomicInteger napTvIntroProudKlientu = new java.util.concurrent.atomic.AtomicInteger();   // B306
     private final java.util.concurrent.atomic.AtomicInteger napTvMenuProudKlientu = new java.util.concurrent.atomic.AtomicInteger();    // B311
+    // B333: stranky appky (OPTIONS, napoveda, seznam her, prehravac ...) na TV z C++ - Java jen foti (NapTvStranka)
+    private final java.util.concurrent.atomic.AtomicInteger napTvStrankaProudKlientu = new java.util.concurrent.atomic.AtomicInteger();
+    private NapTvStranka napTvStranka;
+    private synchronized NapTvStranka napTvStranka() {
+        if (napTvStranka == null) napTvStranka = new NapTvStranka(this, () -> napTvJadroNaObrazovce("STRANKA"), this::appendNativeLog);
+        return napTvStranka;
+    }
 
     /** Je jadro (SEGA / PS1) nebo uvodni demo (INTRO) na obrazovce telefonu? (stejne podminky jako snimani pro TV) */
     private boolean napTvJadroNaObrazovce(String druh) {
+        if ("STRANKA".equals(druh)) return napTvJinyProud() == null;   // B333: stranka = zadna hra / menu / demo
         if ("INTRO".equals(druh)) return demoPlocha != null;      // B306: demo lezi nad vsim
         if ("MENU".equals(druh)) return menuPlocha != null;       // B311: hlavni menu (C++) lezi nad index.html
         String u = napTvWebCurrentUrl;
@@ -3089,8 +3099,16 @@ public class MainActivity extends Activity {
         return u.contains("emu_ps1") && (ps1SessionActive || ps1GameWindowOwnsCore || ps1BiosRunning);
     }
 
-    /** Ktery proud z C++ ted prohlizec ma brat: intro / atari / sega / ps1 / 0 (do /status). */
+    /** Ktery proud z C++ ted prohlizec ma brat: intro / menu / atari / sega / ps1 / stranka (do /status).
+     *  B333: drive "0" = prohlizec si vzal obraz starou cestou pres Javu (H.264 / MJPEG) - ta je vypnuta,
+     *  vsechno ostatni (stranky appky) jde proudem "stranka" z C++. */
     private String napTvProudDruh() {
+        final String j = napTvJinyProud();
+        return j != null ? j : "stranka";
+    }
+
+    /** Hra, menu nebo demo s vlastnim proudem z C++, jinak null (= stranka appky). */
+    private String napTvJinyProud() {
         // B306: uvodni demo lezi nad vsim ostatnim - kdyz bezi, na TV patri ono
         if (napTvJadroNaObrazovce("INTRO") && (NativeIntroBridge.proudStavSafe() & 1) != 0) return "intro";
         // B311: hlavni menu (C++) - na TV jde proudem z C++ jako demo
@@ -3100,13 +3118,14 @@ public class MainActivity extends Activity {
             if (napTvJadroNaObrazovce("SEGA") && (NativeSegaCoreBridge.proudStavSafe() & 1) != 0) return "sega";
         } catch (Throwable ignored) {}   // knihovna Segy chybi (NoClassDefFoundError)
         if (napTvJadroNaObrazovce("PS1") && NativePs1CoreBridge.isLoaded() && (NativePs1CoreBridge.proudStavSafe() & 1) != 0) return "ps1";
-        return "0";
+        return null;
     }
 
     private void napTvProudLog(String druh) {
         String s;
         try {
             if ("SEGA".equals(druh)) s = NativeSegaCoreBridge.proudLogSafe();
+            else if ("STRANKA".equals(druh)) s = NativeMenuBridge.strankaLogSafe();   // B333
             else if ("INTRO".equals(druh)) s = NativeIntroBridge.proudLogSafe();
             else if ("MENU".equals(druh)) s = NativeMenuBridge.proudLogSafe();
             else s = NativePs1CoreBridge.proudLogSafe();
@@ -3119,24 +3138,30 @@ public class MainActivity extends Activity {
     // B319: volby (jen PS1) = co stranka umi navic: bit0 kopie pri posunu obrazu, bit1 polovicni rozliseni
     private int napTvProudOtevri(String druh, int volby) {
         if ("SEGA".equals(druh)) return NativeSegaCoreBridge.proudOtevriSafe();
+        if ("STRANKA".equals(druh)) return NativeMenuBridge.strankaOtevriSafe();   // B333
         if ("INTRO".equals(druh)) return NativeIntroBridge.proudOtevriSafe();
         if ("MENU".equals(druh)) return NativeMenuBridge.proudOtevriSafe();
         return NativePs1CoreBridge.proudOtevri2Safe(volby);
     }
     private int napTvProudDalsi(String druh, int id, byte[] b, int zapisMs) {
         if ("SEGA".equals(druh)) return NativeSegaCoreBridge.proudDalsiSafe(id, b, 250, zapisMs);
+        if ("STRANKA".equals(druh)) return NativeMenuBridge.strankaDalsiSafe(id, b, 250, zapisMs);   // B333
         if ("INTRO".equals(druh)) return NativeIntroBridge.proudDalsiSafe(id, b, 250, zapisMs);
         if ("MENU".equals(druh)) return NativeMenuBridge.proudDalsiSafe(id, b, 250, zapisMs);
         return NativePs1CoreBridge.proudDalsiSafe(id, b, 250, zapisMs);
     }
     private int napTvProudStav(String druh) {
         if ("SEGA".equals(druh)) return NativeSegaCoreBridge.proudStavSafe();
+        // B333: stranka "bezi", dokud je na obrazovce (staticka stranka nove snimky nema; appka na pozadi
+        // nefoti - prohlizec si necha posledni obraz, proud se nezavira)
+        if ("STRANKA".equals(druh)) return (napTvJadroNaObrazovce("STRANKA") ? 1 : 0) | (NativeMenuBridge.strankaStavSafe() & 2);
         if ("INTRO".equals(druh)) return NativeIntroBridge.proudStavSafe();
         if ("MENU".equals(druh)) return NativeMenuBridge.proudStavSafe();
         return NativePs1CoreBridge.proudStavSafe();
     }
     private void napTvProudZavri(String druh, int id) {
         if ("SEGA".equals(druh)) NativeSegaCoreBridge.proudZavriSafe(id);
+        else if ("STRANKA".equals(druh)) NativeMenuBridge.strankaZavriSafe(id);   // B333
         else if ("INTRO".equals(druh)) NativeIntroBridge.proudZavriSafe(id);
         else if ("MENU".equals(druh)) NativeMenuBridge.proudZavriSafe(id);
         else NativePs1CoreBridge.proudZavriSafe(id);
@@ -3159,8 +3184,9 @@ public class MainActivity extends Activity {
         final boolean sega = "SEGA".equals(druh);
         final boolean intro = "INTRO".equals(druh);
         final boolean menuP = "MENU".equals(druh);           // B311
+        final boolean strankaP = "STRANKA".equals(druh);     // B333
         if (!napTvJadroNaObrazovce(druh)) return;
-        if (!sega && !intro && !menuP && !NativePs1CoreBridge.isLoaded()) return;
+        if (!sega && !intro && !menuP && !strankaP && !NativePs1CoreBridge.isLoaded()) return;
         // maly odesilaci buffer: kdyz Wi-Fi nestiha, nesmi se ve fronte systemu
         // nahromadit sekundy obrazu (zpozdeni) - radsi se snimky preskoci
         try { sock.setSendBufferSize(64 * 1024); } catch (Throwable ignored) {}
@@ -3169,8 +3195,10 @@ public class MainActivity extends Activity {
         final int id = id0;
         if (id <= 0) return;
         final java.util.concurrent.atomic.AtomicInteger klientu = sega ? napTvSegaProudKlientu
-                : (intro ? napTvIntroProudKlientu : (menuP ? napTvMenuProudKlientu : napTvPs1ProudKlientu));
+                : (intro ? napTvIntroProudKlientu : (menuP ? napTvMenuProudKlientu
+                : (strankaP ? napTvStrankaProudKlientu : napTvPs1ProudKlientu)));
         klientu.incrementAndGet();
+        if (strankaP) napTvStranka().divak(true);   // B333: Java zacne fotit stranku (jen kdyz se zmeni)
         napTvProudLog(druh);
         // B306: v tomhle vlakne C++ balí pakety (Sega LZ, PS1 / demo JPEG) - o kousek vys
         // nez bezna vlakna (jako vykreslovani), at se na telefonu neztrati; jadro a zvuk
@@ -3228,6 +3256,7 @@ public class MainActivity extends Activity {
         } finally {
             konec[0] = true;
             klientu.decrementAndGet();
+            if (strankaP) napTvStranka().divak(false);   // B333
             napTvProudZavri(druh, id);
             napTvProudLog(druh);
             try { android.os.Process.setThreadPriority(predPrio); } catch (Throwable ignored) {}
@@ -3435,6 +3464,7 @@ public class MainActivity extends Activity {
 
 
     private void napTvWebAudioPushMonoPcm16Bytes(byte[] pcm, int sampleRate, String source) {
+        if (NAP_TV_STARA_CESTA_VYPNUTA) return;   // B333
         if (!napTvWebRunning || pcm == null || pcm.length < 2) return;
         try {
             int len = Math.min(pcm.length & ~1, 65536);
@@ -3466,6 +3496,7 @@ public class MainActivity extends Activity {
     }
 
     private void napTvWebAudioPushStereoPcm16Bytes(byte[] pcm, int sampleRate, String source) {
+        if (NAP_TV_STARA_CESTA_VYPNUTA) return;   // B333
         if (!napTvWebRunning || pcm == null || pcm.length < 4) return;
         try {
             int len = Math.min(pcm.length & ~3, 65536);
@@ -3816,6 +3847,9 @@ public class MainActivity extends Activity {
             } else if ("/menu.stream".equals(path)) {
                 // B311: hlavni menu na TV/PC - obraz primo z C++
                 napTvWebJadroProud(out, s, "MENU");
+            } else if ("/stranka.stream".equals(path)) {
+                // B333: stranky appky (OPTIONS, napoveda, seznam her, prehravac ...) z C++ - bez Javy
+                napTvWebJadroProud(out, s, "STRANKA");
             } else if ("/intro.stream".equals(path)) {
                 // B306: uvodni demo na TV/PC - obraz a zvuk primo z C++
                 napTvWebJadroProud(out, s, "INTRO");
@@ -3824,6 +3858,12 @@ public class MainActivity extends Activity {
                 // (telo POSTu se docita - kdyby nedoslo, vlakno nesmi viset navzdy)
                 try { s.setSoTimeout(10000); } catch (Throwable ignored) {}
                 napTvWebVloz(buf, Math.max(0, n), in, out);
+            } else if (NAP_TV_STARA_CESTA_VYPNUTA && ("/frame.jpg".equals(path) || "/stream.mjpg".equals(path)
+                    || "/stream.h264".equals(path) || "/audio.raw".equals(path))) {
+                // B333: stara cesta pres Javu vypnuta - obraz i zvuk kazde obrazovky jdou proudem z C++
+                byte[] t = "B333: stara cesta pres Javu (JPEG / MJPEG / H.264 / audio.raw) je vypnuta - obraz jde z C++\n".getBytes("UTF-8");
+                napTvWebHeader(out, "410 Gone", "text/plain; charset=utf-8", t.length, true);
+                out.write(t);
             } else if ("/frame.jpg".equals(path)) {
                 napTvWebWriteFrame(out);
             } else if ("/stream.mjpg".equals(path)) {
@@ -4081,7 +4121,8 @@ public class MainActivity extends Activity {
                 + "function label(t){s.textContent='AtariHelp TV WEB CAST [SK60] '+t+' '+new Date().toLocaleTimeString()+' '+curFps+'fps'+(aon?' AUDIO ON':' AUDIO OFF');}"
                 + "function clog(m){try{fetch('/clientlog?m='+encodeURIComponent(m));}catch(e){}}" // BUILD2SK59: diagnostika z prohlizece zpet do /log - bez tohohle zadna viditelnost, kdyz H264 cesta selze drive, nez se server vubec dozvi
                 + "clog('PAGE LOADED build=SK60 ts='+Date.now());" // BUILD2SK60: OKAMZITY majak hned pri behu skriptu - pokud tohle v /log NENI, novy JS se vubec nespustil (stara zalozka/APK), a je zbytecne hledat chybu dal v H264 toku
-                + "var h264CdnTried=0,h264CdnUrls=['https://cdn.jsdelivr.net/npm/jmuxer@2/dist/jmuxer.min.js','https://unpkg.com/jmuxer@2/dist/jmuxer.min.js'];"
+                // B333: H.264 pres Javu vypnute - prehravac (JMuxer) se z internetu nestahuje, adresy pryc
+                + "var h264CdnTried=0,h264CdnUrls=[];"
                 // B309: Rene - "pokazdy pri prehozeni hry ci emulatoru musim refresovat stranku F5". PRICINA
                 // (jeho log): kdyz behem H.264 (menu, mezera pri prepnuti hry) nabehl proud z C++, apStart
                 // zastavil H.264 a schoval obrazek #v - jenze zrusene cteni H.264 dobehlo AZ POTOM ("stream
@@ -4090,7 +4131,7 @@ public class MainActivity extends Activity {
                 // spojeni ma svou generaci (stare cteni uz na obraz nesaha), #v se ukaze jen kdyz nebezi
                 // proud z C++, canvas je v DOM nad #v / H.264 a pollFps hlida, ze je proud opravdu videt.
                 + "function stopH264(){if(h264Active)clog('stopH264');h264Active=false;h264Gen++;if(h264Reader){try{h264Reader.cancel();}catch(e){}h264Reader=null;}h264v.style.display='none';if(!(window.napAp&&napAp.chce))v.style.display='';}"
-                + "function startH264(){if(h264Active||h264Loading||(window.napAp&&napAp.chce))return;"
+                + "function startH264(){return;/*B333: H.264 pres Javu vypnute - vse jde proudem z C++*/if(h264Active||h264Loading||(window.napAp&&napAp.chce))return;"
                 + "if(!window.JMuxer){if(h264CdnTried>=h264CdnUrls.length){clog('JMuxer CDN failed all '+h264CdnTried+' tries');return;}"
                 + "h264Loading=true;var url=h264CdnUrls[h264CdnTried];h264CdnTried++;clog('loading JMuxer from '+url);"
                 + "var sc=document.createElement('script');sc.src=url;"
@@ -4113,7 +4154,7 @@ public class MainActivity extends Activity {
                 + "function startAudio(){if(aon)return;try{var C=window.AudioContext||window.webkitAudioContext;if(!C){a.textContent='AUDIO NENI';return;}ac=new C({latencyHint:'interactive'});ac.onstatechange=zvukStav;if(ac.resume){var pr=ac.resume();if(pr&&pr.catch)pr.catch(function(){});}"
                 + "var ven=ac.destination;try{vy=ac.createAnalyser();vy.fftSize=2048;vy.connect(ac.destination);ven=vy;}catch(e){vy=null;}"
                 + "g=ac.createGain();g.gain.value=1;g.connect(ven);gp=ac.createGain();gp.gain.value=1;gp.connect(ven);"
-                + "next=ac.currentTime+AVD;aon=true;a.textContent='AUDIO ON';pollAudio();label(fb?'JPEG':'MJPEG');zvukStav();"
+                + "next=ac.currentTime+AVD;aon=true;a.textContent='AUDIO ON';pollAudio();label(window.napProud?'proud z C++: '+window.napProud:'cekam na proud z C++');zvukStav();"
                 + "clog('B315 ZVUK: proud z C++ ma vlastni zesilovac, zpozdeni stare cesty (MP3, YouTube, mezery) '+Math.round(AVD*1000)+' ms'"
                 + "+(AVD0!==null?' (ulozene bylo '+Math.round(AVD0*1000)+' ms - sipkou dolu, od B313 i v menu na TV; pri 0 zvuk hral jen v prvni hre - vraceno na 300 ms)':''));"
                 + "}catch(e){a.textContent='AUDIO ERR';}}" // BUILD2SB1: jitter polstar 350 ms + master gain pro fady
@@ -4150,7 +4191,7 @@ public class MainActivity extends Activity {
                 + "function rawPredej(tz){if(!ac||!g||!active.length)return;var t=ac.currentTime;if(tz<t+0.012)tz=t+0.012;"
                 + "try{var gv=g.gain.value;g.gain.cancelScheduledValues(t);g.gain.setValueAtTime(gv,t);g.gain.setValueAtTime(gv,tz-0.01);g.gain.linearRampToValueAtTime(0,tz);g.gain.setValueAtTime(1,tz+0.02);}catch(e){}"
                 + "for(var i=0;i<active.length;i++){try{active[i].stop(tz+0.005);}catch(e){}}active=[];next=0;}"
-                + "async function pollAudio(){if(!aon||!ac)return;if(ap&&ap.chce){setTimeout(pollAudio,150);return;}try{var r=await fetch('/audio.raw?after='+aseq+'&t='+Date.now(),{cache:'no-store'});var sq=parseInt(r.headers.get('x-nap-audio-seq')||aseq,10);var st=parseInt(r.headers.get('x-nap-audio-start')||aseq,10);var rate=parseInt(r.headers.get('x-nap-audio-rate')||'44100',10);var dis=(r.headers.get('x-nap-audio-discontinuity')||'0')==='1';var ab=await r.arrayBuffer();var expected=aseq;if(!isNaN(sq))aseq=sq;"
+                + "async function pollAudio(){return;/*B333: /audio.raw (stara cesta pres Javu) vypnuta - zvuk jde v proudu z C++*/if(!aon||!ac)return;if(ap&&ap.chce){setTimeout(pollAudio,150);return;}try{var r=await fetch('/audio.raw?after='+aseq+'&t='+Date.now(),{cache:'no-store'});var sq=parseInt(r.headers.get('x-nap-audio-seq')||aseq,10);var st=parseInt(r.headers.get('x-nap-audio-start')||aseq,10);var rate=parseInt(r.headers.get('x-nap-audio-rate')||'44100',10);var dis=(r.headers.get('x-nap-audio-discontinuity')||'0')==='1';var ab=await r.arrayBuffer();var expected=aseq;if(!isNaN(sq))aseq=sq;"
                 + "if(ab.byteLength>=4&&!(ap&&ap.chce)){var now=ac.currentTime;if(dis||next<now+0.04||next>now+AVD+0.5)cutover();var dv=new DataView(ab),frames=Math.floor(ab.byteLength/4),buf=ac.createBuffer(2,frames,rate),L=buf.getChannelData(0),R=buf.getChannelData(1);for(var i=0,p=0;i<frames;i++,p+=4){L[i]=dv.getInt16(p,true)/32768;R[i]=dv.getInt16(p+2,true)/32768;}var src=ac.createBufferSource();src.buffer=buf;src.connect(g);if(next<ac.currentTime+0.02)next=ac.currentTime+Math.max(AVD,0.05);src.start(next);next+=frames/rate;rawS+=frames/rate;active.push(src);src.onended=function(){var k=active.indexOf(src);if(k>=0)active.splice(k,1);};if(active.length>400)active.splice(0,active.length-400);}}catch(e){}setTimeout(pollAudio,20);}" // BUILD2SB1: planovane buffery (jitter buffer), zadne tvrde resety next, cutover s fadem (B315: kus, ktery dorazil az po startu proudu z C++, se uz nehraje; seznam az 400 kusu - pri zpozdeni 2 s jich je naplanovano ~120 a cutover / rawPredej musi zastavit vsechny)
                 // B315: sipky nahoru / dolu meni zpozdeni stare cesty jen tam, kde nic jineho neovladaji - ne v menu
                 // (tam od B313 listuji kartami) a ne v posuvniku panelu OBRAZ
@@ -4166,7 +4207,7 @@ public class MainActivity extends Activity {
                 // nacteni stranky - Java pak snimala obraz pro TV, i kdyz si prohlizec za chvili vzal proud
                 // primo z C++ (Rene v logu menu: "TV Java"). Bez odpovedi /status do 2,5 s jako drive.
                 + "window.napMjStart=function(){if(window.napMjJe)return;window.napMjJe=1;if(window.napAp&&napAp.chce)return;"
-                + "v.onerror=function(){if(!fb)fallback();};v.src='/stream.mjpg?'+Date.now();label('MJPEG');};"
+                + "};" // B333: MJPEG pres Javu vypnute - zadny /stream.mjpg
                 + "setTimeout(function(){if(!window.napMjJe)window.napMjStart();},2500);setTimeout(pollFps,0);"
                 // B320: appka se aktualizovala (jina verze v /status) - stranka se obnovi sama (nejvys 1x za 30 s,
                 // kdyby se prohlizec branil); po obnoveni prohlizec zase chce klik pro zvuk (vyzva to rekne)
@@ -4174,7 +4215,7 @@ public class MainActivity extends Activity {
                 + "var po=0;try{po=parseInt(sessionStorage.getItem('napObnova')||'0',10);}catch(e){}if(Date.now()-po<30000)return false;"
                 + "try{sessionStorage.setItem('napObnova',String(Date.now()));}catch(e){}clog('B320 STRANKA: appka je nove verze ('+window.NAP_VERZE+' -> '+vn+') - stranka se obnovi');"
                 + "setTimeout(function(){location.reload();},400);return true;}"
-                + "function pollFps(){if(window.napPollBezi&&Date.now()-window.napPollBezi<2600)return;window.napPollBezi=Date.now();var ac=window.AbortController?new AbortController():null;var tm=setTimeout(function(){if(ac)try{ac.abort();}catch(e){}},2500);fetch('/status?'+Date.now(),ac?{cache:'no-store',signal:ac.signal}:{cache:'no-store'}).then(function(r){return r.text();}).then(function(t){clearTimeout(tm);window.napPollBezi=0;if(napVerze(t))return;var mp=/ proud=(\\w+)/.exec(t),pd=(mp&&mp[1]!=='0')?mp[1]:'';var od=window.napOdmit;if(od&&Date.now()<od.t&&pd===od.d)pd=od.n;if(!mp){var m0=/atariProud=(\\d)/.exec(t);if(m0&&m0[1]==='1')pd='atari';}window.napProud=pd;window.napAtariProud=(pd==='atari');if(!window.napMjJe){if(pd&&apLze())window.napMjJe=1;else if(window.napMjStart)window.napMjStart();}if(pd&&apLze()){ap.bez=0;if(ap.chce&&ap.druh&&ap.druh!==pd)apZnovu();else if(!ap.on&&!ap.rd)apStart();}else if(ap.chce){if(!ap.bez)ap.bez=Date.now();else if(Date.now()-ap.bez>2500){ap.bez=0;apStop();}}if(ap.chce)apHlidej();var m=/seq=(\\d+)/.exec(t);var m2=/h264Seq=(\\d+)/.exec(t);if(!h264Active&&!h264Loading&&!ap.chce&&!(window.napProud&&apLze())){clog('pollFps calling startH264 (universal)');startH264();}var useM=h264Active&&m2?m2:m;if(useM){var sq=parseInt(useM[1],10),now=Date.now();if(lastSeqT>0){var dt=(now-lastSeqT)/1000;if(dt>0)curFps=Math.round((sq-lastSeq)/dt*10)/10;}if(sq===lastSeq&&sq>0){staleTicks++;}else{staleTicks=0;}lastSeq=sq;lastSeqT=now;if(staleTicks>=4&&!fb&&!h264Active&&!ap.chce){staleTicks=0;v.src='/stream.mjpg?'+Date.now();}}var ma=/atari=(\\d)/.exec(t), ms=/sega=(\\d)/.exec(t);var vA=!!(ma&&ma[1]==='1'), vS=!!(ms&&ms[1]==='1');window.napVAtari=vA;window.napVSeze=vS;var mp1=/ ps1=(\\d)/.exec(t);var vP=!!(mp1&&mp1[1]==='1');window.napVPs1=vP;var mq=/ ps1mys=(\\d)/.exec(t),pmz=!!(vP&&mq&&mq[1]==='1');if(pmz!==!!window.napPs1Mys){window.napPs1Mys=pmz;if(window.napPmZmena)window.napPmZmena(pmz);}var mc=/atariCpp=(\\d)/.exec(t), mr=/klavRezim=(\\w+)/.exec(t);window.napVAtariCpp=!!(mc&&mc[1]==='1');if(window.napVAtariCpp&&mr)window.napRezim=mr[1];var mm=/ menu=(\\d)/.exec(t);window.napVMenu=!!(mm&&mm[1]==='1');if(window.napKlavesnicePopis)window.napKlavesnicePopis(vA||vS||vP||window.napVMenu);label(h264Active?'H264':(fb?'JPEG':'MJPEG'));}).catch(function(e){clearTimeout(tm);window.napPollBezi=0;var n=Date.now();if(!window.napPollErrT||n-window.napPollErrT>5000){window.napPollErrT=n;clog('pollFps fetch err '+e);}label(h264Active?'H264':(fb?'JPEG':'MJPEG'));});}" // BUILD2SK45+SK57+SK59: stale-reconnect jen v MJPEG rezimu; "seq" v /status je porad ta sama zachytavaci sekvence i v H264 rezimu
+                + "function pollFps(){if(window.napPollBezi&&Date.now()-window.napPollBezi<2600)return;window.napPollBezi=Date.now();var ac=window.AbortController?new AbortController():null;var tm=setTimeout(function(){if(ac)try{ac.abort();}catch(e){}},2500);fetch('/status?'+Date.now(),ac?{cache:'no-store',signal:ac.signal}:{cache:'no-store'}).then(function(r){return r.text();}).then(function(t){clearTimeout(tm);window.napPollBezi=0;if(napVerze(t))return;var mp=/ proud=(\\w+)/.exec(t),pd=(mp&&mp[1]!=='0')?mp[1]:'';var od=window.napOdmit;if(od&&Date.now()<od.t&&pd===od.d)pd=od.n;if(!mp){var m0=/atariProud=(\\d)/.exec(t);if(m0&&m0[1]==='1')pd='atari';}window.napProud=pd;window.napAtariProud=(pd==='atari');if(!window.napMjJe){if(pd&&apLze())window.napMjJe=1;else if(window.napMjStart)window.napMjStart();}if(pd&&apLze()){ap.bez=0;if(ap.chce&&ap.druh&&ap.druh!==pd)apZnovu();else if(!ap.on&&!ap.rd)apStart();}else if(ap.chce){if(!ap.bez)ap.bez=Date.now();else if(Date.now()-ap.bez>2500){ap.bez=0;apStop();}}if(ap.chce)apHlidej();var m=/seq=(\\d+)/.exec(t);var m2=/h264Seq=(\\d+)/.exec(t);if(!apLze()&&!window.napNeumi){window.napNeumi=1;clog('B333 PROHLIZEC: neumi proud z C++ (fetch stream) - stara cesta pres Javu je vypnuta, obraz nebude');try{var nd=document.createElement('div');nd.id='napNeumi';nd.style.cssText='position:fixed;left:50%;top:40%;transform:translateX(-50%);background:rgba(0,0,0,.88);color:#ffd479;font:22px sans-serif;padding:14px 22px;border:2px solid #ffd479;border-radius:8px;z-index:99998;text-align:center;max-width:90%';nd.textContent='TENTO PROHLIZEC NEUMI PROUD Z C++ - OTEVRI ADRESU V CHROME, EDGE NEBO FIREFOXU';document.body.appendChild(nd);}catch(e){}}var useM=h264Active&&m2?m2:m;if(useM){var sq=parseInt(useM[1],10),now=Date.now();if(lastSeqT>0){var dt=(now-lastSeqT)/1000;if(dt>0)curFps=Math.round((sq-lastSeq)/dt*10)/10;}if(sq===lastSeq&&sq>0){staleTicks++;}else{staleTicks=0;}lastSeq=sq;lastSeqT=now;if(staleTicks>=4){staleTicks=0;}}var ma=/atari=(\\d)/.exec(t), ms=/sega=(\\d)/.exec(t);var vA=!!(ma&&ma[1]==='1'), vS=!!(ms&&ms[1]==='1');window.napVAtari=vA;window.napVSeze=vS;var mp1=/ ps1=(\\d)/.exec(t);var vP=!!(mp1&&mp1[1]==='1');window.napVPs1=vP;var mq=/ ps1mys=(\\d)/.exec(t),pmz=!!(vP&&mq&&mq[1]==='1');if(pmz!==!!window.napPs1Mys){window.napPs1Mys=pmz;if(window.napPmZmena)window.napPmZmena(pmz);}var mc=/atariCpp=(\\d)/.exec(t), mr=/klavRezim=(\\w+)/.exec(t);window.napVAtariCpp=!!(mc&&mc[1]==='1');if(window.napVAtariCpp&&mr)window.napRezim=mr[1];var mm=/ menu=(\\d)/.exec(t);window.napVMenu=!!(mm&&mm[1]==='1');if(window.napKlavesnicePopis)window.napKlavesnicePopis(vA||vS||vP||window.napVMenu);label(!apLze()?'tento prohlizec neumi proud z C++ - otevri stranku v Chrome / Edge / Firefox':window.napProud?'proud z C++: '+window.napProud:'cekam na proud z C++');}).catch(function(e){clearTimeout(tm);window.napPollBezi=0;var n=Date.now();if(!window.napPollErrT||n-window.napPollErrT>5000){window.napPollErrT=n;clog('pollFps fetch err '+e);}label(window.napProud?'proud z C++: '+window.napProud:'cekam na proud z C++');});}" // BUILD2SK45+SK57+SK59: stale-reconnect jen v MJPEG rezimu; "seq" v /status je porad ta sama zachytavaci sekvence i v H264 rezimu
                 // ===== B303 + B305: ATARI 130XE, SEGA A PS1 - OBRAZ A ZVUK PRIMO Z C++ =====
                 // B303 (Atari): "ma to na TV zpozdeni - nejde to vylepsit?" Misto H.264 / JPEG
                 // z Javy (zvetsovani, komprese, buffer prohlizece) posila C++ kazdy snimek
@@ -4208,10 +4249,12 @@ public class MainActivity extends Activity {
                 + "function apLze(){try{var t=new Response(new Uint8Array(1));return !!(window.fetch&&window.ReadableStream&&window.DataView&&t.body&&t.body.getReader);}catch(e){return false;}}"
                 // velikost canvasu: Atari jako na telefonu; Sega / PS1 bud "vyplnit obrazovku"
                 // (obsah bez cernych okraju na 16:9 pres cele okno - jako doted z Javy), nebo
-                // "cely, bez orezu" (cely snimek 4:3, po stranach cerno)
+                // "cely, bez orezu" (cely snimek 4:3, po stranach cerno).
+                // B333: stranka appky (proud=stranka: OPTIONS, napoveda, prehravac ...) VZDY cela se svym
+                // pomerem stran - na vysku zustane na vysku, po stranach cerno ("vyplnit" by ji roztahl na 16:9)
                 + "function apRozmer(){if(!ap.cv||!ap.W)return;var W=window.innerWidth,H=window.innerHeight,c=ap.cv.style,w,h,x,y;"
                 + "if(ap.ver===1){var asp=(ap.W/2)/(ap.H/0.88);w=W;h=Math.round(W/asp);if(h>H){h=H;w=Math.round(H*asp);}x=Math.round((W-w)/2);y=Math.round((H-h)/2);}"
-                + "else if(napFill&&ap.ow>0&&ap.oh>0){var A=16/9,bw=W,bh=W/A;if(W/H<A){bh=H;bw=H*A;}var sx=bw/ap.ow,sy=bh/ap.oh;w=Math.round(ap.W*sx);h=Math.round(ap.H*sy);"
+                + "else if(napFill&&ap.ow>0&&ap.oh>0&&ap.druh!=='stranka'){var A=16/9,bw=W,bh=W/A;if(W/H<A){bh=H;bw=H*A;}var sx=bw/ap.ow,sy=bh/ap.oh;w=Math.round(ap.W*sx);h=Math.round(ap.H*sy);"
                 + "x=Math.round((W-bw)/2-ap.ox*sx);y=Math.round((H-bh)/2-ap.oy*sy);}"
                 + "else{var a2=ap.px/ap.py;w=W;h=Math.round(W/a2);if(h>H){h=H;w=Math.round(H*a2);}x=Math.round((W-w)/2);y=Math.round((H-h)/2);}"
                 + "c.width=w+'px';c.height=h+'px';c.left=x+'px';c.top=y+'px';}"
@@ -4242,7 +4285,7 @@ public class MainActivity extends Activity {
                 + "if(ap.cv&&ap.cv.style.display==='none'){ap.cv.style.display='';o|=8;}if(o)clog('B309 HLIDAC: proud '+ap.druh+' byl schovany ('+o+') - opraveno');}"
                 + "function apZnovu(){var rd=ap.rd;ap.rd=null;ap.on=false;ap.buf=null;if(rd){try{rd.cancel();}catch(e){}}apStart();}"
                 + "function apStop(){var d=ap.druh;ap.on=false;ap.chce=false;ap.druh='';ap.gen++;ap.jq=[];if(ap.rd){try{ap.rd.cancel();}catch(e){}ap.rd=null;}if(ap.cv)ap.cv.style.display='none';"
-                + "if(!h264Active){v.style.display='';v.onerror=function(){if(!fb)fallback();};v.src='/stream.mjpg?'+Date.now();}clog(d&&d!=='atari'?'B306 '+d.toUpperCase()+' PROUD konec':'B303 ATARI PROUD konec');}"
+                + "/*B333: zadny prechod na MJPEG pres Javu - dalsi proud z C++ (stranka) spusti pollFps*/clog(d&&d!=='atari'?'B306 '+d.toUpperCase()+' PROUD konec':'B303 ATARI PROUD konec');}"
                 // proud = 4 B delka + paket, porad dokola; kus z site muze koncit kdekoli
                 + "function apPridej(ch){var gen=ap.gen,b=ap.buf;if(b&&b.length){var nb=new Uint8Array(b.length+ch.length);nb.set(b,0);nb.set(ch,b.length);b=nb;}else b=ch;"
                 + "var o=0;while(b.length-o>=4){var len=(b[o]|(b[o+1]<<8)|(b[o+2]<<16)|(b[o+3]<<24))>>>0;if(len>8000000)throw new Error('delka '+len);"
@@ -4744,9 +4787,13 @@ public class MainActivity extends Activity {
     // menu nestihalo 24 snimku z 60). Ted snima jen do 3 s po posledni zadosti stareho prohlizece.
     private volatile long napTvWebStaryKlientMs = 0;
     private volatile boolean napTvWebStaraCestaBezi = true;
+    // B333: STARA CESTA PRES JAVU VYPNUTA (Rene: "tady budu nekompromisni - vypni Javu"). Snimani obrazovky
+    // na hlavnim vlakne, JPEG / MJPEG / H.264 v Jave a /audio.raw uz nikdo nepouzije: kazda obrazovka ma
+    // proud z C++ (hry, menu, demo; stranky appky "stranka" - NapTvStranka + nap_tv_stranka.h).
+    static final boolean NAP_TV_STARA_CESTA_VYPNUTA = true;
     private boolean napTvWebStaraCestaKouka() {
-        final boolean kouka = !napTvWebH264ClientQueues.isEmpty()
-                || System.currentTimeMillis() - napTvWebStaryKlientMs < 3000L;
+        final boolean kouka = !NAP_TV_STARA_CESTA_VYPNUTA && (!napTvWebH264ClientQueues.isEmpty()
+                || System.currentTimeMillis() - napTvWebStaryKlientMs < 3000L);
         if (kouka != napTvWebStaraCestaBezi) {
             napTvWebStaraCestaBezi = kouka;
             if (kouka) {
@@ -5984,6 +6031,7 @@ public class MainActivity extends Activity {
                 if (!tvSmiZvuk()) return "TV_WEB_AUDIO_VYPNUT_POKUSEM";
                 if (b64 == null || b64.length() == 0) return "TV_WEB_AUDIO_EMPTY";
                 byte[] data = Base64.decode(b64, Base64.DEFAULT);
+                NativeMenuBridge.strankaZvukSafe(data, channels <= 1 ? 1 : 2, sampleRate);   // B333: do proudu stranky (C++)
                 if (channels <= 1) napTvWebAudioPushMonoPcm16Bytes(data, sampleRate, "PLAYER");
                 else napTvWebAudioPushStereoPcm16Bytes(data, sampleRate, "PLAYER");
                 return "TV_WEB_AUDIO_PLAYER_OK bytes=" + data.length + " frames=" + frames + " hz=" + sampleRate + " ch=" + channels;
@@ -5999,6 +6047,7 @@ public class MainActivity extends Activity {
                 if (!tvSmiZvuk()) return "TV_WEB_AUDIO_VYPNUT_POKUSEM";
                 if (b64 == null || b64.length() == 0) return "TV_WEB_AUDIO_EMPTY";
                 byte[] data = Base64.decode(b64, Base64.DEFAULT);
+                NativeMenuBridge.strankaZvukSafe(data, channels <= 1 ? 1 : 2, sampleRate);   // B333: do proudu stranky (C++)
                 if (channels <= 1) napTvWebAudioPushMonoPcm16Bytes(data, sampleRate, "YOUTUBE");
                 else napTvWebAudioPushStereoPcm16Bytes(data, sampleRate, "YOUTUBE");
                 return "TV_WEB_AUDIO_YOUTUBE_OK bytes=" + data.length + " frames=" + frames + " hz=" + sampleRate + " ch=" + channels;

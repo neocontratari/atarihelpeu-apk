@@ -1,0 +1,6 @@
+OK      vlakna (foceni 15/s s otacenim, zvuk 48 kHz, 2 prohlizece 5x pripojeni, log): paketu 143, spatny pomer stran 0, zvuku 313610 vzorku, otevreni 5, zbyva prohlizecu 0
+VYSLEDEK: 1 OK, 0 CHYBA
+
+real	0m8.798s
+user	0m9.114s
+sys	0m1.934s

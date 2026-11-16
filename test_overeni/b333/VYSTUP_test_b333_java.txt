@@ -1,0 +1,11 @@
+B333 - stranky appky na TV z C++: Java strana (NapTvStranka.zmensi, NativeMenuBridge pres JNI)
+OK     Z) zmenseni snimku stranky (nejvys 1920 x 1080, sude, pomer stran do 0,5 %): 1440x2672->582x1080 2672x1440->1920x1034 720x1280->608x1080 1080x2220->524x1080 1280x720->1280x720 3840x2160->1920x1080 1x1->2x2 0x0->0x0
+OK     Z) foceni: pri zmene nejvys 15x za sekundu, beze zmeny 2x za sekundu
+OK     J) knihovna napmenu nactena (ok)
+OK     J) strankaOtevri -> prohlizec 1, stav bit1 (Java ma fotit) 0 -> 2
+OK     J) strankaDalsi: male pole -> -28678 (paket pocka), pole 28678 B -> 28678 B, paket NA verze 3, 582x1080, pomer 97:180
+OK     J) bez noveho snimku po 60 ms nic (0)
+OK     J) zvuk 4800 vzorku 48 kHz -> v paketu 4410 vzorku 44,1 kHz (0,1 s)
+OK     J) neprima pamet / kratky radek / null se odmitne bez padu (zadny novy snimek: 0)
+OK     J) strankaZavri: stav bit1 0, dalsi -> MIN_VALUE, log: 2 radky (pripojen / odpojen)
+VYSLEDEK: 9 OK, 0 CHYBA

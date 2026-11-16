@@ -76,6 +76,7 @@
 #include "nap_menu_kresba.h"
 #include "nap_tv_proud.h"
 #include "nap_tv_proud_jpeg.h"
+#include "nap_tv_stranka.h"   // B333: stranky appky na TV z C++ (bez Javy)
 
 #ifndef EGL_OPENGL_ES3_BIT_KHR
 #define EGL_OPENGL_ES3_BIT_KHR 0x00000040
@@ -495,6 +496,12 @@ std::string jstr(JNIEnv *env, jstring s) {
 // ====================================================================
 //  JNI (eu.atarihelp.emu10.NativeMenuBridge)
 // ====================================================================
+// B333: proud stranek appky na TV (JNI strankaXxxNative nize)
+static nap::proud::Stranka &strankaTv() {
+  static nap::proud::Stranka *s = new nap::proud::Stranka();
+  return *s;
+}
+
 extern "C" {
 
 /** Assety + nacteni karet z menu/karty.txt (kdyz chybi: karty zabudovane v C++). Vraci pocet karet. */
@@ -703,6 +710,62 @@ JNIEXPORT jint JNICALL Java_eu_atarihelp_emu10_NativeMenuBridge_proudStavNative(
 
 JNIEXPORT jstring JNICALL Java_eu_atarihelp_emu10_NativeMenuBridge_proudLogNative(JNIEnv *env, jclass) {
   const std::string s = g_proud.vezmiLog();
+  if (s.empty()) return nullptr;
+  return env->NewStringUTF(s.c_str());
+}
+
+// ===================================================================
+//  B333: STRANKY APPKY NA TV / PC Z C++ (/stranka.stream) - bez Javy (H.264 / MJPEG)
+//  Java (NapTvStranka) stranku jen vyfoti, kdyz se zmenila, a preda sem; dal jako menu.
+// ===================================================================
+JNIEXPORT void JNICALL Java_eu_atarihelp_emu10_NativeMenuBridge_strankaSnimekNative(JNIEnv *env, jclass, jobject buf, jint w, jint h, jint stride) {
+  if (!buf) return;
+  const uint8_t *p = (const uint8_t *)env->GetDirectBufferAddress(buf);
+  const jlong kap = env->GetDirectBufferCapacity(buf);
+  if (!p || w <= 0 || h <= 0 || stride < w * 4 || kap < (jlong)stride * h) return;
+  strankaTv().snimekRgba(p, (int)w, (int)h, (int)stride);
+}
+
+JNIEXPORT void JNICALL Java_eu_atarihelp_emu10_NativeMenuBridge_strankaZvukNative(JNIEnv *env, jclass, jbyteArray pcm, jint delka, jint kanalu, jint frekvence) {
+  if (!pcm || delka <= 0 || delka > env->GetArrayLength(pcm)) return;
+  thread_local std::vector<uint8_t> b;
+  b.resize((size_t)delka);
+  env->GetByteArrayRegion(pcm, 0, delka, (jbyte *)b.data());
+  strankaTv().zvuk(b.data(), b.size(), (int)kanalu, (int)frekvence);
+}
+
+JNIEXPORT jint JNICALL Java_eu_atarihelp_emu10_NativeMenuBridge_strankaOtevriNative(JNIEnv *, jclass) {
+  return (jint)strankaTv().hub().otevri();
+}
+
+JNIEXPORT jint JNICALL Java_eu_atarihelp_emu10_NativeMenuBridge_strankaDalsiNative(JNIEnv *env, jclass, jint id, jbyteArray out, jint cekejMs, jint zapisMs) {
+  if (!out) return INT_MIN;
+  thread_local std::vector<uint8_t> pk;
+  auto &hub = strankaTv().hub();
+  const int r = hub.dalsi((int)id, (int)cekejMs, (int)zapisMs, pk);
+  if (r < 0) return INT_MIN;
+  if (r == 0) return 0;
+  if ((jsize)pk.size() > env->GetArrayLength(out)) {
+    const jint potreba = (jint)pk.size();
+    hub.odloz((int)id, pk);
+    return -potreba;
+  }
+  env->SetByteArrayRegion(out, 0, (jsize)pk.size(), (const jbyte *)pk.data());
+  return (jint)pk.size();
+}
+
+JNIEXPORT void JNICALL Java_eu_atarihelp_emu10_NativeMenuBridge_strankaZavriNative(JNIEnv *, jclass, jint id) {
+  strankaTv().hub().zavri((int)id);
+}
+
+/** bit0 = Java posila snimky (posledni pred < 2 s), bit1 = nekdo se diva (Java ma fotit) */
+JNIEXPORT jint JNICALL Java_eu_atarihelp_emu10_NativeMenuBridge_strankaStavNative(JNIEnv *, jclass) {
+  auto &hub = strankaTv().hub();
+  return (hub.bezi(2000) ? 1 : 0) | (hub.klientu() > 0 ? 2 : 0);
+}
+
+JNIEXPORT jstring JNICALL Java_eu_atarihelp_emu10_NativeMenuBridge_strankaLogNative(JNIEnv *env, jclass) {
+  const std::string s = strankaTv().hub().vezmiLog();
   if (s.empty()) return nullptr;
   return env->NewStringUTF(s.c_str());
 }

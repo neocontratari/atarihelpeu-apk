@@ -1,0 +1,73 @@
+B333 - TV BEZ JAVY: STRANKY APPKY NA TV / PC Z C++, STARA CESTA PRES JAVU VYPNUTA (16. 11. 2026)
+=================================================================================================
+
+Rene po B332: "nevim proc jedeme prenos pres H.264 - to je Java ne?!" a pak "tady budu nekompromisni -
+vypni Javu". Hry (Atari, Sega, PS1), uvodni demo a hlavni menu sly na TV z C++ uz od B303-B311. Stranky
+appky (OPTIONS, napoveda, seznam her, prehravac MP3, YouTube, web) sly porad pres Javu: foceni cele
+obrazovky 1440x2672 na hlavnim vlakne -> H.264 (115 Mbit/s, v OPTIONS 896 z 900 snimku stejnych) nebo
+MJPEG / JPEG, zvuk zvlast (/audio.raw), prohlizec si pro H.264 stahoval JMuxer z internetu.
+
+1) STRANKA = DALSI PROUD Z C++ (/stranka.stream), /status rika proud=stranka (nikdy proud=0):
+   - NapTvStranka.java: foti, jen kdyz se nekdo diva a na obrazovce neni hra / menu / demo; jen pri
+     zmene (OnDrawListener, nejvys 15x za sekundu) a beze zmeny 2x za sekundu; PixelCopy okna ZMENSENE
+     na nejvys 1920x1080 (S8 na vysku 582x1080 - vic TV neukaze), vysledek na vlastnim vlakne
+     "nap-tv-stranka", Bitmapa -> prima pamet -> NativeMenuBridge.strankaSnimekSafe;
+   - nap_tv_stranka.h (knihovna napmenu, JNI strankaXxxNative v nap_menu_gl.cpp): stejny Hub + kodek
+     JPEG jako menu (posila jen zmenene casti, stojici text zjemni), bez orezu; pomer stran z rozmeru
+     PRAVE baleneho snimku (nap_tv_proud.h pomerZRozmeru: na vysku 97:180, na sirku 255:137);
+   - zvuk prehravace MP3 a YouTube (pushPlayerPcm16 / pushYoutubePcm16) -> strankaZvukSafe ->
+     44,1 kHz stereo v paketech proudu (linearni prevzorkovani, navazuje mezi kusy).
+2) STARA CESTA PRES JAVU VYPNUTA (NAP_TV_STARA_CESTA_VYPNUTA): /frame.jpg, /stream.mjpg, /stream.h264,
+   /audio.raw -> "410 Gone"; Java nefoti obrazovku pro TV a nekoduje H.264 / JPEG; zvuk stare cesty
+   se neplni (ani z jadra Atari).
+3) STRANKA PROHLIZECE NA TV: zadne H.264 / MJPEG / JPEG / audio.raw, zadna adresa na internet (JMuxer),
+   popisek "proud z C++: X". Stranka appky VZDY cela se svym pomerem stran ("OBRAZ: vyplnit obrazovku"
+   jen pro hry) - na vysku zustane na vysku, po stranach cerno (bez opravy by se roztahla na 16:9).
+   Prohlizec, ktery proud z C++ neumi (bez fetch streamu): viditelna hlaska uprostred "TENTO PROHLIZEC
+   NEUMI PROUD Z C++ - OTEVRI ADRESU V CHROME, EDGE NEBO FIREFOXU" (anglicky v en_tv.js), 1x do logu.
+4) Napoveda CZ / EN (kapitola WEB TV), build.gradle versionCode 376 "EMU10-B333-TV-CPP".
+
+DUNE 2000 - CARKY NA TV NEJSOU Z JAVY: obraz PS1 sel na TV z C++ uz od B305 (log Reneho: "B306 TV PROUD
+PS1 ... JPEG po castech"). Carky na screenshotu jsou 2 body TV vysoke na radcich 214, 250, 286, 358, 394,
+430 = radky zdroje 95, 111, 127, 159, 175, 191 (= 16k-1 v obrazu 2x 736x480, spodni pulka radku PS1
+8k-1), pres celou sirku pruhu zdravi. Kodek pracuje po ctvercich 16x16 - jeden radek uprostred ctverce
+nechat nemuze. Skoro jiste je to vykreslovac gpu_neon ve 2x (Enhanced Resolution) - pak to musi byt
+videt i na displeji telefonu (Rene overi). Oprava: dalsi build (prepinac 2x v SERVIS / zaznam GPU).
+
+Spoustet z adresare test_overeni/b333 (PRAC = pracovni slozka, AJ = android-34.jar, JV = JDK):
+A) C++ se SKUTECNYM nap_tv_stranka.h + Hub + KodekJpeg, prohlizec = ../b313/prohlizec_v3.h:
+   g++ -std=c++17 -O2 -pthread -I../../app/src/main/cpp/tvproud -I../../app/src/main/cpp/vendor/stb \
+       -I../b313 -o PRAC/test_stranka test_stranka.cpp
+   PRAC/test_stranka PRAC                     -> VYSTUP_test_stranka.txt (13 OK) + PRAC/proud.bin,
+                                                 snimek_*.raw, proud_znacka.txt (pro test D)
+   (bez divaka nic, prvni snimek PSNR 37 dB, pomer 97:180 v hlavicce, stojici stranka se zjemni na 45 dB
+    a pak jen prazdne pakety 48 B, zmena tlacitka = 7 kB misto 90 kB, na sirku 1920x1034 255:137 a
+    zpet, pomer pro 10 rozmeru, zvuk 48 kHz mono po kusech -> 44,1 kHz bez lupnuti (1 kHz ton),
+    44,1 kHz stereo bit po bitu, stride, spatny vstup)
+B) Vlakna jako v appce pod ThreadSanitizerem (foceni 15/s s otacenim, zvuk, 2 prohlizece, log):
+   g++ -std=c++17 -O1 -g -fsanitize=thread -pthread -I../../app/src/main/cpp/tvproud \
+       -o PRAC/test_stranka_vlakna test_stranka_vlakna.cpp && PRAC/test_stranka_vlakna
+                                              -> VYSTUP_test_stranka_vlakna_tsan.txt (0 hlaseni TSan)
+C) JVM pres JNI: SKUTECNA NativeMenuBridge + SKUTECNY nap_menu_gl.cpp (knihovna pro PC z
+   ../b313/tv_menu_lib_b313.cpp, prikaz viz ../b313/vse.sh, ulozit jako PRAC/jvmlib/libnapmenu.so):
+   javac -encoding UTF-8 --release 17 -proc:none -cp AJ -sourcepath ../../app/src/main/java -d PRAC/out \
+         jvm/eu/atarihelp/emu10/TestB333.java
+   java -Xcheck:jni -Djava.library.path=PRAC/jvmlib -cp PRAC/out:AJ eu.atarihelp.emu10.TestB333
+                                              -> VYSTUP_test_b333_java.txt (9 OK)
+   (NapTvStranka.zmensi 8 rozmeru, strankaOtevri / Stav / Snimek z prime pameti / Dalsi s malym polem ->
+    zaporna delka a stejny paket / Zvuk 48 kHz -> 4410 vzorku / Zavri / Log, neprima pamet odmitnuta)
+D) Chromium: SKUTECNA stranka prohlizece z MainActivity.java, proud.bin z A):
+   python3 test_b333_tv.py PRAC               -> VYSTUP_test_b333_tv.txt (9 kontrol, 0 CHYBA)
+   (proud=stranka -> /stranka.stream za 0,5 s; na sirku canvas 1280x688; na vysku 388x720 uprostred -
+    NE 1280x720; obsah PSNR 45 dB; popisek bez MJPEG / H264; zadny dotaz na /stream.h264, /stream.mjpg,
+    /frame.jpg, /audio.raw ani na internet; proud=0 -> ceka; bez fetch streamu viditelna hlaska)
+   Bez opravy apRozmer (zkouska): 2 CHYBA - stranka roztazena na 1280x720.
+E) Zapojeni: python3 kontrola_b333.py         -> VYSTUP_kontrola_b333.txt (33 OK)
+F) Podpisy JNI: javac -h (NativeMenuBridge) + python3 kontrola_jni.py HLAVICKA.h
+                                              -> VYSTUP_kontrola_jni.txt (31 metod, 0 nesouhlasi)
+G) javac vsech zdroju appky proti android.jar -> VYSTUP_javac_android.txt (0 chyb)
+H) Regrese (VYSTUP_regrese_*): kodeky a Hub starsich verzi s hlavickami B333 (b305 hub 16 / 0 s PNG 320,
+   b306 hub6, b313 kodek menu 11, b319 hub 4 + kodek 14, b320 kodek 12 - vse jako drive) a testy
+   stranky WEB TV starsich verzi na B333 i na ciste B332 (git worktree) - viz VYSTUP_regrese_tv.txt.
+
+Na telefonu NEOVERENO (preklad pro ARM udela CI).

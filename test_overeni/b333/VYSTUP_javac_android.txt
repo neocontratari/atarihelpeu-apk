@@ -1,0 +1,3 @@
+B333 - javac --release 17 -cp android.jar (API 34) vsechny zdrojaky appky (eu.atarihelp.emu10 + nap)
+trid prelozeno: 109
+VYSLEDEK: 0 chyb prekladu

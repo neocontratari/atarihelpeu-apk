@@ -1,0 +1,34 @@
+OK     S1 server: /stranka.stream -> napTvWebJadroProud(..., "STRANKA") (proud z C++ jako menu a hry)
+OK     S2 NAP_TV_STARA_CESTA_VYPNUTA = true (stara cesta pres Javu vypnuta)
+OK     S3 /frame.jpg, /stream.mjpg, /stream.h264, /audio.raw -> 410 Gone PRED starymi obsluhami (ty uz nic nedostanou)
+OK     S4 napTvWebStaraCestaKouka = false -> Java nefoti obrazovku pro TV, zadny H.264 / JPEG enkoder
+OK     S5 zvuk stare cesty (/audio.raw) se neplni: napTvWebAudioPush / Mono / Stereo hned return
+OK     S6 zvuk prehravace MP3 a YouTube -> strankaZvukSafe (C++, v paketu /stranka.stream)
+OK     S7 zvuk Atari se pro starou cestu z jadra netaha (jde jen v /atari.stream)
+OK     S8 /status: kdyz neni hra / menu / demo, proud=stranka (nikdy proud=0)
+OK     S9 stranka je "na obrazovce", jen kdyz nema obrazovka vlastni proud z C++
+OK     S10 divak stranky: pripojeni -> NapTvStranka foti, odpojeni (finally) -> prestane
+OK     S11 MainActivity: otevri / dalsi / zavri / stav / log proudu "STRANKA" pres NativeMenuBridge
+OK     J1 NapTvStranka: vlastni vlakno "nap-tv-stranka" (ne hlavni)
+OK     J2 PixelCopy: graficky cip zkopiruje a zmensi okno, vysledek prijde na vlakno stranky (Handler hh)
+OK     J3 foti se jen pri zmene (OnDrawListener) a beze zmeny 2x za sekundu
+OK     J4 foti jen kdyz se nekdo diva a na obrazovce neni hra / menu / demo
+OK     J5 Bitmapa -> prima pamet (ByteBuffer.allocateDirect) -> C++ bez kopie v JNI
+OK     J6 NativeMenuBridge.strankaSnimekSafe: jen prima pamet (jinak nic)
+OK     C1 nap_tv_stranka.h: Hub "STRANKA" bez orezu, kodek jako menu (zjemneni textu), pomer stran z rozmeru snimku
+OK     C2 nap_tv_proud.h: pomer stran z rozmeru PRAVE baleneho snimku (jen stranka, ostatni proudy beze zmeny - vychozi false)
+OK     C3 nap_menu_gl.cpp: strankaTv() pred extern "C" (C++ odkaz), jedna instance na celou appku
+OK     C4 7 native metod strankaXxx v Jave = 7 funkci JNI v C++: strankaDalsiNative, strankaLogNative, strankaOtevriNative, strankaSnimekNative, strankaStavNative, strankaZavriNative, strankaZvukNative
+OK     P1 stranka TV: startH264 hned konci (zadne H.264 pres Javu)
+OK     P2 stranka TV: pollAudio hned konci (zadne /audio.raw)
+OK     P3 stranka TV: napMjStart nic nespousti (zadne /stream.mjpg)
+OK     P4 stranka TV: zadna adresa na internet (drive JMuxer z CDN)
+OK     P5 stara JPEG smycka fallback() jen definovana, nikde volana
+OK     P6 popisek nikdy "MJPEG" / "H264"; pollFps uz nevola startH264 (a nespamuje log kazdou vterinu)
+OK     P7 stranka appky se na TV neroztahuje na 16:9 (vyplnit obrazovku jen pro hry)
+OK     P8 prohlizec bez proudu z C++: viditelna hlaska uprostred (cerna obrazovka by nic nerekla)
+OK     P9 anglicky: hlaska a stavovy radek prelozene (en_tv.js)
+OK     P10 syntaxe: 4 skriptu stranky TV (acorn) a en_tv.js (ES5) - chyb 0
+OK     N1 napoveda CZ / EN (kapitola WEB TV): stranky cele na vysku, starsi prohlizec -> Chrome / Edge / Firefox
+OK     N2 build.gradle: versionCode 376, "EMU10-B333-TV-CPP"
+VYSLEDEK: 33 kontrol, 0 CHYBA

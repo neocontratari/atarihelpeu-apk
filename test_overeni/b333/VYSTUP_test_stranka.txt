@@ -1,0 +1,15 @@
+B333 - stranky appky na TV z C++ (SKUTECNY nap_tv_stranka.h + Hub + KodekJpeg, prohlizec jako stranka TV)
+OK      F) bez divaka: nic se nekoduje, jen "stranka bezi" (Java bez divaka ani nefoti)
+OK      A) prvni snimek: prohlizec ma celou stranku 582x1080, PSNR 37.4 dB, 90 kB, casti 1, chyb 0
+OK      A) pomer stran 582 x 1080 -> 97:180 v hlavicce paketu (na TV na vysku, ne 16:9)
+OK      B) stranka stoji (16 snimku): zjemneni 160 kB celkem, PSNR 37.4 -> 45.4 dB (text ostrejsi)
+OK      B) po zjemneni uz jen prazdne pakety: 384 B za 8 snimku (H.264 pres Javu posilalo 30 celych snimku/s dokola)
+OK      C) zmena jednoho tlacitka: poslana jen ta cast (7 kB misto 90 kB, vyska casti 48 bodu), PSNR tlacitka 33.3 dB, cele stranky 42.9 dB
+OK      D) stranka na sirku 1920 x 1034: prohlizec 1920x1034, PSNR 37.0 dB, pomer v paketu 255:137 (1.86 misto 1.86)
+OK      D) zpet na vysku: prohlizec 582x1080, PSNR 45.4 dB, pomer 97:180, chyb prohlizece 0
+OK      P) pomer stran (1-255, odchylka pod 1 %): 582x1080->97:180 1920x1034->255:137 1080x1920->9:16 1920x1080->16:9 608x1080->76:135 1918x1080->255:144 2x2->1:1 3998x2->255:1 1080x582->180:97 1x1->1:1
+OK      E) zvuk prehravace 48 kHz mono po kusech 1000 / 2400 / 1700 / 512 / 2048 -> 88201 ramcu 44,1 kHz (2.00 s), ton 999.7 Hz, nejvetsi skok mezi vzorky 1705 (1 kHz ton max 1710 - bez lupnuti mezi kusy)
+OK      E) zvuk 44,1 kHz stereo (YouTube): 5910 ramcu, bit po bitu stejny jako z prehravace
+OK      R) radky s mezerou (stride 464 misto 400): obraz stejny, PSNR 48.9 dB
+OK      R) spatny vstup (prazdny obraz, kratky radek, 3 kanaly, 1000 Hz) - bez padu
+VYSLEDEK: 13 OK, 0 CHYBA

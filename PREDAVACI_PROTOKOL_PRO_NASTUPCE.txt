@@ -4045,5 +4045,49 @@
        ("kresleni ve vlakne X ms", pomalych snimku). Battletron: vypnout / zapnout,
        PRIPOJIT v OPTIONS, log "B332 BT". Pak slabsi telefony (A12).
      - build.gradle: versionCode 375 "EMU10-B332-VISION". Na telefonu neovereno.
+     - Rene po B332: na S8 PS1 i s TV v poradku (SpongeBob rezerva 36-39 %, vypadky
+       zvuku 0). Battletron: HID "pripojuje se -> odpojen" za 19-57 ms = ovladac
+       spojeni odmita (parovani zapomnel / jiny telefon) - Rene parovani zrusil.
+       Dune 2000 na TV: vodorovne carky (viz B333 - NEJSOU z Javy).
+
+   B333: TV BEZ JAVY - STRANKY APPKY Z C++ (16. 11. 2026). Rene: "tady budu
+   nekompromisni - vypni Javu" (H.264 pres Javu: 1440x2672, 115 Mbit/s, 896 z 900
+   snimku stejnych, ~7 ms na hlavnim vlakne, JMuxer z internetu).
+     - Kazda obrazovka ma proud z C++: hry / menu / demo jako drive, ostatni
+       (OPTIONS, napoveda, seznam her, prehravac MP3, YouTube, web) = "stranka":
+       /status proud=stranka (nikdy proud=0), /stranka.stream. MainActivity
+       napTvProudDruh -> napTvJinyProud() nebo "stranka".
+     - NapTvStranka.java: foti jen kdyz se nekdo diva (divak z napTvWebJadroProud,
+       finally), jen pri zmene (OnDrawListener, nejvys 15/s) a 2/s beze zmeny,
+       PixelCopy okna ZMENSENE na nejvys 1920x1080 (S8 na vysku 582x1080), vysledek
+       na vlakne "nap-tv-stranka" -> prima pamet -> NativeMenuBridge.strankaSnimek.
+     - nap_tv_stranka.h (v knihovne napmenu, nap_menu_gl.cpp strankaXxxNative):
+       Hub "STRANKA" + KodekJpeg jako menu (zmenene casti, zjemneni textu), bez
+       orezu; pomer stran z rozmeru PRAVE baleneho snimku (nap_tv_proud.h
+       pomerZRozmeru / pomerStran: 97:180 na vysku, 255:137 na sirku - obraz a
+       pomer v paketu vzdy k sobe i pri otoceni). Zvuk prehravace MP3 / YouTube
+       (pushPlayerPcm16 / pushYoutubePcm16) -> strankaZvuk: 16 bit, 1-2 kanaly,
+       libovolna frekvence -> 44,1 kHz stereo (linearne, navazuje mezi kusy).
+     - STARA CESTA VYPNUTA: NAP_TV_STARA_CESTA_VYPNUTA = true; /frame.jpg,
+       /stream.mjpg, /stream.h264, /audio.raw -> 410 Gone; napTvWebStaraCestaKouka
+       false (zadne foceni / H.264 / JPEG v Jave); napTvWebAudioPush* hned return;
+       zvuk Atari se pro starou cestu netaha. Kod stare cesty zustal (vypinac).
+     - Stranka prohlizece: startH264 / pollAudio hned return, napMjStart nic,
+       zadne CDN, popisek "proud z C++: X"; apRozmer: "vyplnit obrazovku" jen hry -
+       stranka VZDY cela se svym pomerem (jinak by se 582x1080 roztahla na 16:9 -
+       test to chyti); prohlizec bez fetch streamu -> viditelna hlaska uprostred
+       "TENTO PROHLIZEC NEUMI PROUD Z C++ ..." (en_tv.js anglicky), log 1x.
+     - DUNE 2000 CARKY NEJSOU Z JAVY: PS1 slo na TV z C++ uz od B305 (log "B306 TV
+       PROUD PS1 ... JPEG"). Carky 2 body TV na radcich 214, 250, 286, 358, 394,
+       430 = radky zdroje 95, 111, 127, 159, 175, 191 (16k-1 v obrazu 2x 736x480),
+       pres celou sirku pruhu zdravi; kodek po ctvercich 16x16 jeden radek nechat
+       nemuze -> skoro jiste vykreslovac gpu_neon ve 2x (Enhanced Resolution).
+       Rene ma overit na displeji telefonu. Dalsi krok B334: prepinac v SERVIS
+       (2x / 2x bez upravy textur / bez 2x) a/nebo zaznam prikazu GPU.
+     - Testy test_overeni/b333 (JAK_SPUSTIT.txt): C++ 13 OK, vlakna TSan 0 hlaseni,
+       JVM pres JNI se SKUTECNYM nap_menu_gl.cpp (-Xcheck:jni) 9 OK, Chromium se
+       SKUTECNOU strankou z MainActivity 9 OK (na sirku / na vysku, zadny dotaz na
+       starou cestu ani internet), kontrola zapojeni 33 OK, javac 0 chyb.
+     - build.gradle: versionCode 376 "EMU10-B333-TV-CPP". Na telefonu neovereno.
 
 ===============================================================================

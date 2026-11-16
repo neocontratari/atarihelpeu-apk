@@ -55,7 +55,10 @@ NapJazyk.slovnik({
   'NAHORU': 'UP',
   'DOLU': 'DOWN',
   'VLEVO': 'LEFT',
-  'VPRAVO': 'RIGHT'
+  'VPRAVO': 'RIGHT',
+  // B333: prohlizec bez proudu z C++ (stara cesta pres Javu je vypnuta)
+  'TENTO PROHLIZEC NEUMI PROUD Z C++ - OTEVRI ADRESU V CHROME, EDGE NEBO FIREFOXU':
+    'THIS BROWSER CANNOT PLAY THE STREAM FROM C++ - OPEN THE ADDRESS IN CHROME, EDGE OR FIREFOX'
 });
 NapJazyk.vzory([
   [/^ZVUK (\d+) ms$/, 'SOUND $1 ms'],
@@ -73,6 +76,12 @@ NapJazyk.vzory([
   [/^VLOZENI: ([\s\S]*)$/, 'PASTE: $1'],
   [/^SMER:([\s\S]*)$/, 'DIRECTION:$1'],
   [/^NEZNAMA:([\s\S]*)$/, 'UNKNOWN:$1'],
+  // B333: stavovy radek (skryty, diagnostika): co prave hraje
+  [/^AtariHelp TV WEB CAST \[SK60\] proud z C\+\+: (\w+)([\s\S]*)$/, function (m, d, z) {
+    return 'AtariHelp TV WEB CAST [SK60] stream from C++: ' + (d === 'stranka' ? 'page' : d) + z; }],
+  [/^AtariHelp TV WEB CAST \[SK60\] cekam na proud z C\+\+([\s\S]*)$/, 'AtariHelp TV WEB CAST [SK60] waiting for the stream from C++$1'],
+  [/^AtariHelp TV WEB CAST \[SK60\] tento prohlizec neumi proud z C\+\+ - otevri stranku v Chrome \/ Edge \/ Firefox([\s\S]*)$/,
+    'AtariHelp TV WEB CAST [SK60] this browser cannot play the stream from C++ - open the page in Chrome / Edge / Firefox$1'],
   // napoveda klavesnice + posledni hlaska: "ATARI - pis normalne; ...   [VLOZENO: ...]"
   [/^([\s\S]+?)\s+\[([\s\S]*)\]$/, function (m, a, b) { return NapJazyk.tr(a) + '   [' + NapJazyk.tr(b) + ']'; }]
 ]);
