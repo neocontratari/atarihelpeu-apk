@@ -1,0 +1,19 @@
+B329 - Pro Controller podle mista, kazde tlacitko do logu, oznameni nove verze (skutecne tridy z appky)
+OK     A1 vsech 14 tlacitek Pro Controlleru: kod z tabulky Androidu 9 -> kod podle mista (jako tabulka Androidu 10+, HOME zustava MODE)
+OK     A2 plus = START (Rene: "jedine, co nefunguje, je tlacitko START" - chodilo jako R2), minus = SELECT
+OK     A3 ctverec (vlevo) uz neni KRIZEK (tlacitko C), trojuhelnik (nahore) uz neni CTVEREC, L/R uz nejsou trojuhelnik/kolecko
+OK     A4 krizek, A, B, HOME a ostatni klavesy beze zmeny
+OK     A5 po prekladu ma kazde tlacitko PlayStation (krizek ... R3) prave jedno misto, nic neni dvakrat
+OK     A6 Reneho hledani START z logu: R2 (plus) je ted START; HOME a snimek (drive SELECT a L3) jsou MODE
+OK     B1 Pro Controller 057e:2009 s tlacitkem C (stara tabulka Androidu 9, Reneho Battletron) -> prekladat
+OK     B2 Pro Controller bez tlacitka C (Android 10+ ma vlastni tabulku) -> NEprekladat (jinak by se tlacitka posunula podruhe)
+OK     B3 jine ovladace i s tlacitkem C (Joy-Con, DualShock 4, Xbox, 8BitDo, Retroid) -> NEprekladat
+OK     C1 jmena klaves do logu (R2, START, C, L3, BUTTON_3, kod 999)
+OK     D1 nic neceka -> nic
+OK     D2 ceka pro tuhle verzi -> ukazat (i po 4 ukazanich bez OK)
+OK     D3 po 5 ukazanich bez OK, nebo pro jinou verzi -> smazat (zadne nekonecne okno)
+OK     D4 okno aktualizace, Android 9 (S8): nic nezavirat, appka se sama znovu otevre, pak OK v okne Aktualizace hotova
+OK     D5 okno aktualizace, Android 12 (syn): nic nevypinat, otevrit ikonou, pak OK
+OK     D6 anglicky: don't close anything / don't force-stop it, Update done, tap OK
+OK     D7 kdyz se Android pta: INSTALOVAT, nic nezavirat, pak OK v okne Aktualizace hotova (Android 10+ bez slibu, ze se otevre sama)
+VYSLEDEK: 17 OK, 0 CHYBA

@@ -1,0 +1,6 @@
+OK     T1 nikde v appce setSustainedPerformanceMode(true) (na S8 drzel velka jadra na 962 MHz)
+OK     T2 start prenosu na TV: rovnomerny vykon vypnout (false) a zapsat do logu B330
+OK     T3 ostatni pri startu prenosu beze zmeny (Wi-Fi nizke latence, obrazovka vzhuru)
+OK     T4 konec prenosu: vypnuti zustava (neskodi)
+CHYBA  V1 build.gradle: versionCode 373, versionName EMU10-B330-TV-VYKON
+VYSLEDEK: 4 OK, 1 CHYBA

@@ -172,6 +172,10 @@ static std::mutex g_denik_mutex;
 static std::deque<std::string> g_denik;
 static const size_t DENIK_MAX_RADKU = 800;
 static std::atomic<int> g_jadro_hlasek{0};     // hlasek jadra PCSX od startu (omezeni deniku)
+// B332: vlakna jadra PCSX (frontend/pcsxr-threads.c hlasi start a konec): TID podle typu
+// 0 cteni CD, 1 prekladac (dynarec), 2 kresleni (gpu_async), 3 zvuk; 0 = nebezi
+static std::atomic<int> g_ps1_tid_vlakna[4];
+static std::atomic<int> g_ps1_vlaken_hlaseno{0};   // radku VLAKNO JADRA od startu hry (omezeni deniku)
 static std::atomic<uint64_t> g_zvuk_vypadky{0}; // OpenSL chtel zvuk a fronta byla prazdna
 static long long ps1_ms_ted(void) {
   return (long long)std::chrono::duration_cast<std::chrono::milliseconds>(
@@ -212,6 +216,7 @@ extern "C" {
   int nap_ps1_gpu_popis(char *buf, int len) __attribute__((weak));
   unsigned int nap_ps1_gpu_otisk(void) __attribute__((weak));
   unsigned int nap_ps1_b308_tenkych(void) __attribute__((weak));
+  int nap_ps1_kresleni_ve_vlakne(void) __attribute__((weak));   // B332: gpulib gpu.async (nap_most.c)
 }
 
 static std::string ps1_velikost(long long b) {
@@ -299,6 +304,7 @@ static void ps1_denik_bios_slozka(const std::string &sys) {
 static void ps1_denik_start(const std::string &hra, const std::string &sys) {
   g_denik_start_ms.store(ps1_ms_ted());
   g_jadro_hlasek.store(0);
+  g_ps1_vlaken_hlaseno.store(0);   // B332
   ps1_denik("==================== PS1 START: %s ====================", hra.empty() ? "BEZ DISKU (menu BIOSu)" : "HRA");
   if (!hra.empty()) {
     const std::string pr = ps1_pripona(hra);
@@ -492,6 +498,8 @@ static void nap_retro_log(int level, const char *fmt, ...) {
   else if (n == 600)
     ps1_denik("JADRO: dalsi hlasky jadra uz jen do logcatu (omezeni deniku)");
 }
+// B332: kresleni ve vlakne - "auto" (jako RetroArch); test na PC prepne na "disabled" a porovna obraz
+static const char *g_ps1_kresleni_volba = "auto";
 static const char *nap_core_option_value(const char *key) {
   if (!key) return nullptr;
   if (strcmp(key, "pcsx_rearmed_bios") == 0) return "auto";
@@ -561,6 +569,20 @@ static const char *nap_core_option_value(const char *key) {
   // hrám, ktere bit nastavi ale VRAM aktivne necte (needely by z
   // interlace nic, jen riziko artefaktu).
   if (strcmp(key, "pcsx_rearmed_neon_interlace_enable_v2") == 0) return "auto";
+  // B332: VIC JADER PRO PS1 (Rene: "moc dobre vim, ze nepouzivas vsechna jadra k PS1").
+  // Mel pravdu. Log B330 (SpongeBob, S8): "8 cpu core(s) detected", ale "kresleni ve vlakne NE" -
+  // kresleni 2x (10-11 ms ze 12-13 ms snimku) bezelo na stejnem jadre jako emulace. Jadro PCSX
+  // umi kreslit ve vlastnim vlakne (gpulib gpu_async: emulace prikazy jen preda, kresli jine
+  // jadro), jen se na tuhle volbu pta - a kdyz frontend neodpovi, zustane 0 = vypnuto. RetroArch
+  // ma vychozi "auto" = zapnuto, kdyz ma telefon vic nez jedno jadro. Kreslici vlakno da appka na
+  // dalsi rychle jadro (nap_core_thread_fn, radek VLAKNA a VYKON v deniku). Obraz stejny: pred
+  // predanim snimku emulace pocka, az je dokresleny (gpu_async_sync_scanout).
+  if (strcmp(key, "pcsx_rearmed_gpu_thread_rendering") == 0) return g_ps1_kresleni_volba;
+  // Zvuk ve vlakne NE: zvuk bere 0,1-0,5 ms snimku (log B330), vlakno navic by nic neusetrilo
+  // a jadro samo pise "may cause audio glitches" - prave opraveny zvuk SpongeBoba neriskovat.
+  if (strcmp(key, "pcsx_rearmed_spu_thread") == 0) return "disabled";
+  // Prekladac (dynarec) ve vlakne jako dosud: "auto" = zapnuto (log: "compiler thread enabled").
+  if (strcmp(key, "pcsx_rearmed_drc_thread") == 0) return "auto";
   return nullptr;
 }
 static bool nap_env(unsigned cmd, void *data) {
@@ -1185,6 +1207,125 @@ static int ps1_pripni_emulaci(const char *koren) {
             " - hra se nemeni, 2x zustava | takt ted: %s", j.cpu, j.maxKhz / 1000, j.minKhz / 1000, j.jader,
             ps1_takt_text(koren, j.cpu).c_str());
   return j.cpu;
+}
+
+// ===== B332: KRESLENI NA DALSIM RYCHLEM JADRE (Rene: "moc dobre vim, ze nepouzivas vsechna jadra k PS1") =====
+// Kresleni 2x bezi ve vlastnim vlakne jadra (gpu_async, nap_core_option_value). To vlakno vznika uz
+// v retro_load_game na vlakne startu, takze by smelo na kterekoli jadro - i na male (S8 cpu0-3), kde by
+// kreslilo pomaleji nez driv. Appka ho proto da na rychla jadra krome jadra emulace (S8: emulace cpu7,
+// kresleni cpu4-6) a v behu hlida, ze tam zustava (jako emulaci, B329). VYKON: kolik ms na snimek
+// kreslici vlakno opravdu pracovalo (jeho cas procesoru) a na kterych jadrech.
+static const char *const PS1_VLAKNA[4] = {"cteni CD", "prekladac (dynarec)", "kresleni", "zvuk"};
+static int ps1_tid() { return (int)syscall(__NR_gettid); }
+// volaji vlakna jadra (frontend/pcsxr-threads.c) na zacatku a na konci
+extern "C" void nap_pcsxr_vlakno(int typ, int zacatek) {
+  const int tid = ps1_tid();
+  if (typ >= 0 && typ < 4) {
+    if (zacatek) g_ps1_tid_vlakna[typ].store(tid);
+    else { int t = tid; g_ps1_tid_vlakna[typ].compare_exchange_strong(t, 0); }
+  }
+  if (g_ps1_vlaken_hlaseno.fetch_add(1) < 24)
+    ps1_denik("VLAKNO JADRA %s: %s (tid %d, jadro cpu%d)", typ >= 0 && typ < 4 ? PS1_VLAKNA[typ] : "?",
+              zacatek ? "start" : "konec", tid, ps1_jadro_ted());
+}
+static const size_t PS1_MASKA_SLOV = 256 / (8 * sizeof(unsigned long));
+static const size_t PS1_BITU = 8 * sizeof(unsigned long);
+struct Ps1Maska { unsigned long m[PS1_MASKA_SLOV] = {0}; int pocet = 0; };
+static bool ps1_maska_ma(const Ps1Maska &k, int cpu) { return cpu >= 0 && cpu < 256 && (k.m[cpu / PS1_BITU] >> (cpu % PS1_BITU)) & 1UL; }
+// "cpu4-6", "cpu0-2,5"
+static std::string ps1_maska_text(const Ps1Maska &k) {
+  std::string r;
+  for (int i = 0; i < 256; i++) {
+    if (!ps1_maska_ma(k, i)) continue;
+    int j = i;
+    while (j + 1 < 256 && ps1_maska_ma(k, j + 1)) j++;
+    char t[24];
+    if (j > i) snprintf(t, sizeof(t), "%s%d-%d", r.empty() ? "cpu" : ",", i, j);
+    else snprintf(t, sizeof(t), "%s%d", r.empty() ? "cpu" : ",", i);
+    r += t;
+    i = j;
+  }
+  return r.empty() ? std::string("zadna") : r;
+}
+// jadra pro kresleni: rychla (ne ze skupiny nejpomalejsich) krome jadra emulace; kdyz zadna takova
+// nejsou (telefon ma jen jedno rychle), tak vsechna krome jadra emulace
+static Ps1Maska ps1_maska_kresleni(const char *koren, int emuCpu) {
+  Ps1Maska r;
+  long khz[64], minK = 0;
+  for (int i = 0; i < 64; i++) {
+    khz[i] = ps1_cpu_cislo(koren, i, "cpuinfo_max_freq");
+    if (khz[i] > 0 && (minK == 0 || khz[i] < minK)) minK = khz[i];
+  }
+  for (int krok = 0; krok < 2 && r.pocet == 0; krok++)
+    for (int i = 0; i < 64; i++)
+      if (khz[i] > 0 && i != emuCpu && (krok == 1 || khz[i] > minK)) { r.m[i / PS1_BITU] |= 1UL << (i % PS1_BITU); r.pocet++; }
+  return r;
+}
+// pripnout CIZI vlakno (TID ve stejnem procesu) na masku jader
+static bool ps1_pripni_tid(int tid, const Ps1Maska &k) {
+#if defined(__NR_sched_setaffinity)
+  if (tid <= 0 || k.pocet == 0) return false;
+  return syscall(__NR_sched_setaffinity, tid, sizeof(k.m), k.m) == 0;
+#else
+  (void)tid; (void)k; return false;
+#endif
+}
+static bool ps1_tid_ma_masku(int tid, const Ps1Maska &k) {
+#if defined(__NR_sched_getaffinity)
+  unsigned long m[PS1_MASKA_SLOV] = {0};
+  if (tid <= 0 || syscall(__NR_sched_getaffinity, tid, sizeof(m), m) <= 0) return false;
+  for (size_t i = 0; i < PS1_MASKA_SLOV; i++) if (m[i] != k.m[i]) return false;
+  return true;
+#else
+  (void)tid; (void)k; return false;
+#endif
+}
+// cas procesoru vlakna (ns) - hodiny vlakna podle TID (jako pthread_getcpuclockid); -1 = nevi
+static long long ps1_cas_vlakna_ns(int tid) {
+  if (tid <= 0) return -1;
+  const clockid_t c = (clockid_t)((~(unsigned)tid << 3) | 6u);   // CPUCLOCK_SCHED | CPUCLOCK_PERTHREAD
+  struct timespec ts;
+  if (clock_gettime(c, &ts) != 0) return -1;
+  return (long long)ts.tv_sec * 1000000000LL + ts.tv_nsec;
+}
+// na kterem jadre vlakno naposledy bezelo (/proc/self/task/TID/stat, pole 39); -1 = nevi
+static int ps1_jadro_vlakna(int tid) {
+  if (tid <= 0) return -1;
+  char cesta[64], b[600];
+  snprintf(cesta, sizeof(cesta), "/proc/self/task/%d/stat", tid);
+  FILE *f = fopen(cesta, "r");
+  if (!f) return -1;
+  const size_t n = fread(b, 1, sizeof(b) - 1, f);
+  fclose(f);
+  b[n] = '\0';
+  const char *p = strrchr(b, ')');   // jmeno vlakna muze mit mezery i zavorky
+  if (!p) return -1;
+  int pole = 2;
+  for (; *p; p++) if (*p == ' ' && ++pole == 39) return atoi(p + 1);
+  return -1;
+}
+// pripnout kreslici vlakno (tid) na masku a zapsat do deniku proc; vraci, jestli je pripnute
+static bool ps1_pripni_kresleni(int tid, const Ps1Maska &k, int emuCpu, const char *proc) {
+  if (tid <= 0) return false;
+  if (emuCpu < 0 || k.pocet == 0) {
+    ps1_denik("VLAKNA: kresleni (tid %d) %s - nepripinam (emulace neni pripnuta, rozhoduje Android)", tid, proc);
+    return false;
+  }
+  const bool ok = ps1_pripni_tid(tid, k);
+  const int chyba = errno;
+  int prvni = 0;
+  while (prvni < 255 && !ps1_maska_ma(k, prvni)) prvni++;
+  if (ok) ps1_denik("VLAKNA: kresleni (tid %d) %s na %s, emulace na cpu%d - kazde na jinem jadre | takt: %s",
+                    tid, proc, ps1_maska_text(k).c_str(), emuCpu, ps1_takt_text(g_ps1_cpu_koren, prvni).c_str());
+  else ps1_denik("VLAKNA: kresleni (tid %d) %s na %s NEJDE (chyba %d) - bezi, kde ho Android da", tid, proc, ps1_maska_text(k).c_str(), chyba);
+  return ok;
+}
+// souhrn vlaken jadra pri startu emulace
+static void ps1_vlakna_denik(void) {
+  const bool kr = nap_ps1_kresleni_ve_vlakne ? nap_ps1_kresleni_ve_vlakne() != 0 : false;
+  ps1_denik("VLAKNA: kresleni ve vlakne %s, prekladac ve vlakne %s, cteni CD ve vlakne %s, zvuk ve vlakne NE "
+            "(zvuk bere 0,1-0,5 ms snimku - vlakno navic by nic neusetrilo, jen riskovalo praskani)",
+            kr ? "ANO" : "NE", g_ps1_tid_vlakna[1].load() ? "ANO" : "NE", g_ps1_tid_vlakna[0].load() ? "ANO" : "NE");
 }
 
 // kazdy krok emulace PRED retro_run (pod zamkem jadra): zmena portu (mys / ovladac)
@@ -2362,6 +2503,14 @@ static void nap_core_thread_fn(void) {
     nap_diag_log("CESTA_A EMULACE MA VLASTNI VLAKNO (kresleni ji uz nebrzdi)");
     g_ps1_pripnute_jadro = ps1_pripni_emulaci(g_ps1_cpu_koren);   // B329: jedno nejrychlejsi jadro
     unsigned pripnutiKontrola = 0, pripnutoZnovu = 0;
+    // B332: kreslici vlakno jadra (vzniklo uz v retro_load_game) na ostatni rychla jadra
+    const Ps1Maska maskaKresleni = g_ps1_pripnute_jadro >= 0 ? ps1_maska_kresleni(g_ps1_cpu_koren, g_ps1_pripnute_jadro) : Ps1Maska();
+    ps1_vlakna_denik();
+    int tidKresleni = g_ps1_tid_vlakna[2].load();
+    bool kresleniPripnuto = ps1_pripni_kresleni(tidKresleni, maskaKresleni, g_ps1_pripnute_jadro, "pri startu");
+    unsigned kresleniZnovu = 0;
+    long long kresleniNsOd = ps1_cas_vlakna_ns(tidKresleni);   // cas procesoru kresliciho vlakna na zacatku okna VYKON
+    unsigned jadraKresleni[32] = {0};
     int slot = 0;
     // ---- B308: denik PS1 (zdravi, zmeny obrazu, tlacitka) ----
     using hodiny = std::chrono::steady_clock;
@@ -2426,6 +2575,20 @@ static void nap_core_thread_fn(void) {
             }
             const int cpu = ps1_jadro_ted();
             if (cpu >= 0 && cpu < 32) jadraCpu[cpu]++;
+            // B332: nove kreslici vlakno (jadro ho muze zalozit znovu) -> hned pripnout a merit od nuly
+            {
+                const int tk = g_ps1_tid_vlakna[2].load(std::memory_order_relaxed);
+                if (tk != tidKresleni) {
+                    tidKresleni = tk;
+                    kresleniPripnuto = ps1_pripni_kresleni(tk, maskaKresleni, g_ps1_pripnute_jadro, "nove vlakno");
+                    kresleniNsOd = ps1_cas_vlakna_ns(tk);
+                    std::fill(jadraKresleni, jadraKresleni + 32, 0u);
+                }
+                if (tidKresleni > 0 && (kroku & 3) == 0) {   // kde kreslici vlakno bezi (kazdy 4. snimek)
+                    const int ck = ps1_jadro_vlakna(tidKresleni);
+                    if (ck >= 0 && ck < 32) jadraKresleni[ck]++;
+                }
+            }
             // B329: porad pripnuto? (Android muze vlaknu jadra zmenit) - kontrola zhruba kazde 2 s
             if (g_ps1_pripnute_jadro >= 0 && ++pripnutiKontrola >= 120) {
                 pripnutiKontrola = 0;
@@ -2434,6 +2597,13 @@ static void nap_core_thread_fn(void) {
                     if (pripnutoZnovu++ < 5)
                         ps1_denik("JADRO PROCESORU: Android vlaknu emulace zmenil jadra - %s na cpu%d",
                                   ok ? "pripinam znovu" : "znovu pripnout NEJDE,", g_ps1_pripnute_jadro);
+                }
+                // B332: kreslici vlakno taky
+                if (kresleniPripnuto && tidKresleni > 0 && !ps1_tid_ma_masku(tidKresleni, maskaKresleni)) {
+                    const bool ok = ps1_pripni_tid(tidKresleni, maskaKresleni);
+                    if (kresleniZnovu++ < 5)
+                        ps1_denik("VLAKNA: Android kreslicimu vlaknu zmenil jadra - %s na %s",
+                                  ok ? "pripinam znovu" : "znovu pripnout NEJDE,", ps1_maska_text(maskaKresleni).c_str());
                 }
             }
         }
@@ -2528,15 +2698,29 @@ static void nap_core_thread_fn(void) {
                         // B329: takt jadra, kde emulace bezi (pripnute, jinak nejcastejsi): ted / smi / umi
                         int taktCpu = g_ps1_pripnute_jadro;
                         if (taktCpu < 0) { unsigned nej = 0; for (int i = 0; i < 32; i++) if (jadraCpu[i] > nej) { nej = jadraCpu[i]; taktCpu = i; } }
-                        ps1_denik("VYKON %.0f s: snimek prumer %.1f ms = hra (procesor PS1) %.1f + kresleni %.1f + predani obrazu %.1f"
-                                  " + zvuk %.1f%s | jadro procesoru: %s | takt: %s%s | TV divaku %d",
-                                  odStartu, runSoucet / kroku, vyHra / kroku, vyKr / kroku, vyOb / kroku, vyZv / kroku, pom,
+                        // B332: kreslici vlakno - kolik ms na snimek opravdu kreslilo (jeho cas procesoru) a kde
+                        char kr[360] = " | kresleni ve vlakne NE (kresli vlakno emulace)";
+                        const long long krNs = ps1_cas_vlakna_ns(tidKresleni);
+                        if (tidKresleni > 0 && krNs >= 0 && kresleniNsOd >= 0) {
+                            unsigned vzorku = 0, nej = 0;
+                            int krCpu = -1;
+                            for (int i = 0; i < 32; i++) { vzorku += jadraKresleni[i]; if (jadraKresleni[i] > nej) { nej = jadraKresleni[i]; krCpu = i; } }
+                            snprintf(kr, sizeof(kr), " | kresleni ve vlakne %.1f ms na snimek%s, jadra %s | takt kresleni: %s",
+                                     (double)(krNs - kresleniNsOd) / 1e6 / kroku, kresleniPripnuto ? " (pripnuto)" : "",
+                                     ps1_jadra_text(jadraKresleni, vzorku).c_str(), ps1_takt_text(g_ps1_cpu_koren, krCpu).c_str());
+                        }
+                        ps1_denik("VYKON %.0f s: snimek prumer %.1f ms = hra (procesor PS1) %.1f + %s %.1f + predani obrazu %.1f"
+                                  " + zvuk %.1f%s | jadro procesoru: %s | takt: %s%s%s | TV divaku %d",
+                                  odStartu, runSoucet / kroku, vyHra / kroku, tidKresleni > 0 ? "kresleni (cekani na vlakno)" : "kresleni",
+                                  vyKr / kroku, vyOb / kroku, vyZv / kroku, pom,
                                   ps1_jadra_text(jadraCpu, kroku).c_str(), ps1_takt_text(g_ps1_cpu_koren, taktCpu).c_str(),
-                                  g_ps1_pripnute_jadro >= 0 ? " (pripnuto)" : "", g_ps1Proud.klientu());
+                                  g_ps1_pripnute_jadro >= 0 ? " (pripnuto)" : "", kr, g_ps1Proud.klientu());
                     }
                     vyHra = vyKr = vyOb = vyZv = poHra = poKr = poOb = poZv = poCelk = 0.0;
                     pomalych = 0;
                     std::fill(jadraCpu, jadraCpu + 32, 0u);
+                    kresleniNsOd = ps1_cas_vlakna_ns(tidKresleni);   // B332: nove okno
+                    std::fill(jadraKresleni, jadraKresleni + 32, 0u);
                 }
                 oknoOd = ted; kroku = 0; runSoucet = runMax = cekaniMs = 0.0;
                 snimkyOd = sn; duplOd = du; vypadkyOd = vy; tenkeOd = te;

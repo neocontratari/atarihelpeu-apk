@@ -3651,7 +3651,7 @@ int nap_ps1_nastaveni_popis(char *buf, int len) {
       return 0;
    return snprintf(buf, len,
       "2x (Enhanced Resolution) %s, bez 1x obrazu %s, uprava textur %s | prokladani %s | dithering %s | "
-      "kresleni ve vlakne %s | preskakovani snimku %d",
+      "kresleni ve vlakne %s, zvuk ve vlakne %s | preskakovani snimku %d",
       pl_rearmed_cbs.gpu_neon.enhancement_enable ? "ZAPNUTO" : "VYPNUTO",
       pl_rearmed_cbs.gpu_neon.enhancement_no_main ? "ANO" : "NE",
       pl_rearmed_cbs.gpu_neon.enhancement_tex_adj ? "ANO" : "NE",
@@ -3659,6 +3659,8 @@ int nap_ps1_nastaveni_popis(char *buf, int len) {
          pl_rearmed_cbs.gpu_neon.allow_interlace == 1 ? "ZAPNUTO" : "AUTO",
       pl_rearmed_cbs.dithering == 0 ? "VYPNUTO" : pl_rearmed_cbs.dithering == 2 ? "VYNUCENO" : "ZAPNUTO",
       pl_rearmed_cbs.thread_rendering < 0 ? "AUTO" : pl_rearmed_cbs.thread_rendering ? "ANO" : "NE",
+      /* B332: zvuk (SPU) ve vlakne - nechavame vypnute, viz nap_core_option_value */
+      spu_config.iUseThread ? "ANO" : "NE",
       pl_rearmed_cbs.frameskip);
 }
 

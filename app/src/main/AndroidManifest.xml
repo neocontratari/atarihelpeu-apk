@@ -28,9 +28,11 @@
          v Google uctu (Auto Backup), i odemcenou Segu a PS1 (Rene: "i pred zadanim kodu je
          aplikace odemcena", appku vzdy maze a instaluje znovu). Navod rika, ze postup se
          odinstalovanim smaze - ted to plati. -->
+    <!-- B332: nazev appky pod ikonou (Rene: "prepis uz nazev aplikace z AtariHelp TEST na (C)N&P Vision").
+         Balicek (eu.atarihelp.emu10.test) zustava - jinak by se aktualizace nenainstalovala pres starou appku. -->
     <application
         android:allowBackup="false"
-        android:label="AtariHelp TEST"
+        android:label="©N&amp;P Vision"
         android:icon="@mipmap/ic_launcher"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:usesCleartextTraffic="true"

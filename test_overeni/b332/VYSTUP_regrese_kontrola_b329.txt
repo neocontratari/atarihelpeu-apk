@@ -1,0 +1,18 @@
+OK     O1 MainActivity.ovladacKlavesa: kod podle mista (ovladac.kodPodleMista) PRED rozeslanim do PS1 / Segy / Atari / menu
+OK     O2 log: ovladac.klavesa(e, k, ...) - puvodni kod i preklad
+OK     O3 NapOvladac.poznej: vyrobce / produkt + tlacitko C -> switchStara; v logu pri pripojeni "stara tabulka" a tlacitka C / Z
+OK     O4 zmena zarizeni (baterie apod.) neztrati, ktera tlacitka uz sla do logu
+OK     O5 kazde tlacitko kazdeho ovladace POPRVE do logu (do 40 ruznych), stary strop 12 / 10 stisku pryc
+OK     M1 hlidac menu: na pozadi (napViditelna false) nehlida a po navratu pocita 8 s znovu
+OK     A1 poStartu: oznameni jen ulozi jako cekajici (zadne okno 1,5 s po startu)
+OK     A2 oznamNovouVerzi: jen OK zavre (setCancelable false, ne dotyk mimo), OK smaze cekajici, pocita ukazani (NapAktualizaceTexty.oznameni)
+OK     A3 MainActivity.napOznamVerzi: az po intru a volbe jazyka, jen kdyz je appka videt
+OK     A4 volano: po intru (i kdyz C++ menu nejde), pri ukazani menu, pri navratu do appky; konec aktivity okno zavre
+OK     P1 vlakno emulace PS1 se pri startu pripne na nejrychlejsi jadro (ps1_pripni_emulaci)
+OK     P2 v behu kontrola zhruba kazde 2 s (120 kroku): Android zmenil jadra -> pripnout znovu
+OK     P3 pripina se jen na telefonu s ruzne rychlymi jadry; chyba pripnuti = emulace bezi jako drive
+CHYBA  P4 radek VYKON: takt jadra (ted / smi / umi, governor) a "(pripnuto)"
+OK     P5 hra se nemeni: pripnuti jen sched_setaffinity volajiciho vlakna (zadna zmena jadra PS1 ani libretro.c v B329)
+OK     N1 napoveda CZ i EN: Pro Controller na Androidu 9 se preklada podle mista; po aktualizaci okno Aktualizace hotova / Update done -> OK
+CHYBA  V1 build.gradle: versionCode 372, versionName EMU10-B329-OVLADAC
+VYSLEDEK: 15 OK, 2 CHYBA

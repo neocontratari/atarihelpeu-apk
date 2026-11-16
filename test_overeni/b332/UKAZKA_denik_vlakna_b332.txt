@@ -1,0 +1,39 @@
+==================== PS1 START: HRA ====================
+2026-11-16 17:05:10.877  PS1 HRA: kresleni_test.exe | typ .exe | 6 kB | cesta ./kresleni_test.exe
+2026-11-16 17:05:10.877  PS1 BIOS ve slozce appky: ZADNY (jadro pojede s HLE - nahradnim BIOSem, nektere hry pak nejdou)
+2026-11-16 17:05:10.878  PS1 JADRO: Starting PCSX-ReARMed r26-nap-sa1 (cc 13.3.0 64bit pic ssse3 gpu=BUILTIN_GPU)
+2026-11-16 17:05:10.878  PS1 JADRO: build time: Nov 16 2026 17:04:46
+2026-11-16 17:05:10.878  PS1 JADRO: 2 cpu core(s) detected
+2026-11-16 17:05:10.878  PS1 JADRO: No BIOS files found.
+2026-11-16 17:05:10.878  PS1 JADRO: Using PIXEL_FORMAT 2
+2026-11-16 17:05:10.878  PS1 JADRO: plugin: /builtin_gpu
+2026-11-16 17:05:10.878  PS1 JADRO: plugin: /builtin_spu
+2026-11-16 17:05:10.878  PS1 JADRO: Plugins loaded.
+2026-11-16 17:05:10.878  PS1 JADRO: Loaded CD Image: ./kresleni_test.exe (2764 bytes).
+2026-11-16 17:05:10.878  PS1 JADRO: Track 01 DATA  - Start 00:02:00, Length 00:00:01
+2026-11-16 17:05:10.878  PS1 JADRO: End 00:02:01 (sector 151)
+2026-11-16 17:05:10.878  PS1 JADRO: memcard 1 is libretro-managed
+2026-11-16 17:05:10.878  PS1 JADRO: memcard 2 is libretro-managed
+2026-11-16 17:05:10.878  PS1 VLAKNO JADRA kresleni: start (tid 7042, jadro cpu0)
+2026-11-16 17:05:10.880  PS1 JADRO: HLE BIOS initialized.
+2026-11-16 17:05:10.880  PS1 JADRO: note: running with HLE BIOS, expect compatibility problems
+2026-11-16 17:05:10.880  PS1 JADRO: ----------------------------------------------------------
+2026-11-16 17:05:10.880  PS1 PAMETOVA KARTA nova (soubor zatim neni): ./karta_b332/memory_card_1.srm, 131072 B prazdna
+2026-11-16 17:05:10.880  PS1 MYS: hra kresleni_test.exe - vypnuta, ovladac v portu 1 (zapne se tlacitkem MYS na sirku)
+2026-11-16 17:05:10.880  PS1 MERENI VYKONU: zapnuto (13 / 13 funkci GPU a zvuku) - jen meri, hra se nemeni (radky VYKON)
+2026-11-16 17:05:10.880  PS1 JADRO: BIOS HLE (vestaveny nahradni - soubor BIOSu nenalezen!) | region USA, NTSC 60 Hz | procesor interpret | disk ID "SLUS99999" nazev "SLUS_999.99" | zvuk XA ZAPNUTY, CD audio ZAPNUTY, pomaly start 1
+2026-11-16 17:05:10.880  PS1 NASTAVENI GRAFIKY: 2x (Enhanced Resolution) ZAPNUTO, bez 1x obrazu NE, uprava textur ANO | prokladani AUTO | dithering ZAPNUTO | kresleni ve vlakne AUTO, zvuk ve vlakne NE | preskakovani snimku 0
+2026-11-16 17:05:10.880  PS1 CASOVANI: 60.000 snimku/s, zvuk jadra 44100 Hz -> reproduktor 44100 Hz | obraz zakladni 640x480, nejvic 1024x512
+2026-11-16 17:05:10.880  PS1 PAMETOVA KARTA 1: zasunuta, soubor ./karta_b332/memory_card_1.srm (CHYBI)
+2026-11-16 17:05:10.880  PS1 BEZI HRA
+2026-11-16 17:05:10.880  PS1 start trval 2 ms
+2026-11-16 17:05:10.880  PS1 JADRO PROCESORU: emulace pripnuta na cpu1 (nejrychlejsi, umi 2000 MHz, nejpomalejsi jadro 1000 MHz, jader 2) - hra se nemeni, 2x zustava | takt ted: cpu1 1500 MHz (smi 2000, umi 2000 MHz, schedutil)
+2026-11-16 17:05:10.880  PS1 VLAKNA: kresleni ve vlakne ANO, prekladac ve vlakne NE, cteni CD ve vlakne NE, zvuk ve vlakne NE (zvuk bere 0,1-0,5 ms snimku - vlakno navic by nic neusetrilo, jen riskovalo praskani)
+2026-11-16 17:05:10.880  PS1 VLAKNA: kresleni (tid 7042) pri startu na cpu0, emulace na cpu1 - kazde na jinem jadre | takt: cpu0 1500 MHz (smi 1000, umi 1000 MHz, schedutil)
+2026-11-16 17:05:10.883  PS1 OBRAZ: obraz 320x240 (viditelne 320x240), 15 bit, NTSC, prokladani NE, z VRAM x=0 y=0 | 2x ANO
+2026-11-16 17:05:15.881  PS1 ZDRAVI 5 s: emulace 61.2 kroku/s (cil 60.00, rezerva 78 % casu) | retro_run prumer 3.4 ms, nejdele 9.6 ms | snimky 61.2/s (stejnych 0.2/s) | zvuk fronta 106 ms, vypadky 0 | obraz 320x240 (viditelne 320x240), 15 bit, NTSC, prokladani NE, z VRAM x=0 y=256 | 2x ANO | tlacitka nic (zmen 0, z klavesnice TV 0, z ovladace 0) | TV divaku 0
+2026-11-16 17:05:15.882  PS1 VYKON 5 s: snimek prumer 3.4 ms = hra (procesor PS1) 2.5 + kresleni (cekani na vlakno) 0.3 + predani obrazu 0.6 + zvuk 0.0 | jadro procesoru: cpu1 100 % (1500 MHz) | takt: cpu1 1500 MHz (smi 2000, umi 2000 MHz, schedutil) (pripnuto) | kresleni ve vlakne 2.0 ms na snimek (pripnuto), jadra cpu0 100 % (1500 MHz) | takt kresleni: cpu0 1500 MHz (smi 1000, umi 1000 MHz, schedutil) | TV divaku 0
+2026-11-16 17:05:18.782  PS1 JADRO PROCESORU: Android vlaknu emulace zmenil jadra - pripinam znovu na cpu1
+2026-11-16 17:05:18.782  PS1 VLAKNA: Android kreslicimu vlaknu zmenil jadra - pripinam znovu na cpu0
+2026-11-16 17:05:20.882  PS1 VLAKNO JADRA kresleni: konec (tid 7042, jadro cpu0)
+2026-11-16 17:05:20.882  PS1 ==================== PS1 KONEC po 10 s, snimku 1745 ====================

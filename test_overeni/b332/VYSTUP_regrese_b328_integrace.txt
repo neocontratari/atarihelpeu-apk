@@ -1,0 +1,13 @@
+B328 - mereni vykonu PS1 se SKUTECNYM jadrem (PCSX-ReARMed z appky, BIOS HLE, hra mys_test.exe)
+OK      jadro nastartovalo hru mys_test.exe (ps1EglBoot = 1)
+OK      denik: "MERENI VYKONU: zapnuto (13 / 13 funkci GPU a zvuku) - jen meri, hra se nemeni"
+OK      s merenim: 900 snimku = 1799 volani GPU (0.1 ms), zvuk 1.5 ms
+OK      druhy start, stejny pocet snimku: pamet PS1 stejna (hra je deterministicka - test ma smysl)
+OK      druhy start: stejny pocet volani GPU (1799) - obal neobalil sam sebe
+OK      bez mereni: nic se nepocita (puvodni funkce GPU a zvuku zpet)
+OK      BEZ mereni presne stejna pamet PS1 (2 MB) jako S merenim po 900 snimcich - mereni hru nemeni
+OK      telefonni cesta: hra bezi, mereni zapnuto (PS1_HRA_OK)
+OK      radek VYKON: casti daji dohromady cely snimek (VYKON 5 s: snimek prumer 2.6 ms = hra (procesor PS1) 2.6 + kresleni 0.0 + predani obrazu 0.0 + zvuk 0.0)
+OK      radek VYKON: na kterych jadrech procesoru emulace bezela (| jadro procesoru: cpu0 72 %, cpu1 27 % | takt: cpu0 takt nejde zjistit | kresleni ve vlakne NE (kresli vlakno emulace) | TV divaku 0)
+OK      radek JADRO: "zvuk XA ZAPNUTY, CD audio ZAPNUTY" (B308 psalo obracene "XA NE, CD audio NE")
+VYSLEDEK: 11 OK, 0 CHYBA

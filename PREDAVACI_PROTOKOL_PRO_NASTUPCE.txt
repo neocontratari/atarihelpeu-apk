@@ -4005,5 +4005,45 @@
      - DALSI KROK: Rene - parovani Battletronu z appky + log. Pak slabsi telefony
        (A12: vynechani snimku / nastaveni v OPTIONS), pripadne VYZKOUSET TLACITKA.
      - build.gradle: versionCode 374 "EMU10-B331-BLUETOOTH". Na telefonu neovereno.
+     - Rene po B331: povoleni a nastaveni fungovaly; noname ovladac se nekdy
+       nepripoji ani pres cisty Android; chce "aby sparovany ovladac fungoval
+       automaticky" a nazev appky "(C)N&P Vision".
+
+   B332: NAZEV ©N&P Vision, VIC JADER PRO PS1, ZAPAMATOVANY OVLADAC (16. 11. 2026).
+   Rene: "dalsi zvladnes sam ... moc dobre vim, ze nepouzivas vsechna jadra k PS1".
+     - Nazev pod ikonou: AndroidManifest android:label "©N&amp;P Vision". Balicek
+       eu.atarihelp.emu10.test ZUSTAVA (jinak by aktualizace nesla pres starou).
+     - PS1 KRESLENI VE VLAKNE: log B330 "kresleni ve vlakne NE" - appka jadru
+       neodpovidala na pcsx_rearmed_gpu_thread_rendering (bez odpovedi 0 = vypnuto,
+       RetroArch "auto"). Ted "auto" (g_ps1_kresleni_volba): gpulib gpu_async kresli
+       ve vlastnim vlakne, emulace prikazy jen preda; pred predanim snimku pocka na
+       dokresleni zobrazovane oblasti (obraz stejny - test). Zvuk ve vlakne NE
+       (0,1-0,5 ms, jadro samo varuje pred praskanim), prekladac "auto" jako drive.
+     - Vlakna jadra hlasi start / konec (frontend/pcsxr-threads.c obal ->
+       nap_pcsxr_vlakno, weak v jadre, silna v nap_ps1_native.cpp: TID podle typu).
+       Kreslici vlakno vznika v retro_load_game na vlakne startu -> vlakno emulace
+       ho pripne (sched_setaffinity podle TID) na rychla jadra krome sveho
+       (ps1_maska_kresleni: S8 emulace cpu7, kresleni cpu4-6; jen 1 rychle jadro ->
+       vsechna ostatni), kontrola kazde ~2 s jako B329. VYKON: "kresleni (cekani na
+       vlakno)" + "kresleni ve vlakne X ms na snimek (cas procesoru vlakna, hodiny
+       vlakna podle TID), jadra ..., takt kresleni". Denik: VLAKNO JADRA, VLAKNA.
+     - Test na PC se SKUTECNYM vykreslovacem (gpulib + gpu_neon pres SSE +
+       gpu_async) a programem kresleni_test.exe (C -> mipsel R3000, retez paketu
+       DMA, 2x): 418 snimku s vlaknem i bez bajt po bajtu stejnych, cteni VRAM
+       stejne, ulozeni/nahrani pozice, pripnuti a znovu pripnuti (test_overeni/b332).
+     - BT zapamatovany ovladac: spojeni zacina OVLADAC (HOME), Android ho prijme sam.
+       Pripojit ze strany telefonu (BluetoothHidHost.connect) od Androidu 9 aplikace
+       NESMI (skryte API max-target-o, od 12 i BLUETOOTH_PRIVILEGED) - neobchazet.
+       Appka: hlidac od startu (ACL / HID profil / BT zap-vyp, jen zapamatovane
+       ovladace, konec adresy), "ozval se, ale za 10 s se nepripojil" -> Toast +
+       log; HID profil (getProfileProxy 4, verejne getConnectionState) = presny stav;
+       OPTIONS: PRIPOJIT „jmeno“ u nepripojeneho -> (povoleni CONNECT / zapnuti BT)
+       -> 30 s cekani s odpocitavanim a radou (pripojeny / ozval se, ale nepripojil /
+       neozval se). Android 7-8: zkusi connect reflexi (tam to jde). onDestroy:
+       zastav() + konec(). JSON "m" + "a" (adresa) a "h" (stav HID).
+     - DALSI KROK: Rene - PS1 (SpongeBob s TV) a log: radky VLAKNA a VYKON
+       ("kresleni ve vlakne X ms", pomalych snimku). Battletron: vypnout / zapnout,
+       PRIPOJIT v OPTIONS, log "B332 BT". Pak slabsi telefony (A12).
+     - build.gradle: versionCode 375 "EMU10-B332-VISION". Na telefonu neovereno.
 
 ===============================================================================

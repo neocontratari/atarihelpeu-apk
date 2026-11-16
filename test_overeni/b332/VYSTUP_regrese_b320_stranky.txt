@@ -1,0 +1,17 @@
+vychozi pruhlednost: {('ps1', 'dpad'): 1.0, ('ps1', 'btnTriangle'): 1.0, ('ps1', 'btnCircle'): 1.0, ('ps1', 'btnCross'): 1.0, ('ps1', 'btnSquare'): 1.0, ('ps1', 'btnL1'): 1.0, ('ps1', 'btnL2'): 1.0, ('ps1', 'btnR1'): 1.0, ('ps1', 'btnR2'): 1.0, ('ps1', 'btnSelect'): 1.0, ('ps1', 'btnStart'): 1.0, ('ps1', 'btnMys'): 0.9, ('ps1', 'btnSettings'): 0.9, ('sega', 'dpad'): 0.55, ('sega', 'btnA'): 0.6, ('sega', 'btnB'): 0.6, ('sega', 'btnC'): 0.6, ('sega', 'btnStart'): 0.6}
+OK     PS1 1) AHOVL.stav() = "1|Retroid Pocket Controller" pri nacteni: D-pad, KRIZEK, KOLECKO, CTVEREC, TROJUHELNIK, L1 L2 R1 R2, SELECT, START pruhledne; MYS a kolecko nastaveni zustavaji
+OK     PS1 2) dotyk na misto schovaneho D-padu: ovladani zase videt, AHOVL.dotyk("PS1") (Java: dalsi stisk na ovladaci ho schova), D-pad zaroven poslal smer (5x AHPS1.ps1Input)
+OK     PS1 3) stav 2 (SKRYT DOTYK): dotykove ovladani neni (display none), dotyk na jeho misto nic neposle a neukaze ho; MYS a kolecko zustavaji
+OK     PS1 4) uprava rozlozeni tlacitek: ovladani videt i pri schovani; po ni zase schovane
+OK     PS1 5) stav 0 = presne jako bez ovladace (vypocitane styly 13 tlacitek stejne jako stranka bez AHOVL)
+OK     PS1 6) starsi appka bez mostu AHOVL: stranka jako drive (D-pad posila smer), zadna chyba
+OK     PS1 6b) na vysku se dotykove ovladani neschovava (je pod obrazem hry)
+OK     SEGA 7a) stav 1 pri nacteni: D-pad, A, B, C, START pruhledne
+OK     SEGA 7b) dotyk na misto schovaneho D-padu: ovladani zpet, AHOVL.dotyk("Sega"), D-pad zaroven jede (AHNATIVE.input, AHSega.segaVibrate, AHSega.tvCastActive)
+OK     SEGA 8) stav 2 = ovladani neni; stav 0 = presne jako bez ovladace (a bez AHOVL jako drive)
+napovedy: Ovladač: Retroid Pocket Controller – dotyková tlačítka se ve hře schovají, ťuknutím na jejich místo se vrátí | Dotyková tlačítka zůstávají vždy – ovladač hraje i tak | Dotyková tlačítka ve hrách nejsou – hraje jen ovladač | Žádný ovladač – po připojení (Retroid, Bluetooth, USB) se dotyková tlačítka ve hře schovají
+OK     OPTIONS 9) HERNI OVLADAC: rezim z AHOVL.rezim() (AUTOMATICKY), napoveda se jmenem ovladace; VZDY DOTYK / SKRYT DOTYK / AUTOMATICKY -> AHOVL.nastavRezim(1, 2, 0), napoveda podle rezimu ("Žádný ovladač – po připojení (Retroid, Bluetooth, USB) se dotyková tlačítka ve hře schovají")
+anglicky: ['GAME CONTROLLER', 'AUTOMATIC ALWAYS TOUCH HIDE TOUCH', 'Controller: Retroid Pocket Controller – touch buttons hide in games, tap their place to bring them back']
+OK     OPTIONS 10) anglicky: GAME CONTROLLER - AUTOMATIC / ALWAYS TOUCH / HIDE TOUCH, napoveda "Controller: Retroid Pocket Controller – touch buttons hide in games, tap their place to bring them back", bez cestiny []
+OK     zadna chyba JavaScriptu na strankach PS1, Sega a OPTIONS
+VYSLEDEK: 13 kontrol, 0 CHYB

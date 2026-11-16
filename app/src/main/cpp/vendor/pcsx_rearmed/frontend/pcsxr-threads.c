@@ -23,6 +23,23 @@ extern void SysPrintf(const char *fmt, ...);
 
 #define CORE_COUNT() cpu_features_get_core_amount()
 
+/* atarihelp B332: VLAKNA JADRA HLASI START A KONEC (nap_ps1_native.cpp).
+ * Kresleni ve vlakne (gpu_async) vznika v retro_load_game na vlakne startu - aplikace
+ * potrebuje vedet, ktere vlakno to je (TID), aby ho dala na jine rychle jadro nez emulaci
+ * a merila, kolik ms na snimek kresli. Obal zavola hlaseni a pak puvodni funkci vlakna se
+ * stejnym argumentem (NULL) - chovani jadra je stejne. "weak": testy na PC bez aplikace
+ * se prelozi i bez nej. */
+void __attribute__((weak)) nap_pcsxr_vlakno(int typ, int zacatek) { (void)typ; (void)zacatek; }
+struct nap_vlakno_obal { void (*fn)(void *); int typ; };
+static void nap_vlakno_obal_fn(void *p)
+{
+	struct nap_vlakno_obal o = *(struct nap_vlakno_obal *)p;
+	free(p);
+	nap_pcsxr_vlakno(o.typ, 1);
+	o.fn(NULL);
+	nap_pcsxr_vlakno(o.typ, 0);
+}
+
 static void pcsxr_sthread_lib_init(void)
 {
 #ifdef _3DS
@@ -92,7 +109,19 @@ sthread_t *pcsxr_sthread_create(void (*thread_func)(void *),
 	}
 	h->id = (pthread_t)ctr_thread;
 #else
-	h = sthread_create(thread_func, NULL);
+	{
+		/* atarihelp B332: obal hlasi start / konec vlakna (viz nap_vlakno_obal_fn) */
+		struct nap_vlakno_obal *o = malloc(sizeof(*o));
+		if (o) {
+			o->fn = thread_func;
+			o->typ = (int)type;
+			h = sthread_create(nap_vlakno_obal_fn, o);
+			if (!h)
+				free(o);
+		}
+		else
+			h = sthread_create(thread_func, NULL);
+	}
  #if defined(__GLIBC__) || \
     (defined(__ANDROID_API__) && __ANDROID_API__ >= 26)
 	if (h && (unsigned int)type < (unsigned int)PCSXRT_COUNT)

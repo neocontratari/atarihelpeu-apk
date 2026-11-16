@@ -1,0 +1,23 @@
+B332 - zapamatovany Bluetooth ovladac: PRIPOJIT, hlidac (skutecna trida NapBluetoothTexty z appky)
+OK     A1 hned po klepnuti (nic se nedeje) -> cekam
+OK     A2 Android ho posila jako herni ovladac -> pripojeny (i kdyz HID profil nevi)
+OK     A3 HID profil: pripojen -> pripojeny (i bez vstupniho zarizeni)
+OK     A4 ozval se pred 9,9 s, jako ovladac nic -> porad cekam
+OK     A5 ozval se pred 10 s a jako ovladac se nepripojil -> "ozval se, ale nepripojil"
+OK     A6 ozval se pred 10 s, ale Android ho prave pripojuje -> porad cekam (ne hned spatna zprava)
+OK     A7 30 s nic -> "neozval se"; 29,9 s -> porad cekam
+OK     A8 30 s a ozval se pred 2 s (jeste nepripojen) -> "ozval se, ale nepripojil"
+OK     A9 i po "neozval se" ho Android pozdeji pripoji -> pripojeny
+OK     A10 odpocitavani: 30 s po klepnuti, 25 s po 5 s, nikdy pod nulu
+OK     A11 sama pripojit smi appka jen na Androidu 7 a 8 (API 24-27), od Androidu 9 (S8) a 12 (A12) ne
+OK     A12 stav v Androidu do logu
+OK     B1 cekam (Android 9): Zapni ovladač „Pro Controller“ (tlačítko HOME / domeček) – Android ho připojí sám. Čekám… (25 s)
+OK     B2 cekam (Android 8 - appka pripojuje): Připojuji „Pro Controller“… Když je vypnutý, zapni ho (HOME). (30 s)
+OK     B3 ozval se, ale nepripojil: vypnout a zapnout, jinak NASTAVENI BLUETOOTH -> zrusit parovani -> sparovat znovu
+OK     B4 neozval se: zapnuty a nabity? stejny rezim (Switch / Android / PC) jako pri parovani
+OK     B5 anglicky: cekam / ozval se / neozval se
+OK     B6 anglicke texty bez ceskych znaku
+OK     B7 zprava hlidace: 🎮 „Pro Controller“ se ozval, ale nepřipojil se – vypni ho a zapni znovu (víc: OPTIONS → HERNÍ OVLADAČ)
+OK     B8 ovladac bez jmena: "Zapni ovladač (tlačítko HOME / domeček) – Android ho připojí sám. Čekám… (3 s)" / "Turn the controller on (HOME button) – Android connects it by itself. Waiting… (3 s)"
+OK     C1 JSON zapamatovanych: jmeno, pripojeny, adresa (PRIPOJIT), stav v Androidu (1 = pripojuje se, -1 = nevi)
+VYSLEDEK: 21 OK, 0 CHYBA

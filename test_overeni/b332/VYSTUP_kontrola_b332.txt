@@ -1,0 +1,22 @@
+OK     N1 nazev appky pod ikonou: "©N&P Vision" (Rene: "(C)N&P Vision")
+OK     N2 balicek se nemeni (aktualizace pres starou appku): applicationId eu.atarihelp.emu10.test
+OK     V1 build.gradle: versionCode 375, versionName EMU10-B332-VISION
+OK     P1 jadro dostane odpoved: kresleni ve vlakne "auto" (jako RetroArch), zvuk ve vlakne "disabled", prekladac "auto"
+OK     P2 jadro ma kresleni ve vlakne prelozene (CMake: USE_ASYNC_GPU, gpulib/gpu_async.c v napps1core)
+OK     P3 vlakna jadra hlasi start a konec (pcsxr-threads.c): obal kolem funkce vlakna, puvodni funkce se stejnym argumentem
+OK     P4 appka vlakna prijme (silna funkce prepise "weak" z jadra) a pamatuje TID podle typu
+OK     P5 vlakno emulace: kreslici vlakno pripne na ostatni rychla jadra (start, nove vlakno, kontrola kazde ~2 s)
+OK     P6 radek VYKON: cas procesoru kresliciho vlakna na snimek a jeho jadra; v deniku VLAKNA
+OK     P7 skutecny stav kresleni ve vlakne z gpulib (gpu.async) a zvuk ve vlakne v NASTAVENI GRAFIKY
+OK     P8 2x (Enhanced Resolution) zustava zapnute
+OK     B1 hlidac zapamatovanych ovladacu od startu appky (ACL / HID / Bluetooth zap-vyp), Android 13+ s priznakem RECEIVER_EXPORTED
+OK     B2 konec appky: hledani zastavit, hlidac odhlasit, HID profil zavrit (onDestroy: zastav() a konec())
+OK     B3 stav ovladace z verejneho HID profilu Androidu (getProfileProxy 4, getConnectionState)
+OK     B4 sama pripojit (skryte connect) jen Android 7 a 8 - od 9 to Android aplikacim nedovoli, nic se neobchazi
+OK     B5 PRIPOJIT: Android 12+ povoleni BLUETOOTH_CONNECT, vypnute Bluetooth -> systemove okno, pak pokracuje (povoleniVysledek / zapnutiVysledek)
+OK     B6 do logu jen zapamatovane ovladace a konec adresy (cizi zarizeni v okoli ne)
+OK     B7 "ozval se, ale nepripojil": kontrola 10 s po ozvani, zprava jednou za ozvani
+OK     B8 JS rozhrani AHBT.pripoj(adresa)
+OK     S1 OPTIONS: PRIPOJIT „jmeno“ u zapamatovaneho nepripojeneho (data-nepreklad, jen textContent), starsi appka bez pripoj bez chyby
+OK     H1 napoveda CZ i EN: PRIPOJIT u zapamatovaneho, co znamenaji vysledky, proc appka sama nepripoji (Android 9+)
+VYSLEDEK: 21 OK, 0 CHYBA

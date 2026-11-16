@@ -1,0 +1,19 @@
+B329 - PS1 emulace na jednom nejrychlejsim jadre, SKUTECNE jadro PS1 (PCSX-ReARMed z appky, BIOS HLE, mys_test.exe)
+OK      C1) jako Galaxy S8 (4 x 1690 + 4 x 2314 MHz): nejrychlejsi cpu7 2314 MHz, jader 8
+OK      C2) jako Retroid Pocket 6 / Snapdragon 8 Gen 2 (3 + 4 + 1 hlavni 3187 MHz): cpu7
+OK      C3) rychla jadra na zacatku (2 x 2400 + 2 x 1800 MHz): vybrano cpu1 (ne posledni jadro)
+OK      C4) jadra bez cpufreq (vypnuta) se preskoci: cpu3, jader s taktem 2
+OK      C5) stejna jadra: nepripina se, denik "JADRO PROCESORU: vsechna jadra stejne rychla (4 x 2000 MHz) - emulaci nepripinam"
+OK      C6) takt nejde zjistit (jako tenhle kontejner): nepripina se, denik "JADRO PROCESORU: takt jader nejde zjistit - emulaci nepripinam"
+OK      C7) jadro, ktere system nepovoli (cpu7 tu neni): chyba se zapise a emulace bezi jako drive ("JADRO PROCESORU: pripnout na cpu7 nejde (chyba 22) - emulace bezi jako drive")
+OK      C8) takt do logu: "cpu1 962 MHz (smi 2000, umi 2000 MHz, interactive)"
+OK      C9) skutecne pripnuti (Linux, sched_setaffinity): vlakno bezi jen na cpu1, maska jen cpu1
+OK      C10) ostatni vlakna se nemeni (hlavni vlakno porad cpu0 + cpu1, maska 3)
+OK      C11) denik: "JADRO PROCESORU: emulace pripnuta na cpu1 (nejrychlejsi, umi 2000 MHz, nejpomalejsi jadro 1000 MHz, jader 2) - hra se nemeni, 2x zustava | takt ted: cpu1 962 MHz (smi 2000, umi 2000 MHz, interactive)"
+OK      E) hra 900 snimku na vlaknu pripnutem na cpu1: pamet PS1 (2 MB) bajt po bajtu stejna jako bez pripnuti - pripnuti hru nemeni
+OK      D1) telefonni cesta: hra bezi (PS1_HRA_OK), vlakno emulace pripnute: "JADRO PROCESORU: emulace pripnuta na cpu1 (nejrychlejsi, umi 2000 MHz, nejpomalejsi jadro ..."
+OK      D2) radek VYKON: emulace jen na cpu1 a takt (| jadro procesoru: cpu1 100 % (1500 MHz) | takt: cpu1 1500 MHz (smi 2000, umi 2000 MHz, schedutil) (pripnuto) | kresleni ve vlakne NE (kresli vlakno emulace) | TV divaku 0)
+OK      D3) radek VYKON z B328 dal plati: casti daji dohromady cely snimek
+OK      D4) vlaknum zmenena jadra (7 vlaken, jako Android) -> do 2 s znovu pripnuto: "JADRO PROCESORU: Android vlaknu emulace zmenil jadra - pripinam znovu na cpu1"
+OK      D5) po znovu pripnuti zase jen cpu1 (| jadro procesoru: cpu1 100 % (1500 MHz))
+VYSLEDEK: 17 OK, 0 CHYBA

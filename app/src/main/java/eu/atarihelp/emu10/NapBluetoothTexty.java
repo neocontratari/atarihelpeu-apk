@@ -24,12 +24,65 @@ final class NapBluetoothTexty {
             F_HLEDAM = "HLEDAM", F_HOTOVO = "HOTOVO", F_PARUJI = "PARUJI", F_SPAROVANO = "SPAROVANO",
             F_PRIPOJENO = "PRIPOJENO", F_NEPOVEDLO = "NEPOVEDLO", F_CHYBA = "CHYBA";
 
+    // ===== B332: ZAPAMATOVANY OVLADAC SE PRIPOJI SAM (Rene: "aby ovladac, ktery uz byl jednou sparovany
+    // z appky, fungoval automaticky"; noname ovladac se "nekdy ani pres cisty Android nechce pripojit") =====
+    // Spojeni zacina OVLADAC (po zapnuti / HOME vola telefon, se kterym je sparovany) a Android ho prijme sam.
+    // Pripojit ovladac ze strany telefonu umi od Androidu 9 jen systemove Nastaveni (BluetoothHidHost.connect
+    // je skryte API, od Androidu 12 navic systemove opravneni) - appka na Androidu 7 a 8 to zkusi, jinak
+    // hlida a radi: PRIPOJIT u zapamatovaneho ovladace = 30 s cekani s odpocitavanim, co se deje
+    // (ozval se, ale nepripojil / neozval se) a co s tim. Hlidac v appce pozna "ozval se, ale za 10 s se
+    // nepripojil" i bez klepnuti (zprava + log). Do logu jen zapamatovane ovladace a konec adresy.
+    static final String F_PRIPOJUJI = "PRIPOJUJI", F_OZVAL_SE = "OZVAL_SE", F_NEOZVAL = "NEOZVAL";
+    static final long LIMIT_PRIPOJENI_MS = 30000L, LIMIT_OZVAL_MS = 10000L;
+    /** Stav HID (BluetoothProfile.STATE_*): 0 odpojen, 1 pripojuje se, 2 pripojen, 3 odpojuje se; -1 = nevi. */
+    static final int HID_NEVI = -1, HID_ODPOJEN = 0, HID_PRIPOJUJE = 1, HID_PRIPOJEN = 2, HID_ODPOJUJE = 3;
+
+    /** Smi aplikace pripojit ovladac sama (skryte BluetoothHidHost.connect)? Jen Android 7 a 8 - od 9 ho Android aplikacim nepusti. */
+    static boolean appkaSmiPripojit(int sdk) {
+        return sdk < 28;
+    }
+
+    /**
+     * Cekani po PRIPOJIT: od = kdy klepnuto, aclOd = kdy se ovladac ozval (spojeni Bluetooth, 0 = ne),
+     * hid = stav ovladace v Androidu, vstup = Android ho uz posila jako herni ovladac.
+     */
+    static String hlidani(long ted, long od, long aclOd, int hid, boolean vstup) {
+        if (vstup || hid == HID_PRIPOJEN) return F_PRIPOJENO;
+        if (aclOd > 0 && ted - aclOd >= LIMIT_OZVAL_MS && hid != HID_PRIPOJUJE) return F_OZVAL_SE;
+        if (ted - od >= LIMIT_PRIPOJENI_MS) return aclOd > 0 ? F_OZVAL_SE : F_NEOZVAL;
+        return F_PRIPOJUJI;
+    }
+
+    /** Sekund do konce cekani po PRIPOJIT. */
+    static int zbyva(long ted, long od) {
+        return (int) Math.max(0L, (od + LIMIT_PRIPOJENI_MS - ted + 999L) / 1000L);
+    }
+
+    /** Stav ovladace v Androidu do logu. */
+    static String hidLog(int hid) {
+        switch (hid) {
+            case HID_ODPOJEN: return "odpojen";
+            case HID_PRIPOJUJE: return "pripojuje se";
+            case HID_PRIPOJEN: return "PRIPOJEN";
+            case HID_ODPOJUJE: return "odpojuje se";
+            default: return "?";
+        }
+    }
+
+    /** Zprava, kdyz se zapamatovany ovladac ozval, ale za 10 s se nepripojil (hlidac, bez klepnuti). */
+    static String zpravaOzvalSe(boolean en, String jmeno) {
+        final String jm = jmeno == null || jmeno.isEmpty() ? (en ? "The controller" : "Ovladač") : jmeno;
+        return en ? "🎮 “" + jm + "” responded but didn't connect – turn it off and on again (details: OPTIONS → GAME CONTROLLER)"
+                  : "🎮 „" + jm + "“ se ozval, ale nepřipojil se – vypni ho a zapni znovu (víc: OPTIONS → HERNÍ OVLADAČ)";
+    }
+
     /** Jedno nalezene / zapamatovane zarizeni. trida = BluetoothClass.getDeviceClass() (-1 = neznama). */
     static final class Nalez {
         final String adresa;
         String jmeno;
         int trida, sila;            // sila = RSSI v dBm (Integer.MIN_VALUE = neznama)
         boolean sparovany, pripojeny;
+        int hid = HID_NEVI;         // B332: stav v HID profilu Androidu (zapamatovane ovladace)
         Nalez(String adresa, String jmeno, int trida, int sila, boolean sparovany) {
             this.adresa = adresa; this.jmeno = jmeno; this.trida = trida; this.sila = sila; this.sparovany = sparovany;
         }
@@ -117,6 +170,24 @@ final class NapBluetoothTexty {
                           : "„" + jm + "“ je spárovaný ✔ Připojí se sám – kdyby ne, zmáčkni na něm HOME.";
             case F_PRIPOJENO:
                 return en ? "“" + jm + "” is connected ✔ You can play." : "„" + jm + "“ je připojený ✔ Můžeš hrát.";
+            case F_PRIPOJUJI: {   // B332: PRIPOJIT u zapamatovaneho ovladace
+                final boolean bez = jmeno == null || jmeno.isEmpty();
+                if (appkaSmiPripojit(sdk))
+                    return en ? "Connecting " + (bez ? "the controller" : "“" + jm + "”") + "… If it's off, turn it on (HOME). (" + zbyva + " s)"
+                              : "Připojuji " + (bez ? "ovladač" : "„" + jm + "“") + "… Když je vypnutý, zapni ho (HOME). (" + zbyva + " s)";
+                return en ? "Turn " + (bez ? "the controller" : "“" + jm + "”") + " on (HOME button) – Android connects it by itself. Waiting… (" + zbyva + " s)"
+                          : "Zapni ovladač" + (bez ? "" : " „" + jm + "“") + " (tlačítko HOME / domeček) – Android ho připojí sám. Čekám… (" + zbyva + " s)";
+            }
+            case F_OZVAL_SE:
+                return en ? "“" + jm + "” responded but didn't connect as a controller. Turn it off and on again. If that doesn't help: "
+                            + "BLUETOOTH SETTINGS → “" + jm + "” → unpair (forget) and pair it again with CONNECT CONTROLLER (BLUETOOTH)."
+                          : "„" + jm + "“ se ozval, ale jako ovladač se nepřipojil. Vypni ho a zapni znovu. Když to nepomůže: "
+                            + "NASTAVENÍ BLUETOOTH → „" + jm + "“ → zrušit párování (odebrat) a spáruj ho znovu přes PŘIPOJIT OVLADAČ (BLUETOOTH).";
+            case F_NEOZVAL:
+                return en ? "“" + jm + "” didn't respond. Is it on and charged? A controller with several modes (Switch / Android / PC) "
+                            + "must be turned on in the same mode as when it was paired. Otherwise pair it again (CONNECT CONTROLLER)."
+                          : "„" + jm + "“ se neozval. Je zapnutý a nabitý? Ovladač s víc režimy (Switch / Android / PC) zapni "
+                            + "ve stejném režimu jako při párování. Jinak ho spáruj znovu (PŘIPOJIT OVLADAČ).";
             case F_NEPOVEDLO:
                 return en ? "Pairing with “" + jm + "” failed. Put the controller into pairing mode again and tap it once more."
                           : "Spárování s „" + jm + "“ se nepovedlo. Dej ovladač znovu do párování a klepni na něj znovu.";
@@ -156,7 +227,9 @@ final class NapBluetoothTexty {
         for (Nalez n : zapamatovane) {
             if (!prvni) b.append(',');
             prvni = false;
-            b.append("{\"j\":").append(js(jmenoDoSeznamu(en, n.jmeno, n.adresa))).append(",\"p\":").append(n.pripojeny ? 1 : 0).append('}');
+            // B332: + adresa (tlacitko PRIPOJIT) a stav v Androidu (h: 1 = pripojuje se)
+            b.append("{\"j\":").append(js(jmenoDoSeznamu(en, n.jmeno, n.adresa))).append(",\"p\":").append(n.pripojeny ? 1 : 0)
+             .append(",\"a\":").append(js(n.adresa)).append(",\"h\":").append(n.hid).append('}');
         }
         return b.append("]}").toString();
     }

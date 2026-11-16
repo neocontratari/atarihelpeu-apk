@@ -1,0 +1,27 @@
+B332 - PS1 kresleni ve vlakne na dalsim rychlem jadre, SKUTECNE jadro PS1 vcetne vykreslovace (PCSX-ReARMed z appky: gpulib + gpu_neon + gpu_async, BIOS HLE, kresleni_test.exe)
+OK      M1) Galaxy S8 (4 x 1690 + 4 x 2314 MHz), emulace cpu7: kresleni na cpu4-6
+OK      M2) Retroid Pocket 6 / Snapdragon 8 Gen 2 (3 + 4 + 1 hlavni), emulace cpu7: kresleni na cpu3-6
+OK      M3) Pixel (4 male + 2 stredni + 2 velka), emulace cpu7: kresleni na cpu4-6 (ne male cpu0-3)
+OK      M4) jen jedno rychle jadro (7 x 1800 + 1 x 2400), emulace cpu7: kresleni na ostatnich cpu0-6
+OK      M5) dve jadra (jako tenhle kontejner s falesnym taktem), emulace cpu1: kresleni na cpu0
+OK      M6) text masky: cpu0-2,5
+OK      V1) volba "auto" (2 jadra): jadro kresli ve vlakne, vlakno se ohlasilo: "VLAKNO JADRA kresleni: start (tid 7038, jadro cpu0)"
+OK      V2) nastaveni jadra: ...kresleni ve vlakne AUTO, zvuk ve vlakne NE | preskakovani snimku 0
+OK      V3) po konci hry kreslici vlakno skoncilo a ohlasilo se: "VLAKNO JADRA kresleni: konec (tid 7038, jadro cpu0)"
+OK      V4) volba "disabled" (srovnani): kresli vlakno emulace, zadne kreslici vlakno
+   program: znacka b332b332, snimku hotovo ve vlakne 418, bez vlakna 418 | ruznych snimku v obraze 418 / 418, 640x480
+OK      O1) program kresli a bezi v obou rezimech (snimku 418 / 418, ruznych obrazu 418 / 418)
+OK      O2) 2x (Enhanced Resolution) v obou: obraz 640x480 / 640x480
+OK      O3) OBRAZ STEJNY: 418 snimku (podle cisla v obraze) s kreslenim ve vlakne bajt po bajtu stejnych jako bez nej
+OK      O4) cteni VRAM zpet (GPUREAD, kazdy 8. snimek - kreslici vlakno musi dokreslit): 52 cteni, soucty stejne jako bez vlakna (0 ruznych)
+   cas na krok: ve vlakne 4.62 ms (z toho emulace v GPU 0.32 ms, kreslici vlakno 1.72 ms procesoru) | bez vlakna 5.91 ms (v GPU 1.75 ms)
+OK      T1) emulace uz nekresli: cas vlakna emulace v GPU 0.32 ms/snimek misto 1.75 ms
+OK      T2) kresli kreslici vlakno: 1.72 ms procesoru na snimek (bez vlakna kreslila emulace 1.75 ms)
+OK      S1) pozice ulozena a nahrana behem kresleni ve vlakne (4352 kB): po nahrani 89 snimku stejnych jako poprve (0 ruznych)
+OK      P1) telefonni cesta: hra bezi (PS1_HRA_OK), "VLAKNA: kresleni ve vlakne ANO, prekladac ve vlakne NE, cteni CD ve vl..."
+OK      P2) kresleni pripnute na cpu0, emulace na cpu1 (maska kresliciho vlakna 1): "VLAKNA: kresleni (tid 7042) pri startu na cpu0, emulace na cpu1 - kazde na jinem jadre | takt: cpu0 1500 MHz (..."
+OK      P3) radek VYKON: emulace jen cpu1, kreslici vlakno 2.00 ms na snimek jen na cpu0 ("| kresleni ve vlakne 2.0 ms na snimek (pripnuto), jadra cpu0 100 % (1500 MH...")
+OK      P4) VYKON z B328 dal plati: casti daji dohromady cely snimek (3.40 ms)
+OK      P5) jadra zmenena vsem vlaknum (8, jako Android) -> do 2 s zase kresleni cpu0 a emulace cpu1: "VLAKNA: Android kreslicimu vlaknu zmenil jadra - pripinam znovu na cpu0"
+OK      P6) konec hry: kreslici vlakno skoncilo ("VLAKNO JADRA kresleni: konec (tid 7042, jadro cpu0)")
+VYSLEDEK: 23 OK, 0 CHYBA

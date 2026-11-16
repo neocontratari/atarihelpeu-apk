@@ -1,0 +1,21 @@
+B328 - zapojeni: mereni vykonu PS1, hlaska XA / CD audio, napoveda Pocket 6, po aktualizaci
+
+OK     M1 libretro.c: 13 obalu (7 GPU + 6 zvuk) v nap_mereni_zapni, vsech 13 vraci nap_mereni_vypni
+OK     M2 kazdy obal zavola puvodni funkci se stejnymi argumenty (a vrati jeji vysledek)
+OK     M3 obal se neobali sam sebou (ukazatel != obal) a NULL se neobaluje
+OK     M4 predani obrazu: vout_flip = obal kolem puvodni nap_vout_flip_telo (stejne argumenty)
+OK     M5 hlaska jadra: "zvuk XA %s, CD audio %s" s Config.Xa ? "VYPNUTY" : "ZAPNUTY" (B308 obracene "XA NE")
+OK     M6 nap_ps1_native.cpp: mereni se zapne po kazdem startu hry (3 cesty startu)
+CHYBA  M7 radek VYKON: hra + kresleni + predani obrazu + zvuk, pomale snimky, jadro procesoru (getcpu), TV divaku
+CHYBA  M8 mereni nic nenastavuje: v nap_ps1_native.cpp zadna nova volba jadra (nap_core_option_value beze zmeny vuci B327)
+OK     N1 napoveda CZ: kapitola menu - blok Retroid Pocket 6 / herni ovladac
+OK     N2 napoveda CZ: Atari, Sega i PS1 maji cast "Retroid Pocket 6, Bluetooth, USB"
+OK     N3 napoveda CZ: OPTIONS - blok herni ovladac (3 rezimy) a veta o verzi appky
+OK     N1 napoveda EN: kapitola menu - blok Retroid Pocket 6 / herni ovladac
+OK     N2 napoveda EN: Atari, Sega i PS1 maji cast "Retroid Pocket 6, Bluetooth, USB"
+OK     N3 napoveda EN: OPTIONS - blok herni ovladac (3 rezimy) a veta o verzi appky
+OK     U1 NapPoAktualizaci: zapise cas a vysledek (commit - proces muze hned skoncit)
+OK     U2 poStartu: okno "Aktualizace hotova" s OK (ne Toast), zapis prijimace do logu a smazani
+CHYBA  V1 build.gradle: versionCode 371, versionName EMU10-B328-MERENI
+
+VYSLEDEK: 17 kontrol, 3 CHYBA

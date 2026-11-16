@@ -1,0 +1,11 @@
+OK     1) OPTIONS: "Zapamatované: Pro Controller (vypnutý), Xbox Wireless Controller (připojený), <b id="vlozeno">Pad</b> (vypnutý)", PRIPOJIT jen u nepripojenych ['🎮 PŘIPOJIT „Pro Controller“', '🎮 PŘIPOJIT „<b id="vlozeno">Pad</b>“'], panel hledani schovany
+OK     6) jmeno s HTML znackami je jen text (zadny vlozeny prvek)
+OK     2) klepnuti -> AHBT.pripoj("AA:BB:CC:DD:EE:01"), panel s textem "TEXT_Z_JAVY cekam (30 s)", stranka se pta sama (3 -> 5)
+OK     3) Android ho pripojuje: "Zapamatované: Pro Controller (připojuje se…), Xbox Wireless Controller (připojený), <b id="vlozeno">Pad</b> (vypnutý)"
+OK     4) pripojeno: PRIPOJIT u nej zmizel ['🎮 PŘIPOJIT „<b id="vlozeno">Pad</b>“'], "Zapamatované: Pro Controller (připojený), Xbo...", text "TEXT_Z_JAVY pripojeno"
+OK     5) zavreni OPTIONS -> AHBT.zastav(), stranka se uz na stav nepta (8 -> 8)
+OK     7) anglicky: Remembered: Pro Controller (off), Xbox Wireless Controller (connected), <b id="vlozeno">Pad</b> (off) | 🎮 CONNECT “Pro Controller” | 🎮 CONNECT “<b id="vlozeno">Pad</b>”, bez cestiny []
+OK     8) starsi appka (AHBT bez pripoj): klepnuti bez chyby, nic se nevolalo
+OK     9) zadna chyba JavaScriptu na strance
+
+VYSLEDEK: 9 kontrol, 0 CHYB

@@ -1,0 +1,19 @@
+OK     M1 manifest: BLUETOOTH a BLUETOOTH_ADMIN jen do Androidu 11 (maxSdkVersion 30)
+OK     M2 manifest: Android 12+ BLUETOOTH_SCAN s neverForLocation (hledani BEZ polohy) a BLUETOOTH_CONNECT
+OK     M3 manifest: poloha jen do Androidu 11 (kvuli hledani Bluetooth), Bluetooth neni podminkou instalace
+OK     A1 MainActivity: NapBluetooth vznikne po ovladaci (zna pripojene ovladace), do logu souhrn pri startu
+OK     A2 JS rozhrani AHBT: hledej, sparuj, zastav, stav, nastaveni, poloha
+OK     A3 vysledek povoleni a okna "zapnout Bluetooth" jde do NapBluetooth (a nic jineho ho nezpracuje)
+OK     A4 konec appky: hledani zastavit a prijimac odhlasit (onDestroy, hned ve vlakne UI)
+OK     B1 postup hledani: povoleni -> zapnuti Bluetooth (systemove okno) -> Poloha (Android 10/11) -> hledani
+OK     B2 do logu jen nalezene OVLADACE a konec adresy (jmena cizich zarizeni v okoli ne)
+OK     B3 parovani: createBond, uz sparovany = jen zapnout; stav parovani z Androidu (sparovano / nepovedlo)
+OK     B4 "pripojeny": sparovany ovladac se objevi jako vstupni zarizeni (NapOvladac.jmenaPripojenych) -> PRIPOJENO
+OK     B5 zapamatovane ovladace: sparovane v Androidu (getBondedDevices), Android 12+ jen s povolenim BLUETOOTH_CONNECT
+OK     B6 zadne volani, ktere Android 7 (minSdk 24) nema (String.join, isLocationEnabled bez kontroly verze)
+OK     S1 OPTIONS: tlacitko PRIPOJIT OVLADAC (BLUETOOTH), seznam a stav bez prekladace (data-nepreklad), zavreni OPTIONS zastavi hledani
+OK     S2 jmena zarizeni jen jako text (textContent, zadne innerHTML v Bluetooth casti)
+OK     S3 anglicky slovnik: CONNECT CONTROLLER (BLUETOOTH), BLUETOOTH SETTINGS, TURN ON LOCATION
+OK     N1 napoveda CZ i EN: parovani v appce, zapamatovani (vlak = dotyk), povoleni (Zarizeni v okoli / Poloha)
+CHYBA  V1 build.gradle: versionCode 374, versionName EMU10-B331-BLUETOOTH
+VYSLEDEK: 17 OK, 1 CHYBA

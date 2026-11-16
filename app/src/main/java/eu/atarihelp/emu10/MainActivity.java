@@ -11656,6 +11656,8 @@ public class MainActivity extends Activity {
         @JavascriptInterface public void hledej() { if (bt != null) bt.hledej(); }
         /** sparovat zarizeni ze seznamu */
         @JavascriptInterface public void sparuj(String adresa) { if (bt != null) bt.sparuj(adresa); }
+        /** B332: PRIPOJIT u zapamatovaneho ovladace (cekani s radami - pripojit ho od Androidu 9 umi jen system) */
+        @JavascriptInterface public void pripoj(String adresa) { if (bt != null) bt.pripoj(adresa); }
         /** prestat hledat (zavreni OPTIONS) */
         @JavascriptInterface public void zastav() { if (bt != null) bt.zastav(); }
         /** stav pro stranku (JSON: faze, text, nalezene, zapamatovane) */
@@ -14683,6 +14685,7 @@ public class MainActivity extends Activity {
         zapisOdchod("ZRUSENA");
         try { if (ovladac != null) ovladac.stop(); } catch (Throwable ignored) {}   // B320
         try { if (bt != null) bt.zastav(); } catch (Throwable ignored) {}           // B331
+        try { if (bt != null) bt.konec(); } catch (Throwable ignored) {}            // B332: hlidac a HID profil
         NapAktualizace.zavriOznameni();                        // B329 (oznameni ceka dal)
         if (demoPlocha != null) demoKonec("appka zrusena");   // B304
         menuSkryj("appka zrusena");                            // B311

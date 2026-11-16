@@ -1,0 +1,84 @@
+B332 - NAZEV "©N&P Vision", VIC JADER PRO PS1 (KRESLENI VE VLAKNE), ZAPAMATOVANY BLUETOOTH OVLADAC (16. 11. 2026)
+=====================================================================================================================
+
+Rene po B331: "prepis uz nazev aplikace z AtariHelp TEST na (C)N&P Vision"; "aby ovladac, ktery uz byl jednou
+sparovany z appky, fungoval automaticky" (noname ovladac se "nekdy ani pres cisty Android nechce pripojit");
+"moc dobre vim, ze nepouzivas vsechna jadra k PS1, ktere mas k dispozici. Dalsi zvladnes sam."
+
+1) NAZEV: AndroidManifest android:label "©N&amp;P Vision" (pod ikonou "©N&P Vision"). Balicek
+   eu.atarihelp.emu10.test zustava - jinak by se aktualizace pres starou appku nenainstalovala.
+2) PS1 - KRESLENI VE VLAKNE NA DALSIM RYCHLEM JADRE. Log B330 (SpongeBob, S8): "8 cpu core(s) detected",
+   "kresleni ve vlakne NE", kresleni 2x 10-11 ms ze 12-13 ms snimku na cpu7, cpu4-6 bez prace. Jadro PCSX
+   kreslit ve vlakne umi (gpulib gpu_async), jen se pta na volbu pcsx_rearmed_gpu_thread_rendering - appka
+   neodpovidala = 0 = vypnuto (RetroArch ma "auto" = zapnuto pri vice jadrech). Ted:
+   - nap_core_option_value: kresleni ve vlakne "auto" (g_ps1_kresleni_volba), zvuk ve vlakne "disabled"
+     (zvuk 0,1-0,5 ms snimku, jadro samo varuje pred praskanim), prekladac (dynarec) "auto" jako drive;
+   - frontend/pcsxr-threads.c: vlakna jadra (cteni CD, prekladac, kresleni, zvuk) hlasi start a konec
+     (obal kolem funkce vlakna -> nap_pcsxr_vlakno, "weak" v jadre, v appce TID podle typu);
+   - vlakno emulace (B329: nejrychlejsi jadro) kreslici vlakno pripne na ostatni rychla jadra (S8 cpu4-6,
+     jen jedno rychle jadro -> vsechna ostatni), kontrola kazde ~2 s (Android muze jadra zmenit);
+   - denik: "VLAKNO JADRA kresleni: start", "VLAKNA: kresleni ve vlakne ANO ...", "VLAKNA: kresleni (tid N)
+     pri startu na cpu4-6, emulace na cpu7"; VYKON: "kresleni (cekani na vlakno) X" a "kresleni ve vlakne
+     X ms na snimek (pripnuto), jadra ..., takt kresleni ...". NASTAVENI GRAFIKY: "zvuk ve vlakne NE".
+   - 2x (Enhanced Resolution) zustava. Obraz je stejny: pred predanim snimku emulace pocka, az je
+     zobrazovana oblast dokreslena (gpu_async_sync_scanout) - overeno na PC bajt po bajtu.
+3) BLUETOOTH - ZAPAMATOVANY OVLADAC. Spojeni zacina OVLADAC (zapnuti / HOME), Android ho prijme sam.
+   Pripojit ovladac ze strany telefonu (BluetoothHidHost.connect) umi od Androidu 9 jen systemove Nastaveni
+   (skryte API, od Androidu 12 navic systemove opravneni) - appka to neobchazi. Misto toho:
+   - hlidac od startu appky (ACL spojeni, HID profil Androidu, Bluetooth zap / vyp; jen zapamatovane
+     ovladace, konec adresy): "ozval se, ale za 10 s se jako ovladac nepripojil" -> zprava "vypni ho
+     a zapni znovu" + log "B332 BT";
+   - presny stav z verejneho HID profilu (getProfileProxy 4, getConnectionState): pripojeny /
+     pripojuje se / vypnuty;
+   - OPTIONS -> HERNI OVLADAC: u zapamatovaneho nepripojeneho tlacitko PRIPOJIT „jmeno“ -> (Android 12+
+     povoleni Zarizeni v okoli, vypnute Bluetooth -> systemove okno) -> 30 s cekani s odpocitavanim a radou:
+     pripojeny ✔ / ozval se, ale nepripojil (vypnout-zapnout, jinak zrusit parovani a sparovat znovu) /
+     neozval se (vybity, jiny rezim Switch / Android / PC). Android 7 a 8: appka zkusi pripojit sama;
+   - konec appky: hledani zastavit (zastav), hlidac odhlasit a HID profil zavrit (konec).
+   - napoveda CZ / EN.
+4) build.gradle: versionCode 375 "EMU10-B332-VISION".
+
+Spoustet z adresare test_overeni/b332 (AJ = android-34.jar, PRAC = pracovni slozka, JV = JDK):
+A) PS1 se SKUTECNYM jadrem VCETNE VYKRESLOVACE (gpulib + gpu_neon pres SSE + gpu_async):
+   bash stavba_jadra_gpu.sh PRAC                  -> PRAC/jadro_gpu/*.o (78 souboru)
+   python3 udelej_kresleni_exe.py PRAC            -> PRAC/kresleni_test.exe (program pro PlayStation z
+                                                     kresleni_test.c: clang mipsel -march=mips1, ld.lld)
+   PS1="-DANDROID -I../b305/stub -I../b291/stub -I/usr/include -I$JV/include -I$JV/include/linux"
+   g++ -std=c++17 -O1 -g -pthread $PS1 -o PRAC/integrace_b332 integrace_b332_jadro.cpp PRAC/jadro_gpu/*.o \
+       -l:libEGL.so.1 -l:libGLESv2.so.2 -lz -ldl
+   cd PRAC && EGL_PLATFORM=surfaceless ./integrace_b332 . ./kresleni_test.exe  -> VYSTUP_integrace_b332_jadro.txt
+                                                                                 (23 OK)
+   M) jadra pro kresleni (S8, Retroid Pocket 6, Pixel, jedno rychle jadro, 2 jadra); V) vlakno se ohlasi,
+   jadro opravdu kresli ve vlakne, konec vlakna; O) OBRAZ STEJNY: 418 snimku 640x480 (2x) s vlaknem i bez
+   bajt po bajtu stejnych (cislo snimku program kresli do obrazu), cteni VRAM zpet (GPUREAD) stejne;
+   T) emulace v GPU 0,33 ms misto 1,75 ms, kreslici vlakno 1,8 ms procesoru; S) ulozeni a nahrani pozice
+   behem kresleni ve vlakne; P) telefonni cesta: kresleni cpu0 / emulace cpu1, VYKON, po zmene jader do
+   2 s znovu, konec. Ukazka deniku: UKAZKA_denik_vlakna_b332.txt
+B) JVM: javac -encoding UTF-8 --release 17 -d OUT ../../app/src/main/java/eu/atarihelp/emu10/NapBluetoothTexty.java \
+        jvm/eu/atarihelp/emu10/TestB332.java && java -Dstdout.encoding=UTF-8 -cp OUT eu.atarihelp.emu10.TestB332
+                                                   -> VYSTUP_test_b332_java.txt (21 OK)
+   (cekani po PRIPOJIT: pripojeny / ozval se / neozval se, odpocitavani, Android 7-8 vs 9+; texty CZ / EN;
+    zprava hlidace; JSON zapamatovanych s adresou a stavem)
+C) Chromium: python3 test_b332_stranka.py        -> VYSTUP_test_b332_stranka.txt (9 kontrol, 0 CHYB)
+   (skutecna stranka index.html, falesny most AHBT: PRIPOJIT jen u nepripojeneho, AHBT.pripoj(adresa),
+    pripojuje se, pripojeno, zavreni, jmeno s HTML jen text, anglicky, starsi appka bez pripoj)
+D) Zapojeni: python3 kontrola_b332.py            -> VYSTUP_kontrola_b332.txt (21 OK)
+E) ES5: node kontrola_es5.js (z korene repozitare, acorn z /opt/npm-tools) -> VYSTUP_kontrola_es5.txt
+F) javac vsech zdroju appky proti android.jar: 0 chyb (VYSTUP_javac_android.txt)
+G) Regrese na kodu B332 (VYSTUP_regrese_*):
+   - ../b329 integrace (jadro z ../b317/stavba_jadra.sh) 17 OK, ../b328 integrace 11 OK, TestB329 17 OK,
+     ../b331 test_b331_stranka 11 / 0, ../b320 test_b320_stranky 13 / 0, napoveda CZ 200 nazvu 0 chyb,
+     EN 194 0 chyb.
+   - ZAMERNE ZMENY (ne chyby): TestB331 D1 - JSON zapamatovanych ma navic "a" (adresa) a "h" (stav HID),
+     po odebrani je shodny s B331; kontrola_b331 / b330 / b329 / b328 V1 = verze; kontrola_b329 P4 a
+     kontrola_b328 M7 = radek VYKON ma navic cast o kreslicim vlaknu a slovo "kresleni" je promenne
+     ("kresleni (cekani na vlakno)"); kontrola_b328 M8 = B328 nemenil volby jadra, B332 zamerne pridal
+     kresleni ve vlakne.
+   - STEJNE JAKO DRIVE: ../b317 integrace 19 OK / 11 CHYBA radek po radku stejne jako na ciste B331
+     (git worktree, VYSTUP_regrese_b317_integrace_NA_CISTE_B331.txt; lisi se jen cislo z tahu v realnem
+     case +352 / +353); test_b314_jazyk_navod stejne 2 CHYBA jako v B329 a B331.
+   Puvodni VYSTUP_* starsich verzi vraceny z gitu.
+
+Na telefonu NEOVERENO (preklad pro ARM udela CI). Rene: B332 na server, aktualizace (pod ikonou "©N&P Vision");
+PS1 SpongeBob (i s TV) - log, radky VLAKNA a VYKON ("kresleni ve vlakne X ms na snimek", pomalych snimku);
+Battletron: vypnout a zapnout (HOME), pripadne OPTIONS -> PRIPOJIT „Pro Controller“, log "B332 BT".

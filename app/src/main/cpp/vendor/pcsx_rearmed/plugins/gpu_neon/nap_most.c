@@ -139,3 +139,17 @@ int nap_ps1_gpu_popis(char *buf, int len)
         gpu.state.blanked ? ", ZATEMNENO" : "",
         gpu.state.enhancement_active ? "ANO" : "NE", proc_ne);
 }
+
+/* ---------------------------------------------------------------
+   B332: KRESLENI VE VLAKNE (gpulib gpu_async). Rene: "moc dobre vim, ze
+   nepouzivas vsechna jadra k PS1". Log B330 ze SpongeBoba: kresleni 2x
+   10-11 ms ze 12-13 ms snimku, vse na jednom jadre (cpu7), na dalsich
+   sedmi nic - "kresleni ve vlakne NE", protoze appka jadru na volbu
+   pcsx_rearmed_gpu_thread_rendering neodpovidala (pak plati 0 = vypnuto,
+   RetroArch ma "auto" = zapnuto pri vice jadrech). 1 = kreslici vlakno
+   opravdu bezi. Jen cte.
+   --------------------------------------------------------------- */
+int nap_ps1_kresleni_ve_vlakne(void)
+{
+    return gpu.async != NULL;
+}
