@@ -3636,11 +3636,14 @@ public class MainActivity extends Activity {
             // koreni). Reseni na koreni: dokud bezi TV cast, drz obrazovku
             // vzhuru (stejny mechanismus jako video prehravace/navigace).
             try { ui.post(() -> { try { getWindow().addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON); } catch (Throwable ignored) {} }); } catch (Throwable ignored) {}
-            // BUILD2SK84: pozadat OS o rovnomerny vykon (ne "kratky burst pak sporeni")
-            // po celou dobu TV-cast relace - jen HINT, OS smi ignorovat, a NENI to
-            // totez co tepelne hrdlo (to je bezpecnostni pojistka hardwaru, kterou appka
-            // schvalne nejde a nema obchazet - viz TV_WEB_PERIODIC thermal= log misto).
-            try { ui.post(() -> { try { getWindow().setSustainedPerformanceMode(true); } catch (Throwable ignored) {} }); } catch (Throwable ignored) {}
+            // B330: o "rovnomerny vykon" (setSustainedPerformanceMode, BUILD2SK84) appka UZ NEZADA.
+            // Na Galaxy S8 drzel velka jadra po celou dobu prenosu na TV nejvys na 962 MHz (bez
+            // prenosu 2158-2314 MHz): SpongeBob ve 2x pak kreslil 20-23 ms misto 10 ms, bezel 35-40
+            // snimku/s a zvuk se trhal ("chraplavy hlas"). Rene 16. 11.: "bez BT a TV web hra bezi
+            // plynule i se zvukem - po zapnuti webu se to zacne sekat". Ochrana proti prehrati
+            // zustava systemova (Android zpomali sam, az kdyz je telefon opravdu horky).
+            try { ui.post(() -> { try { getWindow().setSustainedPerformanceMode(false); } catch (Throwable ignored) {} }); } catch (Throwable ignored) {}
+            appendNativeLog("B330 TV: rovnomerny vykon (sustained performance) NEZAPINAM - na S8 brzdil velka jadra na 962 MHz");
             return "TV_WEB_CAST_OK " + url + " APP";
         } catch (Throwable t) {
             napTvWebRunning = false;

@@ -1,0 +1,27 @@
+B330 - PRI PRENOSU NA TV APPKA NEZADA O "ROVNOMERNY VYKON" (16. 11. 2026)
+==========================================================================
+
+Rene po B329: "v uvodnim demu je vse v poradku - chraplani je ve hre, kdy Bob zacne mluvit"; "pri prvnim
+startu bez BT a TV web hra bezi plynule i se zvukem - po zapnuti webu a BT ovladace se to zacne sekat";
+S8 dal na plny vykon. "Udelej opravu B330 dle tebe."
+
+PRICINA (log B329, S8, SpongeBob, emulace pripnuta na cpu7):
+  do 09:31:16 prenos VYPNUTY: cpu7 2158-2314 MHz, kresleni 2x ~10 ms, 60 snimku/s, vypadky zvuku 0 (i ve hre);
+  09:31:20 TV_WEB_CAST_ON -> napTvWebStart volal getWindow().setSustainedPerformanceMode(true) (BUILD2SK84);
+  od te chvile cpu7 nejvys 962 MHz (741-962), kresleni 20-23 ms, 35-40 snimku/s, 300-390 vypadku zvuku za 10 s
+  = chraplavy hlas. Ovladac BT s tim nesouvisi (posledni cast: Battletron odpojen, s prenosem stejne pomale).
+  "Vysoky vykon" v nastaveni Samsungu to neprebije (o brzdu zadala sama appka).
+
+OPRAVA: napTvWebStart misto true vola setSustainedPerformanceMode(false) a zapise do logu
+"B330 TV: rovnomerny vykon (sustained performance) NEZAPINAM ..."; konec prenosu vypina jako drive.
+Ochrana proti prehrati zustava systemova. Pripnuti PS1 na jedno jadro (B329) zustava.
+build.gradle: versionCode 373 "EMU10-B330-TV-VYKON".
+
+Spoustet z adresare test_overeni/b330:
+  python3 kontrola_b330.py                    -> VYSTUP_kontrola_b330.txt (5 OK: zadne setSustainedPerformanceMode(true)
+                                                 v appce, start prenosu false + log, ostatni beze zmeny, verze)
+  javac vsech zdroju appky proti android.jar  -> VYSTUP_javac_android.txt (0 chyb)
+  regrese: ../b329/kontrola_b329.py 16 OK + jen verze, TestB329 17 OK (VYSTUP_regrese_*)
+
+Na telefonu NEOVERENO. Rene: B330 na server, aktualizace, SpongeBob S PRENOSEM na TV na stejnem miste
+-> log: radky VYKON "takt: cpu7 ... MHz" maji jit nad 962 MHz, ZDRAVI "vypadky 0", emulace 60 kroku/s.

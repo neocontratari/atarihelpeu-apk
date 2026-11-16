@@ -3970,5 +3970,22 @@
        parovani, seznam ovladacu; Android 12+ povoleni "Zarizeni v okoli", starsi
        mozna "Poloha"; zvazit CompanionDeviceManager), "VYZKOUSET TLACITKA".
      - build.gradle: versionCode 372 "EMU10-B329-OVLADAC". Na telefonu neovereno.
+     - Rene po B329 (S8): appka se po aktualizaci otevrela sama a ukazala okno;
+       Battletron: vsechna tlacitka spravne (log B329 OVLADAC tlacitko ...), START
+       funguje. SpongeBob: chrapot jen ve hre (uvodni video OK); A12 Rene neresi
+       (slabe telefony pozdeji - v OPTIONS je nastaveni automaticky / rucne).
+
+   B330: PRI PRENOSU NA TV ZADNY "ROVNOMERNY VYKON" (16. 11. 2026).
+     - PRICINA chraplaveho zvuku na S8: napTvWebStart volal
+       setSustainedPerformanceMode(true) (BUILD2SK84) -> velka jadra po celou dobu
+       prenosu nejvys 962 MHz (bez prenosu 2158-2314 MHz). Log: bez TV kresleni 2x
+       10 ms, 60 snimku/s, 0 vypadku; s TV 20-23 ms, 35-40 snimku/s, ~35 vypadku/s.
+       Rene: "bez BT a TV web bezi plynule - po zapnuti webu se to zacne sekat".
+     - Oprava: start prenosu vola false + log "B330 TV: rovnomerny vykon ...
+       NEZAPINAM". Nikde v appce setSustainedPerformanceMode(true) (kontrola_b330).
+     - DALSI KROK: Rene - SpongeBob s prenosem na TV, log (takt nad 962 MHz?,
+       vypadky 0?). Pak B331 Bluetooth v appce. Slabsi telefony (A12, Helio P35)
+       az potom: vynechani snimku, kdyz nestiha / nastaveni v OPTIONS.
+     - build.gradle: versionCode 373 "EMU10-B330-TV-VYKON". Na telefonu neovereno.
 
 ===============================================================================
