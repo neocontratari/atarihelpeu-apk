@@ -1,0 +1,162 @@
+B315 - stranka WEB TV (MainActivity.napTvWebWriteHtml): B314 37798 znaku / 1862 prikazu, B315 47838 znaku / 2325 prikazu
+CHYBA misto 1 (replace, prikazy B314 0-1 -> B315 0-2):
+       B314: <!doctype html><html><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'><title>AtariHelp TV</title><style>html,body{
+       B315: <!doctype html><html><head><meta charset='utf-8'><script>window.NAP_VERZE=0/*NAP_VERZE*/;</script><meta name='viewport' content='width=device-width,initial-scale=1'><title>AtariHelp TV</title><style>html,body{
+OK    misto 2 (replace, prikazy B314 89-90 -> B315 90-91):
+       B314: var AVD=(function(){
+       B315: var AVD0=null,AVD=(function(){
+OK    misto 3 (insert, prikazy B314 101-101 -> B315 102-111):
+       B314: (nic)
+       B315: if(!(AVD>=0.1&&AVD<=2)){AVD0=AVD;AVD=0.30;try{if(localStorage.getItem('napAvd')!==null)localStorage.setItem('napAvd',AVD);}catch(e){}}
+OK    misto 4 (replace, prikazy B314 102-103 -> B315 112-113):
+       B314: AVD=Math.max(0,Math.min(2,Math.round(x*100)/100));
+       B315: AVD=Math.max(0.1,Math.min(2,Math.round(x*100)/100));
+OK    misto 5 (insert, prikazy B314 108-108 -> B315 118-123):
+       B314: (nic)
+       B315: clearTimeout(window._avdL);window._avdL=setTimeout(function(){clog('B315 ZVUK: zpozdeni stare cesty (MP3, YouTube, mezery) zmeneno klavesou na '+Math.round(AVD*1000)+' ms');},1500);
+OK    misto 6 (replace, prikazy B314 133-134 -> B315 148-149):
+       B314: var v=document.getElementById('v'),s=document.getElementById('s'),a=document.getElementById('a'),n=0,fb=false,ac=null,g=null,next=0,aseq=0,aon=false,active=[],lastSeq=0,lastSeqT=0,curFps=0,staleTicks=0;
+       B315: var v=document.getElementById('v'),s=document.getElementById('s'),a=document.getElementById('a'),n=0,fb=false,ac=null,g=null,gp=null,vy=null,next=0,aseq=0,aon=false,active=[],rawS=0,rawN=0,lastSeq=0,lastSeqT=0,curFps=0,staleTicks=0;
+CHYBA misto 7 (insert, prikazy B314 210-210 -> B315 225-226):
+       B314: (nic)
+       B315: if(window.napPm&&napPm.lock)return;
+CHYBA misto 8 (replace, prikazy B314 231-232 -> B315 247-248):
+       B314: var h264CdnTried=0,h264CdnUrls=['https://cdn.jsdelivr.net/npm/jmuxer@2/dist/jmuxer.min.js','https://unpkg.com/jmuxer@2/dist/jmuxer.min.js'];
+       B315: var h264CdnTried=0,h264CdnUrls=[];
+CHYBA misto 9 (replace, prikazy B314 248-249 -> B315 264-266):
+       B314: if(h264Active||h264Loading||(window.napAp&&napAp.chce))return;
+       B315: return;/*B333: H.264 pres Javu vypnute - vse jde proudem z C++*/if(h264Active||h264Loading||(window.napAp&&napAp.chce))return;
+OK    misto 10 (insert, prikazy B314 389-389 -> B315 406-416):
+       B314: (nic)
+       B315: var ven=ac.destination;try{vy=ac.createAnalyser();vy.fftSize=2048;vy.connect(ac.destination);ven=vy;}catch(e){vy=null;}
+OK    misto 11 (replace, prikazy B314 391-392 -> B315 418-422):
+       B314: g.connect(ac.destination);
+       B315: g.connect(ven);gp=ac.createGain();gp.gain.value=1;gp.connect(ven);
+CHYBA misto 12 (replace, prikazy B314 396-397 -> B315 426-427):
+       B314: label(fb?'JPEG':'MJPEG');
+       B315: label(window.napProud?'proud z C++: '+window.napProud:'cekam na proud z C++');
+OK    misto 13 (insert, prikazy B314 398-398 -> B315 428-430):
+       B314: (nic)
+       B315: clog('B315 ZVUK: proud z C++ ma vlastni zesilovac, zpozdeni stare cesty (MP3, YouTube, mezery) '+Math.round(AVD*1000)+' ms'+(AVD0!==null?' (ulozene bylo '+Math.round(AVD0*1000)+' ms - sipkou dolu, od B313 i v menu na TV; pri 0 zvuk hral jen v prvni hre - vraceno na 300 ms)':''));
+OK    misto 14 (insert, prikazy B314 438-438 -> B315 470-519):
+       B314: (nic)
+       B315: var zm={n:0,max:0,hr:0},zmB=null;function zvMer(){try{if(!vy||!ac||ac.state!=='running')return;var N=vy.fftSize,i,s=0,x;if(vy.getFloatTimeDomainData){if(!zmB||zmB.length!==N)zmB=new Float32Array(N);vy.getFloatTimeDomainData(zmB);for(i=0;i<N;i++){x=zmB[i];s+=x*x;}}else{if(!zmB||zmB.length!==N)zmB=new ...
+OK    misto 15 (insert, prikazy B314 441-441 -> B315 522-523):
+       B314: (nic)
+       B315: rawN++;
+OK    misto 16 (replace, prikazy B314 458-459 -> B315 540-541):
+       B314: next=t+AVD;
+       B315: next=t+Math.max(AVD,0.05);
+OK    misto 17 (insert, prikazy B314 466-466 -> B315 548-574):
+       B314: (nic)
+       B315: function rawPredej(tz){if(!ac||!g||!active.length)return;var t=ac.currentTime;if(tz<t+0.012)tz=t+0.012;try{var gv=g.gain.value;g.gain.cancelScheduledValues(t);g.gain.setValueAtTime(gv,t);g.gain.setValueAtTime(gv,tz-0.01);g.gain.linearRampToValueAtTime(0,tz);g.gain.setValueAtTime(1,tz+0.02);}catch(e) ...
+CHYBA misto 18 (replace, prikazy B314 467-468 -> B315 575-577):
+       B314: if(!aon||!ac)return;
+       B315: return;/*B333: /audio.raw (stara cesta pres Javu) vypnuta - zvuk jde v proudu z C++*/if(!aon||!ac)return;
+OK    misto 19 (replace, prikazy B314 483-484 -> B315 592-593):
+       B314: if(ab.byteLength>=4){
+       B315: if(ab.byteLength>=4&&!(ap&&ap.chce)){
+OK    misto 20 (replace, prikazy B314 496-497 -> B315 605-606):
+       B314: if(next<ac.currentTime+0.02)next=ac.currentTime+AVD;
+       B315: if(next<ac.currentTime+0.02)next=ac.currentTime+Math.max(AVD,0.05);
+OK    misto 21 (insert, prikazy B314 499-499 -> B315 608-609):
+       B314: (nic)
+       B315: rawS+=frames/rate;
+OK    misto 22 (replace, prikazy B314 505-506 -> B315 615-616):
+       B314: if(active.length>60)active.splice(0,active.length-60);
+       B315: if(active.length>400)active.splice(0,active.length-400);
+CHYBA misto 23 (replace, prikazy B314 513-514 -> B315 623-625):
+       B314: function toggleFs(){
+       B315: function toggleFs(e){if(window.napPs1MysKlik&&window.napPs1MysKlik(e))return;
+OK    misto 24 (replace, prikazy B314 528-529 -> B315 639-642):
+       B314: if(window.napVAtari||window.napVSeze||window.napVPs1)return;
+       B315: if(window.napVAtari||window.napVSeze||window.napVPs1||window.napVMenu)return;var tg=e.target;if(tg&&(tg.tagName==='INPUT'||tg.tagName==='TEXTAREA'))return;
+CHYBA misto 25 (replace, prikazy B314 639-641 -> B315 752-756):
+       B314: v.onerror=function(){if(!fb)fallback();
+       B315: window.napMjStart=function(){if(window.napMjJe)return;window.napMjJe=1;if(window.napAp&&napAp.chce)return;
+CHYBA misto 26 (replace, prikazy B314 643-645 -> B315 758-787):
+       B314: v.src='/stream.mjpg?'+Date.now();label('MJPEG');
+       B315: setTimeout(function(){if(!window.napMjJe)window.napMjStart();},2500);setTimeout(pollFps,0);function napVerze(t){var mv=/ verze=(\d+)/.exec(t);if(!mv||!window.NAP_VERZE)return false;var vn=parseInt(mv[1],10);if(!vn||vn===window.NAP_VERZE)return false;var po=0;try{po=parseInt(sessionStorage.getItem('n ...
+CHYBA misto 27 (insert, prikazy B314 667-667 -> B315 809-810):
+       B314: (nic)
+       B315: if(napVerze(t))return;
+CHYBA misto 28 (insert, prikazy B314 676-676 -> B315 819-823):
+       B314: (nic)
+       B315: if(!window.napMjJe){if(pd&&apLze())window.napMjJe=1;else if(window.napMjStart)window.napMjStart();}
+CHYBA misto 29 (replace, prikazy B314 691-694 -> B315 838-862):
+       B314: if(!h264Active&&!h264Loading&&!ap.chce&&!(window.napProud&&apLze())){clog('pollFps calling startH264 (universal)');startH264();
+       B315: if(!apLze()&&!window.napNeumi){window.napNeumi=1;clog('B333 PROHLIZEC: neumi proud z C++ (fetch stream) - stara cesta pres Javu je vypnuta, obraz nebude');try{var nd=document.createElement('div');nd.id='napNeumi';nd.style.cssText='position:fixed;left:50%;top:40%;transform:translateX(-50%);background ...
+CHYBA misto 30 (replace, prikazy B314 710-711 -> B315 878-879):
+       B314: if(staleTicks>=4&&!fb&&!h264Active&&!ap.chce){
+       B315: if(staleTicks>=4){
+CHYBA misto 31 (delete, prikazy B314 712-713 -> B315 880-880):
+       B314: v.src='/stream.mjpg?'+Date.now();
+       B315: (nic)
+CHYBA misto 32 (insert, prikazy B314 722-722 -> B315 889-894):
+       B314: (nic)
+       B315: var mq=/ ps1mys=(\d)/.exec(t),pmz=!!(vP&&mq&&mq[1]==='1');if(pmz!==!!window.napPs1Mys){window.napPs1Mys=pmz;if(window.napPmZmena)window.napPmZmena(pmz);}
+CHYBA misto 33 (replace, prikazy B314 728-729 -> B315 900-901):
+       B314: label(h264Active?'H264':(fb?'JPEG':'MJPEG'));
+       B315: label(!apLze()?'tento prohlizec neumi proud z C++ - otevri stranku v Chrome / Edge / Firefox':window.napProud?'proud z C++: '+window.napProud:'cekam na proud z C++');
+CHYBA misto 34 (replace, prikazy B314 738-739 -> B315 910-911):
+       B314: label(h264Active?'H264':(fb?'JPEG':'MJPEG'));
+       B315: label(window.napProud?'proud z C++: '+window.napProud:'cekam na proud z C++');
+CHYBA misto 35 (replace, prikazy B314 743-744 -> B315 915-916):
+       B314: on:false,chce:false,rd:null,cv:null,cx:null,img:null,u32:null,idx:null,pal:new Uint32Array(256),W:0,H:0,buf:null,nA:0,pak:0,chyb:0,pod:0,zv:0,zah:0,cil:0.06,tPak:0,mez:0,okno:0,tl:0,pl:0,podl:0,zahl:0,druh:'',ver:0,gen:0,ox:0,oy:0,ow:0,oh:0,px:4,py:3,rozm:'',lz:null,radky:null,ky0:1e9,ky1:-1,kv:fals ...
+       B315: on:false,chce:false,rd:null,cv:null,cx:null,img:null,u32:null,idx:null,pal:new Uint32Array(256),W:0,H:0,buf:null,nA:0,pak:0,chyb:0,pod:0,zv:0,zah:0,cil:0.06,tPak:0,mez:0,okno:0,tl:0,pl:0,podl:0,zahl:0,druh:'',ver:0,gen:0,ox:0,oy:0,ow:0,oh:0,px:4,py:3,rozm:'',lz:null,radky:null,ky0:1e9,ky1:-1,kv:fals ...
+CHYBA misto 36 (replace, prikazy B314 801-802 -> B315 973-974):
+       B314: else if(napFill&&ap.ow>0&&ap.oh>0){
+       B315: else if(napFill&&ap.ow>0&&ap.oh>0&&ap.druh!=='stranka'){
+CHYBA misto 37 (replace, prikazy B314 879-880 -> B315 1051-1052):
+       B314: fetch('/'+d+'.stream?'+Date.now(),{
+       B315: fetch('/'+d+'.stream?v=319&t='+Date.now(),{
+CHYBA misto 38 (replace, prikazy B314 1000-1009 -> B315 1172-1173):
+       B314: if(!h264Active){v.style.display='';v.onerror=function(){if(!fb)fallback();};v.src='/stream.mjpg?'+Date.now();}clog(d&&d!=='atari'?'B306 '+d.toUpperCase()+' PROUD konec':'B303 ATARI PROUD konec');
+       B315: /*B333: zadny prechod na MJPEG pres Javu - dalsi proud z C++ (stranka) spusti pollFps*/clog(d&&d!=='atari'?'B306 '+d.toUpperCase()+' PROUD konec':'B303 ATARI PROUD konec');
+CHYBA misto 39 (replace, prikazy B314 1266-1267 -> B315 1430-1431):
+       B314: var x=dv.getUint16(o,true),y=dv.getUint16(o+2,true),w=dv.getUint16(o+4,true),h=dv.getUint16(o+6,true),dl=dv.getUint32(o+9,true);
+       B315: var x=dv.getUint16(o,true),y=dv.getUint16(o+2,true),w=dv.getUint16(o+4,true),h=dv.getUint16(o+6,true),kv=p[o+8],dl=dv.getUint32(o+9,true);
+CHYBA misto 40 (replace, prikazy B314 1269-1270 -> B315 1433-1443):
+       B314: if(w>0&&dl>0)apJpeg(p.slice(o,o+dl),x,y,w,h);
+       B315: if(kv===255){if(dl!==4||x+w>ap.W||y+h>ap.H)return -1;var sx=dv.getUint16(o,true),sy=dv.getUint16(o+2,true);if(sx+w>ap.W||sy+h>ap.H)return -1;ap.jq.push({k:1,sx:sx,sy:sy,x:x,y:y,w:w,h:h});apJdalsi();}else if(w>0&&dl>0)apJpeg(p.slice(o,o+dl),x,y,w,h,(kv&128)?1:0);
+CHYBA misto 41 (replace, prikazy B314 1272-1273 -> B315 1445-1446):
+       B314: function apJpeg(j,x,y,w,h){
+       B315: function apJpeg(j,x,y,w,h,pol){
+CHYBA misto 42 (insert, prikazy B314 1278-1278 -> B315 1451-1452):
+       B314: (nic)
+       B315: if(f.k)break;
+CHYBA misto 43 (replace, prikazy B314 1284-1285 -> B315 1458-1459):
+       B314: j:j,x:x,y:y,w:w,h:h}
+       B315: j:j,x:x,y:y,w:w,h:h,p:pol}
+CHYBA misto 44 (insert, prikazy B314 1288-1288 -> B315 1462-1478):
+       B314: (nic)
+       B315: function apKopie(c){try{var t=ap.kc;if(!t)t=ap.kc=document.createElement('canvas');if(t.width<c.w)t.width=c.w;if(t.height<c.h)t.height=c.h;var tx=t.getContext('2d');tx.clearRect(0,0,c.w,c.h);tx.drawImage(ap.cv,c.sx,c.sy,c.w,c.h,0,0,c.w,c.h);ap.cx.drawImage(t,0,0,c.w,c.h,c.x,c.y,c.w,c.h);ap.kop++;}ca ...
+CHYBA misto 45 (insert, prikazy B314 1289-1289 -> B315 1479-1480):
+       B314: (nic)
+       B315: while(!ap.jbusy&&ap.jq.length&&ap.jq[0].k)apKopie(ap.jq.shift());
+CHYBA misto 46 (replace, prikazy B314 1304-1305 -> B315 1495-1504):
+       B314: ap.cx.drawImage(img,f.x,f.y);
+       B315: if(f.p){var cx=ap.cx;cx.imageSmoothingEnabled=false;cx.webkitImageSmoothingEnabled=false;cx.mozImageSmoothingEnabled=false;cx.drawImage(img,f.x,f.y,f.w,f.h);ap.pol++;}else ap.cx.drawImage(img,f.x,f.y);
+OK    misto 47 (replace, prikazy B314 1347-1348 -> B315 1546-1547):
+       B314: if(!aon||!ac||!g)return;
+       B315: if(!aon||!ac||!gp)return;
+OK    misto 48 (insert, prikazy B314 1380-1380 -> B315 1579-1580):
+       B314: (nic)
+       B315: if(!dob)rawPredej(ap.nF/fs);
+OK    misto 49 (replace, prikazy B314 1472-1473 -> B315 1672-1673):
+       B314: s.connect(g);
+       B315: s.connect(gp);
+OK    misto 50 (replace, prikazy B314 1499-1500 -> B315 1699-1703):
+       B314: if(!ap.on)return;
+       B315: if(!ap.on){rawHlas();return;}
+OK    misto 51 (replace, prikazy B314 1501-1502 -> B315 1704-1705):
+       B314: if(ap.tl&&s>0)clog((ap.druh==='atari'?'B303 PROHLIZEC: ':'B306 PROHLIZEC '+ap.druh.toUpperCase()+': ')+(Math.round((ap.pak-ap.pl)/s*10)/10)+' snimku/s'+(ap.ver===3?', JPEG '+(Math.round((ap.jpg-ap.jl)/s*10)/10)+'/s (prekrytych zahozeno '+(ap.jzah-ap.jzl)+')':'')+', zvuk '+(aon&&ac&&ac.state==='runni ...
+       B315: if(ap.tl&&s>0)clog((ap.druh==='atari'?'B303 PROHLIZEC: ':'B306 PROHLIZEC '+ap.druh.toUpperCase()+': ')+(Math.round((ap.pak-ap.pl)/s*10)/10)+' snimku/s'+(ap.ver===3?', JPEG '+(Math.round((ap.jpg-ap.jl)/s*10)/10)+'/s (prekrytych zahozeno '+(ap.jzah-ap.jzl)+')'+(ap.kop>ap.kopl||ap.pol>ap.poll?', B319:  ...
+CHYBA misto 52 (insert, prikazy B314 1508-1508 -> B315 1711-1713):
+       B314: (nic)
+       B315: ap.kopl=ap.kop;ap.poll=ap.pol;
+CHYBA misto 53 (insert, prikazy B314 1861-1861 -> B315 2066-2324):
+       B314: (nic)
+       B315: </script><script>(function(){'use strict';function tr(s){try{return (window.NapJazyk&&NapJazyk.en())?NapJazyk.tr(s):s;}catch(e){return s;}}function clog(m){try{fetch('/clientlog?m='+encodeURIComponent(m));}catch(e){}}var pm={lock:false,dx:0,dy:0,b:0,leti:false,znovu:false,tl:false,posl:0,t:0,hl:null ...
+beze zmeny 1815 z 1862 prikazu B314
+VYSLEDEK: 53 zmenenych mist, 31 CHYBA (nechtena zmena mimo zvuk)

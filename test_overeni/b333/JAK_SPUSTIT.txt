@@ -67,7 +67,11 @@ F) Podpisy JNI: javac -h (NativeMenuBridge) + python3 kontrola_jni.py HLAVICKA.h
                                               -> VYSTUP_kontrola_jni.txt (31 metod, 0 nesouhlasi)
 G) javac vsech zdroju appky proti android.jar -> VYSTUP_javac_android.txt (0 chyb)
 H) Regrese (VYSTUP_regrese_*): kodeky a Hub starsich verzi s hlavickami B333 (b305 hub 16 / 0 s PNG 320,
-   b306 hub6, b313 kodek menu 11, b319 hub 4 + kodek 14, b320 kodek 12 - vse jako drive) a testy
-   stranky WEB TV starsich verzi na B333 i na ciste B332 (git worktree) - viz VYSTUP_regrese_tv.txt.
+   b306 hub6, b313 kodek menu 11, b319 hub 4 + kodek 14, b320 kodek 12 - vse jako drive) a 11 testu
+   stranky WEB TV starsich verzi soucasne na B333 i na ciste B332 (git worktree) -> VYSTUP_regrese_tv.txt
+   (+ VYSTUP_regrese_tv_*): 6 testu presne jako B332 (prepnuti proudu, verze, klavesnice PC, proud PS1
+   B319, SKUTECNE menu, ...); zbytek se lisi JEN zamerne - test cekal starou cestu pres Javu (MP3 pres
+   /audio.raw, MJPEG po /status / pri chybe, navrat na MJPEG po Atari), skryty stavovy radek "proud z
+   C++: X" misto "MJPEG". Atari, Sega, PS1 zvuk, mys, klavesnice, anglictina - vse jako B332.
 
 Na telefonu NEOVERENO (preklad pro ARM udela CI).

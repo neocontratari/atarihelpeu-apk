@@ -1,0 +1,63 @@
+B333 - REGRESE STRANKY WEB TV: testy starsich verzi na kodu B333 a na ciste B332 (git worktree 5939d66) soucasne.
+Kazdy test: vysledek B332 | vysledek B333; radky CHYBA, ktere ma jen B333, a proc.
+
+== B313 prepnuti proudu po odchodu z menu (409 + X-Nap-Proud)
+   B332: VYSLEDEK: 3 kontrol, 0 CHYBA
+   B333: VYSLEDEK: 3 kontrol, 0 CHYBA
+   -> stejne jako B332
+== B315 zvuk na TV v hrach (menu -> Atari -> Sega -> PS1 -> MP3)
+   B332: VYSLEDEK: 20 kontrol, 0 CHYBA
+   B333: VYSLEDEK: 20 kontrol, 7 CHYBA
+   jen B333: CHYBA  B315 vychozi zpozdeni (AVD 0,3 s): zvuk hraje v Atari poprve i podruhe, v Sege, PS1 i v MP3 (stara cesta)
+   jen B333: CHYBA  B315 vychozi zpozdeni (AVD 0,3 s): prechod stare cesty na proud Atari (17.4 s) - stara cesta nehrala, skonci do 0,15 s po zacatku proudu (0.00 s; B314 0.28 s ozveny), mezera mezi nimi -
+   jen B333: CHYBA  B315 6x sipka dolu v menu na TV (jako listovani kartami): zvuk hraje v Atari poprve i podruhe, v Sege, PS1 i v MP3 (stara cesta)
+   jen B333: CHYBA  B315 6x sipka dolu v menu na TV (jako listovani kartami): prechod stare cesty na proud Atari (17.4 s) - stara cesta nehrala, skonci do 0,15 s po zacatku proudu (0.00 s; B314 0.28 s ozveny), mezera mezi nimi -
+   jen B333: CHYBA  B315 ulozene zpozdeni 0 ms (z drivejska v prohlizeci): zvuk hraje v Atari poprve i podruhe, v Sege, PS1 i v MP3 (stara cesta)
+   jen B333: CHYBA  B315 ulozene zpozdeni 0 ms (z drivejska v prohlizeci): prechod stare cesty na proud Atari (17.5 s) - stara cesta nehrala, skonci do 0,15 s po zacatku proudu (0.00 s; B314 0.28 s ozveny), mezera mezi nimi -
+   jen B333: CHYBA  B315 ulozene zpozdeni 2 s (nejvic): zvuk hraje v Atari poprve i podruhe, v Sege, PS1 i v MP3 (stara cesta)
+   -> ZAMERNE: jen "MP3 (stara cesta /audio.raw)" - test servi zvuk MP3 starou cestou, ta je vypnuta (zvuk MP3 jde od B333 v /stranka.stream - test_stranka E, TestB333 J). Atari 2x, Sega, PS1 hraji jako v B332.
+== B315 kontrola stranky (kazda zmena mimo zvuk od B314 = "CHYBA")
+   B332: VYSLEDEK: 42 zmenenych mist, 20 CHYBA (nechtena zmena mimo zvuk)
+   B333: VYSLEDEK: 53 zmenenych mist, 31 CHYBA (nechtena zmena mimo zvuk)
+   jen B333: CHYBA misto 31 (delete, prikazy B314 712-713 -> B315 880-880):
+   -> ZAMERNE: +11 mist = zmeny B333 ve strance (startH264 / pollAudio / napMjStart / apStop bez stare cesty, CDN pryc, popisek, apRozmer pro stranku, hlaska bez fetch streamu).
+== B314 stranka WEB TV cesky / anglicky
+   B332: VYSLEDEK: 29 kontrol, 1 CHYBA
+   B333: VYSLEDEK: 29 kontrol, 2 CHYBA
+   jen B333: CHYBA  a) cesky: 9 stavu stranky + 18 hlasek stejne jako B313 - ROZDIL: ["nacteno (menu): +['AtariHelp TV WEB CAST [SK60] proud z C++: menu HH:MM:SS Nfps AUDIO ON'] -['AtariHelp TV WEB CAST [SK60] MJPEG HH:MM:SS Nfps AUDIO ON']", "atari: +['AtariHelp TV WEB CA
+   -> ZAMERNE: skryty stavovy radek ma "proud z C++: menu" misto "MJPEG" (cesky = B313 krome toho). Anglicky bez cestiny OK (en_tv.js prelozi i novy radek), zadna chyba JS.
+== B318 mys PS1 na strance WEB TV
+   B332: VYSLEDEK: 34 kontrol, 1 CHYBA
+   B333: VYSLEDEK: 34 kontrol, 4 CHYBA
+   jen B333: CHYBA  3) obrazovka bez proudu z C++: MJPEG az po prvnim /status (status 0.08 s, MJPEG -1.00 s)
+   jen B333: CHYBA  3) /status vrati chybu (500): hned MJPEG (-1.00 s po nacteni)
+   jen B333: CHYBA  3) /status neodpovida vubec (zaseknuty server): MJPEG po 2,5 s jako drive (-1.00 s po nacteni)
+   -> ZAMERNE: 3x "MJPEG az po /status / pri chybe / po 2,5 s" - MJPEG pres Javu je vypnute. Mys vse OK jako B332.
+== B319 mys z PC (nejvys ~30 zprav / s)
+   B332: VYSLEDEK: 36 kontrol, 1 CHYBA
+   B333: VYSLEDEK: 36 kontrol, 4 CHYBA
+   jen B333: CHYBA  3) obrazovka bez proudu z C++: MJPEG az po prvnim /status (status 0.08 s, MJPEG -1.00 s)
+   jen B333: CHYBA  3) /status vrati chybu (500): hned MJPEG (-1.00 s po nacteni)
+   jen B333: CHYBA  3) /status neodpovida vubec (zaseknuty server): MJPEG po 2,5 s jako drive (-1.00 s po nacteni)
+   -> ZAMERNE: totez 3x MJPEG jako B318. Mys z PC vse OK jako B332.
+== B320 stranka se po aktualizaci appky obnovi sama
+   B332: VYSLEDEK: 6 kontrol, 0 CHYB
+   B333: VYSLEDEK: 6 kontrol, 0 CHYB
+   -> stejne jako B332
+== B302 klavesnice PC do Atari
+   B332: VYSLEDEK: 23 kontrol, 0 chyb
+   B333: VYSLEDEK: 23 kontrol, 0 chyb
+   -> stejne jako B332
+== B303 Atari na TV (proud z C++, zvuk, Ctrl+V)
+   B332: VYSLEDEK: 23 kontrol, 0 chyb
+   B333: VYSLEDEK: 23 kontrol, 1 chyb
+   jen B333: CHYBA  Atari pryc z obrazovky -> proud konci, stranka zpet na MJPEG / JPEG (postaru)
+   -> ZAMERNE: po odchodu z Atari se stranka nevraci na MJPEG / JPEG pres Javu (vypnuto); appka B333 rekne v /status proud=stranka a prohlizec otevre /stranka.stream (test_b333_tv A / B). Atari 50 / s, zvuk, Ctrl+V jako B332.
+== B319 proud PS1 (kopie + polovicni rozliseni) v Chromiu, canvas = snimek hry
+   B332: VYSLEDEK: 7 kontrol, 0 CHYBA
+   B333: VYSLEDEK: 7 kontrol, 0 CHYBA
+   -> stejne jako B332
+== B313 SKUTECNE hlavni menu (nap_menu_gl.cpp, Mesa) na TV ostre
+   B332: VYSLEDEK: 11 kontrol, 0 CHYBA
+   B333: VYSLEDEK: 11 kontrol, 0 CHYBA
+   -> stejne jako B332

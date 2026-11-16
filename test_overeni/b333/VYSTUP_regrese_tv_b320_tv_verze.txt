@@ -1,0 +1,9 @@
+B320 - stranka WEB TV se po aktualizaci appky obnovi sama (Chromium, stranka z MainActivity.java)
+OK     5) Java: /status " verze=" + napTvVerze() (versionCode), stranka window.NAP_VERZE=0/*NAP_VERZE*/ - cislo dosadi Java pred odeslanim
+OK     1) stejna verze appky (363): stranka se neobnovuje (nacteni 1, NAP_VERZE 363)
+OK     2) appka aktualizovana (/status 363 -> 364): stranka se obnovila sama za 1.4 s, v logu appky "B320 STRANKA: appka je nove verze (363 -> 364) - stranka se obnovi", NAP_VERZE 364, proud PS1 zase bezi (/ps1.stream?v=319), dalsi obnoveni ne (nacteni celkem 2)
+OK     3) stranka i po obnoveni stara (363, /status 364): obnovi se jen jednou za 30 s, zadne cykleni (nacteni za 8 s: 2)
+OK     4) /status bez verze (starsi appka) ani stranka bez cisla (NAP_VERZE 0) se neobnovuje
+OK     6) zadna chyba JavaScriptu
+
+VYSLEDEK: 6 kontrol, 0 CHYB
