@@ -1,0 +1,14 @@
+OK     T1) OPTIONS na TV: ramecek hned na "stTitul" (v panelu), sipka dolu: stTitul > stJazCs > stStartTv > stIntro > stStahni > stAktual > stTvPokus > stOvlDotyk > stBtHledej > stModeAuto > stZavrit - vse v panelu, nic ze stranky pod nim
+OK     T1) vedle sebe: VZDY DOTYK -> vpravo stOvlSkryt -> 2x vlevo stOvlAuto
+OK     T2) OK = klepnuti: stJazCs -> vpravo stJazEn -> OK -> AHJAZYK.nastav(en) 1x
+OK     T2) dolu az na stZavrit -> OK -> panel OPTIONS zavren: True
+OK     T3) karusel karet si sipky resi sam: posun 0 -> 349, ramecek se nehnul
+OK     T1-T3) zadna chyba JavaScriptu
+OK     T4) volba jazyka: ramecek en -> sipka dolu (stranka presune focus) -> ramecek cs (focus cs) -> OK -> vybrano ['cs']
+OK     T4) zadna chyba JavaScriptu
+OK     T5) napoveda: sipky po dlazdicich hledat > #atari > #dzubox > #odemykani > #otazky > #options, OK -> kapitola (posun 816 -> 11870, -)
+OK     T5) dlouha stranka: sipkou dolu az na konec (posun 11870 -> 19938)
+OK     T5) zadna chyba JavaScriptu
+OK     T6) telefon: bez ramecku, po sipce ramecek na stTitul, dotyk ho schova (0)
+OK     T7) 16 stranek: skript ovladani je PRVNI, NapTvOvladani + zapni() bez chyby (polozek: index.html(16), hry/index.html(7), hry/aktivace.html(1), hry/odemknout.html(1), hry/jazyk.html(2), napoveda/index.html(93), napoveda/en.html(93), player/index.html(25), dj/index.html(92), emu_ps1/index.html(14), emu_sega/index.html(8), emu_atari_cpp/index.html(6), intro/index.html(0), intro/etapa1.html(0), intro/etapa2.html(0), intro/etapa5.html(0))
+VYSLEDEK: 13 kontrol, 0 CHYBA

@@ -1,0 +1,74 @@
+B334 - ANDROID TV: APPKA PRIMO V TELEVIZI (32 BITU, IKONA V NABIDCE TV, DALKOVY OVLADAC) (16. 11. 2026)
+=====================================================================================================
+
+Rene: "zkousel jsem tu apku nainstalovat naprimo do televize s Android TV ... televize vyhodila hlasku
+'Aplikaci nelze nainstalovat'. Televize ma asi starsi typ procesoru nebo ji vadi, ze nema dotykovou
+obrazovku. Potrebuju, aby to slo normalne nainstalovat, ukazala se ikona v nabidce televize a dalo se
+to ovladat ovladacem od TV nebo gamepadem."
+
+PRICINA: APK melo knihovny JEN pro arm64-v8a (build.gradle abiFilters, "PS1 jadro je jen arm64").
+Televize a TV boxy maji casto 32bitovy Android (armeabi-v7a) i na 64bitovem procesoru - Android pak
+APK odmitne (INSTALL_FAILED_NO_MATCHING_ABIS = "Aplikaci nelze nainstalovat"). Dotykovy displej
+instalaci nebrani (to by resil jen Obchod Play), ale appka ho ted ani nevyzaduje.
+
+1) 32 BITU: abiFilters 'arm64-v8a', 'armeabi-v7a'. CMakeLists.txt: PS1 pro armeabi-v7a presne podle
+   jni/Android.mk jadra PCSX-ReARMed (ono je puvodne pro 32bitovy ARM): dynarec ari64 (assem_arm.c +
+   linkage_arm.S), GTE gte_arm.S / gte_nf_arm.S / gte_neon.S / gte_nf_neon.S, zvuk arm_utils.S,
+   vykreslovac gpu_neon v assembleru NEON (psx_gpu_arm_neon.S, bez SIMD_BUILD), -marm -mfpu=neon.
+   ARM64 beze zmeny (SIMD_BUILD + psx_gpu_simd.c + gte_arm64 / linkage_arm64). Atari 130XE i pro
+   armeabi-v7a (cisty C++). Sega, menu, demo, eglrender se stavi pro obe architektury.
+2) IKONA V NABIDCE TV: manifest LEANBACK_LAUNCHER + android:banner (drawable-xhdpi/nap_tv_banner.png
+   320 x 180 - zlata mince N&P + N&P VISION pismem appky Chakra Petch, udelej_banner.py); uses-feature
+   leanback, touchscreen, faketouch, location*, gamepad required=false.
+3) DALKOVY OVLADAC TV (NapDalkovy - prevod, MainActivity.napDalkovyKlavesa; klavesnice s pismeny a
+   herni ovladac zustavaji jako drive):
+   - uvodni demo: OK / PLAY / START (i gamepad) preskoci (SKIP je dotykove tlacitko),
+   - hlavni menu (C++): vlevo / vpravo listuje, OK spusti, nahoru / MENU = OPTIONS, dolu nic,
+   - hry PS1 / Sega / Atari: jako gamepad - krizek = smer, OK = A, PLAY / MENU = START, barevna
+     tlacitka = B / X / Y / SELECT, pretaceni / kanaly = L1 / R1 (co udela, rozhoduje C++ nap_ovladac.h),
+   - stranky (OPTIONS, napoveda, seznamy her, prehravac ...): spolecne/nap_tv_ovladani.js - zlaty
+     ramecek, sipky ho posouvaji (nejblizsi prvek ve smeru, jen v nejvyssi vrstve - otevreny panel),
+     OK stiskne; kdyz ve smeru nic neni, stranka se posune. Skript je na 16 strankach PRVNI (pozna
+     posluchace klepnuti), stranky se sipkami (karusel, volba jazyka) si je resi samy - ramecek jde za
+     jejich focusem. Na TV appka po nacteni stranky da focus do WebView a ramecek zapne hned.
+   - na TV je dotykove ovladani ve hrach vychozi SKRYT (NapOvladac), log "B334 TV:" (Android TV ano /
+     ne, ABI procesoru, knihovny appky 32 / 64 bitu, Android, model) a "B334 DALKOVY OVLADAC".
+4) Napoveda CZ / EN (kapitola WEB TV: Appka primo v televizi), CI vypise architektury knihoven APK a
+   nabidku TV, build.gradle versionCode 377 "EMU10-B334-ANDROID-TV".
+
+Spoustet z adresare test_overeni/b334 (PRAC = pracovni slozka, AJ = android-34.jar, JV = JDK):
+A) SKUTECNE jadro PS1 z appky na 32bitovem ARM v qemu-arm (balicky gcc-arm-linux-gnueabihf,
+   g++-arm-linux-gnueabihf, libc6-dev-armhf-cross, qemu-user) proti PC:
+   bash stavba_jadra_arm32.sh PRAC              -> PRAC/jadro_arm32 (86 souboru z CMakeLists.txt pro
+                                                   armeabi-v7a; kazdy .S i clangem --target=armv7a-linux-androideabi24)
+   bash ../b332/stavba_jadra_gpu.sh PRAC        -> PRAC/jadro_gpu (PC: interpret + gpu_neon pres SSE)
+   PS1="-DANDROID -I../b305/stub -I../b291/stub -I$JV/include -I$JV/include/linux"
+   PC:  g++ -std=c++17 -O1 -g -pthread -w $PS1 -I/usr/include -o PRAC/integrace_b334_x86 integrace_b334_arm32.cpp \
+            PRAC/jadro_gpu/*.o -l:libEGL.so.1 -l:libGLESv2.so.2 -lz -ldl
+        EGL_PLATFORM=surfaceless PRAC/integrace_b334_x86 PRAC PRAC/kresleni_test.exe zapis PRAC/ref_pc.txt
+                                                -> VYSTUP_integrace_b334_pc.txt (5 OK, reference 418 snimku)
+   ARM: arm-linux-gnueabihf-g++ -std=c++17 -O1 -g -pthread -w -marm -mcpu=cortex-a9 -mfpu=neon -mfloat-abi=hard $PS1 \
+            -I<EGL/GLES/KHR hlavicky> -c integrace_b334_arm32.cpp; arm-linux-gnueabihf-gcc -c nahrady_gl.c (EGL / GLES /
+            zlib nahrady - Linux armhf je nema); arm-linux-gnueabihf-g++ -o PRAC/integrace_b334_arm32 *.o PRAC/jadro_arm32/*.o -pthread -ldl
+        qemu-arm -L /usr/arm-linux-gnueabihf PRAC/integrace_b334_arm32 PRAC PRAC/kresleni_test.exe srovnej PRAC/ref_pc.txt
+                                                -> VYSTUP_integrace_b334_arm32_qemu.txt (6 OK)
+   (kresleni_test.exe = ../b332/udelej_kresleni_exe.py. A1 DYNAREC ARM bezi, kresleni ve vlakne; A2 418 snimku
+    2x; O1 ve vlakne = bez vlakna; R1 OBRAZ 418 snimku BAJT PO BAJTU STEJNY JAKO NA PC (dynarec ARM =
+    interpret, gpu_neon NEON assembler = SIMD C); R2 cteni VRAM stejne; S1 ulozeni a nahrani pozice)
+B) JVM: javac -encoding UTF-8 --release 17 -cp AJ -d OUT ../../app/src/main/java/eu/atarihelp/emu10/NapDalkovy.java \
+        jvm/eu/atarihelp/emu10/TestB334.java && java -cp OUT:AJ eu.atarihelp.emu10.TestB334
+                                                -> VYSTUP_test_b334_java.txt (5 OK: co je dalkovy ovladac,
+                                                   prevod pro hry / menu / demo)
+C) Chromium, SKUTECNE stranky z assets: python3 test_b334_tv_ovladani.py -> VYSTUP_test_b334_tv_ovladani.txt
+   (13 OK: OPTIONS na TV ramecek jen v panelu shora dolu, vlevo / vpravo, OK = klepnuti (jazyk, ZAVRIT),
+    karusel si sipky resi sam, volba jazyka - ramecek za focusem a jedno klepnuti, napoveda dlazdice +
+    skok + posouvani, telefon - ramecek az po sipce a dotyk ho schova, 16 stranek bez chyby)
+D) Zapojeni: python3 kontrola_b334.py AJ        -> VYSTUP_kontrola_b334.txt (23 OK, s aapt2 dump badging)
+E) javac vsech zdroju appky proti android.jar   -> VYSTUP_javac_android.txt (0 chyb)
+F) Regrese: stranky appky (b332 / b331 / b320 / b314 / b326) na B334 i ciste B333 -> VYSTUP_regrese_stranky*.txt
+   - vse stejne; napoveda CZ 201 nazvu 0 chyb, EN 194 0 chyb (VYSTUP_regrese_b311 / b314_kontrola_navodu*).
+   ../b332/stavba_jadra_gpu.sh a ../b320/stavba_vykreslovace.sh: psx_gpu_simd.c je od B334 ve vetvi
+   ARM64 seznamu NAP_PS1_ARCH_SRC - skripty si ho pridaji samy.
+
+Na televizi NEOVERENO (Rene). Kdyby se APK ani ted nenainstalovalo: Nastaveni TV -> Informace ->
+verze Androidu a model (appka potrebuje Android 7.0 a novejsi).

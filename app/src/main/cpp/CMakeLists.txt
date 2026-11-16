@@ -142,12 +142,36 @@ enable_language(ASM) # BUILD2SA6: dynarec ma arm64 assembly (.S)
 # na ostatnich ABI se PS1 PRESKOCI a Sega se stavi jak dosud. Zadna dalsi
 # architektura uz nemuze shodit workflow; Java most na ne-arm64 hlasi
 # PS1_CORE_LOAD_FAIL misto padu.
-if(ANDROID AND NOT (ANDROID_ABI STREQUAL "arm64-v8a"))
+# B334: + armeabi-v7a (32 bitu) - Android TV a starsi TV boxy maji casto 32bitovy Android i na
+# 64bitovem procesoru (Rene: "Aplikaci nelze nainstalovat" - APK melo jen arm64-v8a). PCSX-ReARMed
+# je puvodne pro 32bitovy ARM: dynarec ari64 (assem_arm.c + linkage_arm.S), GTE v assembleru ARM /
+# NEON, vykreslovac gpu_neon v assembleru NEON - presne jako jni/Android.mk jadra pro armeabi-v7a.
+if(ANDROID AND NOT (ANDROID_ABI STREQUAL "arm64-v8a" OR ANDROID_ABI STREQUAL "armeabi-v7a"))
     set(NAP_ENABLE_PS1 OFF)
-    message(STATUS "BUILD2SA1: PS1 core skipped for ABI '${ANDROID_ABI}' (arm64-v8a only for now)")
+    message(STATUS "BUILD2SA1: PS1 core skipped for ABI '${ANDROID_ABI}' (arm64-v8a / armeabi-v7a only)")
 endif()
 if(NAP_ENABLE_PS1)
 set(PS1_DIR ${CMAKE_CURRENT_LIST_DIR}/vendor/pcsx_rearmed)
+if(ANDROID_ABI STREQUAL "armeabi-v7a")
+    # B334: 32bitovy ARM (jni/Android.mk jadra: HAVE_ARI64 + HAVE_GPU_NEON pro armeabi-v7a)
+    set(NAP_PS1_ARCH_SRC
+        ${PS1_DIR}/libpcsxcore/gte_arm.S
+        ${PS1_DIR}/libpcsxcore/gte_nf_arm.S
+        ${PS1_DIR}/libpcsxcore/gte_neon.S
+        ${PS1_DIR}/libpcsxcore/gte_nf_neon.S
+        ${PS1_DIR}/libpcsxcore/new_dynarec/linkage_arm.S
+        ${PS1_DIR}/plugins/dfsound/arm_utils.S
+        ${PS1_DIR}/plugins/gpu_neon/psx_gpu/psx_gpu_arm_neon.S)
+    set(NAP_PS1_GPU_DEFS "")                    # gpu_neon v assembleru NEON (ne SIMD_BUILD)
+else()
+    # ARM64 (S8 a moderni telefony) - jako do B333
+    set(NAP_PS1_ARCH_SRC
+        ${PS1_DIR}/libpcsxcore/gte_arm64.S
+        ${PS1_DIR}/libpcsxcore/gte_nf_arm64.S
+        ${PS1_DIR}/libpcsxcore/new_dynarec/linkage_arm64.S
+        ${PS1_DIR}/plugins/gpu_neon/psx_gpu/psx_gpu_simd.c)
+    set(NAP_PS1_GPU_DEFS SIMD_BUILD)            # gpu_neon: na ARM64 SIMD varianta (intrinsics)
+endif()
 add_library(napps1core SHARED
     ${CMAKE_CURRENT_LIST_DIR}/nap_ps1_native.cpp
     ${PS1_DIR}/libpcsxcore/cdriso.c
@@ -223,9 +247,7 @@ add_library(napps1core SHARED
     ${PS1_DIR}/libpcsxcore/new_dynarec/emu_if.c
     ${PS1_DIR}/libpcsxcore/new_dynarec/new_dynarec.c
     ${PS1_DIR}/libpcsxcore/new_dynarec/pcsxmem.c
-    ${PS1_DIR}/libpcsxcore/gte_arm64.S
-    ${PS1_DIR}/libpcsxcore/gte_nf_arm64.S
-    ${PS1_DIR}/libpcsxcore/new_dynarec/linkage_arm64.S
+    ${NAP_PS1_ARCH_SRC}
     # ===== PROVERENY VYKRESLOVAC gpu_neon =====
     # Do B82 se tu prekladal rucne psany gpu_naples2 (1291 radku), zatimco
     # 19 377 radku hotoveho a provereneho gpu_neon lezelo nepouzitych.
@@ -237,7 +259,6 @@ add_library(napps1core SHARED
     ${PS1_DIR}/plugins/gpulib/vout_pl.c
     ${PS1_DIR}/plugins/gpulib/prim.c
     ${PS1_DIR}/plugins/gpu_neon/psx_gpu_if.c
-    ${PS1_DIR}/plugins/gpu_neon/psx_gpu/psx_gpu_simd.c
     ${PS1_DIR}/plugins/gpu_neon/nap_most.c
     ${PS1_DIR}/frontend/pcsxr-threads.c
     ${PS1_DIR}/deps/libretro-common/features/features_cpu.c
@@ -249,8 +270,8 @@ target_include_directories(napps1core PRIVATE
     ${PS1_DIR}/deps/libchdr/deps/zstd-1.5.6/lib ${PS1_DIR}/deps/libretro-common/include
     ${PS1_DIR}/plugins/gpu_neon ${PS1_DIR}/plugins/gpu_neon/psx_gpu)
 target_compile_definitions(napps1core PRIVATE
-    # gpu_neon: na ARM64 se pouziva SIMD varianta (ne 32bitovy assembler)
-    GPU_NEON NEON_BUILD SIMD_BUILD TEXTURE_CACHE_4BPP TEXTURE_CACHE_8BPP
+    # gpu_neon: ARM64 SIMD varianta, armeabi-v7a assembler NEON (B334, NAP_PS1_GPU_DEFS)
+    GPU_NEON NEON_BUILD ${NAP_PS1_GPU_DEFS} TEXTURE_CACHE_4BPP TEXTURE_CACHE_8BPP
     HAVE_CHD Z7_ST ZSTD_DISABLE_ASM HAVE_LIBRETRO NO_FRONTEND REARMED
     P_HAVE_MMAP=1 P_HAVE_PTHREAD=1 P_HAVE_POSIX_MEMALIGN=1 USE_LIBRETRO_VFS
     NDRC_THREAD LIGHTREC_CUSTOM_MAP=0 LIGHTREC_ENABLE_THREADED_COMPILER=0
@@ -264,6 +285,11 @@ if(ANDROID)
     target_compile_definitions(napps1core PRIVATE ANDROID)
 endif()
 target_compile_options(napps1core PRIVATE ${NAP_CORE_OPT_FLAGS} -ffast-math -fno-strict-aliasing -Wno-unused -Wno-unused-function)
+if(ANDROID_ABI STREQUAL "armeabi-v7a")
+    # B334: jako LOCAL_ARM_MODE := arm + LOCAL_ARM_NEON := true v jni/Android.mk jadra (dynarec
+    # generuje kod ARM, assembler GTE / gpu_neon je ARM + NEON)
+    target_compile_options(napps1core PRIVATE -marm -mfpu=neon)
+endif()
 find_package(Threads REQUIRED)
 # BUILD2SA1-FIX2: Android.mk ma LOCAL_LDLIBS := -lz -llog. Bez systemove zlib
 # (libchdr ji potrebuje) spadl NDK link - presne chyba z Actions #853.
@@ -290,7 +316,8 @@ include(${CMAKE_CURRENT_LIST_DIR}/eglrender/eglrender.cmake)
 #  KILL-SWITCH: kdyby to zlobilo, staci OFF a workflow je zeleny bez Atari.
 # ============================================================
 option(NAP_ENABLE_ATARI "Build Atari core (vrstvy 1-2)" ON)
-if(ANDROID AND NOT (ANDROID_ABI STREQUAL "arm64-v8a"))
+# B334: + armeabi-v7a (Android TV) - jadro Atari je cisty C++ bez assembleru
+if(ANDROID AND NOT (ANDROID_ABI STREQUAL "arm64-v8a" OR ANDROID_ABI STREQUAL "armeabi-v7a"))
     set(NAP_ENABLE_ATARI OFF)
     message(STATUS "BUILD2SA14: Atari core preskocen pro ABI '${ANDROID_ABI}'")
 endif()

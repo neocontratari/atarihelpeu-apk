@@ -23,6 +23,16 @@
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" android:maxSdkVersion="30" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" android:maxSdkVersion="30" />
     <uses-feature android:name="android.hardware.bluetooth" android:required="false" />
+    <!-- B334: ANDROID TV (Rene: "nainstalovat primo do televize, ikona v nabidce televize, ovladat
+         ovladacem od TV nebo gamepadem"). Appka TV umi (leanback), ale neni jen pro ni; dotykovy displej
+         ani poloha (jen kvuli hledani Bluetooth na Androidu 6-11) nejsou podminkou instalace. -->
+    <uses-feature android:name="android.software.leanback" android:required="false" />
+    <uses-feature android:name="android.hardware.touchscreen" android:required="false" />
+    <uses-feature android:name="android.hardware.faketouch" android:required="false" />
+    <uses-feature android:name="android.hardware.location" android:required="false" />
+    <uses-feature android:name="android.hardware.location.gps" android:required="false" />
+    <uses-feature android:name="android.hardware.location.network" android:required="false" />
+    <uses-feature android:name="android.hardware.gamepad" android:required="false" />
 
     <!-- B313: allowBackup=false - Android appce po nove instalaci vracel nastaveni ze zalohy
          v Google uctu (Auto Backup), i odemcenou Segu a PS1 (Rene: "i pred zadanim kodu je
@@ -35,6 +45,7 @@
         android:label="©N&amp;P Vision"
         android:icon="@mipmap/ic_launcher"
         android:roundIcon="@mipmap/ic_launcher_round"
+        android:banner="@drawable/nap_tv_banner"
         android:usesCleartextTraffic="true"
         android:requestLegacyExternalStorage="true"
         android:theme="@android:style/Theme.NoTitleBar">
@@ -49,6 +60,8 @@
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
+                <!-- B334: ikona (banner) v nabidce Android TV -->
+                <category android:name="android.intent.category.LEANBACK_LAUNCHER" />
             </intent-filter>
         </activity>
 

@@ -9,8 +9,8 @@ android {
         applicationId "eu.atarihelp.emu10.test"  // TEST vedle prave apky (neprepise ji)
         minSdk 24
         targetSdk 34
-        versionCode 376
-        versionName "EMU10-B333-TV-CPP"
+        versionCode 377
+        versionName "EMU10-B334-ANDROID-TV"
         // B314: Rene - "slo by dat vyber jazyka - volbu Cze a Ang? ... po volbe na ang byla apka
         // v anglictine? a naopak?" - OPTIONS -> JAZYK · LANGUAGE (CESTINA / ENGLISH), poprve podle
         // jazyka telefonu: menu (C++), OPTIONS, HELP (napoveda/en.html), Atari, Sega, PS1, MP3,
@@ -137,7 +137,10 @@ android {
         // test overit NEUMI - to muze potvrdit jen Reneho telefon.
 
         ndk {
-            abiFilters 'arm64-v8a'  // PRIDANO: PS1 jadro je jen arm64
+            // B334: + armeabi-v7a - Android TV a TV boxy maji casto 32bitovy Android (i na 64bitovem
+            // procesoru) a APK jen s arm64-v8a se tam vubec nenainstaluje ("Aplikaci nelze nainstalovat").
+            // PS1 (dynarec ARM + gpu_neon NEON), Atari, Sega, menu i demo se stavi pro obe architektury.
+            abiFilters 'arm64-v8a', 'armeabi-v7a'
         }
 
         externalNativeBuild {

@@ -4089,5 +4089,36 @@
        SKUTECNOU strankou z MainActivity 9 OK (na sirku / na vysku, zadny dotaz na
        starou cestu ani internet), kontrola zapojeni 33 OK, javac 0 chyb.
      - build.gradle: versionCode 376 "EMU10-B333-TV-CPP". Na telefonu neovereno.
+     - Regrese stranky WEB TV (B333 proti ciste B332): jen zamerne rozdily stare cesty.
+
+   B334: ANDROID TV - APPKA PRIMO V TELEVIZI (16. 11. 2026). Rene: instalace do TV s Android
+   TV -> "Aplikaci nelze nainstalovat"; chce instalaci, ikonu v nabidce TV, ovladani ovladacem
+   od TV nebo gamepadem.
+     - PRICINA: APK jen arm64-v8a; TV / TV boxy maji casto 32bitovy Android (armeabi-v7a) i na
+       64bitovem procesoru -> INSTALL_FAILED_NO_MATCHING_ABIS. Ted abiFilters arm64-v8a +
+       armeabi-v7a. PS1 pro armeabi-v7a podle jni/Android.mk jadra: dynarec ari64 ARM
+       (linkage_arm.S), GTE ARM / NEON .S, arm_utils.S, gpu_neon v assembleru NEON
+       (psx_gpu_arm_neon.S, bez SIMD_BUILD), -marm -mfpu=neon (CMake NAP_PS1_ARCH_SRC /
+       NAP_PS1_GPU_DEFS); ARM64 beze zmeny. Atari i pro armeabi-v7a.
+     - OVERENO: jadro PS1 prelozene pro ARM 32 bitu (arm-linux-gnueabihf) bezi v qemu-arm
+       s DYNARECEM: 418 snimku kresleni_test.exe bajt po bajtu stejnych jako PC (interpret +
+       SIMD), cteni VRAM stejne, kresleni ve vlakne, ulozeni pozice (test_overeni/b334).
+     - TV: LEANBACK_LAUNCHER + android:banner (320x180, udelej_banner.py), uses-feature
+       leanback / touchscreen / location / gamepad required=false (aapt2 badging overeno).
+     - DALKOVY OVLADAC (NapDalkovy + MainActivity.napDalkovyKlavesa po gamepadu, pred WebView):
+       zdroj DPAD / klavesnice BEZ pismen (klavesnice s pismeny a gamepad jako drive).
+       Demo: OK / PLAY / START preskoci. Menu: vlevo / vpravo, OK, nahoru / MENU = OPTIONS.
+       Hry: jako gamepad (OK = A, PLAY / MENU = START, barevna = B / X / Y / SELECT, L1 / R1).
+       Stranky: assets/spolecne/nap_tv_ovladani.js (ES5, PRVNI skript na 16 strankach -
+       vloz_tv_ovladani.py; zapamatuje addEventListener click): zlaty ramecek, sipky =
+       nejblizsi prvek ve smeru v nejvyssi vrstve, OK = klepnuti, jinak posun stranky;
+       stranky s vlastnimi sipkami (karusel, jazyk) maji prednost (posloucha az po nich,
+       ramecek prevezme jejich focus). Na TV focus do WebView + NapTvOvladani.zapni().
+       Na TV dotykove ovladani ve hrach vychozi SKRYT. Log "B334 TV:" (ABI, knihovny arm /
+       arm64, Android, model), "B334 DALKOVY OVLADAC".
+     - CI vypisuje v kroku Kontrola APK native-code, leanback a lib/* v APK.
+     - DALSI KROK: Rene na TV - instalace, ikona, ovladac TV, gamepad, log "B334 TV".
+       Pak Dune carky (B335: prepinac 2x v SERVIS / zaznam GPU).
+     - build.gradle: versionCode 377 "EMU10-B334-ANDROID-TV". Na TV neovereno.
 
 ===============================================================================

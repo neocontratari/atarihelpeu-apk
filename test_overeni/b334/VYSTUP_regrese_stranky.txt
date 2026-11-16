@@ -1,0 +1,9 @@
+B334 - REGRESE STRANEK APPKY (assets) - testy starsich verzi na B334 (skript dalkoveho ovladace na 16 strankach) a na ciste B333 (git worktree f5f53c6) soucasne:
+  b332_stranka: B333 VYSLEDEK: 9 kontrol, 0 CHYB | B334 VYSLEDEK: 9 kontrol, 0 CHYB
+  b331_stranka: B333 VYSLEDEK: 11 kontrol, 0 CHYB | B334 VYSLEDEK: 11 kontrol, 0 CHYB
+  b320_stranky: B333 VYSLEDEK: 13 kontrol, 0 CHYB | B334 VYSLEDEK: 13 kontrol, 0 CHYB
+  b314_jazyk_stranky: B333 VYSLEDEK: 15 kontrol, 1 CHYBA | B334 VYSLEDEK: 15 kontrol, 1 CHYBA
+  b314_jazyk_menu: B333 VYSLEDEK: 9 kontrol, 0 CHYBA | B334 VYSLEDEK: 9 kontrol, 0 CHYBA
+  b314_jazyk_navod: B333 VYSLEDEK: 34 kontrol, 2 CHYBA | B334 VYSLEDEK: 34 kontrol, 2 CHYBA
+  b326_jazyk_start: B333 VYSLEDEK: 12 kontrol, 0 CHYBA | B334 VYSLEDEK: 12 kontrol, 0 CHYBA
+  -> vse stejne jako B333. b314_jazyk_stranky 1 CHYBA a b314_jazyk_navod 2 CHYBA jsou stare (texty PS1 a napovedy pridane po B313 / B314), radky CHYBA stejne (u jazyk_stranky vypis 3 prikladu z mnoziny - poradi se meni).

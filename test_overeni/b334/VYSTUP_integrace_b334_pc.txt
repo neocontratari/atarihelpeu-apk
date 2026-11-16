@@ -1,0 +1,8 @@
+B334 - SKUTECNE jadro PS1 z appky na: PC x86_64 (kresleni_test.exe, BIOS HLE, 2x, kresleni ve vlakne)
+OK      A1) jadro bezi: procesor PS1 INTERPRET, kresleni ve vlakne ANO | 2x (Enhanced Resolution) ZAPNUTO, bez 1x obrazu NE, uprava textur ANO | prokladani AUTO | dithering ZAPNUTO | kresleni ve vlakne AUTO, zvuk ve vlakne NE | preskakovani snimku 0
+OK      A2) program kresli a bezi ve vlakne i bez nej (snimku 418 / 418, ruznych obrazu 418 / 418, 640x480)
+OK      O1) obraz s kreslenim ve vlakne bajt po bajtu stejny jako bez nej: 418 snimku (0 ruznych), cteni VRAM 52 (0 ruznych)
+OK      R0) reference zapsana: 418 snimku, 52 cteni VRAM -> PRAC/b334/ref_pc.txt
+OK      S1) pozice ulozena a nahrana (4352 kB): po nahrani 89 snimku stejnych jako poprve (0 ruznych)
+   cas na snimek: ve vlakne 4.83 ms, bez vlakna 6.26 ms (PC x86_64)
+VYSLEDEK: 5 OK, 0 CHYBA

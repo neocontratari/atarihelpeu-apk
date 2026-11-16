@@ -1,0 +1,7 @@
+B334 - dalkovy ovladac Android TV: prevod klaves (NapDalkovy)
+OK     D1) dalkovy ovladac TV (zdroj DPAD / klavesnice bez pismen, i nezname zarizeni) = ANO
+OK     D2) klavesnice s pismeny (ma vlastni rozlozeni B308 / B320), herni ovladac (NapOvladac), virtualni klavesnice, dotyk = NE
+OK     H1) hry (20 klaves): krizek = smer, OK / Enter = A, PLAY / MENU = START, cervena / zelena / zluta / modra = B / X / Y / SELECT, pretaceni / kanaly = L1 / R1, ZPET / HOME / hlasitost / pismena = nic
+OK     M1) hlavni menu: vlevo / vpravo = listovat (krizek gamepadu), OK / Enter = A (spustit), nahoru / MENU = SELECT (OPTIONS), dolu = X (jen spotrebovat), pretaceni = prvni / posledni karta, ZPET = Android
+OK     P1) uvodni demo: OK / Enter / PLAY / A / START / mezernik preskoci; sipky, ZPET, hlasitost ne
+VYSLEDEK: 5 OK, 0 CHYBA

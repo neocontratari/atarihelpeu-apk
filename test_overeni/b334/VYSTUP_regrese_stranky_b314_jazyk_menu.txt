@@ -1,0 +1,11 @@
+B314 - hlavni nabidka a OPTIONS (index.html) cesky / anglicky, Chromium
+OK     1) cesky: vsech 20 stavu stranky ma stejne texty jako B313 (jen radek JAZYK · LANGUAGE navic)
+OK     1b) cesky: v OPTIONS je oznacena CESTINA (['active', '', 'cs'])
+OK     2) anglicky: ve vsech 20 stavech (karusel, zamky, OPTIONS, WEB TV, servis, TV pokus) zadna cestina
+OK     2b) anglicky: <html lang=en>, karta LOCKED s duvodem "Type 47 more program lines on the Atari ...", START WEB TV
+OK     3) CZ -> EN za chodu: Java dostala "en" (['AHJAZYK.nastav:en']), stranka hned anglicky (zbytky: [])
+OK     3b) EN -> CZ za chodu: presne puvodni ceske texty (53 textu)
+OK     3c) cesky: karta HELP v zaloznim karuselu - obrazek menu/karta_help.jpg (600 bodu siroky), otevre napoveda/index.html
+OK     3c) anglicky: karta HELP v zaloznim karuselu - obrazek menu/karta_help_en.jpg (600 bodu siroky), otevre napoveda/en.html
+OK     4) zadna chyba JavaScriptu (cesky, anglicky, prepinani)
+VYSLEDEK: 9 kontrol, 0 CHYBA

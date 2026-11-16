@@ -34,6 +34,9 @@ for m in re.finditer(r'\$\{PS1_DIR\}/(\S+)', blok):
     s = m.group(1)
     if (s.startswith('plugins/gpu_neon/') or s.startswith('plugins/gpulib/')) and not s.endswith('.S') and s not in vys:
         vys.append(s)
+# B334: psx_gpu_simd.c je od B334 ve vetvi ARM64 seznamu NAP_PS1_ARCH_SRC (armeabi-v7a ma assembler NEON)
+if 'plugins/gpu_neon/psx_gpu/psx_gpu_simd.c' not in vys:
+    vys.append('plugins/gpu_neon/psx_gpu/psx_gpu_simd.c')
 print('\n'.join(vys))
 PY
 for s in $(cat "$OUT/seznam.txt"); do

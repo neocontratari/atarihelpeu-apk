@@ -109,6 +109,10 @@ jobs:
           BT="$ANDROID_HOME/build-tools/34.0.0"
           APK=$(ls app/build/outputs/apk/debug/*.apk | head -1)
           "$BT/aapt2" dump badging "$APK" | head -1
+          # B334: Android TV - knihovny pro 64 i 32 bitu (TV boxy maji casto 32bitovy Android), ikona v nabidce TV
+          echo "--- B334 Android TV: architektury, nabidka TV, dotyk neni podminkou:"
+          "$BT/aapt2" dump badging "$APK" | grep -E "^native-code|^leanback-launchable-activity|uses-feature-not-required: name='android.(software.leanback|hardware.touchscreen)'" || true
+          python3 -c "import sys, zipfile; [print('  %-46s %9d B' % (i.filename, i.file_size)) for i in zipfile.ZipFile(sys.argv[1]).infolist() if i.filename.startswith('lib/')]" "$APK"
           "$BT/apksigner" verify -v --print-certs --min-sdk-version 24 "$APK" | grep -E "^Verif|certificate DN|Number of signers"
           echo "--- Android 7 a 8 (v2):"
           "$BT/apksigner" verify --print-certs --min-sdk-version 24 --max-sdk-version 27 "$APK" | grep "certificate DN" || true

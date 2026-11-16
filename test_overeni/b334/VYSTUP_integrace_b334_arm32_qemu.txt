@@ -1,0 +1,9 @@
+B334 - SKUTECNE jadro PS1 z appky na: ARM 32 bitu (armeabi-v7a) (kresleni_test.exe, BIOS HLE, 2x, kresleni ve vlakne)
+OK      A1) jadro bezi: procesor PS1 DYNAREC (prekladac do strojoveho kodu), kresleni ve vlakne ANO | 2x (Enhanced Resolution) ZAPNUTO, bez 1x obrazu NE, uprava textur ANO | prokladani AUTO | dithering ZAPNUTO | kresleni ve vlakne AUTO, zvuk ve vlakne NE | preskakovani snimku 0
+OK      A2) program kresli a bezi ve vlakne i bez nej (snimku 418 / 418, ruznych obrazu 418 / 418, 640x480)
+OK      O1) obraz s kreslenim ve vlakne bajt po bajtu stejny jako bez nej: 418 snimku (0 ruznych), cteni VRAM 52 (0 ruznych)
+OK      R1) OBRAZ STEJNY JAKO NA PC: 418 snimku (podle cisla v obraze) bajt po bajtu stejnych jako reference z PC - dynarec ARM = interpret, gpu_neon NEON assembler = SIMD C
+OK      R2) cteni VRAM zpet (GPUREAD) stejne jako na PC: 52 cteni, 0 ruznych
+OK      S1) pozice ulozena a nahrana (4352 kB): po nahrani 89 snimku stejnych jako poprve (0 ruznych)
+   cas na snimek: ve vlakne 22.27 ms, bez vlakna 27.73 ms (ARM 32 bitu (armeabi-v7a))
+VYSLEDEK: 6 OK, 0 CHYBA

@@ -8639,6 +8639,11 @@ public class MainActivity extends Activity {
         menuSkryj("OPTIONS");
         menuSkryteProOptions = true;
         try { web.evaluateJavascript("window.napOtevriNastaveni&&napOtevriNastaveni()", null); } catch (Throwable ignored) {}
+        // B334: na TV ovlada OPTIONS dalkovy ovladac - focus do WebView, ramecek na prvni polozce panelu
+        if (napJeTv()) {
+            try { web.requestFocus(); } catch (Throwable ignored) {}
+            ui.postDelayed(() -> { try { if (web != null) web.evaluateJavascript("window.NapTvOvladani&&NapTvOvladani.zapni()", null); } catch (Throwable ignored) {} }, 350);
+        }
     }
 
     /** onPageStarted: Atari 130XE (emu_atari_cpp) -> pristroj zapnout, jinam -> vypnout. */
@@ -11688,6 +11693,15 @@ public class MainActivity extends Activity {
         } catch (Throwable t) {
             appendNativeLog("B320 OVLADAC_START_CHYBA " + safeMsg(t));
         }
+        // B334: Android TV - do logu, co je to za zarizeni a ktere knihovny Android nainstaloval
+        try {
+            String lib = "?";
+            try { lib = new java.io.File(getApplicationInfo().nativeLibraryDir).getName(); } catch (Throwable ignored) {}
+            appendNativeLog("B334 TV: " + (napJeTv() ? "ANDROID TV (dalkovy ovladac + gamepad, dotykove ovladani schovane, ikona v nabidce TV)" : "telefon / tablet")
+                    + " | procesor umi " + java.util.Arrays.toString(Build.SUPPORTED_ABIS) + ", knihovny appky " + lib
+                    + ("arm".equals(lib) ? " (32 bitu)" : ("arm64".equals(lib) ? " (64 bitu)" : "")) + " | Android " + Build.VERSION.RELEASE
+                    + " (API " + Build.VERSION.SDK_INT + "), " + Build.MANUFACTURER + " " + Build.MODEL);
+        } catch (Throwable ignored) {}
         // B331: Bluetooth ovladac primo v appce (OPTIONS -> HERNI OVLADAC -> PRIPOJIT OVLADAC)
         try {
             bt = new NapBluetooth(this, ovladac, this::appendNativeLog);
@@ -11762,13 +11776,119 @@ public class MainActivity extends Activity {
         if (ovladacChyb++ < 5) appendNativeLog("B320 OVLADAC_CHYBA " + safeMsg(t));
     }
 
-    /** Klavesy herniho ovladace - driv nez WebView. */
+    /** Klavesy herniho ovladace - driv nez WebView. B334: + dalkovy ovladac TV. */
     @Override
     public boolean dispatchKeyEvent(KeyEvent e) {
         try {
             if (ovladac != null && ovladac.zOvladace(e) && ovladacKlavesa(e)) return true;
         } catch (Throwable t) { ovladacChyba(t); }
+        try {
+            if (napDalkovyKlavesa(e)) return true;
+        } catch (Throwable t) { ovladacChyba(t); }
         return super.dispatchKeyEvent(e);
+    }
+
+    // ===================================================================
+    //  B334: ANDROID TV - DALKOVY OVLADAC TELEVIZE
+    //  Rene: "aby to slo normalne nainstalovat, ukazala se ikona v nabidce televize a dalo se to
+    //  ovladat ovladacem od TV nebo gamepadem". Dalkovy ovladac neni herni ovladac (NapOvladac ho
+    //  nebere) - jeho krizek a OK sly jen do WebView. Ted (prevod v NapDalkovy):
+    //   - uvodni demo: OK / PLAY / START preskoci (i gamepad - SKIP je dotykove tlacitko),
+    //   - hlavni menu (C++): vlevo / vpravo listuje, OK spusti, nahoru / MENU = OPTIONS,
+    //   - hry (PS1, Sega, Atari): jako gamepad (krizek, OK = A, PLAY = START, barevna tlacitka),
+    //   - stranky (OPTIONS, napoveda, seznamy her): WebView + spolecne/nap_tv_ovladani.js
+    //     (zlaty ramecek, sipky ho presouvaji, OK stiskne); WebView musi mit focus.
+    //  ZPET resi Android (onBackPressed) jako dosud.
+    // ===================================================================
+    private Boolean napJeTvCache = null;
+    private final java.util.HashSet<String> napDalkovyHlaseno = new java.util.HashSet<>();
+
+    /** Bezi appka na Android TV (rezim televize nebo leanback)? */
+    boolean napJeTv() {
+        if (napJeTvCache == null) napJeTvCache = NapDalkovy.jeTv(this);
+        return napJeTvCache;
+    }
+
+    private void napDalkovyLog(int kod, String kam) {
+        final String klic = kod + "|" + kam;
+        if (napDalkovyHlaseno.size() < 40 && napDalkovyHlaseno.add(klic))
+            appendNativeLog("B334 DALKOVY OVLADAC: " + KeyEvent.keyCodeToString(kod) + " -> " + kam);
+    }
+
+    /** Dalkovy ovladac TV (a OK / START gamepadu v uvodnim demu). true = klavesa spotrebovana. */
+    private boolean napDalkovyKlavesa(KeyEvent e) {
+        final int akce = e.getAction();
+        if (akce != KeyEvent.ACTION_DOWN && akce != KeyEvent.ACTION_UP) return false;
+        final int kod = e.getKeyCode();
+        if (demoPlocha != null && NapDalkovy.preskociDemo(kod)) {
+            if (akce == KeyEvent.ACTION_UP) {
+                napDalkovyLog(kod, "uvodni demo (preskocit)");
+                demoKonec("klavesa " + KeyEvent.keyCodeToString(kod));
+            }
+            return true;
+        }
+        final boolean gamepad = ovladac != null && ovladac.zOvladace(e);
+        final InputDevice dev = e.getDevice();
+        final boolean virtualni = dev == null ? e.getDeviceId() == android.view.KeyCharacterMap.VIRTUAL_KEYBOARD : dev.isVirtual();
+        if (!NapDalkovy.zDalkoveho(e.getSource(), dev != null ? dev.getKeyboardType() : -1, virtualni, gamepad)) return false;
+        final boolean dolu = akce == KeyEvent.ACTION_DOWN;
+        final int kam = ovladacKam();
+        if (kam == OVL_MENU) {
+            final int k = NapDalkovy.proMenu(kod);
+            if (k < 0) return false;
+            if (dolu) napDalkovyLog(kod, "hlavni menu");
+            ovladacMenu(k, dolu, e.getRepeatCount());
+            return true;
+        }
+        if (kam == OVL_PS1 || kam == OVL_SEGA || kam == OVL_ATARI) {
+            final int k = NapDalkovy.proHru(kod);
+            if (k < 0) return false;
+            if (dolu && e.getRepeatCount() > 0) return true;      // drzene tlacitko: jadro uz ho ma
+            int t;
+            if (kam == OVL_PS1) { ovlPouzitPs1 = true; t = NativePs1CoreBridge.ovladacKlavesaSafe(k, dolu); }
+            else if (kam == OVL_SEGA) { ovlPouzitSega = true; t = NativeSegaCoreBridge.ovladacKlavesaSafe(k, dolu); }
+            else { ovlPouzitAtari = true; t = NativeAtariCoreBridge.devOvladacKlavesaSafe(k, dolu); }
+            if (dolu) napDalkovyLog(kod, OVL_KAM[kam] + " jako " + KeyEvent.keyCodeToString(k));
+            if (ovladac != null) ovladac.klavesa(e, k, OVL_KAM[kam] + " (dalkovy ovladac)", t);
+            return true;
+        }
+        // stranky: sipky a OK resi stranka (nap_tv_ovladani.js) - WebView musi mit focus
+        if (web != null && !web.hasFocus() && dolu && (NapOvladac.jeSmer(kod) || kod == KeyEvent.KEYCODE_ENTER)) {
+            try { web.requestFocus(); } catch (Throwable ignored) {}
+            napDalkovyLog(kod, "stranka (WebView dostal focus)");
+        }
+        return false;
+    }
+
+    /** Stranka appky nactena: na TV zlaty ramecek hned (bez cekani na prvni sipku) a focus do WebView. */
+    private void napTvStrankaNactena(String url) {
+        if (!napJeTv() || web == null || url == null || !url.startsWith("file:///android_asset/")) return;
+        try { if (menuPlocha == null && demoPlocha == null) web.requestFocus(); } catch (Throwable ignored) {}
+        try {
+            web.evaluateJavascript("(function(){if(!window.NapTvOvladani)return 'chybi';return 'ok '+NapTvOvladani.zapni();})()", r -> {
+                if (r != null && r.contains("chybi")) napTvVlozOvladani();
+            });
+        } catch (Throwable ignored) {}
+    }
+
+    /** Stranka bez spolecne/nap_tv_ovladani.js (starsi stranka) - na TV ho vlozit dodatecne. */
+    private String napTvOvladaniJs = null;
+    private void napTvVlozOvladani() {
+        try {
+            if (napTvOvladaniJs == null) {
+                try (java.io.InputStream in = getAssets().open("spolecne/nap_tv_ovladani.js")) {
+                    java.io.ByteArrayOutputStream b = new java.io.ByteArrayOutputStream();
+                    byte[] buf = new byte[8192];
+                    int n;
+                    while ((n = in.read(buf)) > 0) b.write(buf, 0, n);
+                    napTvOvladaniJs = b.toString("UTF-8");
+                }
+            }
+            web.evaluateJavascript(napTvOvladaniJs + "\n;window.NapTvOvladani&&NapTvOvladani.zapni();", null);
+            appendNativeLog("B334 TV: stranka bez ovladani dalkovym ovladacem - vlozeno dodatecne");
+        } catch (Throwable t) {
+            appendNativeLog("B334 TV: vlozeni ovladani selhalo " + safeMsg(t));
+        }
     }
 
     private boolean ovladacKlavesa(KeyEvent e) {
@@ -12064,6 +12184,7 @@ public class MainActivity extends Activity {
                 if (jeMenuUrl(url)) napNabidniCekajici();   // B321: i kdyz je menu v HTML (bez C++)
                 // B320: hra s hernim ovladacem - poprve kratka zprava, jak vratit dotykove ovladani
                 if (isPs1OwnerUrl(url) || isSegaNativeOwnerUrl(url)) ui.postDelayed(MainActivity.this::ovladacNapoveda, 1500);
+                napTvStrankaNactena(url);   // B334: Android TV - ramecek dalkoveho ovladace, focus
             }
             @Override
             public WebResourceResponse shouldInterceptRequest(WebView v, String url) {

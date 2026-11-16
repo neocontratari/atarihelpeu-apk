@@ -1,0 +1,24 @@
+OK     A1 build.gradle: abiFilters 'arm64-v8a', 'armeabi-v7a' (TV boxy s 32bitovym Androidem)
+OK     A2 PS1 pro armeabi-v7a: dynarec ARM + GTE ARM / NEON + gpu_neon NEON + zvuk (gte_arm.S, gte_nf_arm.S, gte_neon.S, gte_nf_neon.S, linkage_arm.S, arm_utils.S, psx_gpu_arm_neon.S)
+OK     A3 ARM64 beze zmeny (SIMD_BUILD + psx_gpu_simd.c + gte_arm64 / linkage_arm64), armeabi-v7a bez SIMD_BUILD (assembler)
+OK     A4 armeabi-v7a: -marm -mfpu=neon (jako LOCAL_ARM_MODE arm + LOCAL_ARM_NEON v jni/Android.mk jadra)
+OK     A5 PS1 i Atari se stavi pro arm64-v8a i armeabi-v7a (jine ABI dal preskocene)
+OK     T1 manifest: leanback (TV) a dotykovy displej nejsou podminkou instalace
+OK     T2 manifest: ikona v nabidce Android TV (LEANBACK_LAUNCHER + banner)
+OK     T3 banner drawable-xhdpi/nap_tv_banner.png 320x180 (Android TV chce 320 x 180)
+OK     T4 aapt2 dump badging: leanback-launchable-activity MainActivity, banner, touchscreen not-required
+OK     D1 dispatchKeyEvent: herni ovladac (B320) prvni, pak dalkovy ovladac TV (B334), pak WebView
+OK     D2 dalkovy ovladac: demo (preskocit), hlavni menu (jako gamepad), PS1 / Sega / Atari (jako gamepad), stranky (focus do WebView)
+OK     D3 klavesnice s pismeny zustava jako drive (B308 / B320), dalkovy = zdroj DPAD / klavesnice bez pismen
+OK     D4 stranka nactena na TV: focus do WebView, ramecek hned (zapni), stranka bez skriptu ho dostane dodatecne
+OK     D5 na TV dotykove ovladani ve hrach vychozi SKRYT (dokud se nezmeni v OPTIONS)
+OK     D6 log: Android TV ano / ne, ABI procesoru, knihovny appky (32 / 64 bitu), Android, model
+OK     S1 VYSLEDEK: 16 stranek, 0 CHYBA - skript ovladani je na 16 strankach PRVNI
+OK     S2 nap_tv_ovladani.js je ES5 (starsi WebView v televizich)
+OK     S3 skript posloucha az po strance (karusel, volba jazyka si sipky resi samy)
+OK     N1 napoveda CZ / EN: Android TV (instalace, ovladac TV, gamepad)
+OK     N2 build.gradle: versionCode 377 "EMU10-B334-ANDROID-TV"
+OK     N3 CI: v logu buildu architektury knihoven APK a nabidka TV
+OK     N4 test_overeni/b332/stavba_jadra_gpu.sh: psx_gpu_simd.c i po presunu do vetve ARM64
+OK     N4 test_overeni/b320/stavba_vykreslovace.sh: psx_gpu_simd.c i po presunu do vetve ARM64
+VYSLEDEK: 23 kontrol, 0 CHYBA

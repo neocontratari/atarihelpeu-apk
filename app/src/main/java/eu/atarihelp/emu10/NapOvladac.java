@@ -351,7 +351,9 @@ final class NapOvladac implements InputManager.InputDeviceListener {
         this.posluchac = p;
         try {
             SharedPreferences sp = c.getSharedPreferences("nap_ovladac", Context.MODE_PRIVATE);
-            schovani.rezim = sp.getInt("rezim", REZIM_AUTO);
+            // B334: na Android TV neni dotykovy displej - dotykove ovladani ve hrach vychozi SKRYT
+            // (dokud ho clovek v OPTIONS -> HERNI OVLADAC sam nezmeni)
+            schovani.rezim = sp.getInt("rezim", NapDalkovy.jeTv(c) ? REZIM_SKRYT : REZIM_AUTO);
         } catch (Throwable ignored) {}
     }
 
