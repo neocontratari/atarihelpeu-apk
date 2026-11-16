@@ -1,0 +1,40 @@
+B331 - BLUETOOTH OVLADAC PRIMO V APPCE (16. 11. 2026)
+====================================================
+
+Rene: "jestli pujde, aby si appka sama nasla ovladac BT, abych nemusel otravne chodit do menu Androidu"
++ "aby si appka zapamatovala sparovany ovladac - ale osetrit to tak, aby kdyz sedim ve vlaku, byla nadale
+moznost vyberu". Po B330 (SpongeBob s TV na S8 OK): "ted to BT do apky".
+
+CO TO DELA: OPTIONS -> HERNI OVLADAC -> PRIPOJIT OVLADAC (BLUETOOTH):
+  povoleni (Android 12+ "Zarizeni v okoli" = BLUETOOTH_SCAN s neverForLocation + BLUETOOTH_CONNECT; Android 6-11
+  poloha - Android ji chce pro hledani Bluetooth) -> zapnuti Bluetooth (systemove okno) -> Android 10/11 kontrola
+  Polohy -> hledani (~12 s) -> seznam (ovladace nahore, UKAZAT VSE = ostatni) -> klepnuti = createBond ->
+  "sparovano" -> az se ovladac objevi jako vstupni zarizeni (NapOvladac.jmenaPripojenych) "pripojeny".
+  Pod tlacitkem "Zapamatovane: Pro Controller (pripojeny / vypnuty)" (getBondedDevices). Parovani si pamatuje
+  Android, ovladac se po zapnuti pripoji sam; bez nej (vlak) dotyk jako drive (rezim AUTOMATICKY z B320).
+  NASTAVENI BLUETOOTH = systemove nastaveni (zapomenout ovladac). Zavreni OPTIONS / konec appky = konec hledani.
+  Log "B331 BT: ..." - jen ovladace a konec adresy (..EE:FF), jmena cizich zarizeni v okoli NE.
+SOUBORY: NapBluetoothTexty.java (cista logika: je to ovladac, povoleni podle Androidu, texty CZ/EN, JSON),
+  NapBluetooth.java (Android), MainActivity (AHBT, vysledky povoleni / zapnuti, onDestroy), NapOvladac
+  (jmenaPripojenych), AndroidManifest (povoleni, bluetooth required=false), index.html (OPTIONS),
+  jazyk/en_menu.js, napoveda CZ / EN. build.gradle: versionCode 374 "EMU10-B331-BLUETOOTH".
+
+Spoustet z adresare test_overeni/b331:
+A) JVM: javac -encoding UTF-8 --release 17 -d OUT ../../app/src/main/java/eu/atarihelp/emu10/NapBluetoothTexty.java \
+        jvm/eu/atarihelp/emu10/TestB331.java && java -Dstdout.encoding=UTF-8 -cp OUT eu.atarihelp.emu10.TestB331
+                                                   -> VYSTUP_test_b331_java.txt (15 OK)
+   (ovladace: Pro Controller, Xbox, DualShock 4, DualSense, 8BitDo, GameSir, Joy-Con, bez jmena ...; NE: sluchatka,
+    reproduktor, TV, klavesnice, mys, iPad, telefon, hodinky; povoleni Android 5 / 9 / 10-11 / 12+; texty; JSON)
+B) Chromium: python3 test_b331_stranka.py       -> VYSTUP_test_b331_stranka.txt (11 kontrol, 0 CHYB)
+   (skutecna stranka index.html, falesny most AHBT: hledani, seznam, UKAZAT VSE, parovani, pripojeno,
+    NASTAVENI / POLOHA, jmeno s HTML jen jako text, zavreni = zastav, anglicky bez cestiny, bez mostu bez chyby)
+C) Zapojeni: python3 kontrola_b331.py           -> VYSTUP_kontrola_b331.txt (18 OK)
+D) ES5: node kontrola_es5.js ../../app/src/main/assets/index.html (acorn z /opt/npm-tools) -> VYSTUP_kontrola_es5.txt
+E) javac vsech zdroju appky proti android.jar: 0 chyb (VYSTUP_javac_android.txt)
+F) Regrese na kodu B331: napoveda CZ 200 nazvu 0 chyb, EN 194 0 chyb; ../b320 test_b320_stranky 13 / 0;
+   test_b314_jazyk_navod stejne 2 CHYBA jako drive; ../b312 test_b312_servis 18 / 8 CHYBA = STEJNE jako na cisté
+   B330 (kontrola v oddelene kopii git worktree); ../b314 test_b314_jazyk_menu pada uz od B322 (karty HTML zalohy).
+   Puvodni VYSTUP_* starsich verzi vraceny z gitu.
+
+Na telefonu NEOVERENO. Rene: B331 na server, aktualizace; Battletron (nebo jiny) dat do parovani, OPTIONS ->
+HERNI OVLADAC -> PRIPOJIT OVLADAC (BLUETOOTH), povoleni, klepnout na ovladac; poslat log (radky "B331 BT").

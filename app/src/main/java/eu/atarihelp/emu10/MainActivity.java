@@ -11639,6 +11639,31 @@ public class MainActivity extends Activity {
         } catch (Throwable t) {
             appendNativeLog("B320 OVLADAC_START_CHYBA " + safeMsg(t));
         }
+        // B331: Bluetooth ovladac primo v appce (OPTIONS -> HERNI OVLADAC -> PRIPOJIT OVLADAC)
+        try {
+            bt = new NapBluetooth(this, ovladac, this::appendNativeLog);
+            appendNativeLog("B331 BT: " + bt.souhrn());
+        } catch (Throwable t) {
+            appendNativeLog("B331 BT_START_CHYBA " + safeMsg(t));
+        }
+    }
+
+    private NapBluetooth bt;   // B331
+
+    /** B331: JS rozhrani "AHBT" - OPTIONS -> HERNI OVLADAC -> PRIPOJIT OVLADAC (BLUETOOTH). */
+    public class AHBluetooth {
+        /** hledat ovladace (povoleni -> zapnuti Bluetooth -> hledani) */
+        @JavascriptInterface public void hledej() { if (bt != null) bt.hledej(); }
+        /** sparovat zarizeni ze seznamu */
+        @JavascriptInterface public void sparuj(String adresa) { if (bt != null) bt.sparuj(adresa); }
+        /** prestat hledat (zavreni OPTIONS) */
+        @JavascriptInterface public void zastav() { if (bt != null) bt.zastav(); }
+        /** stav pro stranku (JSON: faze, text, nalezene, zapamatovane) */
+        @JavascriptInterface public String stav() { return bt != null ? bt.stav() : "{\"f\":\"NIC\",\"t\":\"\",\"z\":[],\"m\":[]}"; }
+        /** nastaveni Bluetooth Androidu (zapomenout ovladac, rucni parovani) */
+        @JavascriptInterface public void nastaveni() { if (bt != null) bt.otevriNastaveni(); }
+        /** nastaveni polohy (Android 10 a 11 bez ni Bluetooth nehleda) */
+        @JavascriptInterface public void poloha() { if (bt != null) bt.otevriPolohu(); }
     }
 
     /** Vse, co drzel ovladac, pustit (odpojen - uz neposle "pusteno"). */
@@ -11887,6 +11912,7 @@ public class MainActivity extends Activity {
         web.addJavascriptInterface(new AHIntro(), "AHINTRO");       // BUILD2SA21: uvodni intro
         web.addJavascriptInterface(new AHJazyk(), "AHJAZYK");       // B314: jazyk CZ / EN
         web.addJavascriptInterface(new AHOvladac(), "AHOVL");       // B320: herni ovladac (Retroid Pocket 6, gamepad)
+        web.addJavascriptInterface(new AHBluetooth(), "AHBT");      // B331: Bluetooth ovladac primo v appce
         web.addJavascriptInterface(new AHHry(), "AHHRY");           // B321: aktivace telefonu + hry ze serveru N&P
         ovladacStart();                                              // B320: ovladace do logu, sledovat pripojeni
         web.setWebChromeClient(new WebChromeClient() {
@@ -14301,6 +14327,10 @@ public class MainActivity extends Activity {
     @Override
     public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode == NapBluetooth.REQ_POVOLENI) {   // B331: povoleni pro hledani Bluetooth ovladace
+            if (bt != null) bt.povoleniVysledek(grantResults);
+            return;
+        }
         if (requestCode == PICK_AUDIO_PERMISSION) {
             boolean ok = napPlayerHasAudioPermission();
             appendNativeLog("BUILD2SA13C14 PLAYER_AUDIO_PERMISSION_RESULT ok=" + ok + " sdk=" + Build.VERSION.SDK_INT);
@@ -14315,6 +14345,10 @@ public class MainActivity extends Activity {
     @Override
     protected void onActivityResult(int req, int res, Intent data) {
         super.onActivityResult(req, res, data);
+        if (req == NapBluetooth.REQ_ZAPNUTI) {   // B331: okno "zapnout Bluetooth"
+            if (bt != null) bt.zapnutiVysledek(res);
+            return;
+        }
         if (req == PICK_ATARI_CPP_WAV) { // B292: EJECT -> WAV z telefonu jako kazeta
             if (res != RESULT_OK || data == null || data.getData() == null) {
                 appendNativeLog("B292 KAZETA vyber WAV zrusen");
@@ -14648,6 +14682,7 @@ public class MainActivity extends Activity {
     protected void onDestroy() {
         zapisOdchod("ZRUSENA");
         try { if (ovladac != null) ovladac.stop(); } catch (Throwable ignored) {}   // B320
+        try { if (bt != null) bt.zastav(); } catch (Throwable ignored) {}           // B331
         NapAktualizace.zavriOznameni();                        // B329 (oznameni ceka dal)
         if (demoPlocha != null) demoKonec("appka zrusena");   // B304
         menuSkryj("appka zrusena");                            // B311

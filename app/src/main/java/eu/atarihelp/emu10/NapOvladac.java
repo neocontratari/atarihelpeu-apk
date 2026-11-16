@@ -588,6 +588,13 @@ final class NapOvladac implements InputManager.InputDeviceListener {
     synchronized int rezim() { return schovani.rezim; }
     String jmeno() { return jmenoOvladace; }
 
+    /** B331: jmena prave pripojenych hernich ovladacu (OPTIONS -> PRIPOJIT OVLADAC: "pripojen" / "vypnuty"). */
+    synchronized java.util.List<String> jmenaPripojenych() {
+        final java.util.ArrayList<String> r = new java.util.ArrayList<>();
+        for (Zarizeni z : zarizeni.values()) if ((z.ovladac || z.hralo) && z.jmeno != null && !z.jmeno.isEmpty()) r.add(z.jmeno);
+        return r;
+    }
+
     void nastavRezim(int r) {
         boolean zmena;
         synchronized (this) { zmena = schovani.nastav(r, !jmenoOvladace.isEmpty()); }

@@ -1,0 +1,17 @@
+B331 - Bluetooth ovladac primo v appce (skutecna trida NapBluetoothTexty z appky)
+OK     A1 herni ovladace se poznaji (trida gamepad / joystick nebo jmeno): Pro Controller, Xbox, DualShock 4, DualSense, 8BitDo, GameSir, Joy-Con, bez jmena, Battletron ...
+OK     A2 bezne veci v okoli NEJSOU ovladac: sluchatka, reproduktor, televize, klavesnice, mys, iPad, telefon, hodinky, bez jmena
+OK     B1 Android 12 a novejsi: povoleni Zarizeni v okoli (BLUETOOTH_SCAN + BLUETOOTH_CONNECT), zadna poloha
+OK     B2 Android 6-11 (Reneho S8 = 9): poloha (kvuli hledani Bluetooth), Android 5 nic
+OK     B3 zapnuta Poloha je potreba jen na Androidu 10 a 11
+OK     C1 povoleni: S8 (Android 9) vysvetli polohu a ze ji appka nezjistuje; Android 12 Zarizeni v okoli
+OK     C2 hledani: odpocet, jak dat ovladac do parovani (HOME / SHARE), po nalezeni vyzva klepnout
+OK     C3 konec hledani bez ovladace: kolik jinych zarizeni a co dal
+OK     C4 parovani -> sparovano -> pripojeno se jmenem ovladace
+OK     C5 anglicky: Nearby devices, location, pairing, connected
+OK     C6 kazda faze ma text cesky i anglicky (NIC = prazdny)
+OK     C7 chyba hledani a odmitnute povoleni odkazi na NASTAVENI BLUETOOTH
+OK     D1 JSON: ovladace nahore (pak silnejsi signal), bez jmena -> "Bez jména (..55:03)", uvozovky a lomitka escapovane, zapamatovany pripojeny
+OK     D2 ridici znaky ve jmene (\u0001, \u2028) se escapuji, jinak JSON v JS spadne
+OK     D3 do logu jen konec adresy (jmena a adresy cizich zarizeni v okoli se nezapisuji cele)
+VYSLEDEK: 15 OK, 0 CHYBA

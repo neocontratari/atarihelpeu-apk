@@ -13,6 +13,16 @@
 
     <!-- BUILD2SA42: aktualizace primo ze site (PackageInstaller) -->
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+    <!-- B331: Bluetooth ovladac primo v appce (OPTIONS -> HERNI OVLADAC -> PRIPOJIT OVLADAC).
+         Android 12+: "Zarizeni v okoli" (hledani BEZ polohy - neverForLocation) + pripojeni.
+         Android 6-11: hledani Bluetooth Android povoli jen s povolenim k poloze (appka polohu nezjistuje). -->
+    <uses-permission android:name="android.permission.BLUETOOTH" android:maxSdkVersion="30" />
+    <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" android:maxSdkVersion="30" />
+    <uses-permission android:name="android.permission.BLUETOOTH_SCAN" android:usesPermissionFlags="neverForLocation" />
+    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" android:maxSdkVersion="30" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" android:maxSdkVersion="30" />
+    <uses-feature android:name="android.hardware.bluetooth" android:required="false" />
 
     <!-- B313: allowBackup=false - Android appce po nove instalaci vracel nastaveni ze zalohy
          v Google uctu (Auto Backup), i odemcenou Segu a PS1 (Rene: "i pred zadanim kodu je

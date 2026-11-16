@@ -9,6 +9,10 @@ NapJazyk.slovnik({
   'HERNÍ OVLADAČ': 'GAME CONTROLLER',
   'VŽDY DOTYK': 'ALWAYS TOUCH',
   'SKRÝT DOTYK': 'HIDE TOUCH',
+  // B331: OPTIONS -> HERNI OVLADAC -> Bluetooth ovladac primo v appce
+  'PŘIPOJIT OVLADAČ (BLUETOOTH)': 'CONNECT CONTROLLER (BLUETOOTH)',
+  'NASTAVENÍ BLUETOOTH': 'BLUETOOTH SETTINGS',
+  'ZAPNOUT POLOHU': 'TURN ON LOCATION',
   'WEB TV BĚŽÍ': 'WEB TV IS RUNNING',
   'NA TV NEBO PC OTEVŘI V PROHLÍŽEČI': 'OPEN IN A BROWSER ON YOUR TV OR PC',
   'stejná Wi-Fi · zvuk pustíš kliknutím do obrazu': 'same Wi-Fi · click the picture to turn the sound on',

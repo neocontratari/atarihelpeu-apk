@@ -3987,5 +3987,23 @@
        vypadky 0?). Pak B331 Bluetooth v appce. Slabsi telefony (A12, Helio P35)
        az potom: vynechani snimku, kdyz nestiha / nastaveni v OPTIONS.
      - build.gradle: versionCode 373 "EMU10-B330-TV-VYKON". Na telefonu neovereno.
+     - Rene po B330: "ted to bezi jak ma - na S8 i TV web" (log: cpu7 1469-2314 MHz
+       s prenosem, emulace 60/s, vypadky 0-17 za 10 s misto ~350).
+
+   B331: BLUETOOTH OVLADAC PRIMO V APPCE (16. 11. 2026). Rene: "aby si appka sama
+   nasla ovladac BT" + "zapamatovala sparovany ovladac - ve vlaku moznost vyberu".
+     - OPTIONS -> HERNI OVLADAC -> PRIPOJIT OVLADAC (BLUETOOTH): povoleni (12+
+       BLUETOOTH_SCAN neverForLocation + CONNECT, 6-11 poloha maxSdk 30) -> zapnuti
+       BT -> (10/11 Poloha) -> startDiscovery -> seznam (ovladace nahore) ->
+       createBond -> pripojeny (NapOvladac.jmenaPripojenych). Zapamatovane =
+       getBondedDevices (ovladace). Log jen ovladace + konec adresy.
+     - NapBluetoothTexty (ciste, JVM test), NapBluetooth (Android), AHBT most,
+       REQ_POVOLENI 31 / REQ_ZAPNUTI 32 v MainActivity, OPTIONS stranka se pta
+       AHBT.stav() kazdych 0,7 s jen pri otevrenem hledani.
+     - Pripojit (HID) po sparovani appka neumi (systemove API) - ovladac se pripoji
+       sam nebo po HOME; zapomenout = NASTAVENI BLUETOOTH (Android).
+     - DALSI KROK: Rene - parovani Battletronu z appky + log. Pak slabsi telefony
+       (A12: vynechani snimku / nastaveni v OPTIONS), pripadne VYZKOUSET TLACITKA.
+     - build.gradle: versionCode 374 "EMU10-B331-BLUETOOTH". Na telefonu neovereno.
 
 ===============================================================================

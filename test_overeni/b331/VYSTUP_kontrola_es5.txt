@@ -1,0 +1,2 @@
+OK     app/src/main/assets/index.html: skriptu 3 (ES5)
+OK     app/src/main/assets/jazyk/en_menu.js (ES5)

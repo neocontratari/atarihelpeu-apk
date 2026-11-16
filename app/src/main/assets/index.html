@@ -96,6 +96,12 @@ body{background:radial-gradient(120% 70% at 50% 40%,#1c1006 0%,#0a0603 45%,#0302
 #settingsPanel .qrow{display:flex;gap:7px;}
 #settingsPanel .qrow button{flex:1;margin-top:0;padding:11px 4px;font-size:12px;background:linear-gradient(180deg,#3b2a10,#241806);color:#e8c98d;border:1px solid rgba(255,195,64,.28);box-shadow:none;}
 #settingsPanel .qrow button.active{background:linear-gradient(180deg,#ffd479,#d8a947);color:#1a0f02;border-color:rgba(255,225,150,.9);box-shadow:0 0 18px rgba(255,180,40,.65);}
+/* B331: Bluetooth ovladac primo v appce - seznam nalezenych zarizeni */
+#settingsPanel #stBtStav{white-space:pre-line;opacity:1;color:#ffe9b0;}
+#settingsPanel #stBtSeznam button{margin-top:6px;padding:11px 10px;font-size:13px;text-align:left;background:linear-gradient(180deg,#2a1d0b,#1b1206);color:#f1d79e;border:1px solid rgba(255,195,64,.35);box-shadow:none;}
+#settingsPanel #stBtSeznam button.ovl{border-color:rgba(255,215,120,.85);color:#fff1c8;}
+#settingsPanel #stBtSeznam button.ok{border-color:rgba(120,230,140,.85);}
+#settingsPanel #stBtZapam{opacity:.9;}
 #settingsPanel #stZavrit{margin-top:18px;background:linear-gradient(180deg,#3b2a10,#241806);color:#ffd479;border:1px solid rgba(255,195,64,.45);}
 /* B311: adresa WEB TV zustane v OPTIONS (C++ menu by zpravu dole hned zakrylo) */
 #stTvAdresa{display:none;margin:8px 0 2px;padding:11px 10px 10px;border-radius:12px;text-align:center;background:rgba(10,30,40,.55);border:1px solid rgba(100,223,255,.55);box-shadow:0 0 18px rgba(80,200,255,.15);}
@@ -150,6 +156,18 @@ body{background:radial-gradient(120% 70% at 50% 40%,#1c1006 0%,#0a0603 45%,#0302
       <button id="stOvlSkryt" type="button">SKRÝT DOTYK</button>
     </div>
     <div class="sthint" id="stOvlHint"></div>
+    <!-- B331: Bluetooth ovladac primo v appce - hledani, parovani, zapamatovane ovladace (Android si parovani pamatuje) -->
+    <button id="stBtHledej" type="button">PŘIPOJIT OVLADAČ (BLUETOOTH)</button>
+    <div id="stBt" style="display:none">
+      <div class="sthint" id="stBtStav" data-nepreklad></div>
+      <div id="stBtSeznam" data-nepreklad></div>
+      <div class="qrow">
+        <button id="stBtVse" type="button" data-nepreklad></button>
+        <button id="stBtNastaveni" type="button">NASTAVENÍ BLUETOOTH</button>
+      </div>
+      <button id="stBtPoloha" type="button" style="display:none">ZAPNOUT POLOHU</button>
+    </div>
+    <div class="sthint" id="stBtZapam" data-nepreklad></div>
 
     <!-- B312: SERVIS (jen pro Reneho) - pole pro servisni kod a servisni tlacitka, normalne skryte -->
     <div id="stServisKod" style="display:none">
@@ -376,6 +394,7 @@ function verzeObnov(){
 function openSettings(){if(!sp)return;sp.classList.add('open');sp.setAttribute('aria-hidden','false');sp.scrollTop=0;napQualityRefresh();tvAdresaObnov();
   try{ verzeObnov(); }catch(e){}
   try{ ovlObnov(); }catch(e){}
+  try{ btObnov(); }catch(e){}
   try{ $('stServisKod').style.display='none'; servisUkaz(); }catch(e){}}
 // B320: HERNI OVLADAC (Retroid Pocket 6, Bluetooth / USB gamepad) - co s dotykovymi tlacitky ve hrach:
 // AUTOMATICKY = schovaji se, kdyz hraje ovladac (tuknuti na jejich misto je vrati), VZDY DOTYK, SKRYT DOTYK
@@ -401,12 +420,78 @@ OVL_TL.forEach(function(p){
     setTimeout(ovlObnov,150);
   },true);
 });
+// B331: BLUETOOTH OVLADAC PRIMO V APPCE - Java (AHBT) hleda, paruje a vraci stav jako JSON:
+// {f: faze, t: text (uz cesky / anglicky), z: [{a adresa, j jmeno, o ovladac, s sparovany, p pripojeny}], m: [zapamatovane]}
+var btVse=false, btTik=null, btOtevreno=false;
+function btStav(){
+  try{ if(window.AHBT) return JSON.parse(String(AHBT.stav()||'{}')); }catch(e){}
+  return {f:'NIC',t:'',z:[],m:[]};
+}
+function btTlacitko(d){
+  var b=document.createElement('button');
+  b.type='button';
+  b.className=(d.o?'ovl':'')+(d.p?' ok':'');
+  b.textContent=(d.o?'🎮 ':'')+d.j+(d.p?J(' – připojený ✔',' – connected ✔'):(d.s?J(' – spárovaný',' – paired'):''));
+  b.addEventListener('click',function(e){
+    e.preventDefault();e.stopPropagation();
+    try{ if(window.AHBT) AHBT.sparuj(d.a); }catch(err){}
+    log('SETTINGS_BT sparuj '+(d.o?'ovladac':'zarizeni'));
+    setTimeout(btObnov,200);
+  },true);
+  return b;
+}
+function btObnov(){
+  var st=btStav(), panel=$('stBt');
+  var zap=$('stBtZapam');
+  if(zap){
+    var m=st.m||[];
+    zap.textContent=m.length?J('Zapamatované: ','Remembered: ')+m.map(function(x){ return x.j+(x.p?J(' (připojený)',' (connected)'):J(' (vypnutý)',' (off)')); }).join(', ')
+                   :'';
+  }
+  if(!panel||!btOtevreno) return;
+  var t=$('stBtStav'); if(t) t.textContent=st.t||'';
+  var sez=$('stBtSeznam');
+  if(sez){
+    var z=(st.z||[]).filter(function(d){ return btVse||d.o; });
+    while(sez.firstChild) sez.removeChild(sez.firstChild);
+    z.forEach(function(d){ sez.appendChild(btTlacitko(d)); });
+    var jine=(st.z||[]).length-(st.z||[]).filter(function(d){ return d.o; }).length;
+    var v=$('stBtVse');
+    if(v){ v.textContent=btVse?J('JEN OVLADAČE','ONLY CONTROLLERS'):J('UKÁZAT VŠE','SHOW ALL')+(jine>0?' ('+jine+')':''); }
+  }
+  var pol=$('stBtPoloha'); if(pol) pol.style.display=(st.f==='POLOHA_VYPNUTA')?'block':'none';
+}
+function btZavri(){
+  if(btTik){ clearInterval(btTik); btTik=null; }
+  if(btOtevreno){ try{ if(window.AHBT) AHBT.zastav(); }catch(e){} }
+  btOtevreno=false;
+  var p=$('stBt'); if(p) p.style.display='none';
+}
+(function(){
+  var h=$('stBtHledej');
+  if(h) h.addEventListener('click',function(e){
+    e.preventDefault();e.stopPropagation();
+    btOtevreno=true;
+    var p=$('stBt'); if(p) p.style.display='block';
+    try{ if(window.AHBT) AHBT.hledej(); }catch(err){}
+    log('SETTINGS_BT hledej');
+    btObnov();
+    if(!btTik) btTik=setInterval(btObnov,700);
+  },true);
+  var v=$('stBtVse');
+  if(v) v.addEventListener('click',function(e){ e.preventDefault();e.stopPropagation(); btVse=!btVse; btObnov(); },true);
+  var n=$('stBtNastaveni');
+  if(n) n.addEventListener('click',function(e){ e.preventDefault();e.stopPropagation(); try{ if(window.AHBT) AHBT.nastaveni(); }catch(err){} },true);
+  var pl=$('stBtPoloha');
+  if(pl) pl.addEventListener('click',function(e){ e.preventDefault();e.stopPropagation(); try{ if(window.AHBT) AHBT.poloha(); }catch(err){} },true);
+})();
 // zavreni: C++ menu se vrati (Java AHINTRO.menuZpet). Kdyz zrovna sviti zprava (adresa WEB TV),
 // menu pocka, az zhasne - jinak by ji hned zakrylo.
 function closeSettings(){
   if(!sp)return;
   var bylo=sp.classList.contains('open');
   sp.classList.remove('open');sp.setAttribute('aria-hidden','true');
+  try{ btZavri(); }catch(e){}   // B331: prestat hledat Bluetooth
   if(!bylo) return;
   var zpet=function(){ try{ if(window.AHINTRO&&AHINTRO.menuZpet) AHINTRO.menuZpet(); }catch(e){} };
   if(toastBezi()){ var n=0, t=setInterval(function(){ if(!toastBezi()||++n>40){clearInterval(t);zpet();} },100); }
