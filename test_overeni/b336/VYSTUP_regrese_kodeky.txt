@@ -1,0 +1,11 @@
+B336 - REGRESE: testy starsich verzi s B336 (regrese_kodeky.sh z ../b335: b305, b306, b313, b319, b320, b333 stranka)
+b305_kodeky: 35 kontrol, 0 chyb
+b305_pasy: OK
+b305_hub: 16 kontrol, 0 chyb
+b306_hub6: 0 chyb
+b313_kodek_menu: 11 OK, 0 CHYBA
+b319_kodek: 14 OK, 0 CHYBA
+b319_hub: 4 OK, 0 CHYBA
+b320_kodek: 12 OK, 0 CHYBA
+b333_stranka: 13 OK, 0 CHYBA
+Stranka WEB TV (../b333/test_b333_tv.py) -> VYSTUP_regrese_b333_tv.txt, most YouTube B335 (../b335/test_b335_youtube.py) -> VYSTUP_regrese_b335_youtube.txt

@@ -4148,4 +4148,25 @@
      - build.gradle: versionCode 378 "EMU10-B335-YT-ZVUK-DUNE". Na telefonu / TV neovereno.
      - DALSI KROK: Rene - YouTube v apce + TV (zvuk), Dune na TV (carky), Android TV (B334).
 
+   B336: ZVUK YOUTUBE BEZ CHRAPOTU + ATARI NA ANDROID TV (17. 11. 2026). Rene (log B335): "zvuk je
+   z yt ale je chraplavy", Dune v poradku; TV: appka se nainstalovala, ale "nejde vicemene nic nez
+   uvodni okno u atari s ready ... demo na tv nebezi ... stahovat hry hrat hry nejde neni to tam videt".
+     - CHRAPOT: odbocka ScriptProcessor 2048 bezi v hlavnim vlakne tezke stranky YouTube - pri
+       zadrhnuti kus zvuku zmizi / se zopakuje (log: proud stranky 39615 vzorku/s, TV podteceni 10-18
+       za 30 s). Ted MediaStreamTrackProcessor (fronta az ~4 s, nic se neztrati), zaloha ScriptProcessor
+       4096; posila se i ticho, dokud neco hraje; fronta po 8; Hub proudu stranky zvukMaxMs 600 (drive
+       250 - davka se zahazovala), stranka TV rezerva stranky 0,7 s. Chromium se zadrhavajici strankou:
+       B335 45 lupnuti / 8 s, B336 0. Log JSLOG "B336 YOUTUBE ZVUK NA TV: zachyt ...".
+     - TV ATARI: TV je vzdy na sirku, servisni tlacitka pristroje (NET / HRY, XEX, ATR ...) jsou jen na
+       vysku a ozubene kolecko jen dotykem -> k hram se dalkovym nedalo dostat. Ted ZPET na TV v
+       pristroji = menu pristroje (NET / HRY, XEX / SOUBOR, ATR / DISK, KAZETA, TURBO BASIC, RESET,
+       NAPOVEDA, ZPET DO MENU). SEGA / PS1 na TV zamcene PODLE PRAVIDEL (novy hrac: NapPostup) - ne
+       chyba; spravce je muze odemknout na serveru, Rene servisnim kodem (ODEMKNOUT DALSI).
+     - DEMO na TV: bez logu z TV neznamo. WEB TV /log/predchozi (B336) = log predchoziho spusteni.
+     - Testy test_overeni/b336 (JAK_SPUSTIT.txt): Chromium 5 OK, C++ Stranka 2 OK, zapojeni 13 OK, javac
+       0 chyb, regrese kodeku / stranky TV / mostu YouTube B335 vse OK.
+     - build.gradle: versionCode 379 "EMU10-B336-YT-BEZ-CHRAPOTU-TV". Na telefonu / TV neovereno.
+     - DALSI KROK: Rene - YouTube na TV (chrapot), Atari na TV (ZPET = menu), log z TV (/log), memory
+       card / pozice PS1.
+
 ===============================================================================

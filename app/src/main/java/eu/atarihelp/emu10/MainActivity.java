@@ -2567,6 +2567,7 @@ public class MainActivity extends Activity {
                     // WebAudio smi cist (blob: = MSE YouTube, stejny web) - cizi zdroj by dal ticho.
                     + "function ahtvTv(){try{return !!(window.AHTVWEB&&window.AHTVWEB.tvPosloucha&&window.AHTVWEB.tvPosloucha());}catch(_e){return false;}}"
                     + "function ahtvLog(m){try{console.log('[NAP PLAYER] B335 YOUTUBE ZVUK NA TV: '+m);}catch(_e){}}"
+                    + "function ahtvLog6(m){try{console.log('[NAP PLAYER] B336 YOUTUBE ZVUK NA TV: '+m);}catch(_e){}}"
                     + "function ahtvHrajici(){try{var m=document.querySelectorAll('video,audio');for(var i=0;i<m.length;i++){if(!m[i].paused&&!m[i].ended)return m[i];}}catch(_e){}return null;}"
                     + "function ahtvLze(v){try{if(v.srcObject)return true;var s=String(v.currentSrc||v.src||'');if(!s)return false;"
                     + "if(s.indexOf('blob:')===0||s.indexOf('data:')===0)return true;"
@@ -2590,36 +2591,62 @@ public class MainActivity extends Activity {
                     + "var treble=ctx.createBiquadFilter();treble.type='highshelf';treble.frequency.value=3500;treble.gain.value=0;node.connect(treble);node=treble;"
                     + "var pan=ctx.createStereoPanner?ctx.createStereoPanner():null,gain=ctx.createGain();gain.gain.value=1;"
                     + "if(pan){node.connect(pan);pan.connect(gain);}else{node.connect(gain);}"
-                    + "var tap=ctx.createScriptProcessor(2048,2,2);"
+                    // B336 (Rene: "zvuk je z yt ale je chraplavy"; log B335: proud stranky "zvuk 39615
+                    // vzorku/s" misto 44100, prohlizec TV "podteceni 12 / 18 / 10" za 30 s): odbocka byla
+                    // ScriptProcessor 2048 - jeho udalost bezi v HLAVNIM vlakne stranky YouTube; kdyz se
+                    // stranka zadrhne (YouTube ma tezky JavaScript), prohlizec ma jen dva buffery, takze
+                    // zvuk pri zadrhnuti zmizi nebo se zopakuje = chrapot, a na TV dojde (podteceni).
+                    // Ted MediaStreamTrackProcessor: zvuk grafu jde do MediaStreamu, kousky (AudioData
+                    // po ~10 ms) se radi do fronty AZ NA 4 s - zadrhnuti je jen zdrzi, nic se neztrati.
+                    // Kde neni: ScriptProcessor 4096 (dvojnasobna rezerva). Zvuk se posila cely (i ticho),
+                    // dokud nejaky prvek hraje - TV ma souvislou casovou osu. Fronta se posila po 8 kusech
+                    // (dozene zadrhnuti), zahazuje se az nad 256 kusu ~11 s (to uz je stare).
                     + "window.__AHTV_YT_AUDIO_Q=window.__AHTV_YT_AUDIO_Q||[];"
+                    + "var zs=window.__AHTV_YT_ZSTAT=window.__AHTV_YT_ZSTAT||{kusu:0,ramcu:0,qmax:0,zahoz:0,t0:Date.now(),zac:0};"
                     + "window.__AHTV_YT_AUDIO_DRAIN=window.__AHTV_YT_AUDIO_DRAIN||setInterval(function(){try{"
                     + "var q=window.__AHTV_YT_AUDIO_Q||[];"
-                    + "if(!q.length||!window.AHTVWEB||!window.AHTVWEB.pushYoutubePcm16)return;"
-                    + "var n=Math.min(2,q.length);"
-                    + "for(var qi=0;qi<n;qi++){var item=q.shift();window.AHTVWEB.pushYoutubePcm16(item.b64,item.rate,item.frames,2);}"
-                    + "if(q.length>10)q.splice(0,q.length-10);"
-                    + "}catch(_e){}},38);"
-                    + "tap.onaudioprocess=function(e){try{"
-                    + "var input=e.inputBuffer,output=e.outputBuffer,frames=input.length;"
-                    + "var l=input.getChannelData(0),r=input.numberOfChannels>1?input.getChannelData(1):l;"
-                    + "for(var c=0;c<output.numberOfChannels;c++){var o=output.getChannelData(c),inp=c===0?l:r;for(var i=0;i<frames;i++)o[i]=inp[i];}"
-                    + "var q=window.__AHTV_YT_AUDIO_Q;if(!q)return;"
-                    + "var bytes=new Uint8Array(frames*4),peak=0;"
-                    + "for(var i=0,j=0;i<frames;i++,j+=4){"
-                    + "var lv=Math.max(-1,Math.min(1,l[i])),rv=Math.max(-1,Math.min(1,r[i]));"
-                    + "peak=Math.max(peak,Math.abs(lv),Math.abs(rv));"
-                    + ""
-                    + "var li=lv<0?Math.round(lv*32768):Math.round(lv*32767);"
-                    + "var ri=rv<0?Math.round(rv*32768):Math.round(rv*32767);"
-                    + "bytes[j]=li&255;bytes[j+1]=(li>>8)&255;bytes[j+2]=ri&255;bytes[j+3]=(ri>>8)&255;"
-                    + "}"
-                    + "if(peak<0.0005)return;"
+                    + "if(q.length>zs.qmax)zs.qmax=q.length;"
+                    + "if(q.length&&window.AHTVWEB&&window.AHTVWEB.pushYoutubePcm16){"
+                    + "var n=Math.min(8,q.length);"
+                    + "for(var qi=0;qi<n;qi++){var item=q.shift();window.AHTVWEB.pushYoutubePcm16(item.b64,item.rate,item.frames,2);zs.kusu++;zs.ramcu+=item.frames;}}"
+                    + "var t=Date.now();if(zs.kusu&&t-zs.t0>=30000){var bz=window.__AHTV_YT_AUDIO_BRIDGE;"
+                    + "ahtvLog6('zachyt '+(bz&&bz.zachyt?bz.zachyt:'?')+': za '+Math.round((t-zs.t0)/1000)+' s '+zs.kusu+' kusu, '+Math.round(zs.ramcu*1000/(t-zs.t0))+' vzorku/s (zvuk '+(bz&&bz.ctx?bz.ctx.sampleRate:'?')+' Hz), fronta nejvic '+zs.qmax+', zahozeno '+zs.zahoz);"
+                    + "zs.kusu=0;zs.ramcu=0;zs.qmax=0;zs.zahoz=0;zs.t0=t;}"
+                    + "}catch(_e){}},30);"
+                    // kousky -> 2048 ramcu stereo PCM 16 bit (base64) do fronty; posila se, jen kdyz neco hraje
+                    + "var aL=new Float32Array(2048),aR=new Float32Array(2048),aN=0,aFs=ctx.sampleRate||48000;"
+                    + "var ahtvVen=function(){try{var q=window.__AHTV_YT_AUDIO_Q;if(!q||!ahtvHrajici()){aN=0;return;}"
+                    + "var bytes=new Uint8Array(aN*4);"
+                    + "for(var i=0,j=0;i<aN;i++,j+=4){var lv=aL[i],rv=aR[i];lv=lv>1?1:(lv<-1?-1:lv);rv=rv>1?1:(rv<-1?-1:rv);"
+                    + "var li=lv<0?Math.round(lv*32768):Math.round(lv*32767),ri=rv<0?Math.round(rv*32768):Math.round(rv*32767);"
+                    + "bytes[j]=li&255;bytes[j+1]=(li>>8)&255;bytes[j+2]=ri&255;bytes[j+3]=(ri>>8)&255;}"
                     + "var s='',step=4096;for(var p=0;p<bytes.length;p+=step)s+=String.fromCharCode.apply(null,bytes.subarray(p,p+step));"
-                    + "q.push({b64:btoa(s),rate:ctx.sampleRate||44100,frames:frames|0});"
-                    + "if(q.length>16)q.splice(0,q.length-16);"
-                    + "}catch(_e){}};"
-                    + "gain.connect(ctx.destination);var mute=ctx.createGain();mute.gain.value=0;gain.connect(tap);tap.connect(mute);mute.connect(ctx.destination);"
-                    + "br={ok:true,at:Date.now(),ctx:ctx,vstup:vstup,filters:filters,bass:bass,treble:treble,pan:pan,gain:gain,tap:tap,prvku:0};"
+                    + "q.push({b64:btoa(s),rate:aFs,frames:aN});if(q.length>256){zs.zahoz+=q.length-256;q.splice(0,q.length-256);}"
+                    + "}catch(_e){}aN=0;};"
+                    + "var ahtvPridej=function(l,r,n,fs){if(fs&&fs!==aFs){if(aN)ahtvVen();aFs=fs;}var o=0;"
+                    + "while(o<n){var k=Math.min(n-o,2048-aN);aL.set(l.subarray(o,o+k),aN);aR.set(r.subarray(o,o+k),aN);aN+=k;o+=k;if(aN>=2048)ahtvVen();}};"
+                    + "var zachyt='';"
+                    + "try{if(typeof MediaStreamTrackProcessor==='function'&&ctx.createMediaStreamDestination){"
+                    + "var dest=ctx.createMediaStreamDestination();gain.connect(dest);"
+                    + "var mp=new MediaStreamTrackProcessor({track:dest.stream.getAudioTracks()[0],maxBufferSize:400});"
+                    + "var rd=mp.readable.getReader(),tL=new Float32Array(1024),tR=new Float32Array(1024),tI=new Float32Array(2048);"
+                    + "var kus=function(a){var n=a.numberOfFrames|0,ch=a.numberOfChannels|0,f=String(a.format||'');if(n<=0||ch<=0)return;"
+                    + "if(tL.length<n){tL=new Float32Array(n);tR=new Float32Array(n);}if(tI.length<n*ch)tI=new Float32Array(n*ch);"
+                    + "var L=tL.subarray(0,n),R=tR.subarray(0,n),i;"
+                    + "if(f==='f32-planar'){a.copyTo(L,{planeIndex:0});if(ch>1)a.copyTo(R,{planeIndex:1});else R.set(L);}"
+                    + "else if(f==='f32'){var I=tI.subarray(0,n*ch);a.copyTo(I,{planeIndex:0});for(i=0;i<n;i++){L[i]=I[i*ch];R[i]=ch>1?I[i*ch+1]:I[i*ch];}}"
+                    + "else{a.copyTo(L,{planeIndex:0,format:'f32-planar'});if(ch>1)a.copyTo(R,{planeIndex:1,format:'f32-planar'});else R.set(L);}"
+                    + "ahtvPridej(L,R,n,a.sampleRate|0);};"
+                    + "var cti=function(){rd.read().then(function(v){if(v.done)return;var a=v.value;try{kus(a);}catch(_k){zs.chyb=(zs.chyb|0)+1;}try{a.close();}catch(_c){}cti();},function(e){ahtvLog6('zachyt mstp skoncil: '+e);});};"
+                    + "cti();zachyt='mstp';}}catch(_m){zachyt='';}"
+                    + "var tap=null;"
+                    + "if(!zachyt){tap=ctx.createScriptProcessor(4096,2,2);"
+                    + "tap.onaudioprocess=function(e){try{var input=e.inputBuffer,l=input.getChannelData(0),r=input.numberOfChannels>1?input.getChannelData(1):l;"
+                    + "ahtvPridej(l,r,input.length,ctx.sampleRate);}catch(_e){}};"
+                    + "var mute=ctx.createGain();mute.gain.value=0;gain.connect(tap);tap.connect(mute);mute.connect(ctx.destination);zachyt='sp4096';}"
+                    + "gain.connect(ctx.destination);"
+                    + "br={ok:true,at:Date.now(),ctx:ctx,vstup:vstup,filters:filters,bass:bass,treble:treble,pan:pan,gain:gain,tap:tap,zachyt:zachyt,zDest:dest||null,zMp:mp||null,zRd:rd||null,prvku:0};"
+                    + "ahtvLog6('zachyt zvuku pro TV: '+(zachyt==='mstp'?'MediaStreamTrackProcessor (zadrhnuti stranky nic neztrati)':'ScriptProcessor 4096 (MediaStreamTrackProcessor neni)'));"
                     + "window.__AHTV_YT_AUDIO_BRIDGE=br;ahtvApply(br);ahtvInstallControls();"
                     + "var obnov=function(){try{if(ctx.state!=='running'&&ctx.resume)ctx.resume();}catch(_e){}};"
                     + "['click','touchstart','keydown'].forEach(function(ev){document.addEventListener(ev,obnov,true);});"
@@ -4007,6 +4034,17 @@ public class MainActivity extends Activity {
                         + "Access-Control-Allow-Origin: *\r\n"
                         + "Content-Length: " + odp.length + "\r\n\r\n").getBytes("UTF-8"));
                 out.write(odp); out.flush();
+            } else if ("/log/predchozi".equals(path)) {
+                // B336: log PREDCHOZIHO spusteni appky (PS1_LOG_predchozi.txt) - kdyz se appka mezitim
+                // zavrela a znovu otevrela (napr. na TV), jde porad stahnout z PC / telefonu
+                byte[] body = null;
+                try {
+                    File pred = new File(napTvWebLogSlozka, "PS1_LOG_predchozi.txt");   // vedle PS1_LOG.txt (Download/AtariHelp)
+                    if (pred.exists()) body = napTvWebReadFileBytes(pred);
+                } catch (Throwable ignored) {}
+                if (body == null || body.length == 0) body = "predchozi log neni\n".getBytes("UTF-8");
+                napTvWebHeader(out, "200 OK", "text/plain; charset=utf-8", body.length, true);
+                out.write(body);
             } else if ("/log".equals(path)) {
                 // BUILD2SK33: log byl driv videt jen zevnitr PS1 obrazovky (nedalo
                 // se poslat log z toho, co se deje na jinych obrazovkach - DJ pult,
@@ -4442,7 +4480,9 @@ public class MainActivity extends Activity {
                 // zacatek proudu: 35 ms; dlouhy prvni kus (rozjezd hry) - jen jeho konec
                 + "else{ap.cil=0.035;var dl=an/rate;if(dl>0.06){var vyn=Math.floor((dl-0.04)*rate);o+=vyn*(kan===1?2:4);an-=vyn;ap.vyn+=vyn;}}"
                 + "ap.nF=Math.ceil((now+ap.cil)*fs);if(!dob)rawPredej(ap.nF/fs);lb=ap.nF/fs-now;ap.fade=true;ap.uber=0;ap.rsPos=0;ap.rsP.fill(0);}"   // B315: zacatek zvuku proudu = konec stare cesty
-                + "else if(lb>0.35||(ap.uber>0&&an/rate<=ap.uber+0.005)){ap.uber=Math.max(0,ap.uber-an/rate);ap.zah++;ap.fade=true;return;}"
+                // B336: stranky appky (YouTube) - zvuk po zadrhnuti stranky v telefonu prijde davkou
+                // (az 600 ms, Hub zvukMaxMs) - nezahazovat, je to rezerva na pristi zadrhnuti
+                + "else if(lb>(ap.druh==='stranka'?0.7:0.35)||(ap.uber>0&&an/rate<=ap.uber+0.005)){ap.uber=Math.max(0,ap.uber-an/rate);ap.zah++;ap.fade=true;return;}"
                 // rezerva: minimum za kazdou vterinu (poslednich 10) -> zrychleni / zpomaleni / vynechani
                 + "if(lb<ap.lbM)ap.lbM=lb;if(lb<ap.lmin)ap.lmin=lb;"
                 + "if(now-ap.lbT>=1){if(ap.lbT>0){ap.mins.push(ap.lbM);if(ap.mins.length>10)ap.mins.shift();}ap.lbM=1e9;ap.lbT=now;"
@@ -8958,6 +8998,41 @@ public class MainActivity extends Activity {
                 appendNativeLog("B297 OVLADANI nacteno: " + cfg);
             }
         } catch (Throwable ignored) {}
+    }
+
+    /** B336: Android TV - menu pristroje Atari na tlacitko ZPET (servisni tlacitka jsou jen na vysku). */
+    private void atariCppTvMenu() {
+        appendNativeLog("B336 TV: ZPET -> menu pristroje Atari (hry, disketa, kazeta, reset, zpet do menu)");
+        final String[] polozky = {
+                tx("NET / HRY - hry ze serveru N&P", "NET / GAMES - games from the N&P server"),
+                tx("XEX / SOUBOR - hra nebo cartridge (.car) z televize / USB", "XEX / FILE - a game or cartridge (.car) from the TV / USB"),
+                tx("ATR / DISK - disketa do D1: (vysunout, vyměnit)", "ATR / DISK - disk in D1: (eject, swap)"),
+                tx("KAZETA (WAV) - hry z kazety", "TAPE (WAV) - games on tape"),
+                "TURBO BASIC XL",
+                "RESET ATARI",
+                tx("NÁPOVĚDA", "HELP"),
+                tx("ZPĚT DO MENU", "BACK TO MENU")
+        };
+        try {
+            new android.app.AlertDialog.Builder(this)
+                    .setTitle("ATARI 130XE")
+                    .setItems(polozky, (dlg, w) -> {
+                        switch (w) {
+                            case 0: atariZarizeniAkce(1); break;
+                            case 1: atariZarizeniAkce(2); break;
+                            case 2: atariZarizeniAkce(3); break;
+                            case 3: atariZarizeniAkce(9); break;
+                            case 4: atariZarizeniAkce(4); break;
+                            case 5: NativeAtariCoreBridge.devCtlSafe("atari_reset"); break;
+                            case 6: atariZarizeniAkce(7); break;
+                            default: atariZarizeniAkce(8); break;   // MENU = zpet do hlavniho menu
+                        }
+                    })
+                    .setNegativeButton(tx("HRÁT DÁL", "KEEP PLAYING"), null)
+                    .show();
+        } catch (Throwable t) {
+            appendNativeLog("B336 TV_MENU_ATARI_CHYBA " + safeMsg(t));
+        }
     }
 
     /** Ozubene kolecko na sirku - stejne polozky jako Sega "D-PAD A OVLADANI". */
@@ -14792,6 +14867,14 @@ public class MainActivity extends Activity {
             // B291: ze stranky s logem (LOG/CHYBA) se zpet vraci na pristroj
             if (atariZarizeni != null && atariZarizeniSkryte) {
                 atariZarizeniSkryj(false);
+                return;
+            }
+            // B336: Android TV (Rene: "stahovat hry hrat hry proste nejde neni to tam videt") - TV je
+            // vzdy na sirku a tam pristroj Atari nema servisni tlacitka (NET / HRY, XEX / MOBIL, ATR /
+            // DISK ... jsou jen na vysku) a ozubene kolecko jde jen dotykem. ZPET z dalkoveho ovladace
+            // proto otevre menu pristroje (hry, disketa, kazeta, reset, napoveda, ZPET DO MENU).
+            if (atariZarizeni != null && atariCppNaObrazovce && napJeTv()) {
+                atariCppTvMenu();
                 return;
             }
             // B311: ZPET v hlavnim menu = appka do pozadi (jako tlacitko plochy, menu na

@@ -1,0 +1,11 @@
+B336 - zvuk YouTube na TV pri zadrhavajici strance (skript mostu B335 a B336 z MainActivity, Chromium)
+   B335 zadrhava : zachyt sp2048, zadrhnuti 11 x 250 ms, PCM 205 kusu po 44100 Hz, doslo 99.9 % zvuku, lupnuti 45
+   B336 zadrhava : zachyt mstp  , zadrhnuti 11 x 250 ms, PCM 205 kusu po 44100 Hz, doslo 100.1 % zvuku, lupnuti 0
+   B336 plynule  : zachyt mstp  , zadrhnuti  0 x 250 ms, PCM 205 kusu po 44100 Hz, doslo 99.9 % zvuku, lupnuti 0
+   B336 bez MSTP : zachyt sp4096, zadrhnuti  0 x 250 ms, PCM 204 kusu po 44100 Hz, doslo 99.6 % zvuku, lupnuti 12
+OK     1) B335 se zadrhavanim (250 ms kazdych 700 ms): doslo 99.9 % zvuku, 45 lupnuti - pricina chrapotu potvrzena
+OK     2) B336 se zadrhavanim: zachyt mstp, doslo 100.1 % zvuku, 0 lupnuti
+OK     3) B336 bez zadrhavani: doslo 99.9 %, 0 lupnuti
+OK     4) B336 bez MediaStreamTrackProcessor (WebView starsi nez Chrome 94): zalozni sp4096 funguje, doslo 99.6 % (lupnuti 12 - ScriptProcessor luska i bez zadrhavani, proto je jen zaloha)
+OK     5) skript B336 ES5, zadna chyba JavaScriptu (zadna), log "[NAP PLAYER] B336 YOUTUBE ZVUK NA TV: zachyt zvuku pro TV: MediaStreamTrackProcessor (zadrhnuti stranky nic neztrati)"
+VYSLEDEK: 5 kontrol, 0 CHYBA

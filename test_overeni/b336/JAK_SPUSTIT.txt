@@ -1,0 +1,62 @@
+B336 - ZVUK YOUTUBE NA TV BEZ CHRAPOTU + ATARI NA ANDROID TV (MENU PRISTROJE NA ZPET) (17. 11. 2026)
+=====================================================================================================
+
+Rene (log B335 z telefonu): "Zvuk je z yt ale je chraplavy ... Duna je v poradku ... na tv uz se apka
+nainstalovala - ale nejdou spustit hry nejde vicemene nic nez uvodni okno u atari s ready ... demo na tv
+nebezi ... stahovat hry hrat hry proste nejde neni to tam videt".
+
+1) CHRAPLAVY ZVUK YOUTUBE NA TV
+   LOG B335: zvuk z YouTube do proudu jde (48000 Hz, 2 kanaly), ale proud stranky "zvuk 39615 / 42610
+   vzorku/s" (ma byt 44100) a prohlizec TV "podteceni 12 / 18 / 10" za 30 s.
+   PRICINA: odbocka byla ScriptProcessor 2048 - jeho udalost bezi v HLAVNIM vlakne stranky YouTube (tezky
+   JavaScript). Prohlizec ma pro ScriptProcessor jen dva buffery: kdyz se hlavni vlakno zadrhne, kus zvuku
+   zmizi nebo se zopakuje (lupnuti = chrapot) a TV pak zvuk dojde (podteceni). Overeno v Chromiu se
+   skutecnym skriptem z appky: stranka se zadrhava 250 ms kazdych 700 ms -> B335 45 lupnuti za 8 s.
+   OPRAVA (MainActivity.napTvWebInjectYoutubeAudioBridge):
+   - MediaStreamTrackProcessor: zvuk grafu jde do MediaStreamu, kousky (AudioData ~10 ms) cekaji ve
+     fronte az 400 kusu (~4 s) - zadrhnuti stranky je jen zdrzi, nic se neztrati ani nezopakuje
+     (Chromium: 0 lupnuti pri stejnem zadrhavani, 100 % zvuku);
+   - zaloha (WebView starsi nez Chrome 94): ScriptProcessor 4096;
+   - posila se cely zvuk (i ticho), dokud neco hraje - TV ma souvislou casovou osu; fronta do Javy po
+     8 kusech (dozene zadrhnuti), zahazuje se az nad 256 kusu (~11 s);
+   - Hub proudu stranky: zvuk mezi dvema pakety az 600 ms (drive 250 ms - davka po zadrhnuti se
+     zahodila = "zvuk preskoku"); PS1, menu, Sega dal 250 ms;
+   - stranka TV: rezerva zvuku stranky az 0,7 s (davka se nezahodi), hry dal 0,35 s;
+   - log JSLOG "[NAP PLAYER] B336 YOUTUBE ZVUK NA TV: zachyt zvuku pro TV: MediaStreamTrackProcessor ..."
+     a kazdych 30 s "zachyt mstp: za 30 s N kusu, X vzorku/s ..., fronta nejvic M, zahozeno 0".
+
+2) ANDROID TV - ATARI (hry nejdou, neni to videt)
+   PRICINA: televize je vzdy NA SIRKU a pristroj Atari ma servisni tlacitka (NET / HRY, XEX / MOBIL,
+   ATR / DISK, kazeta ...) jen NA VYSKU; na sirku je jen ozubene kolecko (menu D-PAD A OVLADANI s hrami)
+   a to jde stisknout jen dotykem. Dalkovym ovladacem se k hram nedalo dostat.
+   OPRAVA: na TV tlacitko ZPET v pristroji Atari otevre menu pristroje: NET / HRY, XEX / SOUBOR,
+   ATR / DISK, KAZETA, TURBO BASIC XL, RESET ATARI, NAPOVEDA, ZPET DO MENU (HRAT DAL = zavrit).
+   Log "B336 TV: ZPET -> menu pristroje Atari". Telefon beze zmeny.
+   SEGA a PS1 na TV: Nova instalace = novy hrac - podle pravidel appky (NapPostup) je otevrene jen Atari,
+   SEGA po 1500 radcich programu v Atari nebo po platbe, PS1 po 120 hodinach Segy nebo po platbe (spravce
+   na serveru N&P), pro Reneho servisni kod v OPTIONS -> ODEMKNOUT DALSI. To NENI chyba B334.
+   DEMO na TV: bez logu z TV nevim (nova instalace -> aktivace -> menu? soubory Sonic / BIOS?) - Rene
+   posle log z TV: WEB TV na TV -> na PC / telefonu adresa + /log (aktualni) nebo /log/predchozi (B336:
+   log predchoziho spusteni appky - kdyz se appka mezitim zavrela).
+3) Napoveda CZ / EN (Android TV: menu pristroje Atari na ZPET, SEGA / PS1 na novem zarizeni),
+   build.gradle versionCode 379 "EMU10-B336-YT-BEZ-CHRAPOTU-TV".
+
+Spoustet z adresare test_overeni/b336 (PRAC = pracovni slozka):
+A) Chromium, skript mostu B335 (z gitu ee83fa1) a B336 (z MainActivity), zadrhavajici stranka:
+   python3 test_b336_youtube_zvuk.py [MainActivity_B335.java]
+                                         -> VYSTUP_test_b336_youtube_zvuk.txt (5 OK: B335 45 lupnuti,
+                                            B336 mstp 0 lupnuti 100 %, bez zadrhavani 0, zaloha sp4096
+                                            funguje, ES5 a bez chyb JavaScriptu)
+B) C++ Stranka + Hub, davka zvuku po zadrhnuti:
+   g++ -std=c++17 -O2 -pthread -I../../app/src/main/cpp/tvproud -I../../app/src/main/cpp/vendor/stb -I../b313 \
+       -o PRAC/test_b336_stranka_zvuk test_b336_stranka_zvuk.cpp && PRAC/test_b336_stranka_zvuk
+                                         -> VYSTUP_test_b336_stranka_zvuk.txt (2 OK: zadrhnuti 400 ms
+                                            B335 ztrati 15 %, B336 nic; 800 ms jen stare)
+C) Zapojeni: python3 kontrola_b336.py    -> VYSTUP_kontrola_b336.txt (13 OK)
+D) javac vsech 110 trid appky proti android-34.jar: 0 chyb.
+E) Regrese: ../b335/regrese_kodeky.sh (b305, b306, b313, b319, b320, b333 stranka - vse OK)
+   -> VYSTUP_regrese_kodeky.txt; ../b333/test_b333_tv.py (stranka WEB TV, 9 OK) -> VYSTUP_regrese_b333_tv.txt;
+   ../b335/test_b335_youtube.py (most YouTube B335 se skriptem B336: ORIGINAL FIRST, TV se diva, dalsi
+   video, cizi zdroj, EQ - 8 OK) -> VYSTUP_regrese_b335_youtube.txt; napoveda CZ 201 / EN 194 nazvu 0 chyb.
+
+Na telefonu a TV NEOVERENO (Rene).

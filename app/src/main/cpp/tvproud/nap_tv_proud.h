@@ -184,6 +184,12 @@ class Hub {
   // B333: pomer stran v paketu podle rozmeru PRAVE baleneho snimku (stranky appky: na vysku i na
   // sirku) - obraz a pomer v jednom paketu vzdy k sobe, i kdyz se telefon prave otoci
   void pomerZRozmeru(bool z) { pomerZRozmeru_.store(z, std::memory_order_relaxed); }
+  // B336: kolik zvuku smi cekat na dalsi paket, nez se stare zahodi (vychozi 250 ms - hra / menu
+  // davaji zvuk rovnomerne). Stranka (YouTube): zvuk chodi po zadrhnuti stranky davkou - 600 ms.
+  void zvukMaxMs(int ms) {
+    const int nejvic = (int)((long long)ZVUK_KAP * 1000 / (2LL * (vzorkovani_ > 0 ? vzorkovani_ : 44100))) - 50;
+    zvukMaxMs_.store(ms < 50 ? 50 : (ms > nejvic ? nejvic : ms), std::memory_order_relaxed);
+  }
   // B313: nastaveni kodeku pro kazdeho noveho prohlizece (menu: vic pasu, vyssi kvalita)
   void nastavKodek(std::function<void(Kodek &)> f) {
     std::lock_guard<std::mutex> l(m_);
@@ -270,7 +276,7 @@ class Hub {
       // zvuk od minula (nejvys 0,25 s - kdyz prohlizec zaostal, stare se zahodi)
       k.zvuk.clear();
       const unsigned long long konec = zvZapis_;
-      const unsigned long long MAXZ = (unsigned long long)vzorkovani_ * 2 / 4;
+      const unsigned long long MAXZ = (unsigned long long)vzorkovani_ * 2 * (unsigned long long)zvukMaxMs_.load(std::memory_order_relaxed) / 1000;   // B336 (drive vzdy 250 ms)
       if (!k.zvukJede || konec < k.zvukPoz) { k.zvukPoz = konec; k.zvukJede = true; }
       else if (konec - k.zvukPoz > MAXZ) { k.zvukPoz = konec - ((unsigned long long)vzorkovani_ / 30 & ~1ULL); k.zvukSkoku++; }
       if (zv_.size() == ZVUK_KAP && konec > k.zvukPoz) {
@@ -438,6 +444,7 @@ class Hub {
   int vzorkovani_, pomerX_, pomerY_;
   bool orez_ = true;
   std::atomic<bool> pomerZRozmeru_{false};   // B333: stranka (pomer z rozmeru snimku)
+  std::atomic<int> zvukMaxMs_{250};          // B336
   std::mutex m_;
   std::condition_variable cv_;
   std::vector<uint32_t> snimek_;

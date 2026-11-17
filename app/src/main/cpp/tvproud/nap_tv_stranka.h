@@ -35,6 +35,7 @@ class Stranka {
   Stranka() : hub_("STRANKA", VZORKOVANI, 9, 16, false) {
     hub_.nastavKodek(nastavKodekMenu);
     hub_.pomerZRozmeru(true);
+    hub_.zvukMaxMs(600);           // B336: zvuk YouTube chodi po zadrhnuti stranky davkou - nezahazovat
   }
 
   Hub<KodekJpeg> &hub() { return hub_; }

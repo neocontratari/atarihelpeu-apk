@@ -1,0 +1,13 @@
+B333 - stranky appky na TV / PC z C++ (SKUTECNA stranka prohlizece z MainActivity, proud ze SKUTECNEHO nap_tv_stranka.h: 76 paketu, 1356 kB)
+   dotazy prohlizece: /, /clientlog, /quality, /status, /stranka.stream
+OK     A) /status rika proud=stranka: prohlizec otevrel /stranka.stream za 0.5 s
+OK     A) stranka na sirku 1920 x 1034 (pomer 255:137): canvas 1280x688 na 0,16 v okne 1280x720, obsah PSNR 45.2 dB
+OK     A) otoceni zpet na vysku 582 x 1080: canvas 388x720 na 446,0 (cela vyska, po stranach cerno - NE roztazene na 16:9 i pri "vyplnit obrazovku"), obsah PSNR 45.4 dB
+OK     A) popisek "AtariHelp TV WEB CAST [SK60] proud z C++: stranka" i po klavese (zvuk) - zadne MJPEG / H264 / JPEG
+OK     A) zadny dotaz na starou cestu pres Javu (/stream.h264, /stream.mjpg, /frame.jpg, /audio.raw) ani na internet (drive JMuxer z CDN)
+OK     A) zadna chyba JavaScriptu ani v paketech
+   log prohlizece: B306 STRANKA PROUD start
+OK     B) /status rika proud=0: prohlizec ceka ("cekam na proud z C++"), starou cestu nezkousi
+OK     B) pak proud=stranka: /stranka.stream za 0.4 s, obraz 582x1080, chyb JS 0
+OK     C) prohlizec bez fetch streamu: uprostred obrazovky VIDITELNA hlaska "TENTO PROHLIZEC NEUMI PROUD Z C++ - OTEVRI ADRESU V CHROME, EDGE NEBO FIREFOXU" (640x84), v logu appky 1x, stara cesta 0x, chyb JS 0
+VYSLEDEK: 9 kontrol, 0 CHYBA

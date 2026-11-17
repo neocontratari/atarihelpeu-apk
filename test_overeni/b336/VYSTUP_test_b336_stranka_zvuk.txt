@@ -1,0 +1,4 @@
+B336 - zvuk YouTube v proudu stranky (C++): davka po zadrhnuti stranky
+OK     Z1) 2x zadrhnuti 400 ms: B335 (Hub 250 ms) na TV 114514 z 134064 vzorku, skoku 1; B336 (Stranka 600 ms) 134065 vzorku - vsechno, skoku 0 (nejvetsi rozdil vzorku 878, ton max 878)
+OK     Z2) zadrhnuti 800 ms (vic nez 600): B336 zahodi jen stare (37190 vzorku), skoku 1 - dal plynule
+VYSLEDEK: 2 OK, 0 CHYBA
