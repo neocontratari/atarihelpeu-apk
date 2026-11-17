@@ -11467,6 +11467,10 @@ public class MainActivity extends Activity {
     private boolean napCekaNaJazyk = false;
     private NapServerKlient napServer;
     private volatile String napAktualniUrl = "";
+    /** B341: kolikrat se z ikony spustila druha appka nad bezici (zavrena hned v onCreate) - log v onResume. */
+    private static volatile int napDruhaAppkaZavrena = 0;
+    /** B341: tahle instance je jen ta druha z ikony - v onDestroy nic nezastavovat (jadra a server patri prvni). */
+    private boolean napJenDuplikat = false;
     private volatile String napTajemstviApk = null;
     private volatile long napStavCas = 0;   // B337: volatile - pise i vlakno zamcene karty / stranky ODEMKNOUT
     private String napPosledniZprava = "";
@@ -12460,7 +12464,9 @@ public class MainActivity extends Activity {
     private int ovladacKam() {
         if (napPs1Ovladani()) return OVL_PS1;
         if (napAtariOvladani()) return OVL_ATARI;
-        if (segaPlocha != null && isSegaNativeOwnerUrl(napTvWebCurrentUrl)) return OVL_SEGA;
+        // B341: adresa stranky z onPageStarted (napAktualniUrl), ne cache vysilani WEB TV (napTvWebCurrentUrl - obnovuje
+        // ji jen smycka TV vysilani kazde 2 s; kdyz nebezi, zustane stara a ovladac / dalkovy jde do stranky, ne do hry)
+        if (segaPlocha != null && isSegaNativeOwnerUrl(napAktualniUrl)) return OVL_SEGA;
         if (menuPlocha != null && !menuSkryteProOptions && demoPlocha == null) return OVL_MENU;
         return OVL_NIC;
     }
@@ -12925,6 +12931,21 @@ public class MainActivity extends Activity {
 
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        // B341: JEDNA APPKA. Po vlastni aktualizaci appku otevre NapPoAktualizaci (B327) jinym intentem nez
+        // ikona (bez MAIN / LAUNCHER). Ikona (TV: LEANBACK_LAUNCHER) pak Android nepozna jako tutez appku a nad
+        // starou spusti DRUHOU. Log z TV (B340): "Pro Controller odpojen" a "BT ... PRIPOJEN -> odpojen" 2x,
+        // TV_WEB_PERIODIC porad url=index.html (stara appka v pozadi) a ve hre Segy ovladac i dalkovy -> "nic
+        // (stranka)" - nova appka nevedela, ze je ve hre. Druha appka z ikony se hned zavre a ukaze tu prvni.
+        try {
+            final Intent ii = getIntent();
+            if (!isTaskRoot() && ii != null && Intent.ACTION_MAIN.equals(ii.getAction())
+                    && (ii.hasCategory(Intent.CATEGORY_LAUNCHER) || ii.hasCategory(Intent.CATEGORY_LEANBACK_LAUNCHER))) {
+                napDruhaAppkaZavrena++;
+                napJenDuplikat = true;   // onDestroy nesmi zastavit jadra / server bezici appky (staticke mosty)
+                finish();
+                return;
+            }
+        } catch (Throwable ignored) {}
         // BUILD2SK82: prvni vec ze vseho - zalozit cerstvy log soubor pro TUHLE
         // relaci a nastartovat vlakno, co ho prubezne plni (viz appendNativeLog).
         // Musi byt PRED vsim ostatnim, aby /log opravdu zachytil "od zacatku".
@@ -15924,6 +15945,7 @@ public class MainActivity extends Activity {
 
     @Override
     protected void onDestroy() {
+        if (napJenDuplikat) { super.onDestroy(); return; }   // B341: druha appka z ikony - nic nezastavovat
         zapisOdchod("ZRUSENA");
         try { if (ovladac != null) ovladac.stop(); } catch (Throwable ignored) {}   // B320
         try { if (bt != null) bt.zastav(); } catch (Throwable ignored) {}           // B331
@@ -15946,6 +15968,11 @@ public class MainActivity extends Activity {
     protected void onResume() {
         super.onResume();
         napViditelna = true;   // B322
+        if (napDruhaAppkaZavrena > 0) {   // B341
+            appendNativeLog("B341 JEDNA APPKA: ikona chtela spustit druhou appku nad bezici (" + napDruhaAppkaZavrena
+                    + "x, po aktualizaci appku otevrel jiny intent) - druha zavrena, bezi tahle");
+            napDruhaAppkaZavrena = 0;
+        }
         if (web != null) web.onResume();
         // B321: po navratu do appky (nejdriv po 30 min) zkontrolovat server: blokace, zprava, nova verze
         if (napStavCas != 0 && android.os.SystemClock.uptimeMillis() - napStavCas > 30L * 60 * 1000) napOverStav("navrat do appky");

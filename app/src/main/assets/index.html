@@ -462,6 +462,7 @@ function btStav(){
 function btTlacitko(d){
   var b=document.createElement('button');
   b.type='button';
+  b.setAttribute('data-a',d.a||'');   // B341: ramecek TV zustane na tomtez zarizeni (btPrekresli)
   b.className=(d.o?'ovl':'')+(d.p?' ok':'');
   b.textContent=(d.o?'🎮 ':'')+d.j+(d.p?J(' – připojený ✔',' – connected ✔'):(d.s?J(' – spárovaný',' – paired'):''));
   b.addEventListener('click',function(e){
@@ -471,6 +472,24 @@ function btTlacitko(d){
     setTimeout(btObnov,200);
   },true);
   return b;
+}
+// B341: seznam se prekresli jen kdyz se zmenil (drive kazdych 0,7 s cely znovu - ramecek dalkoveho na TV ztratil
+// tlacitko nalezeneho ovladace: "na nalezeny ovladac nejde najet, radek preskakuje"; i prst mohl trefit
+// zrovna mizejici tlacitko). Kdyz se zmeni, ramecek zustane na tomtez zarizeni (data-a).
+function btPrekresli(el,podpis,kresli){
+  if(el.getAttribute('data-podpis')===podpis) return false;
+  var f=null, fa=null;
+  try{ f=(window.NapTvOvladani&&NapTvOvladani.fokus)?NapTvOvladani.fokus():null; }catch(e){ f=null; }
+  if(f&&el.contains(f)) fa=f.getAttribute('data-a');
+  while(el.firstChild) el.removeChild(el.firstChild);
+  kresli();
+  el.setAttribute('data-podpis',podpis);
+  if(fa!==null){
+    for(var i=0;i<el.children.length;i++){
+      if(el.children[i].getAttribute('data-a')===fa){ try{ NapTvOvladani.vyber(el.children[i]); }catch(e){} break; }
+    }
+  }
+  return true;
 }
 function btObnov(){
   var st=btStav(), panel=$('stBt');
@@ -483,14 +502,16 @@ function btObnov(){
   // B332: u zapamatovaneho ovladace, ktery neni pripojeny, tlacitko PRIPOJIT
   var zs=$('stBtZapamSeznam');
   if(zs){
-    while(zs.firstChild) zs.removeChild(zs.firstChild);
-    (st.m||[]).forEach(function(x){
-      if(x.p||!x.a) return;
-      var b=document.createElement('button');
-      b.type='button';
-      b.textContent='🎮 '+J('PŘIPOJIT „','CONNECT “')+x.j+J('“','”');
-      b.addEventListener('click',function(e){ e.preventDefault();e.stopPropagation(); btPripoj(x.a); },true);
-      zs.appendChild(b);
+    var zm=(st.m||[]).filter(function(x){ return !x.p&&x.a; });
+    btPrekresli(zs,zm.map(function(x){ return x.a+'|'+x.j; }).join('\n')+'|'+(EN()?'en':'cs'),function(){
+      zm.forEach(function(x){
+        var b=document.createElement('button');
+        b.type='button';
+        b.setAttribute('data-a',x.a);
+        b.textContent='🎮 '+J('PŘIPOJIT „','CONNECT “')+x.j+J('“','”');
+        b.addEventListener('click',function(e){ e.preventDefault();e.stopPropagation(); btPripoj(x.a); },true);
+        zs.appendChild(b);
+      });
     });
   }
   if(!panel||!btOtevreno) return;
@@ -498,8 +519,9 @@ function btObnov(){
   var sez=$('stBtSeznam');
   if(sez){
     var z=(st.z||[]).filter(function(d){ return btVse||d.o; });
-    while(sez.firstChild) sez.removeChild(sez.firstChild);
-    z.forEach(function(d){ sez.appendChild(btTlacitko(d)); });
+    btPrekresli(sez,z.map(function(d){ return d.a+'|'+d.j+'|'+(d.o?1:0)+(d.p?1:0)+(d.s?1:0); }).join('\n')+'|'+(EN()?'en':'cs'),function(){
+      z.forEach(function(d){ sez.appendChild(btTlacitko(d)); });
+    });
     var jine=(st.z||[]).length-(st.z||[]).filter(function(d){ return d.o; }).length;
     var v=$('stBtVse');
     if(v){ v.textContent=btVse?J('JEN OVLADAČE','ONLY CONTROLLERS'):J('UKÁZAT VŠE','SHOW ALL')+(jine>0?' ('+jine+')':''); }

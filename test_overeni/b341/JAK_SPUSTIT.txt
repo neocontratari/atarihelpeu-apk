@@ -1,0 +1,46 @@
+B341 - JEDNA APPKA PO AKTUALIZACI + OVLADAC / DALKOVY VE HRE SEGY + SEZNAM BT OVLADACU NEPRESKAKUJE (17. 11. 2026)
+===========================================================================================================
+
+Rene (TV TCL, B340): "pri sparovani bt ovladace - nefunguje - na tv tak jak ma - dalkove ovladani budes mit v logu -
+2 tlacitka zaraz nefunguji. S tim bt d-padem neco musis udelat - Dale na tv v options nejde naject na najity ovladac
+controler - proste ten radek preskakuje." (+ navrh: appku na TV nechat na vysku s prepinacem SIRKA / VYSKA -
+"nepis dalsi nesmyslne kody jen kvuli tv").
+
+CO UKAZAL LOG Z TV (B340):
+ - Ve hre Segy (Sonic bezel) sel BT ovladac "Pro Controller" (057e:2009) i dalkovy do stranky, ne do hry:
+   "B329 OVLADAC tlacitko R2 ... -> podle mista START -> nic (stranka)". Zadny radek B340 DALKOVY TLACITKO (dalkovy
+   se do hry vubec nedostal - test "2 tlacitka naraz" proto nic neukazal). START z menu ZPET (B340) jel jinou cestou.
+ - Pricina: v appce bezely DVE appky naraz. "Pro Controller odpojen" a "BT ... PRIPOJEN -> odpojen" jsou v logu 2x
+   (dva posluchaci), divak WEB TV byl pripojeny uz pred zacatkem logu (prvni appka), TV_WEB_PERIODIC porad
+   url=index.html (stara appka v pozadi). Po aktualizaci appku otevre NapPoAktualizaci (B327) intentem bez
+   MAIN / LAUNCHER; ikona (TV: LEANBACK_LAUNCHER) pak Android nepozna jako tutez a spusti nad ni DRUHOU (Android:
+   "root activity of the task, but with a different intent -> new instance on top"). Druha appka nemela vlastni
+   smycku WEB TV, takze jeji napTvWebCurrentUrl zustal prazdny -> ovladacKam() ve Sege = "nic (stranka)".
+   Tyka se i telefonu (Android 9 a starsi - B327 otevira appku po aktualizaci sam).
+ - OPTIONS -> PRIPOJIT OVLADAC: seznam nalezenych (a zapamatovanych) ovladacu se kazdych 0,7 s smazal a nakreslil
+   znovu - ramecek dalkoveho (B334) tlacitko ztratil ("radek preskakuje"); i prst mohl trefit mizejici tlacitko.
+
+OPRAVA (nic jen pro TV - vse plati i pro telefon):
+1) JEDNA APPKA: onCreate - kdyz appka neni koren ulohy a spustila ji ikona (MAIN + LAUNCHER / LEANBACK_LAUNCHER),
+   hned se zavre a ukaze se ta bezici. onDestroy takove druhe appky nic nezastavuje (jadra, server WEB TV, ovladac
+   jsou staticke mosty bezici appky). Bezici appka zapise "B341 JEDNA APPKA: ... druha zavrena".
+2) OVLADAC VE HRE SEGY: ovladacKam() bere adresu stranky z onPageStarted (napAktualniUrl, B321), ne cache vysilani
+   WEB TV (obnovuje ji jen smycka vysilani). Plati pro gamepad i dalkovy.
+3) SEZNAM BT OVLADACU: prekresli se jen pri zmene (podpis seznamu); pri zmene zustane ramecek dalkoveho na tomtez
+   zarizeni (data-a). Text jmen dal jen textContent (B332).
+4) build.gradle versionCode 384 "EMU10-B341-JEDNA-APPKA-OVLADAC". Napoveda beze zmeny (nic noveho pro uzivatele).
+
+Spoustet z adresare test_overeni/b341:
+A) Chromium, skutecna stranka + falesny most AHBT:  python3 test_b341_bt_seznam.py  -> VYSTUP_test_b341_bt_seznam.txt
+   (7 OK: T0 B340 z gitu (802a087) - tlacitko po 1 s jine = chyba; T1 TV ramecek na "Pro Controller", po 2 s totez
+   tlacitko a ramecek, OK -> AHBT.sparuj; T2 seznam se zmeni - ramecek na tomtez zarizeni; T3 zapamatovany ovladac
+   stabilni; T4 telefon klepnuti; T5 jmeno s HTML jako text; T6 bez chyb JavaScriptu)
+B) Zapojeni: python3 kontrola_b341.py   -> VYSTUP_kontrola_b341.txt (10 OK)
+C) javac vsech zdroju appky proti android-34.jar -> VYSTUP_javac_android.txt (0 chyb, 120 trid, 33 zdroju)
+D) Regrese -> VYSTUP_regrese_*.txt: b332 BT stranka (9 OK), b331 BT stranka (11 OK), b334 TV ovladani (13 OK),
+   b314 menu (10 OK), b311 napoveda CZ (209 nazvu 0 chyb), kontrola_b340 (18 OK + O4 verze zamerne zmenena).
+   POZOR: skripty jinych buildu prepisuji sve VYSTUP soubory - po regresi "git checkout -- test_overeni/bNNN".
+
+DVE APPKY NAJEDNOU se v Chromiu ani v JVM vyzkouset neda (chovani Androidu pri spousteni z ikony) - overi log z TV:
+po aktualizaci (appka se otevre sama) zmacknout HOME a appku otevrit ikonou -> v logu "B341 JEDNA APPKA", "odpojen"
+ovladace jen 1x, ve Sege "B329 OVLADAC ... -> Sega" a "B340 DALKOVY TLACITKO".

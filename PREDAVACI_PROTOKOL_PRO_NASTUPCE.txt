@@ -4253,4 +4253,21 @@
        jen velikost + 200 MB; pozdeji rozbalovani ZIPu uz pri stahovani + "zabere X MB / vejde se" v seznamu her
        (server by posilal rozbalenou velikost).
 
+   B341: JEDNA APPKA PO AKTUALIZACI + OVLADAC / DALKOVY VE HRE SEGY + SEZNAM BT OVLADACU (17. 11. 2026).
+   Log z TV (B340): BT "Pro Controller" i dalkovy ve hre Segy -> "nic (stranka)", zadny B340 DALKOVY TLACITKO; v logu
+   "Pro Controller odpojen" 2x = bezely DVE appky (po aktualizaci ji B327 otevre intentem bez MAIN / LAUNCHER, ikona
+   pak spusti druhou nad ni; druha nemela smycku WEB TV -> napTvWebCurrentUrl prazdny -> ovladacKam() Sega = nic).
+   OPTIONS: seznam BT ovladacu se kazdych 0,7 s cely prekresloval - ramecek dalkoveho tlacitko ztratil.
+     - onCreate: druha appka z ikony (ne koren ulohy + MAIN / LAUNCHER / LEANBACK) se hned zavre; onDestroy u ni nic
+       nezastavuje; bezici zapise "B341 JEDNA APPKA". Plati i pro telefon (Android 9-).
+     - ovladacKam(): Sega podle napAktualniUrl (onPageStarted), ne podle cache WEB TV.
+     - btPrekresli: seznam jen pri zmene, ramecek na tomtez zarizeni (data-a).
+     - Rene navrhl appku na TV "nechat na vysku" s prepinacem SIRKA / VYSKA a "nepsat dalsi kody jen kvuli TV" -
+       odpoved v chatu (TV obrazovka je na sirku: na vysku = uzky pruh uprostred, nebo TV obraz otoci / prikaz
+       ignoruje; prepinac SIRKA / VYSKA jako obecna funkce telefon i TV - ceka na Reneho rozhodnuti).
+     - Testy test_overeni/b341 (JAK_SPUSTIT.txt). build.gradle: versionCode 384 "EMU10-B341-JEDNA-APPKA-OVLADAC".
+       Na TV neovereno.
+     - DALSI KROK: Rene - po aktualizaci HOME a otevrit ikonou (log B341 JEDNA APPKA), BT ovladac a dalkovy ve Sege
+       (B329 ... -> Sega, B340 DALKOVY TLACITKO, drzet VPRAVO + OK), OPTIONS -> PRIPOJIT OVLADAC ramecek na radku.
+
 ===============================================================================

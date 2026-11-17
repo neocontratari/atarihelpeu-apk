@@ -1,0 +1,11 @@
+OK     A1 onCreate: druha appka z ikony (ne koren ulohy, MAIN + LAUNCHER / LEANBACK_LAUNCHER) se hned zavre - PRED logem a vsim ostatnim
+OK     A2 onDestroy: zavrena druha appka NEZASTAVI jadra / server / ovladac bezici appky (staticke mosty) - kontrola hned na zacatku
+OK     A3 bezici appka v onResume zapise do logu, ze se druha z ikony zavrela (pocitadlo je staticke - spolecne obema)
+OK     A4 NapPoAktualizaci (B327) beze zmeny: po aktualizaci appku otevre jinym intentem nez ikona (proto A1)
+OK     O1 ovladacKam: Sega podle adresy stranky z onPageStarted (napAktualniUrl), ne podle cache vysilani WEB TV
+OK     O2 cache WEB TV (napTvWebCurrentUrl) dal jen pro vysilani na PC / TV - beze zmeny
+OK     S1 btPrekresli: prekreslit jen pri zmene seznamu; pri zmene ramecek dalkoveho zustane na tomtez zarizeni (data-a)
+OK     S2 btObnov: nalezene i zapamatovane ovladace pres btPrekresli (drive smazat a nakreslit kazdych 0,7 s)
+OK     S3 skripty index.html jsou ES5
+OK     N1 build.gradle: versionCode 384 "EMU10-B341-JEDNA-APPKA-OVLADAC"
+VYSLEDEK: 10 kontrol, 0 CHYBA
