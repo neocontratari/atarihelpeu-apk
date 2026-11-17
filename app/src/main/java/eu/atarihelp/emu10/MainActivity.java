@@ -9216,6 +9216,89 @@ public class MainActivity extends Activity {
         atariZarizeniAkce(8);   // MENU = index.html (pristroj se vypne v onPageStarted)
     }
 
+    /**
+     * B338: Android TV - menu konzole SEGA / PS1 na tlacitko ZPET (jako Atari B336 / B337). Hry ze serveru
+     * N&P (stejna stranka jako NET / HRY v Atari - Rene: "slo to obejit pres atari ... spustila sonica"),
+     * ulozit / nacist pozici (tlacitka stranky - na sirku na TV nejdou), PS1 reset, hlavni menu.
+     * ZPET v otevrenem menu = hlavni menu, HRAT DAL = zavrit.
+     */
+    private void konzoleTvMenu(final boolean ps1) {
+        final String jm = ps1 ? "PS1" : "SEGA";
+        appendNativeLog("B338 TV: ZPET -> menu konzole " + jm + " (hry ze serveru N&P, pozice, hlavni menu)");
+        final String[] polozky = ps1 ? new String[]{
+                tx("HRY ZE SERVERU N&P", "GAMES FROM THE N&P SERVER"),
+                tx("ULOŽIT POZICI (SAVE GAME)", "SAVE POSITION (SAVE GAME)"),
+                tx("NAČÍST ULOŽENOU POZICI", "LOAD SAVED POSITION"),
+                tx("RESET (BIOS BEZ CD)", "RESET (BIOS WITHOUT CD)"),
+                tx("⌂ HLAVNÍ MENU", "⌂ MAIN MENU")
+        } : new String[]{
+                tx("HRY ZE SERVERU N&P", "GAMES FROM THE N&P SERVER"),
+                tx("ULOŽIT POZICI VE HŘE", "SAVE POSITION IN THE GAME"),
+                tx("NAČÍST ULOŽENOU POZICI", "LOAD SAVED POSITION"),
+                tx("⌂ HLAVNÍ MENU", "⌂ MAIN MENU")
+        };
+        try {
+            final android.app.AlertDialog d = new android.app.AlertDialog.Builder(this)
+                    .setTitle(tx((ps1 ? "PLAYSTATION" : "SEGA MEGA DRIVE") + " · ZPĚT znovu = hlavní menu",
+                                 (ps1 ? "PLAYSTATION" : "SEGA MEGA DRIVE") + " · BACK again = main menu"))
+                    .setItems(polozky, (dlg, w) -> konzoleTvAkce(ps1, w == polozky.length - 1 ? -1 : w))
+                    .setNegativeButton(tx("HRÁT DÁL", "KEEP PLAYING"), null)
+                    .create();
+            d.setOnKeyListener((dlg, kod, e) -> {
+                if (kod != KeyEvent.KEYCODE_BACK) return false;
+                if (e.getAction() == KeyEvent.ACTION_UP && !e.isCanceled()) {
+                    try { dlg.dismiss(); } catch (Throwable ignored) {}
+                    konzoleTvAkce(ps1, -2);
+                }
+                return true;
+            });
+            d.show();
+        } catch (Throwable t) {
+            appendNativeLog("B338 TV_MENU_KONZOLE_CHYBA " + safeMsg(t));
+        }
+    }
+
+    /** B338: akce menu konzole na TV. -1 = polozka HLAVNI MENU, -2 = ZPET 2x. */
+    private void konzoleTvAkce(boolean ps1, int akce) {
+        final String jm = ps1 ? "PS1" : "SEGA";
+        try {
+            if (akce < 0) {
+                appendNativeLog("B338 TV: " + jm + " -> HLAVNI MENU (" + (akce == -2 ? "ZPET 2x" : "polozka HLAVNI MENU") + ")");
+                if (web != null) web.loadUrl("file:///android_asset/index.html");   // jadro se zastavi v onPageStarted
+                return;
+            }
+            switch (akce) {
+                case 0:   // hry ze serveru N&P - vybrana hra se spusti v teto konzoli (jadro se zastavi pri odchodu)
+                    appendNativeLog("B338 TV: " + jm + " -> HRY ZE SERVERU N&P");
+                    napOtevriHry(ps1 ? "ps1" : "sega");
+                    break;
+                case 1:
+                    appendNativeLog("B338 TV: " + jm + " -> ULOZIT POZICI");
+                    napJs(napTvKlik(ps1 ? "btnSave" : "segaBtnSaveState"));
+                    break;
+                case 2:
+                    appendNativeLog("B338 TV: " + jm + " -> NACIST POZICI");
+                    napJs(napTvKlik(ps1 ? "btnQuickLoad" : "segaBtnLoadState"));
+                    break;
+                case 3:
+                    if (ps1) {
+                        appendNativeLog("B338 TV: PS1 -> RESET");
+                        napJs(napTvKlik("btnReset"));
+                    }
+                    break;
+                default:
+                    break;
+            }
+        } catch (Throwable t) {
+            appendNativeLog("B338 TV_AKCE_KONZOLE_CHYBA " + safeMsg(t));
+        }
+    }
+
+    /** B338: klepnuti na tlacitko stranky konzole (NapPravidla.tvKlik). */
+    static String napTvKlik(String id) {
+        return NapPravidla.tvKlik(id);
+    }
+
     /** Ozubene kolecko na sirku - stejne polozky jako Sega "D-PAD A OVLADANI". */
     private void atariCppOvladaniMenu() {
         final String[] polozky = {
@@ -9865,6 +9948,64 @@ public class MainActivity extends Activity {
         return tier;
     }
 
+    // ==============================================================
+    //  B338: VYKON ZARIZENI (OPTIONS -> VYKON ZARIZENI: AUTO / LOW / HIGH)
+    //  Rene (TV TCL: 4 x 1,1 GHz, jen 32 bitu, Mali-470 OpenGL ES 2.0): "primo na tv nehratelny
+    //  kouse se obraz i zvuk uz i u sonica ... budeme muset do nastaveni pridat neco jako low pro
+    //  slabe procesory - evidentne automatika moc nefunguje". Log: Sega kreslila 320x224 -> 1450x1015
+    //  procesorem (TextureView, 35-50 ms na snimek = jen ~24 snimku/s a cele jedno jadro), k tomu
+    //  druha neviditelna cesta OpenGL (60/s) a demo se do 7 s ani nepripravilo.
+    //  LOW: Sega kresli do 320x224 a zvetsuje grafika (skoro zadna prace pro procesor), druha cesta
+    //  OpenGL stoji, jadro snima obraz jen pro kazdy druhy snimek (BUILD2RV LOW), bez uvodniho dema.
+    //  AUTO = LOW, kdyz zarizeni nema 64bitovy Android, ma nejvys 1,5 GHz nebo 2 jadra.
+    // ==============================================================
+    private static final String VYKON_PREF = "nap_vykon";
+    private Boolean napSlabeCache = null;
+    private String napSlabePopis = "";
+
+    /** B338: nejvyssi takt procesoru v MHz (0 = nezjisteno). */
+    private static int napMaxMhz() {
+        int nej = 0;
+        for (int i = 0; i < 16; i++) {
+            java.io.File f = new java.io.File("/sys/devices/system/cpu/cpu" + i + "/cpufreq/cpuinfo_max_freq");
+            if (!f.exists()) { if (i > 0) break; else continue; }
+            try (java.io.BufferedReader r = new java.io.BufferedReader(new java.io.FileReader(f))) {
+                String l = r.readLine();
+                if (l != null) nej = Math.max(nej, (int) (Long.parseLong(l.trim()) / 1000L));
+            } catch (Throwable ignored) {}
+        }
+        return nej;
+    }
+
+    boolean napSlabeZarizeni() {
+        if (napSlabeCache != null) return napSlabeCache;
+        boolean bit64 = true;
+        int jader = 0, mhz = 0;
+        try { bit64 = Build.SUPPORTED_64_BIT_ABIS != null && Build.SUPPORTED_64_BIT_ABIS.length > 0; } catch (Throwable ignored) {}
+        try { jader = Runtime.getRuntime().availableProcessors(); } catch (Throwable ignored) {}
+        try { mhz = napMaxMhz(); } catch (Throwable ignored) {}
+        final boolean slabe = NapPravidla.jeSlabeZarizeni(bit64, jader, mhz);
+        napSlabePopis = (bit64 ? "64 bitu" : "jen 32 bitu") + ", " + jader + " jader" + (mhz > 0 ? ", max " + mhz + " MHz" : "");
+        napSlabeCache = slabe;
+        appendNativeLog("B338 VYKON: zarizeni " + (slabe ? "SLABE" : "silne") + " (" + napSlabePopis + ") | volba "
+                + napVykonNazev(napVykonRezim()) + " -> " + (napVykonLow() ? "LOW" : "HIGH"));
+        return slabe;
+    }
+
+    /** B338: volba v OPTIONS - 0 = AUTO, 1 = LOW, 2 = HIGH. */
+    int napVykonRezim() {
+        try { return Math.max(0, Math.min(2, getSharedPreferences(VYKON_PREF, MODE_PRIVATE).getInt("rezim", 0))); }
+        catch (Throwable t) { return 0; }
+    }
+
+    private static String napVykonNazev(int r) { return r == 1 ? "LOW" : (r == 2 ? "HIGH" : "AUTO"); }
+
+    /** B338: plati LOW? (volba LOW, nebo AUTO a slabe zarizeni) */
+    boolean napVykonLow() {
+        final int r = napVykonRezim();
+        return r == 1 || (r == 0 && napSlabeZarizeni());
+    }
+
     /** Rucni prepnuti tridy z menu: 0=LOW, 1=MEDIUM, 2=HIGH. Projevi se po restartu hry. */
     public void setPerfTier(int t) {
         if (t < 0 || t > 2) return;
@@ -10194,6 +10335,11 @@ public class MainActivity extends Activity {
             try {
                 String m = mode == null ? "HIGH" : mode.trim().toUpperCase(Locale.US);
                 if (!m.startsWith("LOW")) m = "HIGH"; else m = "LOW";
+                // B338: OPTIONS -> VYKON ZARIZENI LOW (nebo AUTO na slabem zarizeni) - Sega vzdy LOW
+                if (napVykonLow() && !"LOW".equals(m)) {
+                    appendNativeLog("B338 VYKON: Sega chtela " + m + ", zarizeni / volba LOW -> LOW");
+                    m = "LOW";
+                }
                 nativePerformanceMode = m;
                 String nativePerf = "nativePerf=not-called";
                 try { NativeSegaCoreBridge.configureRuntime(Build.VERSION.SDK_INT, Runtime.getRuntime().availableProcessors(), Build.MODEL == null ? "" : Build.MODEL); } catch (Throwable ignored) {}
@@ -10802,6 +10948,36 @@ public class MainActivity extends Activity {
             } catch (Throwable e) { return "PERF_FAIL " + e.getMessage(); }
         }
 
+        /** B338: OPTIONS -> VYKON ZARIZENI. JSON: rezim (a / l / h), low (plati LOW), slabe, popis (veta CZ / EN). */
+        @JavascriptInterface
+        public String vykon() {
+            try {
+                final boolean slabe = napSlabeZarizeni(), low = napVykonLow(), en = NapJazyk.en(MainActivity.this);
+                final int r = napVykonRezim();
+                String popis;
+                if (r == 0) popis = en ? "AUTO: this device is " + (slabe ? "WEAK (" + napSlabePopis.replace("jen 32 bitu", "32-bit only").replace("bitu", "bit").replace("jader", "cores") + ") - LOW" : "fast enough - HIGH")
+                                       : "AUTO: tohle zařízení je " + (slabe ? "SLABÉ (" + napSlabePopis + ") – LOW" : "dost silné – HIGH");
+                else popis = r == 1 ? (en ? "LOW: always (weak processor)" : "LOW: vždy (slabý procesor)")
+                                    : (en ? "HIGH: always (full quality)" : "HIGH: vždy (plná kvalita)");
+                popis += en ? (low ? " · SEGA draws via the graphics chip, no intro demo" : "") + " (applies to the next game)"
+                            : (low ? " · SEGA kreslí grafikou, bez úvodního dema" : "") + " (projeví se u další hry)";
+                return "{\"rezim\":\"" + (r == 1 ? "l" : r == 2 ? "h" : "a") + "\",\"low\":" + low + ",\"slabe\":" + slabe
+                        + ",\"popis\":" + jsonQuote(popis) + "}";
+            } catch (Throwable t) {
+                return "{\"rezim\":\"a\",\"low\":false,\"slabe\":false,\"popis\":\"\"}";
+            }
+        }
+
+        /** B338: OPTIONS -> VYKON ZARIZENI: "a" / "l" / "h". */
+        @JavascriptInterface
+        public String nastavVykon(String r) {
+            final int v = "l".equals(r) ? 1 : ("h".equals(r) ? 2 : 0);
+            try { getSharedPreferences(VYKON_PREF, MODE_PRIVATE).edit().putInt("rezim", v).apply(); } catch (Throwable ignored) {}
+            appendNativeLog("B338 VYKON: volba " + napVykonNazev(v) + " -> " + (napVykonLow() ? "LOW" : "HIGH")
+                    + " (zarizeni " + (napSlabeZarizeni() ? "slabe" : "silne") + ", " + napSlabePopis + ")");
+            return vykon();
+        }
+
         /** Vrati aktualni tridu (0/1/2). Volat z menu:  AHRENDER.getPerf() */
         @JavascriptInterface
         public int getPerf() {
@@ -10819,6 +10995,29 @@ public class MainActivity extends Activity {
         }
     }
 
+    /** B338: kam na plochu w x h patri obraz Segy na sirku (NapPravidla.segaVyrez - pomer stran, 94 % vysky). */
+    static Rect napSegaVyrez(int w, int h) {
+        final int[] v = NapPravidla.segaVyrez(w, h);
+        return new Rect(v[0], v[1], v[0] + v[2], v[1] + v[3]);
+    }
+
+    /** B338: pocitadla a log kresleni Segy (stejne radky jako drive - NATIVE_RENDER_PERF_RV). */
+    private void napSegaVykonZapis(int w, int h, Rect dst) {
+        long nowMs = System.currentTimeMillis();
+        if (nativeRenderPerfWindowStartMs == 0) nativeRenderPerfWindowStartMs = nowMs;
+        nativeRenderPerfWindowFrames++;
+        if (nativeLastRenderCostNs > 22000000L) nativeRenderPerfSlowFrames++;
+        if (nowMs - nativeRenderPerfWindowStartMs >= 5000) {
+            appendNativeLog("NATIVE_RENDER_PERF_RV frames5s=" + nativeRenderPerfWindowFrames + " slow22ms=" + nativeRenderPerfSlowFrames + " lastCostMs=" + (nativeLastRenderCostNs / 1000000.0) + " android=" + Build.VERSION.SDK_INT + " perfMode=" + nativePerformanceMode + " landscapeFull=" + nativeLandscapeFullVideo + " plocha320x224=ANO");
+            nativeRenderPerfWindowStartMs = nowMs;
+            nativeRenderPerfWindowFrames = 0;
+            nativeRenderPerfSlowFrames = 0;
+        }
+        if (nativeViewDrawCounter <= 4 || nativeViewDrawCounter % 300 == 0) {
+            appendNativeLog("NATIVE_TEXTURE_FRAME_RV count=" + nativeViewDrawCounter + " view=" + w + "x" + h + " gameDst=" + dst.toShortString() + " plocha=320x224 (zvetsuje grafika) perfMode=" + nativePerformanceMode + " landscapeFull=" + nativeLandscapeFullVideo + " costMs=" + (nativeLastRenderCostNs / 1000000.0));
+        }
+    }
+
     private class NativeInPlaceView extends TextureView implements TextureView.SurfaceTextureListener {
         private final Paint paint = new Paint();
         private int frame = 0;
@@ -10828,6 +11027,11 @@ public class MainActivity extends Activity {
         private Bitmap bitmap;
         private volatile boolean running = false;
         private Thread renderThread;
+        // B338: VYKON LOW - plocha TextureView ma jen 320x224 bodu (jako snimek Segy) a zvetsuje ji
+        // grafika pri skladani obrazovky; procesor kresli 1:1 (drive 320x224 -> 1450x1015 procesorem,
+        // na TV TCL 35-50 ms na kazdy snimek).
+        private volatile boolean malaPlocha = false;
+        private volatile boolean malaPlochaHlasena = false;
 
         NativeInPlaceView(Activity a) {
             super(a);
@@ -10906,12 +11110,64 @@ public class MainActivity extends Activity {
             appendNativeLog("NATIVE_TEXTURE_THREAD_STOP_RV reason=" + reason + " drawCounter=" + nativeViewDrawCounter + " lastCostMs=" + (nativeLastRenderCostNs / 1000000.0));
         }
 
+        /**
+         * B338: plocha podle vykonu - LOW: 320x224 (zvetsuje grafika, na sirku pres setTransform se
+         * zachovanim pomeru stran), HIGH: jako drive (plocha velka jako TextureView, kresli procesor).
+         * Jen z vlakna UI (posluchac SurfaceTexture) - setTransform / setOpaque invaliduji View.
+         */
+        void plochaPodleVykonu(String proc) {
+            try {
+                final SurfaceTexture st = getSurfaceTexture();
+                if (st == null) return;
+                final int w = getWidth(), h = getHeight();
+                if (napVykonLow() && w > 0 && h > 0) {
+                    st.setDefaultBufferSize(SRC_W, SRC_H);
+                    setOpaque(false);   // mimo obraz (pruhy) je videt cerna plocha pod nim, ne smeti
+                    android.graphics.Matrix m = new android.graphics.Matrix();
+                    if (nativeLandscapeFullVideo) {
+                        final Rect d = napSegaVyrez(w, h);
+                        m.setScale((float) d.width() / (float) w, (float) d.height() / (float) h);
+                        m.postTranslate(d.left, d.top);
+                    }
+                    setTransform(m);
+                    malaPlocha = true;
+                    if (!malaPlochaHlasena) {
+                        malaPlochaHlasena = true;
+                        appendNativeLog("B338 VYKON LOW: Sega kresli do " + SRC_W + "x" + SRC_H + ", zvetsuje grafika (" + w + "x" + h
+                                + (nativeLandscapeFullVideo ? ", na sirku s pomerem stran" : "") + ") - " + proc);
+                    }
+                } else if (malaPlocha) {
+                    malaPlocha = false;
+                    st.setDefaultBufferSize(Math.max(1, w), Math.max(1, h));
+                    setTransform(null);
+                    setOpaque(true);
+                    appendNativeLog("B338 VYKON HIGH: Sega kresli procesorem v plne velikosti " + w + "x" + h + " - " + proc);
+                }
+            } catch (Throwable t) {
+                appendNativeLog("B338 VYKON PLOCHA_CHYBA " + safeMsg(t));
+            }
+        }
+
         private void drawTextureFrame(Canvas canvas) {
             int w = Math.max(16, getWidth());
             int h = Math.max(16, getHeight());
             if (bitmap == null || bitmap.getWidth() != SRC_W || bitmap.getHeight() != SRC_H) {
                 argb = new int[SRC_W * SRC_H];
                 bitmap = Bitmap.createBitmap(SRC_W, SRC_H, Bitmap.Config.ARGB_8888);
+            }
+            // B338: LOW a plocha opravdu 320x224 -> kreslit 1:1, zvetseni a pomer stran dela grafika
+            // (setTransform). Kdyby plocha 320x224 nebyla (Android velikost nezmenil), kresli se po staru.
+            if (malaPlocha && canvas.getWidth() == SRC_W && canvas.getHeight() == SRC_H) {
+                try {
+                    NativeSegaCoreBridge.renderPattern(SRC_W, SRC_H, frame++, argb);
+                    bitmap.setPixels(argb, 0, SRC_W, 0, 0, SRC_W, SRC_H);
+                    canvas.drawBitmap(bitmap, 0f, 0f, null);
+                    nativeViewDrawCounter++;
+                    napSegaVykonZapis(w, h, napSegaVyrez(w, h));
+                } catch (Throwable t) {
+                    appendNativeLog("NATIVE_TEXTURE_FRAME_ERROR_RV " + safeMsg(t));
+                }
+                return;
             }
             try {
                 NativeSegaCoreBridge.renderPattern(SRC_W, SRC_H, frame++, argb);
@@ -10954,8 +11210,14 @@ public class MainActivity extends Activity {
             }
         }
 
-        @Override public void onSurfaceTextureAvailable(SurfaceTexture surface, int width, int height) { startRenderThreadIfReady("surfaceAvailable"); }
-        @Override public void onSurfaceTextureSizeChanged(SurfaceTexture surface, int width, int height) { forceRedrawOnce(); }
+        @Override public void onSurfaceTextureAvailable(SurfaceTexture surface, int width, int height) {
+            plochaPodleVykonu("plocha pripravena");   // B338
+            startRenderThreadIfReady("surfaceAvailable");
+        }
+        @Override public void onSurfaceTextureSizeChanged(SurfaceTexture surface, int width, int height) {
+            plochaPodleVykonu("zmena velikosti");      // B338: TextureView velikost plochy pri zmene vraci na velikost View
+            forceRedrawOnce();
+        }
         @Override public boolean onSurfaceTextureDestroyed(SurfaceTexture surface) { stop(); return true; }
         @Override public void onSurfaceTextureUpdated(SurfaceTexture surface) { }
     }
@@ -12174,6 +12436,13 @@ public class MainActivity extends Activity {
     /** Stranka appky nactena: na TV zlaty ramecek hned (bez cekani na prvni sipku) a focus do WebView. */
     private void napTvStrankaNactena(String url) {
         if (!napJeTv() || web == null || url == null || !url.startsWith("file:///android_asset/")) return;
+        // B338: SEGA / PS1 na TV - kratka rada, kde jsou hry (menu konzole na ZPET)
+        if (isSegaNativeOwnerUrl(url) || isPs1OwnerUrl(url)) {
+            try {
+                android.widget.Toast.makeText(this, tx("Ovladač: ZPĚT = menu konzole (hry ze serveru N&P, pozice, hlavní menu)",
+                        "Remote: BACK = console menu (games from the N&P server, positions, main menu)"), android.widget.Toast.LENGTH_LONG).show();
+            } catch (Throwable ignored) {}
+        }
         try { if (menuPlocha == null && demoPlocha == null) web.requestFocus(); } catch (Throwable ignored) {}
         try {
             web.evaluateJavascript("(function(){if(!window.NapTvOvladani)return 'chybi';return 'ok '+NapTvOvladani.zapni();})()", r -> {
@@ -12637,6 +12906,13 @@ public class MainActivity extends Activity {
                     return;
                 }
                 napOverStav("start");
+                // B338: VYKON LOW (TV TCL: Mali-470 OpenGL ES 2.0 - demo se do 7 s ani nepripravilo,
+                // "DEMO_KONEC (nenabehlo do 7 s)", appka cekala na prazdnou obrazovku) - bez dema rovnou menu.
+                // Ani stare intro (etapy s jadry Segy a PS1 - jeste tezsi). OPTIONS -> PUSTIT INTRO jde dal.
+                if (!napIntroUkazano && napVykonLow()) {
+                    napIntroUkazano = true;
+                    appendNativeLog("B338 VYKON LOW: uvodni demo preskoceno (slabe zarizeni nebo volba LOW) - rovnou menu");
+                }
                 // B304: uvodni demo je ted C++ plocha NAD strankou - pod ni se
                 // rovnou nacita menu (po konci dema je hned videt). Puvodni
                 // intro (etapy ve WebView) jen kdyby knihovna napintro chybela.
@@ -15080,6 +15356,15 @@ public class MainActivity extends Activity {
             // proto otevre menu pristroje (hry, disketa, kazeta, reset, napoveda, ZPET DO MENU).
             if (atariZarizeni != null && atariCppNaObrazovce && napJeTv()) {
                 atariCppTvMenu();
+                return;
+            }
+            // B338: Android TV - SEGA a PS1 (Rene: "furt stejny co se tyce vyberu her primo v sega a ps1").
+            // TV je vzdy na sirku: hry (SBIRKA / HRY / LOAD GAME / CD ISO) jsou na sirku jen neviditelna
+            // mista na obrazku konzole nebo tlacitka na vysku - dalkovym se k nim nedalo dostat a ZPET
+            // vratil rovnou do hlavniho menu. Ted ZPET = menu konzole (jako Atari): hry ze serveru N&P,
+            // ulozit / nacist pozici, reset (PS1), hlavni menu; ZPET znovu = hlavni menu.
+            if (napJeTv() && web != null && (isSegaNativeOwnerUrl(web.getUrl()) || isPs1OwnerUrl(web.getUrl()))) {
+                konzoleTvMenu(isPs1OwnerUrl(web.getUrl()));
                 return;
             }
             // B311: ZPET v hlavnim menu = appka do pozadi (jako tlacitko plochy, menu na

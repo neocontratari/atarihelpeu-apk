@@ -1,0 +1,59 @@
+B338 - ANDROID TV: MENU KONZOLE SEGA / PS1 NA ZPET + VYKON ZARIZENI (LOW PRO SLABE PROCESORY) (17. 11. 2026)
+==========================================================================================================
+
+Rene (log z TV TCL BeyondTV, B337): "furt stejny co se tyce vyberu her primo v sega a ps1 ale slo to obejit pres atari -
+dal sem vyber sega her a apka si automaticky nasla segu a spustila sonica - ... procesor asi totalni snek - primo na tv
+nehratelny kouse se obraz i zvuk uz i u sonica - Atari to teoreticky zvladne ... Asi budeme muset do nastaveni pridat
+neco jako low pro slabe procesory - evidentne automatika moc nefunguje. Ale slape to i na TV ... prenos do PC sel".
+
+CO UKAZAL LOG Z TV (B337):
+ - ULOZISTE povoleno, Sonic a BIOS: atarihelp.eu na Reneho Wi-Fi vede na mistni server (OSPanel, B299) -> B337 je
+   stahl ze serveru N&P (Sonic .gen, BIOS ZIP) - OK. SEGA a PS1 odemcene (koupeno=SP), stranky se otevrely.
+ - SEGA / PS1 "vyber her": TV je vzdy na sirku. Na strance Segy na sirku jsou SBIRKA / HRY jen neviditelna mista
+   na obrazku konzole (opacity 0) - zlaty ramecek dalkoveho (B334) je nevidi; jde jen SAVE / LOAD GAME / ⚙ a
+   "LOAD GAME" nacita ULOZENOU POZICI, ne hru. PS1 na sirku: jen ⚙ / MYS / MONITOR (LOAD GAME, CD ISO, SAVE GAME
+   jen na vysku). Rene proto daval ZPET = zpet do hlavniho menu (BUILD2SB63 BACK, PS1_SESSION_STOP backPressed).
+   Overeno v Chromiu se skutecnymi strankami (T1, T2).
+ - VYKON: TV = 4 x 1100 MHz (bezi 900), jen 32 bitu, Mali-470 OpenGL ES 2.0. Sega: TextureView kreslila 320x224 ->
+   1450x1015 PROCESOREM 35-50 ms na snimek (NATIVE_RENDER_PERF_RV frames5s=119 slow22ms=118 = ~24 snimku/s a cele
+   jedno jadro), k tomu druha neviditelna cesta OpenGL (SurfaceView, 60x za sekundu kopie + textura + kresleni),
+   jadro ~20 ms na snimek (coreAvgMs, i s prenosem do PC - na PC byla otevrena stranka WEB TV), zvuk podtekal
+   (underrunLoops 17 -> 1559). perfMode=HIGH, i kdyz appka sama zarizeni zaradila do LOW. Demo: "DEMO_KONEC
+   (nenabehlo do 7 s)" - na Mali-470 se do 7 s ani nepripravilo. PS1: BIOS 50 snimku/s s rezervou 35-56 %.
+
+OPRAVA:
+1) MENU KONZOLE NA TV (jako Atari B336 / B337): ZPET ve SEGA / PS1 -> HRY ZE SERVERU N&P (stejna stranka jako NET / HRY
+   v Atari - vybrana hra se spusti v konzoli), ULOZIT / NACIST POZICI (tlacitka stranky pres click() - i schovana
+   na sirku), PS1 RESET (BIOS BEZ CD), ⌂ HLAVNI MENU; ZPET znovu = hlavni menu, HRAT DAL = zavrit. Pri vstupu do
+   SEGA / PS1 na TV kratka rada. Log "B338 TV: ZPET -> menu konzole", "B338 TV: SEGA -> HRY ZE SERVERU N&P" ...
+2) OPTIONS -> VYKON ZARIZENI: AUTO / LOW / HIGH (veta z Javy: AUTO pozna slabe zarizeni - jen 32 bitu, takt pod
+   1,5 GHz nebo 2 jadra; TV TCL = LOW, S8 = HIGH). LOW:
+   - Sega: plocha TextureView 320x224, kresli se 1:1 a zvetsuje GRAFIKA pri skladani obrazovky (setTransform se
+     zachovanim pomeru stran = presne totez misto jako drive, [235,32][1685,1047] na 1920x1080); kdyby Android
+     velikost plochy nezmenil, kresli se po staru (zadne riziko cerne obrazovky),
+   - Sega: nativni LOW (snimani kazdy 2. snimek, kresleni 30/s), druha cesta OpenGL jednou zcerna a stoji,
+   - start appky bez uvodniho dema (a bez stareho intra); OPTIONS -> PUSTIT INTRO jde dal,
+   - PS1 beze zmeny (2x rozliseni Rene drive "nedotknutelne"; BIOS na TV ma rezervu).
+   Log "B338 VYKON: zarizeni SLABE (jen 32 bitu, 4 jader, max 1100 MHz) | volba AUTO -> LOW", "B338 VYKON LOW: Sega
+   kresli do 320x224, zvetsuje grafika". Pri hrani primo na TV mit na PC stranku WEB TV zavrenou (prenos do PC
+   stoji slaby procesor dalsi praci - v logu TV PROUD SEGA prohlizec 1 pripojen).
+3) Napoveda CZ / EN (Android TV), build.gradle versionCode 381 "EMU10-B338-TV-MENU-KONZOLE-LOW".
+
+Spoustet z adresare test_overeni/b338 (PRAC = pracovni slozka, AJ = android-34.jar):
+A) Chromium, skutecne stranky + falesne mosty:  python3 test_b338_tv_stranky.py  -> VYSTUP_test_b338_tv_stranky.txt
+   (5 OK: T1 SEGA na TV ramecek jen SAVE / LOAD GAME / ⚙ - zadna hra; T2 PS1 jen ⚙ / MYS / MONITOR; T3 menu konzole
+   klepe JavaScriptem z NapPravidla.tvKlik -> AHSega.segaSaveState / segaLoadState, AHPS1.ps1QuickSave / ps1QuickLoad
+   / ps1Reset; T4 OPTIONS VYKON ZARIZENI CZ / EN; T5 bez chyb JavaScriptu)
+B) JVM (NapPravidla, NapDalkovy):
+   javac -encoding UTF-8 --release 17 -cp AJ -d PRAC ../../app/src/main/java/eu/atarihelp/emu10/{NapPravidla,NapDalkovy}.java \
+         jvm/eu/atarihelp/emu10/TestB338.java && java -cp PRAC:AJ eu.atarihelp.emu10.TestB338
+                                          -> VYSTUP_test_b338_java.txt (4 OK: slabe zarizeni TV / S8 / ..., vyrez Segy
+                                             = gameDst z logu TV, JavaScript klepnuti, ZPET neni klavesa hry)
+C) Zapojeni: python3 kontrola_b338.py   -> VYSTUP_kontrola_b338.txt (18 OK)
+D) javac vsech zdroju appky proti android-34.jar -> VYSTUP_javac_android.txt (0 chyb);
+   g++ -fsyntax-only nap_sega_native_proof.cpp -> VYSTUP_cpp_syntaxe_sega.txt (0 chyb)
+E) Regrese: b337 stranky (8 OK), kontrola_b337 (23 OK; L3 verze zamerne zmenena), b334 TV ovladani (13 OK),
+   b311 napoveda CZ (206 nazvu 0 chyb), b314 napoveda EN (198 nazvu 0 chyb) -> VYSTUP_regrese_*.txt.
+   POZOR: skripty jinych buildu prepisuji sve VYSTUP soubory - po regresi "git checkout -- test_overeni/bNNN".
+
+Na televizi NEOVERENO (Rene) - hlavne: plynulost Segy v LOW, menu konzole na ZPET, start bez dema.

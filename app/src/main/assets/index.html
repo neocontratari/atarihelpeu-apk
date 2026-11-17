@@ -198,6 +198,15 @@ body{background:radial-gradient(120% 70% at 50% 40%,#1c1006 0%,#0a0603 45%,#0302
     </div>
     <div class="sthint" id="stModeHint">Aplikace nastaví vše sama podle telefonu</div>
 
+    <!-- B338: vykon zarizeni - LOW pro slabe procesory (TV TCL), AUTO to pozna samo -->
+    <div class="stlabel2">VÝKON ZAŘÍZENÍ</div>
+    <div class="qrow" id="stVykon">
+      <button id="stVykonAuto" type="button" data-vykon="a">AUTO</button>
+      <button id="stVykonLow" type="button" data-vykon="l">LOW</button>
+      <button id="stVykonHigh" type="button" data-vykon="h">HIGH</button>
+    </div>
+    <div class="sthint" id="stVykonHint" data-nepreklad></div>
+
     <div id="stManual" style="display:none;margin-top:4px;padding-top:6px;border-top:1px solid rgba(255,195,64,.18)">
       <div class="stlabel2">KVALITA OBRAZU (WEB TV)</div>
       <div class="qrow">
@@ -712,6 +721,21 @@ log('ready: karusel karet (B311), OPTIONS, C++ menu '+(document.documentElement.
   });
   ['stQLow','stQMed','stQHigh'].forEach(function(id){
     var b=$(id); if(b) b.addEventListener('click',function(){markRow(['stQLow','stQMed','stQHigh'],'data-tier',parseInt(b.getAttribute('data-tier'),10));});
+  });
+  // B338: VYKON ZARIZENI - AUTO / LOW / HIGH (Java AHRENDER.vykon / nastavVykon, veta uz v jazyce appky)
+  function vykonUkaz(t){
+    var o=null; try{ o=JSON.parse(String(t||'')); }catch(e){ o=null; }
+    if(!o) return;
+    markRow(['stVykonAuto','stVykonLow','stVykonHigh'],'data-vykon',o.rezim);
+    var h=$('stVykonHint'); if(h) h.textContent=o.popis||'';
+  }
+  function vykonObnov(){ try{ if(window.AHRENDER&&typeof AHRENDER.vykon==='function') vykonUkaz(AHRENDER.vykon()); }catch(e){} }
+  vykonObnov();
+  if(window.NapJazyk&&NapJazyk.priZmene) NapJazyk.priZmene(vykonObnov);   // veta z Javy v novem jazyce
+  ['stVykonAuto','stVykonLow','stVykonHigh'].forEach(function(id){
+    var b=$(id); if(b) b.addEventListener('click',function(){
+      try{ if(window.AHRENDER&&typeof AHRENDER.nastavVykon==='function') vykonUkaz(AHRENDER.nastavVykon(b.getAttribute('data-vykon'))); }catch(e){}
+    });
   });
   var mode='a', snd=AUTO_SND;
   try{ mode=localStorage.getItem('napMode')||'a';

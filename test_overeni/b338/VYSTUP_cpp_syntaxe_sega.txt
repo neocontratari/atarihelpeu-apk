@@ -1,0 +1,1 @@
+g++ -fsyntax-only nap_sega_native_proof.cpp (JNI z JDK, EGL / GLES2 z /usr/include, android/* stub b291): exit=0

@@ -4191,4 +4191,21 @@
        (pricina "demo na TV nebezi"); kdyz atarihelp.eu z jeho Wi-Fi nejde -> Sonic ZIP do Arcade\Sega a
        BIOS ZIP do Arcade\PS1 na serveru.
 
+   B338: TV - MENU KONZOLE SEGA / PS1 NA ZPET + VYKON ZARIZENI AUTO / LOW / HIGH (17. 11. 2026).
+   Log z TV (B337): Sonic + BIOS stazeny ze serveru N&P (atarihelp.eu na Reneho Wi-Fi = OSPanel), SEGA / PS1
+   odemcene a otevrene; "vyber her primo v sega a ps1" nejde - na sirku (TV) jsou hry jen neviditelna mista na
+   obrazku (Sega) nebo tlacitka na vysku (PS1), ramecek dalkoveho je nevidi, Sega "LOAD GAME" = pozice;
+   Rene obesel pres Atari NET / HRY (Sonic jel). TV = 4 x 1,1 GHz, jen 32 bitu, Mali-470 ES 2.0: Sega kreslila
+   procesorem 35-50 ms na snimek (~24/s) + druha neviditelna cesta OpenGL, zvuk podtekal, demo nenabehlo.
+     - TV: ZPET ve SEGA / PS1 = menu konzole (HRY ZE SERVERU N&P, ulozit / nacist pozici, PS1 reset, HLAVNI
+       MENU; ZPET 2x = hlavni menu), rada pri vstupu.
+     - OPTIONS -> VYKON ZARIZENI (AUTO / LOW / HIGH; AUTO: jen 32 bitu / pod 1,5 GHz / 2 jadra = LOW).
+       LOW: Sega plocha 320x224 zvetsuje grafika (setTransform, pomer stran), nativni LOW, druha cesta
+       OpenGL stoji, bez uvodniho dema. PS1 beze zmeny (2x rozliseni "nedotknutelne").
+     - Testy test_overeni/b338: Chromium 5 OK, JVM 4 OK, zapojeni 18 OK, javac + C++ syntaxe 0 chyb, regrese OK.
+     - build.gradle: versionCode 381 "EMU10-B338-TV-MENU-KONZOLE-LOW". Na TV neovereno.
+     - DALSI KROK: Rene - Sega na TV v LOW (plynulost, zvuk) bez otevrene stranky WEB TV na PC, menu konzole,
+       log z TV (NATIVE_RENDER_PERF_RV, coreAvgMs, underrunLoops). Kdyby jadro Segy samo bylo pres 16,7 ms na
+       snimek, dalsi krok je preskakovani kresleni snimku v jadru / ladeni prekladu pro 32 bitu.
+
 ===============================================================================

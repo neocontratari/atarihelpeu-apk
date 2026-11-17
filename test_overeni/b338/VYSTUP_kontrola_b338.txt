@@ -1,0 +1,19 @@
+OK     K1 ZPET na TV ve SEGA / PS1 -> menu konzole (po Atari, pred menu / historii); telefon beze zmeny
+OK     K2 menu konzole: hry ze serveru N&P, ulozit / nacist pozici, PS1 reset, HLAVNI MENU (posledni), ZPET 2x = hlavni menu
+OK     K3 akce: N&P HRY (sega / ps1), tlacitka stranky pres click() (i schovana na sirku), hlavni menu (jadro stoji v onPageStarted)
+OK     K4 NapPravidla.tvKlik - JavaScript klepnuti (test v Chromiu na skutecnych strankach)
+OK     K5 vstup do SEGA / PS1 na TV -> kratka rada (ZPET = menu konzole)
+OK     V1 AUTO: slabe = jen 32 bitu, takt pod 1,5 GHz nebo 2 jadra (takt z /sys)
+OK     V2 LOW = volba LOW, nebo AUTO na slabem zarizeni (volba v SharedPreferences nap_vykon)
+OK     V3 Sega: LOW zarizeni / volba vynuti nativni LOW (snimani kazdy 2. snimek, kresleni 30/s)
+OK     V4 Sega LOW: plocha TextureView 320x224, zvetsuje grafika (setTransform s pomerem stran), HIGH zpet na plnou velikost
+OK     V5 Sega LOW: kresleni 1:1 jen kdyz plocha opravdu 320x224 (jinak po staru - zadne riziko)
+OK     V6 plocha podle vykonu pri pripraveni i zmene velikosti (TextureView ji pri zmene vraci na velikost View)
+OK     V7 C++: druha (neviditelna) cesta OpenGL v LOW jednou zcerna a stoji
+OK     V8 LOW: start appky bez uvodniho dema (TV: demo se do 7 s nepripravilo) i bez stareho intra
+OK     V9 most AHRENDER.vykon / nastavVykon (JSON: rezim, low, slabe, veta v jazyce appky)
+OK     O1 OPTIONS: VYKON ZARIZENI AUTO / LOW / HIGH + veta z Javy (CZ / EN)
+OK     O2 napoveda CZ / EN: menu konzole na TV, VYKON ZARIZENI / LOW
+OK     O3 build.gradle: versionCode 381 "EMU10-B338-TV-MENU-KONZOLE-LOW"
+OK     E skripty index.html jsou ES5
+VYSLEDEK: 18 kontrol, 0 CHYBA

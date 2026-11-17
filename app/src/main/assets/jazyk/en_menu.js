@@ -17,6 +17,7 @@ NapJazyk.slovnik({
   'NA TV NEBO PC OTEVŘI V PROHLÍŽEČI': 'OPEN IN A BROWSER ON YOUR TV OR PC',
   'stejná Wi-Fi · zvuk pustíš kliknutím do obrazu': 'same Wi-Fi · click the picture to turn the sound on',
   'LOG APPKY PRO PODPORU': 'APP LOG FOR SUPPORT',   // B337
+  'VÝKON ZAŘÍZENÍ': 'DEVICE PERFORMANCE',           // B338
   'PUSTIT INTRO': 'PLAY INTRO',
   'STÁHNOUT HRY A BIOS': 'DOWNLOAD GAMES AND BIOS',
   'AKTUALIZOVAT APLIKACI': 'UPDATE THE APP',

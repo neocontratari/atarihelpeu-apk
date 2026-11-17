@@ -1,0 +1,1 @@
+javac exit=0, trid: 115, zdroju: 32

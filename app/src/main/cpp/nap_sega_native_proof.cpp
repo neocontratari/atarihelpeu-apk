@@ -1318,7 +1318,26 @@ static void nap_sega_thread_fn(ANativeWindow *win, long gen) {
 
     std::vector<uint32_t> muj;
     int lastW = 0, lastH = 0; long snimku = 0;
+    bool cerna = false;
     while (g_sega_run.load() && g_sega_gen.load() == gen) {
+        /* B338: VYKON LOW (slabe zarizeni - TV TCL) - obraz kresli TextureView (320x224, zvetsuje grafika).
+           Tahle druha cesta byla pod nim neviditelna a stala 60x za sekundu kopii snimku, nahrani textury
+           a kresleni cele obrazovky. V LOW jednou zcerna (pruhy vedle obrazu) a stoji. */
+        if (g_native_perf_low.load()) {
+            if (!cerna) {
+                int cw = ANativeWindow_getWidth(win), ch = ANativeWindow_getHeight(win);
+                if (cw > 0 && ch > 0) {
+                    glViewport(0, 0, cw, ch);
+                    glClearColor(0.f, 0.f, 0.f, 1.f);
+                    glClear(GL_COLOR_BUFFER_BIT);
+                    if (!eglSwapBuffers(dpy, surf)) break;
+                    cerna = true;
+                }
+            }
+            usleep(50000);
+            continue;
+        }
+        cerna = false;
         int sw = 0, sh = 0;
         if (!nap_sega_kopiruj(muj, &sw, &sh)) { usleep(8000); continue; }
 

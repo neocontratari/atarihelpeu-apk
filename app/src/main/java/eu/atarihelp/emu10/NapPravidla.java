@@ -117,4 +117,25 @@ final class NapPravidla {
         if (cil.startsWith(NAVOD_CZ)) return NAVOD_EN + cil.substring(NAVOD_CZ.length());
         return cil;
     }
+
+    // ---------------------------------------------------------------- B338: Android TV, vykon
+    /** B338: slabe zarizeni (TV TCL: jen 32 bitu, 4 x 1,1 GHz) - AUTO pak zapne LOW. maxMhz 0 = nezjisteno. */
+    static boolean jeSlabeZarizeni(boolean bit64, int jader, int maxMhz) {
+        return !bit64 || (maxMhz > 0 && maxMhz < 1500) || (jader > 0 && jader <= 2);
+    }
+
+    /**
+     * B338: obraz Segy 320x224 na plose w x h na sirku - pomer stran, 94 % vysky (HUD a zivoty cele).
+     * Vraci {x, y, sirka, vyska}.
+     */
+    static int[] segaVyrez(int w, int h) {
+        final float scale = Math.min((float) w / 320f, ((float) h * 0.94f) / 224f);
+        final int dw = Math.max(1, Math.round(320 * scale)), dh = Math.max(1, Math.round(224 * scale));
+        return new int[]{Math.max(0, (w - dw) / 2), Math.max(0, (h - dh) / 2), dw, dh};
+    }
+
+    /** B338: JavaScript - klepnuti na tlacitko stranky konzole (i schovane na sirku - click() jde vzdy). */
+    static String tvKlik(String id) {
+        return "(function(){var b=document.getElementById('" + id + "');if(b&&!b.disabled){b.click();return 'ok';}return 'chybi';})()";
+    }
 }
