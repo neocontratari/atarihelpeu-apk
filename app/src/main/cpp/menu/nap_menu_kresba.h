@@ -50,6 +50,7 @@ struct StavMenu {
   int zamekKlep = -1;              // klepnuti na zamcenou kartu
   double tZamek = -1;
   double tOzub = -1;               // klepnuti na kolecko
+  double tOtoc = -1;               // B342: klepnuti na otoceni obrazovky
   double tPrichod = -10;           // nastup menu
   // B313: cas ozdob (mlhovina, hvezdy, lesky, dychani tlacitka); < 0 = jako t.
   // Obraz pro TV ho v klidu zastavi - stojici obraz se pak v prohlizeci zjemni.
@@ -887,6 +888,17 @@ class Kresba {
       }
       const float R = r.ozubR;
       ui(c, 1, r.ozubX - R, r.ozubY - R, R * 2.f, R * 2.f, V3(1, 1, 1), alfa, uhel, svit);
+    }
+    // B342: otoceni obrazovky (zrcadlo kolecka); telefon v ikone ukazuje, kam se otoci
+    // (na vysku lezi = stisk da obrazovku na sirku), po klepnuti se pootoci o ctvrt otacky
+    if (!c.tv && r.otocR > 0.f) {
+      float uhel = r.naSirku ? 0.f : 1.5708f, svit = 0.f;
+      if (s.tOtoc >= 0) {
+        const float k = (float)((s.t - s.tOtoc) / 0.45);
+        if (k >= 0.f && k < 1.f) { uhel += easeOut3(k) * 1.5708f - 1.5708f; svit = 1.f - k; }
+      }
+      const float R = r.otocR;
+      ui(c, 9, r.otocX - R, r.otocY - R, R * 2.f, R * 2.f, V3(1, 1, 1), alfa, uhel, svit);
     }
   }
 

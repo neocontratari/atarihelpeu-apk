@@ -433,6 +433,7 @@ enum : int {
   ID_NONE = -1, ID_KEY0 = 0, ID_CON0 = 100, ID_TAPE0 = 200, ID_DOOR = 210, ID_CNTRST = 211,
   ID_SVC0 = 300, ID_POWER = 400,
   ID_JOY = 500, ID_FIRE = 501,           // B296: obrazovka = joystick (leva pulka smer, prava FIRE)
+  ID_OTOC = 600,                         // B342: otoceni obrazovky (na vysku vpravo ve stavovem radku)
 };
 // Servisni akce (vraci se Jave - otevreni vyberu souboru, dialogu, menu...)
 enum : int {
@@ -440,6 +441,7 @@ enum : int {
   SVC_EJECT = 9,   // B292: EJECT na kazetaku -> Java nabidne ulozene WAV (kazety)
   SVC_CTRL = 10,   // B297: ozubene kolecko na sirku -> menu D-PAD A OVLADANI
   SVC_CTRL_SAVE = 11,   // B297: uprava rozlozeni HOTOVO -> Java ulozi nastaveni
+  SVC_OTOC = 12,        // B342: otocit obrazovku (NA SIRKU / NA VYSKU) -> Java NapObrazovka
 };
 
 // Udalost pro skutecny stroj (zpracuje ji emulacni vlakno)
@@ -604,6 +606,44 @@ static float sdGear(float px, float py, float cx, float cy, float r) {
   const float diera = r * 0.34f - d;                                // otvor uprostred
   return std::max(vnejsi, diera);
 }
+// B342: OTOCENI OBRAZOVKY - telefon (obrys) a dve zahnute sipky, jako ikona v hlavnim menu
+// (nap_menu_shadery.h FS_UI typ 9). x, y od stredu, y NAHORU; r = polomer ikony.
+static float sdOtocSipka(float x, float y, float r) {
+  const float AC = 2.70f, HALF = 0.87f;
+  const float c = std::cos(AC), sn = std::sin(AC);
+  const float qx = c * x + sn * y, qy = -sn * x + c * y;
+  const float R = r * 0.56f, th = r * 0.05f;
+  const float ang = std::atan2(qy, qx);
+  float dObl;
+  if (std::fabs(ang) <= HALF) dObl = std::fabs(std::sqrt(qx * qx + qy * qy) - R) - th;
+  else {
+    const float kx = R * std::cos(HALF), ky = (ang > 0.f ? 1.f : -1.f) * R * std::sin(HALF);
+    dObl = std::sqrt((qx - kx) * (qx - kx) + (qy - ky) * (qy - ky)) - th;
+  }
+  const float Kx = R * std::cos(HALF), Ky = -R * std::sin(HALF);
+  const float fx = -std::sin(HALF), fy = -std::cos(HALF);       // po smeru hodin
+  const float nx = std::cos(HALF), ny = -std::sin(HALF);
+  const float hgt = r * 0.24f, w = r * 0.15f;
+  const float dx = qx - (Kx - fx * hgt * 0.30f), dy = qy - (Ky - fy * hgt * 0.30f);
+  const float u = dx * fx + dy * fy, v = std::fabs(dx * nx + dy * ny);
+  const float dHrot = std::max(-u, (v * hgt + u * w - w * hgt) / std::sqrt(hgt * hgt + w * w));
+  return std::min(dObl, dHrot);
+}
+// telefonNaSirku = telefon v ikone lezi (stisk da obrazovku na sirku)
+static float sdOtoc(float px, float py, float cx, float cy, float r, bool telefonNaSirku) {
+  const float x = px - cx, y = cy - py;
+  float hx = r * 0.17f, hy = r * 0.29f;
+  if (telefonNaSirku) std::swap(hx, hy);
+  const float rad = r * 0.07f;
+  const float ex = std::fabs(x) - hx + rad, ey = std::fabs(y) - hy + rad;
+  const float ox = std::max(ex, 0.f), oy = std::max(ey, 0.f);
+  const float tel = std::sqrt(ox * ox + oy * oy) + std::min(std::max(ex, ey), 0.f) - rad;
+  float d = std::fabs(tel) - r * 0.045f;
+  // tlacitko telefonu: na vysku dole, lezici telefon vpravo
+  const float bx = telefonNaSirku ? hx - r * 0.09f : 0.f, by = telefonNaSirku ? 0.f : -hy + r * 0.09f;
+  d = std::min(d, std::sqrt((x - bx) * (x - bx) + (y - by) * (y - by)) - r * 0.035f);
+  return std::min(d, std::min(sdOtocSipka(x, y, r), sdOtocSipka(-x, -y, r)));
+}
 
 // =====================================================================
 //  ZARIZENI
@@ -689,7 +729,10 @@ public:
   float obrX = 0, obrY = 0, obrW = 0, obrH = 0;        // obraz Atari na sirku (px)
   float rDpad = 0, rFire = 0, rBtn = 0, pillW = 0, pillH = 0;
   float gearCx = 0, gearCy = 0, gearW = 0, gearH = 0;
-  Sprite spDpad[2], spNub[2], spBtn[C_N][2], spGear[2];
+  float otocCx = 0, otocCy = 0;                        // B342: otoceni vlevo vedle kolecka (stejna velikost)
+  int otocPid = -1;                                    // B342: prst na otoceni (na sirku)
+  bool otocDrzeno = false;                             // B342: prst na otoceni (na vysku)
+  Sprite spDpad[2], spNub[2], spBtn[C_N][2], spGear[2], spOtoc[2];
   int landBuildW = 0, landBuildH = 0, landBuildSize = -1, landBuildDsize = -1, landBuildOp = -1;
   int landBuildEn = -1;            // B314: jazyk stitku v predkreslenych tlacitkach (MEZERA / SPACE)
 
@@ -707,7 +750,7 @@ public:
     // obraz Atari pres celou vysku displeje a ovladani jako u Segy
     const bool bylLand = land;
     land = W > H * 1.12f && W >= 520 && H >= 240;
-    if (land != bylLand) { editMode = false; dragPid = gearPid = barPid = -1; }
+    if (land != bylLand) { editMode = false; dragPid = gearPid = barPid = otocPid = -1; otocDrzeno = false; }
     if (land) { layoutLand(); return; }
     // jako stranka navrhu: okraj 14 CSS px, nahore 18 CSS px, pod
     // pristrojem stavovy radek (legend) 14+~16 CSS px.
@@ -799,6 +842,7 @@ public:
   }
 
   int hitTest(float x, float y) const {
+    if (otocVyskaHit(x, y)) return ID_OTOC;          // B342: i pri vypnutem pristroji
     float u = toDuX(x), v = toDuY(y);
     auto in = [&](float x0, float y0, float w, float h, float pad = 0.f) {
       return u >= x0 - pad && u < x0 + w + pad && v >= y0 - pad && v < y0 + h + pad;
@@ -909,6 +953,7 @@ public:
       return n;
     }
     if (id >= ID_SVC0 && id < ID_SVC0 + 8) { int i = id - ID_SVC0; svcHeld[i] = true; svcAt[i] = now; markSvc(i); return n; }
+    if (id == ID_OTOC) { otocDrzeno = true; markLegend(); return n; }   // B342
     return n;
   }
 
@@ -940,6 +985,11 @@ public:
       return n;
     }
     if (id == ID_CNTRST) { swHeld = false; markCounter(); return n; }
+    if (id == ID_OTOC) {                             // B342: akce az pri pusteni nad tlacitkem
+      otocDrzeno = false; markLegend();
+      if (hitTest(x, y) == ID_OTOC && svcAction) *svcAction = SVC_OTOC;
+      return n;
+    }
     if (id == ID_JOY || id == ID_FIRE) {
       if (pid == joyPid) { joyPid = -1; joyStick = 0; }
       if (pid == firePid) { firePid = -1; joyFire = false; }
@@ -2054,6 +2104,59 @@ public:
     fillRR(c, dot, Grad::solid(hexc(led)), dot.y0, dot.y1);
     float base = baselineIn(f, topY, lineH, fs);
     drawText(c, f, x + d + PX(9), base, txt, fs, ls, hexc(0xc3c9d1));
+    // B342: otoceni obrazovky vpravo (nakresli se pres pripadny dlouhy text)
+    RRect o;
+    if (otocVyskaRR(o)) drawOtocVyska(c, o);
+  }
+
+  // ----- B342: OTOCENI OBRAZOVKY NA VYSKU - pilulka vpravo ve stavovem radku pod pristrojem -----
+  // (Rene: "tlacitko u kazde emu - sirka vyska"). Na sirku je vedle kolecka (otocCx).
+  const char *otocText() const { return tx("NA SIRKU", "LANDSCAPE"); }
+  bool otocVyskaRR(RRect &r) const {
+    if (land) return false;
+    const float topY = Y(DH) + PX(14);
+    if (topY + PX(16) > H) return false;            // stavovy radek se nevejde (jako drawLegend)
+    Font &f = fBold();
+    const float fs = PX(10.5f), h = PX(20);
+    const float w = h * 1.05f + textW(f, otocText(), fs, .04f * fs) + PX(12);
+    const float cy = topY + PX(8), x1 = X(DW) - PX(2);
+    r = mkRR(x1 - w, cy - h * .5f, w, h, h * .5f, h * .5f);
+    return true;
+  }
+  bool otocVyskaHit(float x, float y) const {
+    RRect r;
+    if (!otocVyskaRR(r)) return false;
+    const float m = PX(8);
+    return x >= r.x0 - m && x <= r.x1 + m && y >= r.y0 - m && y <= r.y1 + m * 1.5f;
+  }
+  void drawOtocVyska(Canvas &c, const RRect &r) {
+    const bool on = otocDrzeno;
+    const RGBA fill = on ? rgbac(120, 200, 255, .28f) : rgbac(255, 255, 255, .08f);
+    const RGBA bord = on ? rgbac(180, 225, 255, .8f) : rgbac(255, 255, 255, .30f);
+    const RGBA tc = hexc(0xc3c9d1);
+    const float bw = std::max(1.f, PX(1));
+    const float h = r.y1 - r.y0;
+    const float icx = r.x0 + h * .55f + PX(2), icy = (r.y0 + r.y1) * .5f, ir = h * .40f;
+    int x0, y0, x1, y1;
+    if (!c.span(r.x0 - 1, r.y0 - 1, r.x1 + 1, r.y1 + 1, x0, y0, x1, y1)) return;
+    for (int y = y0; y < y1; y++) {
+      uint32_t *row = &c.at(0, y);
+      const float fy = y + .5f;
+      for (int x = x0; x < x1; x++) {
+        const float fx = x + .5f;
+        const float d = sdRR(fx, fy, r);
+        const float a = covFromSd(d);
+        if (a <= 0.f) continue;
+        blendPx(row[x], fill.r, fill.g, fill.b, fill.a * a);
+        const float ab = covFromSd(std::fabs(d + bw * .5f) - bw * .5f);
+        if (ab > 0.f) blendPx(row[x], bord.r, bord.g, bord.b, bord.a * ab);
+        const float ai = covFromSd(sdOtoc(fx, fy, icx, icy, ir, true));   // telefon lezi = na sirku
+        if (ai > 0.f) blendPx(row[x], tc.r, tc.g, tc.b, ai * .95f);
+      }
+    }
+    Font &f = fBold();
+    const float fs = PX(10.5f), ls = .04f * fs, lineH = (f.asc + f.desc) * fs;
+    drawText(c, f, icx + ir + PX(5), baselineIn(f, icy - lineH * .5f, lineH, fs), otocText(), fs, ls, tc);
   }
 
   // =================================================================
@@ -2086,6 +2189,7 @@ public:
     pillH = 6.f * v * ctlSize / 100.f;
     gearW = 11.f * v; gearH = 7.f * v;                  // Sega #btnSegaSettings
     gearCx = W - W * .015f - gearW * .5f; gearCy = 1.2f * v + gearH * .5f;
+    otocCx = gearCx - gearW - 1.5f * v; otocCy = gearCy;   // B342: vlevo vedle kolecka
   }
   // vychozi rozlozeni (jako Sega na sirku): D-pad vlevo dole, FIRE vpravo
   // dole, nad nim MEZERA a RETURN, START/SELECT/OPTION vlevo nahore (aby
@@ -2123,6 +2227,7 @@ public:
     return r;
   }
   IRect gearRect() const { const Sprite &s = spGear[0]; return IRect{s.x0 - 2, s.y0 - 2, s.x0 + s.w + 2, s.y0 + s.h + 2}; }
+  IRect otocRect() const { const Sprite &s = spOtoc[0]; return IRect{s.x0 - 2, s.y0 - 2, s.x0 + s.w + 2, s.y0 + s.h + 2}; }
   void markCtl(int i) { if (land) mark(ctlRect(i)); }
   IRect toastRect() const { return IRect{0, (int)(1.5f * vh()), W, (int)(11.f * vh())}; }
   // lista pri uprave rozlozeni: panel nahore uprostred (mezi START/SELECT/
@@ -2288,6 +2393,23 @@ public:
       gs.border = on ? RGBA{180, 225, 255, .8f} : RGBA{255, 255, 255, .34f}; gs.bw = 1.f * cssL();
       gs.opacity = .9f;
       renderGlass(g, gr, gs);
+      // B342: otoceni obrazovky - stejna pilulka, symbol telefonu se sipkami (telefon stoji = stisk
+      // da obrazovku na vysku; na sirku je pristroj vzdy, kdyz se kresli tahle pilulka)
+      {
+        Sprite &o = spOtoc[on];
+        renderGlass(o, mkRR(otocCx - gearW * .5f, otocCy - gearH * .5f, gearW, gearH, gearH * .5f, gearH * .5f), gs);
+        const float ro = gearH * .46f;
+        for (int y = 0; y < o.h; y++) for (int x = 0; x < o.w; x++) {
+          const float px = o.x0 + x + .5f, py = o.y0 + y + .5f;
+          const float a = covFromSd(sdOtoc(px, py, otocCx, otocCy, ro, false)) * .85f * .9f;
+          if (a <= 0.002f) continue;
+          uint32_t &d = o.px[(size_t)y * o.w + x];
+          const uint32_t da = d >> 24, ia = (uint32_t)((1.f - a) * 255.f + .5f), sa = (uint32_t)(a * 255.f + .5f);
+          const uint32_t r = sa + mul255(d & 255, ia), gg = sa + mul255((d >> 8) & 255, ia), b = sa + mul255((d >> 16) & 255, ia);
+          const uint32_t na = sa + mul255(da, ia);
+          d = (std::min(na, 255u) << 24) | (std::min(b, 255u) << 16) | (std::min(gg, 255u) << 8) | std::min(r, 255u);
+        }
+      }
       // symbol
       const float rg = gearH * .30f;
       for (int y = 0; y < g.h; y++) for (int x = 0; x < g.w; x++) {
@@ -2337,6 +2459,7 @@ public:
     }
     if (editMode) { if (hits(c.clip, editBarRect())) drawEditBar(c); }
     else if (hits(c.clip, gearRect())) spriteBlit(c, spGear[gearPid >= 0 ? 1 : 0]);
+    if (!editMode && hits(c.clip, otocRect())) spriteBlit(c, spOtoc[otocPid >= 0 ? 1 : 0]);   // B342
     if (extraMsg[0] && !editMode && hits(c.clip, toastRect())) drawToast(c);
   }
   // Sega .hit.layoutEdit: outline 2px dashed rgba(120,200,255,.92), offset 2px,
@@ -2458,6 +2581,10 @@ public:
   bool gearHit(float x, float y) const {
     return std::fabs(x - gearCx) <= gearW * .5f + 1.5f * vh() && std::fabs(y - gearCy) <= gearH * .5f + 1.5f * vh();
   }
+  // B342: otoceni vedle kolecka (mezi nimi 1,5 vh - kazdemu pulka mezery navic)
+  bool otocHit(float x, float y) const {
+    return std::fabs(x - otocCx) <= gearW * .5f + .75f * vh() && std::fabs(y - otocCy) <= gearH * .5f + 1.5f * vh();
+  }
   // Stav vsech prstu -> joystick, MEZERA/RETURN, konzole (jako Sega update():
   // kazdy dotek se vyhodnoti podle polohy; prst, ktery zacal na D-padu,
   // ho ridi i kdyz z nej sklouzne).
@@ -2536,6 +2663,7 @@ public:
       return 0;
     }
     if (gearHit(x, y)) { gearPid = pid; mark(gearRect()); return 0; }
+    if (otocHit(x, y)) { otocPid = pid; mark(otocRect()); return 0; }   // B342
     if (!dotykNaOvladani(x, y)) return 0;           // B320: ovladani schovane vzdy - dotyk nic
     lpDown[pid] = true; lpX[pid] = x; lpY[pid] = y;
     if (dpadPid < 0 && inCtl(C_DPAD, x, y, 1.35f)) dpadPid = pid;
@@ -2578,6 +2706,11 @@ public:
       if (gearHit(x, y) && svc) *svc = SVC_CTRL;
       return 0;
     }
+    if (pid == otocPid) {                           // B342: otocit obrazovku (Java)
+      otocPid = -1; mark(otocRect());
+      if (otocHit(x, y) && svc) *svc = SVC_OTOC;
+      return 0;
+    }
     if (!lpDown[pid]) return 0;
     lpDown[pid] = false;
     if (pid == dpadPid) dpadPid = -1;
@@ -2587,6 +2720,7 @@ public:
     for (int i = 0; i < 16; i++) lpDown[i] = false;
     dpadPid = -1;
     if (gearPid >= 0) { gearPid = -1; mark(gearRect()); }
+    if (otocPid >= 0) { otocPid = -1; mark(otocRect()); }
     if (barPid >= 0) { barPid = -1; barBtn = -1; mark(editBarRect()); }
     if (dragPid >= 0) { dragPid = -1; for (int i = 0; i < C_N; i++) dragMember[i] = false; markAll(); }
     return landRecompute(out, maxOut);

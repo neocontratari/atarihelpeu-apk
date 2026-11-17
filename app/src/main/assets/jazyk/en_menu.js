@@ -19,6 +19,11 @@ NapJazyk.slovnik({
   'LOG APPKY PRO PODPORU': 'APP LOG FOR SUPPORT',   // B337
   'VÝKON ZAŘÍZENÍ': 'DEVICE PERFORMANCE',           // B338
   'ÚLOŽIŠTĚ': 'STORAGE',                            // B339
+  // B342: OPTIONS -> OBRAZOVKA (hlavni menu na vysku / na sirku / podle telefonu)
+  'OBRAZOVKA': 'SCREEN',
+  'NA VÝŠKU': 'PORTRAIT',
+  'NA ŠÍŘKU': 'LANDSCAPE',
+  'PODLE TELEFONU': 'AUTO-ROTATE',
   'PUSTIT INTRO': 'PLAY INTRO',
   'STÁHNOUT HRY A BIOS': 'DOWNLOAD GAMES AND BIOS',
   'AKTUALIZOVAT APLIKACI': 'UPDATE THE APP',

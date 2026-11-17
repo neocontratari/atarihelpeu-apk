@@ -296,6 +296,7 @@ body.hleda .rychle,body.hleda #obsahStitek,body.hleda #obsah{display:none;}
       <dt>Karta vedle</dt><dd>Klepni na ni a přijede doprostřed.</dd>
       <dt>Tečky</dt><dd>Klepnutím na tečku skočíš rovnou na tu kartu.</dd>
       <dt>Kolečko &#9881;</dt><dd>Vpravo nahoře – otevře <a href="#options" data-skok="options">OPTIONS</a>.</dd>
+      <dt>Telefon se šipkami</dt><dd>Vlevo nahoře – otočí obrazovku <b>na šířku</b> nebo <b>na výšku</b>. Telefon v ikoně ukazuje, kam se otočí. Appka si to pamatuje – viz <a href="#obrazovka" data-skok="obrazovka">Obrazovka na výšku a na šířku</a>.</dd>
     </dl>
   </div>
 
@@ -386,6 +387,7 @@ body.hleda .rychle,body.hleda #obsahStitek,body.hleda #obsah{display:none;}
       <dt>HELP</dt><dd>Stručná nápověda k ovládání přímo v Atari.</dd>
       <dt>MENU</dt><dd>Zpět do hlavního menu.</dd>
     </dl>
+    <p>Pod přístrojem vpravo je <span class="t">NA SIRKU</span> (telefon se šipkami) – Atari na šířku: obraz přes celou výšku displeje, joystick a tlačítka jako u Segy. Zpátky na výšku tě vrátí stejné tlačítko vlevo vedle kolečka <span class="nw"><span class="t">&#9881;</span>.</span> Viz <a href="#obrazovka" data-skok="obrazovka">Obrazovka na výšku a na šířku</a>.</p>
   </div>
 
   <div class="blok">
@@ -442,6 +444,7 @@ body.hleda .rychle,body.hleda #obsahStitek,body.hleda #obsah{display:none;}
       <dt>MENU</dt><dd>Zpět do hlavního menu.</dd>
     </dl>
     <p>Ovladač na obrázku konzole: D-pad, <span class="t">A</span> <span class="t">B</span> <span class="t">C</span> a <span class="nw"><span class="t">START</span>.</span></p>
+    <p>Kulaté tlačítko vpravo nahoře (telefon se šipkami) otočí obrazovku na šířku – hraní přes celý displej. Na šířku je stejné tlačítko vlevo vedle kolečka <span class="t">&#9881;</span> a vrátí konzoli na výšku. Viz <a href="#obrazovka" data-skok="obrazovka">Obrazovka na výšku a na šířku</a>.</p>
   </div>
 
   <div class="blok">
@@ -476,6 +479,7 @@ body.hleda .rychle,body.hleda #obsahStitek,body.hleda #obsah{display:none;}
       <dt>BACK</dt><dd>Zpět do hlavního menu.</dd>
     </dl>
     <p>Ovladač: D-pad, <span class="t">&#9651;</span> <span class="t">&#9675;</span> <span class="t">&#10005;</span> <span class="nw"><span class="t">&#9633;</span>,</span> <span class="t">L1</span> <span class="t">L2</span> <span class="t">R1</span> <span class="nw"><span class="t">R2</span>,</span> <span class="nw"><span class="t">SELECT</span>,</span> <span class="t">START</span> a <span class="nw"><span class="t">RESET</span>.</span></p>
+    <p>Zlaté kulaté tlačítko nahoře mezi mincí N&amp;P a kolečkem (telefon se šipkami) otočí obrazovku na šířku – hraní přes celý displej. Na šířku je stejné tlačítko vlevo vedle kolečka <span class="t">&#9881;</span> a vrátí PS1 na výšku. Viz <a href="#obrazovka" data-skok="obrazovka">Obrazovka na výšku a na šířku</a>.</p>
   </div>
 
   <div class="blok">
@@ -665,6 +669,17 @@ body.hleda .rychle,body.hleda #obsahStitek,body.hleda #obsah{display:none;}
     <h3>Jazyk</h3>
     <p><span class="t">JAZYK · LANGUAGE</span> – <span class="t">ČEŠTINA</span> / <span class="nw"><span class="t">ENGLISH</span>.</span> Celá appka se přepne hned: menu, OPTIONS, emulátory, hlášky, tenhle návod i stránka WEB TV v prohlížeči (tam ji obnov). Poprvé se appka zeptá hned po spuštění; dokud nevybereš, mluví anglicky.</p>
   </div>
+  <div class="blok" id="obrazovka">
+    <h3>Obrazovka na výšku a na šířku</h3>
+    <p>Každá obrazovka má tlačítko <b>otočení</b> – telefon se dvěma šipkami: hlavní menu vlevo nahoře, <span class="t">ATARI 130XE</span> pod přístrojem vpravo (<span class="nw"><span class="t">NA SIRKU</span>),</span> <span class="t">SEGA</span> a <span class="t">PS1</span> nahoře; na šířku je vždy vlevo vedle kolečka <span class="nw"><span class="t">&#9881;</span>.</span> Telefon v ikoně ukazuje, kam se obrazovka otočí.</p>
+    <ul>
+      <li><b>Telefon</b> se opravdu otočí – na šířku jde držet na kteroukoli stranu.</li>
+      <li><b>Appka si pamatuje volbu pro každou obrazovku zvlášť:</b> hlavní menu (i OPTIONS a nápověda), Atari, Sega a PS1. Např. menu na výšku a Sega na šířku – telefon se při spuštění Segy otočí sám.</li>
+      <li>Dokud tlačítko nestiskneš, otáčí se appka podle telefonu jako dřív (zámek otáčení v telefonu platí).</li>
+      <li><span class="t">OPTIONS</span> → <span class="t">OBRAZOVKA</span>: <span class="t">NA VÝŠKU</span> / <span class="t">NA ŠÍŘKU</span> pro hlavní menu, <span class="t">PODLE TELEFONU</span> vrátí všechny obrazovky k otáčení podle telefonu.</li>
+      <li><b>Televize</b> se otočit neumí: <span class="t">NA VÝŠKU</span> ukáže appku jako telefon – v pruhu uprostřed obrazovky, po stranách černo. <span class="t">NA ŠÍŘKU</span> = celá obrazovka (tak je to na TV, dokud nic nepřepneš). V Atari, Seze a PS1 na TV: <span class="t">ZPĚT</span> → <span class="t">OBRAZOVKA NA VÝŠKU</span> / <span class="nw"><span class="t">OBRAZOVKA NA ŠÍŘKU</span>,</span> pro hlavní menu <span class="t">OPTIONS</span> → <span class="nw"><span class="t">OBRAZOVKA</span>.</span></li>
+    </ul>
+  </div>
   <div class="blok">
     <h3>Tlačítka</h3>
     <dl class="tab">
@@ -721,7 +736,8 @@ body.hleda .rychle,body.hleda #obsahStitek,body.hleda #obsah{display:none;}
       <li>Na stránkách (<span class="t">OPTIONS</span>, nápověda, seznamy her) ukazuje zlatý rámeček, co je vybrané – šipky ho posouvají, <span class="t">OK</span> stiskne.</li>
       <li>Úvodní demo přeskočíš tlačítkem <span class="t">OK</span>.</li>
       <li>Ve hrách: šipky = směr, <span class="t">OK</span> = hlavní tlačítko, <span class="t">PLAY</span> / <span class="t">MENU</span> = START, barevná tlačítka = další tlačítka. Na pořádné hraní připoj <b>gamepad</b> (Bluetooth nebo USB) – funguje hned, dotyková tlačítka jsou v televizi schovaná.</li>
-      <li><b>Atari na TV:</b> tlačítko <span class="t">ZPĚT</span> otevře menu přístroje – nahoře <b>HLAVNÍ MENU</b>, pod ním hry ze serveru N&amp;P, disketa, kazeta, Turbo Basic, reset a nápověda. <span class="t">ZPĚT</span> dvakrát za sebou tě vrátí rovnou do hlavního menu (televize je pořád na šířku, tlačítka přístroje na výšku tam nejsou).</li>
+      <li><b>Atari na TV:</b> tlačítko <span class="t">ZPĚT</span> otevře menu přístroje – nahoře <b>HLAVNÍ MENU</b>, pod ním hry ze serveru N&amp;P, disketa, kazeta, Turbo Basic, reset a nápověda. <span class="t">ZPĚT</span> dvakrát za sebou tě vrátí rovnou do hlavního menu.</li>
+      <li><b>Na výšku i na televizi:</b> v menu konzole (<span class="t">ZPĚT</span>) u Atari, Segy i PS1 je <span class="t">OBRAZOVKA NA VÝŠKU</span> – appka se ukáže jako telefon v pruhu uprostřed televize (Atari celý přístroj, Sega a PS1 konzole na výšku). <span class="t">OBRAZOVKA NA ŠÍŘKU</span> vrátí celou obrazovku. Hlavní menu: <span class="t">OPTIONS</span> → <span class="nw"><span class="t">OBRAZOVKA</span>.</span> Appka si volbu pamatuje pro každou konzoli – viz <a href="#obrazovka" data-skok="obrazovka">Obrazovka na výšku a na šířku</a>.</li>
       <li>SEGA a PS1 se na novém zařízení otevírají stejně jako na telefonu – postupem hráče, nebo po zaplacení. Zamčená karta se nejdřív zeptá serveru N&amp;P: když už je zaplaceno, konzole se rovnou spustí.</li>
       <li><b>SEGA a PS1 na TV:</b> tlačítko <span class="t">ZPĚT</span> otevře menu konzole – <span class="t">HRY ZE SERVERU N&amp;P</span> (vybraná hra se hned spustí), uložit a načíst pozici, u PS1 reset a <b>HLAVNÍ MENU</b>. <span class="t">ZPĚT</span> dvakrát za sebou = hlavní menu.</li>
       <li><b>Slabá televize:</b> v <span class="t">OPTIONS</span> je <span class="t">VÝKON ZAŘÍZENÍ</span>. <span class="t">AUTO</span> slabý procesor pozná sám (jen 32 bitů, nejvýš 1,5 GHz) a zapne <span class="t">LOW</span>: SEGA kreslí přes grafiku (procesor má víc času na hru a zvuk) a appka se spustí bez úvodního dema. Ručně jde vybrat <span class="t">LOW</span> nebo <span class="t">HIGH</span>. Když hraješ přímo na televizi, nech na PC stránku WEB TV zavřenou – přenos do PC stojí slabý procesor další práci.</li>

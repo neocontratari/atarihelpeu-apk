@@ -1,0 +1,14 @@
+B342 - obrazovka na vysku / na sirku (NapObrazovka)
+
+OK     S1) skupina podle stranky: Atari / Sega (i pomocne stranky) / PS1, ostatni = hlavni menu (13 adres)
+OK     S2a) ulozena hodnota -> volba (nezname cislo = AUTO, jako dosud)
+OK     S2b) 4 skupiny, kazda vlastni klic (obrazovka_menu / _atari / _sega / _ps1), jmena tam i zpet
+OK     S3) telefon: AUTO = UNSPECIFIED (-1), VYSKA = PORTRAIT (1), SIRKA = SENSOR_LANDSCAPE (6)
+OK     S4) stisk = opak toho, co je na obrazovce (na sirku -> VYSKA, na vysku -> SIRKA; plati i z AUTO)
+OK     S5) TV: pruh jen pri NA VYSKU (AUTO = cela obrazovka jako dosud); telefon pruh nikdy
+OK     S5b) TV: kazdy stisk prepne cela obrazovka <-> pruh (4x)
+OK     S6a) pruh 9:16 pro TV (sude cislo): 1920x1080->608 1280x720->406 3840x2160->1216 1366x768->432 960x540->304
+OK     S6b) nikdy sirsi nez obrazovka (uzka / nulova plocha neprekroci sirku)
+OK     S7a) polozka menu konzole na TV: co stisk udela (CZ / EN)
+OK     S7b) popis volby (OPTIONS, potvrzeni): TV na vysku = pruh, AUTO na telefonu = podle telefonu, na TV = cela obrazovka
+VYSLEDEK: 11 testu, 0 CHYBA

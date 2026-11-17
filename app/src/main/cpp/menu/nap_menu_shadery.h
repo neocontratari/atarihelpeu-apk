@@ -177,7 +177,8 @@ void main(){
 
 // ikony a UI v jednom shaderu (SDF): 1 ozubene kolecko v osmiuhelniku, 2 tlacitko (zlata
 // tableta se zkosenymi rohy), 3 zamek, 4 tecka (kosoctverec), 5 trojuhelnik "play",
-// 6 mekka zare (kruh), 7 aktivni tecka (protahla)
+// 6 mekka zare (kruh), 7 aktivni tecka (protahla), 9 (B342) otoceni obrazovky v osmiuhelniku
+// (telefon + dve zahnute sipky; uUhel = natoceni telefonu)
 static const char *FS_UI = R"(
 varying vec2 vUV;
 varying vec2 vQ;
@@ -189,6 +190,38 @@ uniform float uUhel;      // natoceni kolecka
 uniform float uSvit;      // zare / puls
 float osmi(vec2 p, vec2 h, float c){ vec2 q = abs(p); return max(max(q.x - h.x, q.y - h.y), (q.x + q.y - (h.x + h.y - c))*0.70710678); }
 vec3 zlato(float t){ return mix(vec3(0.50,0.30,0.07), vec3(1.0,0.86,0.50), clamp(t,0.0,1.0)); }
+// B342: jedna zahnuta sipka kolem telefonu (oblouk ~100 stupnu vlevo nahore, hrot po smeru hodin);
+// druha je tataz otocena o 180 stupnu (sipka(-p))
+float sipka(vec2 p, float r){
+  float AC = 2.70, HALF = 0.87;
+  float c = cos(AC), s = sin(AC);
+  vec2 q = vec2(c*p.x + s*p.y, -s*p.x + c*p.y);
+  float R = r*0.56, th = r*0.05;
+  float ang = atan(q.y, q.x);
+  float dObl;
+  if (abs(ang) <= HALF) dObl = abs(length(q) - R) - th;
+  else { vec2 k = R*vec2(cos(HALF), sign(ang)*sin(HALF)); dObl = length(q - k) - th; }
+  vec2 K = R*vec2(cos(HALF), -sin(HALF));
+  vec2 f = vec2(-sin(HALF), -cos(HALF));
+  vec2 n = vec2(cos(HALF), -sin(HALF));
+  float hgt = r*0.24, w = r*0.15;
+  vec2 d = q - (K - f*hgt*0.30);
+  float u = dot(d, f), v = abs(dot(d, n));
+  float dHrot = max(-u, (v*hgt + u*w - w*hgt)/sqrt(hgt*hgt + w*w));
+  return min(dObl, dHrot);
+}
+// B342: obrys telefonu (zaobleny obdelnik na vysku) natoceny o uhel a
+float telefon(vec2 p, float r, float a){
+  float c = cos(a), s = sin(a);
+  vec2 q = vec2(c*p.x + s*p.y, -s*p.x + c*p.y);
+  vec2 hb = vec2(r*0.17, r*0.29);
+  float rad = r*0.07;
+  vec2 e = abs(q) - hb + rad;
+  float tel = length(max(e, 0.0)) + min(max(e.x, e.y), 0.0) - rad;
+  float obrys = abs(tel) - r*0.045;
+  float repro = length(q - vec2(0.0, -hb.y + r*0.09)) - r*0.035;   // tlacitko dole na telefonu
+  return min(obrys, repro);
+}
 void main(){
   vec2 p = (vQ - 0.5)*uVel;            // body od stredu, y nahoru
   float r = min(uVel.x, uVel.y)*0.5;
@@ -263,6 +296,17 @@ void main(){
   } else if (uTyp == 8) {
     // plna barva (zatmeni)
     o = vec4(uBarva, 1.0);
+  } else if (uTyp == 9) {
+    // B342: otoceni obrazovky - stejny ramecek jako kolecko OPTIONS, uvnitr telefon a dve sipky
+    float d = osmi(p, vec2(r*0.92), r*0.55);
+    float m = 1.0 - smoothstep(-1.0, 0.5, d);
+    float okr = smoothstep(-r*0.13 - 1.0, -r*0.13 + 1.0, d);
+    vec3 c = mix(vec3(0.05,0.03,0.015), zlato(0.55 + p.y/r*0.45), okr);
+    float ik = min(telefon(p, r, uUhel), min(sipka(p, r), sipka(-p, r)));
+    float km = 1.0 - smoothstep(-0.8, 0.8, ik);
+    vec3 kc = zlato(0.6 + p.y/r*0.5) + vec3(1.0,0.9,0.6)*uSvit*0.5;
+    c = mix(c, kc, km);
+    o = vec4(c*m, m);
   }
   gl_FragColor = o*uAlfa;
 }

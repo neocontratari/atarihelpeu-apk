@@ -1,0 +1,25 @@
+OK     Z1 zamcena karta v menu -> napZamcenaKarta (nejdriv server), ne rovnou ODEMKNOUT
+OK     Z2 napZamcenaKarta: /api/v1/stav + slouceni, zaplaceno -> menuSpust (konzole), jinak / do 2,5 s ODEMKNOUT, zatreseni 0,5 s zustava, log
+OK     Z3 menu ukazane a neco zamcene -> stav ze serveru (nejvys 1x za minutu, tise)
+OK     Z4 stranka ODEMKNOUT, server "zaplaceno" -> cely stav (Sega i PS1), ne jen tahle konzole
+OK     Z5 napStavCas volatile (pisou ho i vlakna)
+OK     Z6 ODEMKNOUT na TV: ramecek na hlavni akci (SPUSTIT ...), ne DO MENU; hlidani platby ho nebere; telefon beze zmeny
+OK     Z7 NapTvOvladani.vyber(el) - stranka urci ramecek (jen TV / sipky)
+OK     S1 Android 9 a starsi bez povoleni uloziste -> soubory do slozky appky (Android 10+ a s povolenim beze zmeny)
+OK     S2 povoleni zapisu se pta jen Android 6-9
+OK     S3 STAHNOUT -> okno povoleni uloziste, po odpovedi (ano i ne) stazeni
+OK     S4 start appky i OPTIONS -> STAHNOUT HRY A BIOS jdou pres napStahniSoubory (povoleni, slozka az po nem, zaloha N&P)
+OK     S5 zaloha N&P: seznam her -> Sonic / BIOS -> podepsane stazeni /api/v1/hra
+OK     S6 HTTPS atarihelp.eu (Sonic, BIOS, BIOS pro PS1) s doplnenim certifikatu / poznanim mistniho serveru (B298 / B299)
+OK     S7 okno Nestazeno: duvod u kazdeho souboru a skutecna slozka
+OK     S8 Sonic a BIOS se hledaji i ve slozce appky (Sega, PS1, kontrola pri startu)
+OK     S9 N&P HRY: BIOS ze serveru neni v seznamu her
+OK     S10 log pri startu: povoleni uloziste, kam se uklada, Sonic / BIOS; stahovani do logu appky
+CHYBA  A1 menu pristroje Atari na TV: prvni polozka HLAVNI MENU (ramecek na ni), pak NET / HRY ... NAPOVEDA
+OK     A2 ZPET v otevrenem menu = hlavni menu (ZPET 2x), napis v titulku
+OK     L1 OPTIONS: pod adresou WEB TV i adresa logu (CZ / EN)
+OK     L2 napoveda CZ / EN: Atari ZPET 2x, zamcena karta a server, Sonic + BIOS na TV, log z TV
+CHYBA  L3 build.gradle: versionCode 380 "EMU10-B337-TV-SEGA-PS1-SOUBORY"
+OK     E hry/odemknout.html je ES5
+OK     E spolecne/nap_tv_ovladani.js je ES5
+VYSLEDEK: 24 kontrol, 2 CHYBA

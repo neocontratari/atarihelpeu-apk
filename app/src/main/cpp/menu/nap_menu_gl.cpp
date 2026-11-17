@@ -376,7 +376,7 @@ void vlaknoMenu(ANativeWindow *okno) {
       // B313: ozdoby na TV bezi jen pri pohybu (a chvili po nem), jinak stoji
       {
         const bool deje = s.pohyb || s.spustena >= 0 || t - s.tPrichod < 1.0 || (s.tZamek >= 0 && t - s.tZamek < 0.6) ||
-                          (s.tOzub >= 0 && t - s.tOzub < 0.6);
+                          (s.tOzub >= 0 && t - s.tOzub < 0.6) || (s.tOtoc >= 0 && t - s.tOtoc < 0.6);
         if (deje) tvPohybT = t;
         if (tvPredT >= 0 && t - tvPohybT < TV_OZDOBY_DOBEH_S) tvOzdoby += t - tvPredT;
         tvPredT = t;
@@ -478,6 +478,11 @@ int zpracujAkci(int a, double t) {
   if (a == napmenu::AKCE_NASTAVENI) {
     if (g_efekty.spustena >= 0) return napmenu::AKCE_NIC;
     g_efekty.tOzub = t;
+    return a;
+  }
+  if (a == napmenu::AKCE_OTOCIT) {   // B342: otoceni obrazovky (Java NativeMenuBridge.AKCE_OTOCIT)
+    if (g_efekty.spustena >= 0) return napmenu::AKCE_NIC;
+    g_efekty.tOtoc = t;
     return a;
   }
   return a;
@@ -584,6 +589,7 @@ JNIEXPORT void JNICALL Java_eu_atarihelp_emu10_NativeMenuBridge_menuUkaz(JNIEnv 
   g_efekty.zamekKlep = -1;
   g_efekty.tZamek = -1;
   g_efekty.tOzub = -1;
+  g_efekty.tOtoc = -1;
   // nastup 0,65 s; rychle prolnuti = nastup, ktery uz je skoro hotovy
   g_prichodTyp = jak == 1 ? 1 : 0;
   g_efekty.tPrichod = jak == 1 ? t : t - 0.45;

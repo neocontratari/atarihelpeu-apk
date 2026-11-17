@@ -4270,4 +4270,29 @@
      - DALSI KROK: Rene - po aktualizaci HOME a otevrit ikonou (log B341 JEDNA APPKA), BT ovladac a dalkovy ve Sege
        (B329 ... -> Sega, B340 DALKOVY TLACITKO, drzet VPRAVO + OK), OPTIONS -> PRIPOJIT OVLADAC ramecek na radku.
 
+   B342: OBRAZOVKA NA VYSKU / NA SIRKU - TLACITKO U KAZDE EMU I V HLAVNIM MENU (17. 11. 2026).
+   Rene: "nech tu apku na vysku pridelej tlacitko u kazde emu i zakladni obrazovky - sirka vyska a je to vyresene -
+   nepis dalsi nesmyslne kody jen kvuli TV" -> "ano Partaku udelej to" (na TV vyska = pruh uprostred).
+     - NapObrazovka (cisty Java, JVM test): 4 skupiny s vlastni pameti (SharedPreferences "nap_obrazovka"): hlavni menu
+       (a vse ostatni - OPTIONS, napoveda, seznamy her), Atari, Sega, PS1. Volba AUTO (vychozi = jak dosud) / VYSKA /
+       SIRKA. Stisk = opak toho, co je na obrazovce. Telefon: setRequestedOrientation (AUTO = UNSPECIFIED, VYSKA =
+       PORTRAIT, SIRKA = SENSOR_LANDSCAPE). TV: NIKDY setRequestedOrientation (nektere TV by obraz otocily bokem) -
+       VYSKA = rootFrame jako pruh 9:16 uprostred (NapObal = cerny obsah okna, meri / klade rootFrame), AUTO = cela.
+     - Pouziti v onPageStarted (skupina podle adresy) a pri startu; log "B342 OBRAZOVKA ...", "B342 OBRAZOVKA PREPNUTA".
+       Intro PS1 bere velikost rootFrame (ne displeje). Vse ostatni (menu C++, Atari, Sega, PS1, demo) jsou deti
+       rootFrame a stranka hlasi polohu obrazu v rootFrame - proto staci zmenit velikost rootFrame.
+     - Tlacitka: hlavni menu C++ vlevo nahore (zrcadlo kolecka, AKCE_OTOCIT 2001, shader FS_UI typ 9 telefon + 2 sipky);
+       Atari C++ na vysku pilulka NA SIRKU vpravo ve stavovem radku, na sirku vedle kolecka (SVC_OTOC 12); Sega / PS1
+       spolecne/nap_obrazovka.js (na vysku nahore, na sirku vedle kolecka, most AHOBRAZ); TV: menu ZPET (PS1 / Sega
+       akce 11, Atari polozka 10) OBRAZOVKA NA VYSKU / NA SIRKU; OPTIONS radek OBRAZOVKA (NA VYSKU / NA SIRKU pro
+       menu, PODLE TELEFONU = vse zpet AUTO; na TV jen 2). Na TV v hlavnim menu ikonu nejde stisknout (sipka nahoru
+       = OPTIONS jako dosud) - menu na vysku pres OPTIONS.
+     - Napoveda CZ / EN: OPTIONS -> "Obrazovka na vysku a na sirku" (+ odkazy z menu, Atari, Sega, PS1, TV).
+     - Testy test_overeni/b342 (JAK_SPUSTIT.txt). build.gradle: versionCode 385 "EMU10-B342-OBRAZOVKA-SIRKA-VYSKA".
+       Na telefonu ani TV neovereno.
+     - DALSI KROK: Rene - telefon: menu / Sega / PS1 / Atari tlacitkem otocit, odejit a vratit se (pamatuje si);
+       TV: ZPET -> OBRAZOVKA NA VYSKU ve hre, OPTIONS -> OBRAZOVKA pro menu; rozhodnout, jestli ma byt na TV vychozi
+       VYSKA (ted je vychozi cela obrazovka jako dosud). Pak fronta z porady B340: BIOS behem stahovani zastavit
+       (zaruka startu hry), hezke jmeno hry pri nahravani, misto u her mimo ZIP jen velikost + 200 MB.
+
 ===============================================================================

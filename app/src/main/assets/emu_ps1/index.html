@@ -10,6 +10,8 @@
 <script src="../spolecne/nap_jazyk.js"></script>
 <script src="../jazyk/en_konzole.js"></script>
 <script src="../jazyk/en_ps1.js"></script>
+<!-- B342: tlacitko otoceni obrazovky (NA VYSKU / NA SIRKU) -->
+<script src="../spolecne/nap_obrazovka.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
 :root{
@@ -43,6 +45,17 @@ body{display:flex;justify-content:center;align-items:flex-start;}
 .hit:active{background:rgba(110,190,255,.13);box-shadow:0 0 34px rgba(110,190,255,.25) inset;border-radius:18px;}
 #btnBack{left:3.8%;top:3.1%;width:10.5%;height:6.2%;}
 #btnSettings{left:85.1%;top:3.1%;width:10.5%;height:6.2%;}
+/* B342: OTOCENI OBRAZOVKY (spolecne/nap_obrazovka.js) - Rene: "tlacitko u kazde emu - sirka vyska".
+   Na vysku nahore mezi minci N&P a koleckem (zlaty prstenec jako ikony skinu), na sirku vlevo vedle
+   kolecka. Pod panely (80) i pod listou stahovani (50); pri uprave rozlozeni schovane. */
+.napOtoc{position:absolute;z-index:30;display:flex;align-items:center;justify-content:center;padding:0;margin:0;cursor:pointer;
+  -webkit-tap-highlight-color:transparent;touch-action:manipulation;-webkit-user-select:none;user-select:none;}
+.napOtoc svg{width:1.6em;height:1.6em;display:block;pointer-events:none;}
+#btnPs1Otoc{left:71.4%;top:3.2%;width:10.5%;height:5.9%;font-size:19px;font-size:min(4.6vw,26px);border-radius:50%;color:#f3d58c;
+  background:radial-gradient(circle at 34% 28%,rgba(70,78,90,.92),rgba(8,11,16,.96) 72%);
+  border:2px solid rgba(214,174,96,.85);box-shadow:0 0 0 2px rgba(18,22,30,.9),0 4px 12px rgba(0,0,0,.6),0 0 14px rgba(255,214,120,.18) inset;}
+#btnPs1Otoc:active{border-color:rgba(255,229,145,.98);box-shadow:0 0 0 2px rgba(18,22,30,.9),0 0 18px rgba(255,214,120,.45);}
+#layoutEditBar.show ~ #btnPs1Otoc{display:none!important;}
 #psMonitor{left:5.4%;top:14.2%;width:89.2%;height:41.7%;}
 /* BUILD2SB4: puvodne tady bylo jen #padLeft a #padRight - DVA velke
    ctverce, ktere v editaci tahaly celý D-pad/celou akcni sadu jako jeden
@@ -301,6 +314,11 @@ body.mysLeveDrzi .mysUkazDrzi{display:block;}
     (Rene: "pruhledny a bez napisu"). */
  #btnSettings{display:flex;align-items:center;justify-content:center;left:auto;right:1.5%;top:1.5%;width:9%;height:7%;opacity:.9;color:rgba(255,255,255,.85);font:900 19px/1 Arial,sans-serif;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.34);border-radius:999px;text-shadow:0 2px 4px #000;z-index:20;}
  #btnSettings:active{background:rgba(255,215,120,.22);border-color:rgba(255,229,145,.8);}
+ /* B342: otoceni na sirku vlevo vedle kolecka - stejna pruhledna pilulka */
+ #btnPs1Otoc{left:auto;right:12%;top:1.5%;width:9%;height:7%;font-size:3.6vh;border-radius:999px;opacity:.9;color:rgba(255,255,255,.88);
+   background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.34);box-shadow:none;}
+ #btnPs1Otoc svg{filter:drop-shadow(0 1px 2px #000);}
+ #btnPs1Otoc:active{background:rgba(255,215,120,.22);border-color:rgba(255,229,145,.8);box-shadow:none;}
  /* BUILD2SB5: editacni lista dole ZAKRYVALA L1/L2/R1/R2/SELECT/START (ty
     zijou v tenkem pruhu bottom:4%-11.6%, presne tam, kam sahala lista) -
     v landscape ji proto presouvam nahoru, kde je misto jen s malym
@@ -383,6 +401,9 @@ body.mysLeveDrzi .mysUkazDrzi{display:block;}
     <button id="layoutEditReset" type="button">VÝCHOZÍ</button>
     <button id="layoutEditDone" type="button">HOTOVO</button>
   </div>
+  <!-- B342: otoceni obrazovky (az za listou uprav - CSS ji pri uprave rozlozeni schova); ikonu a popisek
+       (title / aria-label CZ / EN) doplni spolecne/nap_obrazovka.js, bez mostu AHOBRAZ zustane schovane -->
+  <button id="btnPs1Otoc" class="napOtoc" type="button" data-nap-otoc></button>
 </main>
 
 <!-- BUILD2SB31: sdilene animovane pozadi za VSEMI panely (viz CSS #panelNebula) -->

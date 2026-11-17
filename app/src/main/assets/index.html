@@ -146,6 +146,15 @@ body{background:radial-gradient(120% 70% at 50% 40%,#1c1006 0%,#0a0603 45%,#0302
       <button id="stJazCs" type="button" data-jazyk="cs">ČEŠTINA</button>
       <button id="stJazEn" type="button" data-jazyk="en">ENGLISH</button>
     </div>
+    <!-- B342: OBRAZOVKA hlavniho menu na vysku / na sirku (Rene: "sirka vyska"); Atari, Sega a PS1 maji
+         vlastni tlacitko otoceni, appka si pamatuje volbu pro kazdou zvlast. TV: na vysku = pruh uprostred. -->
+    <div class="stlabel2" id="stObrNadpis">OBRAZOVKA</div>
+    <div class="qrow" id="stObraz">
+      <button id="stObrVyska" type="button" data-obraz="vyska">NA VÝŠKU</button>
+      <button id="stObrSirka" type="button" data-obraz="sirka">NA ŠÍŘKU</button>
+      <button id="stObrAuto" type="button" data-obraz="auto">PODLE TELEFONU</button>
+    </div>
+    <div class="sthint" id="stObrHint" data-nepreklad></div>
     <button id="stStartTv" type="button">SPUSTIT WEB TV</button>
     <div id="stTvAdresa"><small>NA TV NEBO PC OTEVŘI V PROHLÍŽEČI</small><b></b><small>stejná Wi-Fi · zvuk pustíš kliknutím do obrazu</small><small class="stTvLogPopis">LOG APPKY PRO PODPORU</small><i id="stTvLog" data-nepreklad></i></div>
     <button id="stIntro" type="button">PUSTIT INTRO</button>
@@ -422,8 +431,39 @@ function ulozisteObnov(){
   el.textContent=o.popis;
 }
 if(window.NapJazyk&&NapJazyk.priZmene) NapJazyk.priZmene(ulozisteObnov);
+// B342: OBRAZOVKA - hlavni menu na vysku / na sirku / podle telefonu (Java AHOBRAZ: stav / nastav).
+// Atari, Sega a PS1 maji vlastni tlacitko otoceni (telefon se dvema sipkami); na TV menu konzole (ZPET).
+function obrazStav(){
+  try{ if(window.AHOBRAZ&&typeof AHOBRAZ.stav==='function') return JSON.parse(String(AHOBRAZ.stav()||'{}'))||{}; }catch(e){}
+  return {};
+}
+function obrazObnov(){
+  var r=$('stObraz'); if(!r) return;
+  var st=obrazStav(), ukaz=!!st.menu;
+  ['stObrNadpis','stObraz','stObrHint'].forEach(function(id){ var el=$(id); if(el) el.style.display=ukaz?'':'none'; });
+  if(!ukaz) return;
+  var tv=!!st.tv, akt=(tv&&st.menu==='auto')?'sirka':st.menu;
+  ['stObrVyska','stObrSirka','stObrAuto'].forEach(function(id){ var b=$(id); if(b) b.classList.toggle('active', b.getAttribute('data-obraz')===akt); });
+  var a=$('stObrAuto'); if(a) a.style.display=tv?'none':'';
+  var h=$('stObrHint'); if(!h) return;
+  h.textContent=tv
+    ? J('Na výšku = appka jako telefon v pruhu uprostřed televize. Atari, Sega a PS1: menu konzole (ZPĚT) → OBRAZOVKA NA VÝŠKU / NA ŠÍŘKU.',
+        'Portrait = the app looks like a phone in a strip in the middle of the TV. Atari, Sega and PS1: console menu (BACK) → SCREEN TO PORTRAIT / LANDSCAPE.')
+    : J('Hlavní menu: '+(st.popis||'')+'. Atari, Sega a PS1 mají vlastní tlačítko otočení (telefon se dvěma šipkami) – appka si pamatuje volbu pro každou zvlášť.',
+        'Main menu: '+(st.popis||'')+'. Atari, Sega and PS1 have their own rotate button (a phone with two arrows) – the app remembers the choice for each.');
+}
+['stObrVyska','stObrSirka','stObrAuto'].forEach(function(id){
+  var b=$(id); if(!b) return;
+  b.addEventListener('click',function(){
+    try{ if(window.AHOBRAZ&&typeof AHOBRAZ.nastav==='function') AHOBRAZ.nastav(b.getAttribute('data-obraz')); }catch(e){}
+    setTimeout(obrazObnov,250);
+  });
+});
+window.addEventListener('resize',function(){ try{ if(sp&&sp.classList.contains('open')) obrazObnov(); }catch(e){} });
+if(window.NapJazyk&&NapJazyk.priZmene) NapJazyk.priZmene(obrazObnov);
 function openSettings(){if(!sp)return;sp.classList.add('open');sp.setAttribute('aria-hidden','false');sp.scrollTop=0;napQualityRefresh();tvAdresaObnov();
   try{ ulozisteObnov(); }catch(e){}
+  try{ obrazObnov(); }catch(e){}
   try{ verzeObnov(); }catch(e){}
   try{ ovlObnov(); }catch(e){}
   try{ btObnov(); }catch(e){}

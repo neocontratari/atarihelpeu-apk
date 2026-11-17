@@ -40,6 +40,8 @@ public final class NativeMenuBridge {
 
     // vysledek dotyku a klaves (stejne jako napmenu::Akce v C++)
     public static final int AKCE_NIC = 0, AKCE_KARTA = 1000, AKCE_NASTAVENI = 2000, AKCE_ZAMCENO = 3000;
+    /** B342: tlacitko otoceni obrazovky vlevo nahore (NA VYSKU / NA SIRKU) */
+    public static final int AKCE_OTOCIT = 2001;
     // klavesy (napmenu::Klavesa)
     public static final int KL_VLEVO = 1, KL_VPRAVO = 2, KL_POTVRD = 3, KL_ZACATEK = 4, KL_KONEC = 5;
     // dotyk (akce pro menuDotyk)

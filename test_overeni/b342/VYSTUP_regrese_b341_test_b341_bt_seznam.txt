@@ -1,0 +1,8 @@
+OK     T0) B340: tlacitko "🎮 Pro Controller" po 1 s smazane a nakreslene znovu (ramecek dalkoveho ho ztratil)
+OK     T1) TV: ramecek na "Pro Controller" (sipka dolu 9x), po 2 s (7 dotazu na stav) porad totez tlacitko a ramecek na nem; OK -> ['sparuj:AA:BB:CC:DD:EE:11']
+OK     T2) seznam se zmenil (2 ovladace, prvni sparovany): tlacitka nova, ramecek porad na "🎮 Pro Controller – spárovaný"
+OK     T3) zapamatovany "🎮 PŘIPOJIT „Battletron“": po 2 s totez tlacitko
+OK     T5) jmeno s HTML jako text (zadny vlozeny prvek): ['🎮 PŘIPOJIT „<b id="vlozeno">Pad</b>“']
+OK     T4) telefon: "🎮 Pro Controller" po 2 s totez tlacitko, klepnuti -> sparuj
+OK     T6) zadna chyba JavaScriptu
+VYSLEDEK: 7 testu, 0 CHYBA

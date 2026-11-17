@@ -10,6 +10,8 @@
 <script src="../spolecne/nap_jazyk.js"></script>
 <script src="../jazyk/en_konzole.js"></script>
 <script src="../jazyk/en_sega.js"></script>
+<!-- B342: tlacitko otoceni obrazovky (NA VYSKU / NA SIRKU) -->
+<script src="../spolecne/nap_obrazovka.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
 :root{
@@ -117,6 +119,17 @@ body.tvCastActive .segaRychlyPruh{animation-play-state:paused!important;}
 .layoutEditBar #segaModeToggle{background:rgba(110,190,255,.18);color:#bfe6ff;border:1px solid rgba(110,190,255,.5);}
 .layoutEditBar #segaModeToggle.active{background:rgba(110,190,255,.85);color:#04121c;border-color:rgba(200,235,255,.9);}
 #btnSegaSettings{display:none;}
+/* B342: OTOCENI OBRAZOVKY (spolecne/nap_obrazovka.js) - Rene: "tlacitko u kazde emu - sirka vyska".
+   Na vysku vpravo nahore (misto modrych svetylek skinu), na sirku vlevo vedle kolecka. Pod panely (180),
+   pri uprave rozlozeni schovane (lista nahore). */
+.napOtoc{position:absolute;z-index:150;display:flex;align-items:center;justify-content:center;padding:0;margin:0;cursor:pointer;
+  -webkit-tap-highlight-color:transparent;touch-action:manipulation;-webkit-user-select:none;user-select:none;}
+.napOtoc svg{width:1.6em;height:1.6em;display:block;pointer-events:none;}
+#btnSegaOtoc{left:87.4%;top:.75%;width:10.4%;height:5.85%;font-size:19px;font-size:min(4.6vw,26px);border-radius:50%;color:#d6efff;
+  background:radial-gradient(circle at 34% 26%,rgba(255,255,255,.26),rgba(50,150,235,.16) 38%,rgba(4,16,34,.82) 78%);
+  border:2px solid rgba(120,195,255,.62);box-shadow:0 0 14px rgba(0,140,255,.35),inset 0 0 10px rgba(0,0,0,.4);}
+#btnSegaOtoc:active{border-color:rgba(255,240,180,.9);box-shadow:0 0 20px rgba(255,190,60,.55);}
+#segaLayoutEditBar.show ~ #btnSegaOtoc{display:none!important;}
 #segaBottomSave,#segaBottomLoad{display:none;}
 #btnSegaDpadMenu{display:none;}
 #btnConsole{display:none;pointer-events:none;}
@@ -183,6 +196,11 @@ body.tvCastActive .segaRychlyPruh{animation-play-state:paused!important;}
     prusvitne kolecko, at nekazi vyhled na hru. */
  #btnSegaSettings{display:flex;align-items:center;justify-content:center;left:auto;right:1.5%;top:1.2vh;width:9%;height:6vh;opacity:.9;color:rgba(255,255,255,.85);font:900 19px/1 Arial,sans-serif;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.34);border-radius:999px;text-shadow:0 2px 4px #000;z-index:200;}
  #btnSegaSettings:active{background:rgba(120,200,255,.28);border-color:rgba(180,225,255,.8);}
+ /* B342: otoceni na sirku vlevo vedle kolecka - stejna pruhledna pilulka */
+ #btnSegaOtoc{left:auto;right:12%;top:1.2vh;width:9%;height:6vh;font-size:3.3vh;border-radius:999px;opacity:.9;color:rgba(255,255,255,.88);
+   background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.34);box-shadow:none;}
+ #btnSegaOtoc svg{filter:drop-shadow(0 1px 2px #000);}
+ #btnSegaOtoc:active{background:rgba(120,200,255,.28);border-color:rgba(180,225,255,.8);box-shadow:none;}
  .layoutEditBar{bottom:auto;top:0;padding:6px 3%;}
  .layoutEditBar .layoutEditHint{font-size:10px;}
  .layoutEditBar button{padding:7px 11px;font-size:10px;}
@@ -301,6 +319,9 @@ body.tvCastActive .segaRychlyPruh{animation-play-state:paused!important;}
     <button id="segaLayoutReset" type="button">VÝCHOZÍ</button>
     <button id="segaLayoutDone" type="button">HOTOVO</button>
   </div>
+  <!-- B342: otoceni obrazovky (az za listou uprav - CSS ji pri uprave rozlozeni schova); ikonu a popisek
+       (title / aria-label CZ / EN) doplni spolecne/nap_obrazovka.js, bez mostu AHOBRAZ zustane schovane -->
+  <button id="btnSegaOtoc" class="napOtoc" type="button" data-nap-otoc></button>
 </main>
 <!-- BUILD2SB19: presne stejny princip jako PS1 (D-PAD A OVLADANI panel,
      samostatny od zbytku appky) - v landscape na nej vede primo ozubene

@@ -1,0 +1,69 @@
+B342 - OBRAZOVKA NA VYSKU / NA SIRKU: TLACITKO U KAZDE EMU I V HLAVNIM MENU (17. 11. 2026)
+=======================================================================================
+
+Rene (TV, B340): "nech tu apku na vysku pridelej tlacitko u kazde emu i zakladni obrazovky - sirka vyska a je to
+vyresene - nepis dalsi nesmyslne kody jen kvuli TV". Na otazku "Mam udelat prepinac SIRKA / VYSKA jako obecnou
+funkci (na TV vyska = uzky pruh uprostred)?" -> "ano Partaku udelej to".
+
+CO JE NOVE (jedna funkce pro telefon i TV):
+1) NapObrazovka (cisty Java): 4 skupiny obrazovek, kazda si pamatuje svou volbu (SharedPreferences "nap_obrazovka"):
+   hlavni menu (a vse ostatni - OPTIONS, napoveda, seznamy her), Atari 130XE, Sega, PS1. Volba AUTO (jak dosud) /
+   NA VYSKU / NA SIRKU; stisk tlacitka = opak toho, co je ted na obrazovce.
+   - TELEFON se opravdu otoci (setRequestedOrientation: AUTO = podle telefonu, VYSKA = PORTRAIT, SIRKA =
+     SENSOR_LANDSCAPE - na kteroukoli stranu).
+   - TELEVIZE se otocit neumi (a nektera by obraz otocila bokem) - zadne setRequestedOrientation. NA VYSKU = appka
+     jako telefon v pruhu 9:16 uprostred (po stranach cerno): NapObal (cerny obsah okna) zmeri a polozi rootFrame
+     uprostred; vsechny plochy (menu C++, Atari, Sega, PS1, demo) jsou deti rootFrame. Vychozi = cela obrazovka.
+   - Pouzije se pri kazde strance (onPageStarted, skupina podle adresy) a pri startu. Intro PS1 bere velikost appky.
+   - Log: "B342 OBRAZOVKA start ...", "B342 OBRAZOVKA[ TV]: <skupina> -> ...", "B342 OBRAZOVKA PREPNUTA (odkud)".
+2) TLACITKO OTOCENI (telefon se dvema sipkami; telefon v ikone ukazuje, kam se obrazovka otoci):
+   - hlavni menu (C++): vlevo nahore, zrcadlo kolecka OPTIONS (AKCE_OTOCIT 2001, shader FS_UI typ 9),
+   - Atari 130XE (C++): na vysku pilulka "NA SIRKU" vpravo ve stavovem radku pod pristrojem, na sirku vlevo vedle
+     kolecka (SVC_OTOC 12),
+   - Sega a PS1: spolecne/nap_obrazovka.js + most AHOBRAZ (na vysku nahore, na sirku vlevo vedle kolecka; pri
+     uprave rozlozeni schovane),
+   - TV: menu konzole (ZPET) PS1 / Sega / Atari -> "OBRAZOVKA NA VYSKU" / "OBRAZOVKA NA SIRKU",
+   - OPTIONS -> OBRAZOVKA (hned pod jazykem): NA VYSKU / NA SIRKU (hlavni menu), PODLE TELEFONU (vse zpet AUTO;
+     na TV neni).
+3) Napoveda CZ / EN (OPTIONS -> Obrazovka na vysku a na sirku + odkazy z menu, Atari, Sega, PS1 a TV).
+4) build.gradle versionCode 385 "EMU10-B342-OBRAZOVKA-SIRKA-VYSKA".
+
+Spoustet z adresare test_overeni/b342 (PRAC = pracovni slozka, AJ = android-34.jar):
+A) JVM (NapObrazovka):
+   javac -encoding UTF-8 --release 17 -cp AJ -d PRAC ../../app/src/main/java/eu/atarihelp/emu10/NapObrazovka.java \
+         jvm/eu/atarihelp/emu10/TestB342.java && java -cp PRAC:AJ eu.atarihelp.emu10.TestB342
+                                          -> VYSTUP_test_b342_java.txt (11 OK: skupiny podle adres, ulozeni, telefon
+                                             orientace, stisk = opak, TV pruh jen NA VYSKU, sirka pruhu 9:16, texty;
+                                             test nasel chybu - u plochy uzsi nez 2 body byl pruh sirsi nez obrazovka)
+B) C++ hlavni menu (skutecny nap_menu_karusel.h):
+   g++ -std=c++17 -O2 -I../../app/src/main/cpp/menu -o PRAC/test_b342_karusel test_b342_karusel.cpp
+   PRAC/test_b342_karusel > VYSTUP_test_b342_karusel.txt   (24 OK: telefon na vysku / na sirku, TV cela a pruh 9:16,
+                                             tablet, skoro ctverec; nic neprekryva; klepnuti 2001 / 2000 / karta)
+   Obrazky pres Mesa: ../b311/menu_snimky PRAC 1080 2340 0:3 (a 2340 1080, 608 1080, 1920 1080, 850 1000)
+C) C++ pristroj Atari (skutecny nap_atari_device.h):
+   g++ -std=c++17 -O2 -I../../app/src/main/cpp/atari -o PRAC/test_b342_atari test_b342_atari.cpp
+   PRAC/test_b342_atari PRAC > VYSTUP_test_b342_atari.txt  (55 OK: na vysku 4 velikosti vc. TV pruhu, na sirku 3;
+                                             nezasahuje do skrine ani tlacitek, i pri vypnutem pristroji, schovane
+                                             ovladani, otoceni displeje s prstem na tlacitku; obrazky PRAC/atari_*.ppm)
+D) Chromium, skutecne stranky + falesny most AHOBRAZ:  python3 test_b342_stranky.py PRAC  -> VYSTUP_test_b342_stranky.txt
+   (22 OK: Sega a PS1 na vysku / na sirku / TV / TV pruh - videt, neprekryva, vedle kolecka, ikona a popisek,
+   dvojklik = jedno otoceni, dotyk pres dotykovy engine Segy, otoceni za chodu, uprava rozlozeni, EN, bez mostu
+   schovane; OPTIONS telefon / TV / EN / bez mostu; zadna chyba JS)
+E) Zapojeni: python3 kontrola_b342.py -> VYSTUP_kontrola_b342.txt (28 OK; zkouska: bez volani v onPageStarted -> J3 CHYBA)
+F) javac vsech zdroju appky proti android-34.jar -> VYSTUP_javac_android.txt (0 chyb, 122 trid, 34 zdroju)
+G) Shadery menu (GLSL ES 1.00, glslangValidator): ../b311/kontrola_shaderu.py -> VYSTUP_regrese_b311_kontrola_shaderu.txt
+   (17 shaderu, 20 programu, 0 chyb)
+H) Regrese -> VYSTUP_regrese_*.txt:
+   b311 karusel (61 OK), b311 mosty (AHOBRAZ, 130 volani, 0 chybi), odkazy (0 chyb), napoveda CZ (216 nazvu 0 chyb),
+   b314 napoveda EN (207 nazvu 0 chyb), b314 menu (10 OK - do BLOKY_PO_B313 pridan radek OBRAZOVKA), b320 stranky
+   (13 OK), b331 (11 OK), b332 (9 OK), b334 TV ovladani (13 OK), b337 (8 OK), b338 (5 OK), b339 (6 OK), b341 (7 OK),
+   b318 PS1 stranka (29 OK), JVM b334 (5) / b338 (4) / b339 (6) / b340 (11) OK, b291 Atari JNI host 24 OK (spoustet
+   z b291 - cte turbo_basic_xl.xex relativne).
+   Uz pred B342 (overeno na HEAD B341 v git worktree, stejne vysledky): b314 stranky ps1 a) (texty mysi B317-B320),
+   b314 napoveda 2) a 5), b317 stranka 3 CHYBA (B318 zmenila mys), b311 menu host 8) a 9) (od B313 kvalita TV).
+   Zamerne zmenene stare kontroly zapojeni: kontrola_b340 M1 (menu konzole ma OBRAZOVKA - akce 11) a M3 (Atari menu:
+   OBRAZOVKA pred OVLADANIM) + verze ve vsech starsich kontrolach.
+   POZOR: skripty jinych buildu prepisuji sve VYSTUP soubory - po regresi "git checkout -- test_overeni/bNNN".
+
+Na telefonu a TV se neda vyzkouset v Chromiu (skutecne otoceni displeje, pruh v televizi, PS1 / Sega plocha
+v pruhu) - overi Rene: telefon tlacitkem otocit menu / Sega / PS1 / Atari a vratit se; TV ZPET -> OBRAZOVKA NA VYSKU.

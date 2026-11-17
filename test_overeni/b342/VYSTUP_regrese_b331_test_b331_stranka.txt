@@ -1,0 +1,13 @@
+OK     1) OPTIONS: tlacitko "PŘIPOJIT OVLADAČ (BLUETOOTH)", panel hledani schovany, "Zapamatované: Pro Controller (vypnutý)"
+OK     2) klepnuti -> AHBT.hledej(), text z Javy, v seznamu jen ovladac ['🎮 Pro Controller'], "UKÁZAT VŠE (2)"
+OK     3) UKAZAT VSE -> i ostatni zarizeni ['🎮 Pro Controller', 'JBL Flip 5 – spárovaný', '<b id="vlozeno">Jana</b> iPhone'], tlacitko "JEN OVLADAČE"
+OK     7) jmeno zarizeni s HTML znackami je jen text (zadny vlozeny prvek): "<b id="vlozeno">Jana</b> iPhone"
+OK     4) klepnuti na ovladac -> AHBT.sparuj("AA:BB:CC:DD:EE:01"), text "TEXT_Z_JAVY sparovano"
+OK     5) pripojeno: seznam ['🎮 Pro Controller – připojený ✔'], "Zapamatované: Pro Controller (připojený)" (stranka se pta sama kazdych 0,7 s)
+OK     6) NASTAVENI BLUETOOTH -> AHBT.nastaveni(); ZAPNOUT POLOHU jen pri POLOHA_VYPNUTA -> AHBT.poloha()
+OK     8) zavreni OPTIONS -> AHBT.zastav(), stranka se uz na stav nepta (15 -> 15)
+OK     9) anglicky: CONNECT CONTROLLER (BLUETOOTH) | BLUETOOTH SETTINGS | SHOW ALL (2) | Remembered: Pro Controller (off) | TURN ON LOCATION, bez cestiny []
+OK     10) bez mostu AHBT (starsi appka): klepnuti bez chyby, prazdny seznam
+OK     11) zadna chyba JavaScriptu na strance
+
+VYSLEDEK: 11 kontrol, 0 CHYB

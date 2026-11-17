@@ -507,6 +507,7 @@ public class MainActivity extends Activity {
     // starym emulatorem; Atari 130XE je ATARI_CPP_URL (emu_atari_cpp/index.html).
     private WebView web;
     private FrameLayout rootFrame;
+    private NapObal napObal;   // B342: cerny obal okna - na TV s volbou NA VYSKU je rootFrame pruh 9:16 uprostred
     private static class NapPlayerAudioItem {
         String name;
         String uri;
@@ -5295,11 +5296,12 @@ public class MainActivity extends Activity {
                     // videl. U Segy je poradi spravne (plocha, pak zvuk),
                     // tady jsem ho mel obracene.
                     try {
+                        // B342: velikost appky (rootFrame), ne displeje - na TV muze byt appka pruh uprostred
                         android.util.DisplayMetrics dm = getResources().getDisplayMetrics();
-                        ps1PlochaUmisti(0, 0, dm.widthPixels, dm.heightPixels,
-                                        dm.widthPixels > dm.heightPixels);
-                        appendNativeLog("BUILD2SA33 INTRO_PS1 plocha "
-                                + dm.widthPixels + "x" + dm.heightPixels);
+                        final int pw = rootFrame != null && rootFrame.getWidth() > 0 ? rootFrame.getWidth() : dm.widthPixels;
+                        final int ph = rootFrame != null && rootFrame.getHeight() > 0 ? rootFrame.getHeight() : dm.heightPixels;
+                        ps1PlochaUmisti(0, 0, pw, ph, pw > ph);
+                        appendNativeLog("BUILD2SA33 INTRO_PS1 plocha " + pw + "x" + ph);
                     } catch (Throwable t) {
                         appendNativeLog("BUILD2SA33 INTRO_PS1_PLOCHA_CHYBA " + safeMsg(t));
                     }
@@ -8784,6 +8786,10 @@ public class MainActivity extends Activity {
             ui.postDelayed(this::menuOtevriOptions, 150);
             return;
         }
+        if (kod == NativeMenuBridge.AKCE_OTOCIT) {   // B342: tlacitko otoceni vlevo nahore (zrcadlo kolecka OPTIONS)
+            napObrazPrepni("hlavni menu " + odkud);
+            return;
+        }
         if (kod >= NativeMenuBridge.AKCE_KARTA && kod < NativeMenuBridge.AKCE_NASTAVENI) {
             final int i = kod - NativeMenuBridge.AKCE_KARTA;
             final String k = NativeMenuBridge.kartaSafe(i);
@@ -9072,7 +9078,7 @@ public class MainActivity extends Activity {
         if (kod == AtariDeviceView.AKCE_VIBRACE) { atariCppVibruj(); return; }   // B297 (bez logu - casto)
         if (kod == AtariDeviceView.AKCE_OVLADAC_DOTYK) { if (ovladac != null) ovladac.dotyk("Atari 130XE"); return; }   // B320
         final String[] jmena = {"?", "NET_HRY", "XEX_MOBIL", "ATR_DISK", "TURBO_BASIC", "BASIC_TBXL_TXT", "LOG_CHYBA", "HELP", "MENU", "EJECT_KAZETA",
-                "OVLADANI_MENU", "OVLADANI_ULOZIT"};
+                "OVLADANI_MENU", "OVLADANI_ULOZIT", "OTOCIT_OBRAZOVKU"};
         appendNativeLog("B291 SERVISNI_TLACITKO " + (kod > 0 && kod < jmena.length ? jmena[kod] : String.valueOf(kod)));
         try {
             switch (kod) {
@@ -9126,6 +9132,9 @@ public class MainActivity extends Activity {
                     break;
                 case 10:  // B297: ozubene kolecko na sirku -> D-PAD A OVLADANI
                     atariCppOvladaniMenu();
+                    break;
+                case 12:  // B342: tlacitko otoceni na pristroji (na sirku vedle kolecka, na vysku pod pristrojem vpravo)
+                    napObrazPrepni("pristroj Atari");
                     break;
                 case 11:  // B297: uprava rozlozeni HOTOVO -> ulozit
                     atariCppOvladaniUloz(NativeAtariCoreBridge.devCtlSafe("get"));
@@ -9193,6 +9202,7 @@ public class MainActivity extends Activity {
                 tx("KAZETA (WAV) - hry z kazety", "TAPE (WAV) - games on tape"),
                 "TURBO BASIC XL",
                 "RESET ATARI",
+                NapObrazovka.tlacitko(napObrazNaSirku(), NapJazyk.en(this)),   // B342: na vysku / na sirku
                 tx("OVLÁDÁNÍ DÁLKOVÝM OVLADAČEM", "PLAYING WITH THE TV REMOTE"),
                 tx("NÁPOVĚDA", "HELP")
         };
@@ -9211,7 +9221,8 @@ public class MainActivity extends Activity {
                             case 7: atariZarizeniAkce(9); break;
                             case 8: atariZarizeniAkce(4); break;
                             case 9: NativeAtariCoreBridge.devCtlSafe("atari_reset"); break;
-                            case 10: napTvOvladaniDialog(OVL_ATARI); break;
+                            case 10: atariZarizeniAkce(12); break;   // B342: OBRAZOVKA NA VYSKU / NA SIRKU
+                            case 11: napTvOvladaniDialog(OVL_ATARI); break;
                             default: atariZarizeniAkce(7); break;   // NAPOVEDA
                         }
                     })
@@ -9251,6 +9262,8 @@ public class MainActivity extends Activity {
         // B339: PS1 navic HRY V TELEVIZI (stazene hry - spustit / smazat; panel CD ISO je jen na vysku)
         // B340: START (a SELECT, u Segy A / B / C) - jde s kazdym ovladacem; Rene: "nespustim hru ... vidim jen
         // demo" (Sonic na uvodni obrazovce ceka jen na START, OK = A; ovladac bez ▶❚❚ / MENU START nema)
+        // B342: OBRAZOVKA NA VYSKU / NA SIRKU (Rene: "tlacitko u kazde emu") - text podle toho, co je ted
+        final String otoc = NapObrazovka.tlacitko(napObrazNaSirku(), NapJazyk.en(this));
         final String[] polozky = ps1 ? new String[]{
                 tx("HRY ZE SERVERU N&P", "GAMES FROM THE N&P SERVER"),
                 tx("HRY V TELEVIZI (stažené – spustit / smazat)", "GAMES ON THIS TV (downloaded – play / delete)"),
@@ -9259,6 +9272,7 @@ public class MainActivity extends Activity {
                 tx("ULOŽIT POZICI (SAVE GAME)", "SAVE POSITION (SAVE GAME)"),
                 tx("NAČÍST ULOŽENOU POZICI", "LOAD SAVED POSITION"),
                 tx("RESET (BIOS BEZ CD)", "RESET (BIOS WITHOUT CD)"),
+                otoc,
                 tx("OVLÁDÁNÍ DÁLKOVÝM OVLADAČEM", "PLAYING WITH THE TV REMOTE"),
                 tx("⌂ HLAVNÍ MENU", "⌂ MAIN MENU")
         } : new String[]{
@@ -9269,12 +9283,13 @@ public class MainActivity extends Activity {
                 tx("TLAČÍTKO C", "BUTTON C"),
                 tx("ULOŽIT POZICI VE HŘE", "SAVE POSITION IN THE GAME"),
                 tx("NAČÍST ULOŽENOU POZICI", "LOAD SAVED POSITION"),
+                otoc,
                 tx("OVLÁDÁNÍ DÁLKOVÝM OVLADAČEM", "PLAYING WITH THE TV REMOTE"),
                 tx("⌂ HLAVNÍ MENU", "⌂ MAIN MENU")
         };
         // akce polozek (konzoleTvAkce): 0 N&P, 4 HRY V TELEVIZI, 5 START, 6 SELECT, 7 / 8 / 10 SEGA A / B / C,
-        // 1 ulozit, 2 nacist, 3 reset, 9 ovladani, -1 hlavni menu
-        final int[] akce = ps1 ? new int[]{0, 4, 5, 6, 1, 2, 3, 9, -1} : new int[]{0, 5, 7, 8, 10, 1, 2, 9, -1};
+        // 1 ulozit, 2 nacist, 3 reset, 11 obrazovka na vysku / na sirku (B342), 9 ovladani, -1 hlavni menu
+        final int[] akce = ps1 ? new int[]{0, 4, 5, 6, 1, 2, 3, 11, 9, -1} : new int[]{0, 5, 7, 8, 10, 1, 2, 11, 9, -1};
         try {
             final android.app.AlertDialog d = new android.app.AlertDialog.Builder(this)
                     .setTitle(tx((ps1 ? "PLAYSTATION" : "SEGA MEGA DRIVE") + " · ZPĚT znovu = hlavní menu",
@@ -9344,6 +9359,9 @@ public class MainActivity extends Activity {
                     break;
                 case 9:
                     napTvOvladaniDialog(ps1 ? OVL_PS1 : OVL_SEGA);
+                    break;
+                case 11:    // B342: obrazovka na vysku (pruh 9:16 uprostred) / na sirku (cela TV)
+                    napObrazPrepni("menu konzole " + jm);
                     break;
                 default:
                     break;
@@ -12894,6 +12912,154 @@ public class MainActivity extends Activity {
     }
 
     /** B320: JS rozhrani "AHOVL" - stranky PS1 / Sega (schovani ovladani) a OPTIONS (rezim). */
+    // ===================================================================
+    //  B342: OBRAZOVKA NA VYSKU / NA SIRKU (NapObrazovka, NapObal)
+    //  Rene: "nech tu apku na vysku, pridelej tlacitko u kazde emu i zakladni obrazovky - sirka vyska
+    //  a je to vyresene - nepis dalsi nesmyslne kody jen kvuli TV". Jedna funkce pro telefon i TV:
+    //  telefon se otoci (setRequestedOrientation), TV ukaze appku NA VYSKU jako pruh 9:16 uprostred.
+    //  Kazda skupina (hlavni menu, Atari, Sega, PS1) si pamatuje svou volbu; dokud nic nestiskne,
+    //  je vse jako dosud (telefon podle sebe, TV cela obrazovka).
+    // ===================================================================
+    private volatile int napObrazSkupina = NapObrazovka.MENU;
+    private int napObrazPozadavek = Integer.MIN_VALUE;   // posledni setRequestedOrientation (telefon)
+
+    private android.content.SharedPreferences napObrazPrefs() {
+        return getSharedPreferences("nap_obrazovka", MODE_PRIVATE);
+    }
+
+    /** Ulozena volba skupiny (NapObrazovka.AUTO / VYSKA / SIRKA). */
+    int napObrazStav(int sk) {
+        try { return NapObrazovka.stav(napObrazPrefs().getInt(NapObrazovka.klic(sk), NapObrazovka.AUTO)); }
+        catch (Throwable t) { return NapObrazovka.AUTO; }
+    }
+
+    private static String napObrazLog(int st) {
+        return st == NapObrazovka.VYSKA ? "NA VYSKU" : (st == NapObrazovka.SIRKA ? "NA SIRKU" : "AUTO (jako dosud)");
+    }
+
+    /** "menu=AUTO (jako dosud), atari=NA SIRKU, ..." - do logu pri startu. */
+    private String napObrazPrehled() {
+        final StringBuilder b = new StringBuilder();
+        for (int i = 0; i < NapObrazovka.JMENA.length; i++)
+            b.append(i == 0 ? "" : ", ").append(NapObrazovka.JMENA[i]).append('=').append(napObrazLog(napObrazStav(i)));
+        return b.toString();
+    }
+
+    /** Je appka ted na obrazovce na sirku? TV: bez pruhu. Telefon: otoceni displeje. */
+    boolean napObrazNaSirku() {
+        if (napJeTv()) return napObal == null || !napObal.pruh();
+        try {
+            final int o = getResources().getConfiguration().orientation;
+            if (o == android.content.res.Configuration.ORIENTATION_LANDSCAPE) return true;
+            if (o == android.content.res.Configuration.ORIENTATION_PORTRAIT) return false;
+        } catch (Throwable ignored) {}
+        final View v = napObal != null ? napObal : rootFrame;
+        if (v != null && v.getWidth() > 0 && v.getHeight() > 0) return v.getWidth() > v.getHeight();
+        final DisplayMetrics dm = getResources().getDisplayMetrics();
+        return dm.widthPixels > dm.heightPixels;
+    }
+
+    /** Pouzit ulozenou volbu skupiny (start appky, nova stranka, stisk tlacitka). Jen UI vlakno. */
+    void napObrazPouzij(int sk, String proc) {
+        napObrazSkupina = sk;
+        final int st = napObrazStav(sk);
+        try {
+            if (napJeTv()) {
+                // televize se neotaci: NA VYSKU = pruh 9:16 uprostred, jinak cela obrazovka (i AUTO)
+                final boolean p = NapObrazovka.pruh(st, true);
+                if (napObal != null && napObal.pruh(p))
+                    appendNativeLog("B342 OBRAZOVKA TV: " + NapObrazovka.jmeno(sk) + " -> "
+                            + (p ? "NA VYSKU (pruh 9:16 uprostred)" : "NA SIRKU (cela obrazovka)") + " (" + proc + ")");
+                return;
+            }
+            if (napObal != null) napObal.pruh(false);
+            final int o = NapObrazovka.orientace(st);
+            if (o != napObrazPozadavek) {
+                napObrazPozadavek = o;
+                setRequestedOrientation(o);
+                appendNativeLog("B342 OBRAZOVKA: " + NapObrazovka.jmeno(sk) + " -> " + napObrazLog(st) + " (" + proc + ")");
+            }
+        } catch (Throwable t) {
+            appendNativeLog("B342 OBRAZOVKA_CHYBA " + safeMsg(t));
+        }
+    }
+
+    /** Tlacitko otoceni (menu C++, pristroj Atari, stranka Segy / PS1, menu konzole na TV): opak toho, co je ted. */
+    void napObrazPrepni(String odkud) {
+        final int sk = napObrazSkupina;
+        final boolean naSirku = napObrazNaSirku();
+        final int novy = NapObrazovka.prepni(naSirku);
+        try { napObrazPrefs().edit().putInt(NapObrazovka.klic(sk), novy).apply(); } catch (Throwable ignored) {}
+        appendNativeLog("B342 OBRAZOVKA PREPNUTA (" + odkud + "): " + NapObrazovka.jmeno(sk) + " "
+                + (naSirku ? "NA SIRKU -> NA VYSKU" : "NA VYSKU -> NA SIRKU") + (napJeTv() ? " [TV]" : " [telefon]"));
+        napObrazPouzij(sk, odkud);
+        napObrazToast(sk, novy);
+    }
+
+    /** OPTIONS -> OBRAZOVKA: "vyska" / "sirka" = hlavni menu, "auto" = vsechny skupiny zpet jako dosud. */
+    void napObrazNastav(String co) {
+        final String c = co == null ? "" : co.trim().toLowerCase(Locale.US);
+        try {
+            final android.content.SharedPreferences.Editor ed = napObrazPrefs().edit();
+            if ("auto".equals(c)) {
+                for (int i = 0; i < NapObrazovka.JMENA.length; i++) ed.remove(NapObrazovka.klic(i));
+                ed.apply();
+                appendNativeLog("B342 OBRAZOVKA OPTIONS: vse zpet AUTO (telefon podle sebe, TV cela obrazovka)");
+            } else if ("vyska".equals(c) || "sirka".equals(c)) {
+                ed.putInt(NapObrazovka.klic(NapObrazovka.MENU), "vyska".equals(c) ? NapObrazovka.VYSKA : NapObrazovka.SIRKA).apply();
+                appendNativeLog("B342 OBRAZOVKA OPTIONS: hlavni menu " + ("vyska".equals(c) ? "NA VYSKU" : "NA SIRKU"));
+            } else return;
+        } catch (Throwable t) {
+            appendNativeLog("B342 OBRAZOVKA_OPTIONS_CHYBA " + safeMsg(t));
+            return;
+        }
+        napObrazPouzij(napObrazSkupina, "OPTIONS");
+    }
+
+    private void napObrazToast(int sk, int st) {
+        try {
+            final boolean en = NapJazyk.en(this);
+            android.widget.Toast.makeText(this, NapObrazovka.nazev(sk, en) + ": "
+                    + NapObrazovka.popis(st, napJeTv(), en)
+                    + tx(" (appka si to pamatuje)", " (remembered)"), android.widget.Toast.LENGTH_SHORT).show();
+        } catch (Throwable ignored) {}
+    }
+
+    /** B342: most pro stranky - tlacitko otoceni (Sega, PS1) a radek OBRAZOVKA v OPTIONS. Jen stranky appky. */
+    public class AHObrazovka {
+        private boolean appka() {
+            final String u = napAktualniUrl;
+            return u != null && u.startsWith("file:///android_asset/");
+        }
+        /** {"skupina","stav" (auto / vyska / sirka),"menu" (volba hlavniho menu),"tv","naSirku","popis" (hlavni menu)} */
+        @JavascriptInterface
+        public String stav() {
+            if (!appka()) return "{}";
+            final int sk = napObrazSkupina;
+            final boolean tv = napJeTv(), en = NapJazyk.en(MainActivity.this);
+            final String[] jm = {"auto", "vyska", "sirka"};
+            final int menu = napObrazStav(NapObrazovka.MENU);
+            return "{\"skupina\":" + NapJson.uvoz(NapObrazovka.jmeno(sk))
+                    + ",\"stav\":" + NapJson.uvoz(jm[napObrazStav(sk)])
+                    + ",\"menu\":" + NapJson.uvoz(jm[menu])
+                    + ",\"tv\":" + tv
+                    + ",\"naSirku\":" + napObrazNaSirku()
+                    + ",\"popis\":" + NapJson.uvoz(NapObrazovka.popis(menu, tv, en)) + "}";
+        }
+        /** tlacitko otoceni na strance (Sega, PS1) */
+        @JavascriptInterface
+        public void prepni() {
+            if (!appka()) return;
+            ui.post(() -> napObrazPrepni("tlacitko na strance"));
+        }
+        /** OPTIONS: "vyska" / "sirka" (hlavni menu), "auto" (vse jako dosud) */
+        @JavascriptInterface
+        public void nastav(String co) {
+            if (!appka()) return;
+            ui.post(() -> napObrazNastav(co));
+        }
+    }
+
     public class AHOvladac {
         /** "stav|jmeno ovladace" - stav NapOvladac.UI_* (0 videt, 1 schovane, 2 schovane vzdy) */
         @JavascriptInterface
@@ -13031,6 +13197,7 @@ public class MainActivity extends Activity {
         web.addJavascriptInterface(new AHOvladac(), "AHOVL");       // B320: herni ovladac (Retroid Pocket 6, gamepad)
         web.addJavascriptInterface(new AHBluetooth(), "AHBT");      // B331: Bluetooth ovladac primo v appce
         web.addJavascriptInterface(new AHHry(), "AHHRY");           // B321: aktivace telefonu + hry ze serveru N&P
+        web.addJavascriptInterface(new AHObrazovka(), "AHOBRAZ");   // B342: obrazovka na vysku / na sirku
         ovladacStart();                                              // B320: ovladace do logu, sledovat pripojeni
         web.setWebChromeClient(new WebChromeClient() {
             // BUILD2SH2: zachyt JS console (jen nase SH2 stream diagnostika) do
@@ -13081,6 +13248,8 @@ public class MainActivity extends Activity {
                 stopPs1IfLeaving(url, "onPageStarted");
                 stopAtariNativeAudioIfLeaving(url, "onPageStarted");
                 atariZarizeniPodleUrl(url);   // B291: pristroj Atari 130XE (C++) v HELP
+                // B342: kazda skupina obrazovek (menu, Atari, Sega, PS1) ma svou volbu NA VYSKU / NA SIRKU
+                napObrazPouzij(NapObrazovka.skupina(url), "stranka " + compactUrl(url));
                 // B311: hlavni menu (C++) jen nad index.html
                 if (!jeMenuUrl(url)) { menuSkryj("odchod na " + compactUrl(url)); menuSkryteProOptions = false; }
                 // B312: zamcena konzole - stranka emulatoru se neotevre ani primym skokem
@@ -13223,7 +13392,13 @@ public class MainActivity extends Activity {
         // KROK F: testovaci tlacitko na logu ZRUSENO - prekryvalo tlacitko
         // pro vyskoceni z PS1. Pomer stran se ted prepina sam podle otoceni.
 
-        setContentView(rootFrame);
+        // B342: obsah okna je cerny obal; appka (rootFrame) v nem ma celou obrazovku, na TV s volbou
+        // NA VYSKU pruh 9:16 uprostred. Hned volba hlavniho menu (telefon se otoci jeste pred prvni strankou).
+        napObal = new NapObal(this);
+        napObal.addView(rootFrame, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+        setContentView(napObal);
+        appendNativeLog("B342 OBRAZOVKA start (" + (napJeTv() ? "TV - na vysku = pruh 9:16 uprostred" : "telefon") + "): " + napObrazPrehled());
+        napObrazPouzij(NapObrazovka.MENU, "start appky");
         // B326: Rene - "neslo by to udelat v apce tak, ze vyber jazyka bude hned na zacatku pri
         // spusteni aplikace? ... jazyk prioritni by mela byt ang ... v nastaveni to muze zustat taky".
         // Dokud jazyk nikdo nezvolil (nova instalace, nebo appka, kde se v OPTIONS nikdy nevolilo),

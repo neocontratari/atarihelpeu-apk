@@ -1,0 +1,28 @@
+B342 - hlavni menu: tlacitko otoceni obrazovky (vlevo nahore, zrcadlo kolecka OPTIONS)
+
+OK     AKCE_OTOCIT = 2001 (mezi OPTIONS 2000 a zamcenou kartou 3000 - Java ji nezamenila za kartu ani zamek)
+OK     telefon na vysku 1080x2340: otoceni (119, 110) R 63, kolecko (961)
+OK     telefon na vysku 1080x2340: na vysku presne zrcadlo kolecka (stejna velikost i vyska)
+OK     telefon na vysku 1080x2340: klepnuti otoceni 2001, kolecko 2000, karta 1000, okraj otoceni 2001
+OK     telefon na vysku 720x1280: otoceni (73, 61) R 38, kolecko (647)
+OK     telefon na vysku 720x1280: na vysku presne zrcadlo kolecka (stejna velikost i vyska)
+OK     telefon na vysku 720x1280: klepnuti otoceni 2001, kolecko 2000, karta 1000, okraj otoceni 2001
+OK     telefon na sirku 2340x1080: otoceni (97, 77) R 49, kolecko (2243)
+OK     telefon na sirku 2340x1080: klepnuti otoceni 2001, kolecko 2000, karta 1000, okraj otoceni 2001
+OK     TV 1920x1080 (cela obrazovka): otoceni (97, 77) R 49, kolecko (1823)
+OK     TV 1920x1080 (cela obrazovka): klepnuti otoceni 2001, kolecko 2000, karta 1000, okraj otoceni 2001
+OK     TV pruh 9:16 608x1080: otoceni (62, 52) R 32, kolecko (546)
+OK     TV pruh 9:16 608x1080: na vysku presne zrcadlo kolecka (stejna velikost i vyska)
+OK     TV pruh 9:16 608x1080: klepnuti otoceni 2001, kolecko 2000, karta 1000, okraj otoceni 2001
+OK     TV pruh 9:16 405x720: otoceni (41, 34) R 22, kolecko (364)
+OK     TV pruh 9:16 405x720: na vysku presne zrcadlo kolecka (stejna velikost i vyska)
+OK     TV pruh 9:16 405x720: klepnuti otoceni 2001, kolecko 2000, karta 1000, okraj otoceni 2001
+OK     tablet na sirku: otoceni (144, 114) R 72, kolecko (2416)
+OK     tablet na sirku: klepnuti otoceni 2001, kolecko 2000, karta 1000, okraj otoceni 2001
+OK     skoro ctverec 850x1000 (rozdelena obrazovka): otoceni (643, 71) R 45, kolecko (760)
+OK     skoro ctverec 850x1000 (rozdelena obrazovka): klepnuti otoceni 2001, kolecko 2000, karta 1000, okraj otoceni 2001
+OK     obraz pro TV / PC 854x480 (proud): otoceni (43, 38) R 22, kolecko (811)
+OK     obraz pro TV / PC 854x480 (proud): klepnuti otoceni 2001, kolecko 2000, karta 1000, okraj otoceni 2001
+OK     otoceni nehne s karuselem (vybrana karta 3)
+
+VYSLEDEK: 24 OK, 0 CHYBA

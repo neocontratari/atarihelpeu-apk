@@ -16,7 +16,8 @@
 //     (zadne cuknuti) a nezrychluje - tuhost se voli podle rychlosti,
 //   - za prvni a posledni kartou "guma" (tahne se ztuha, po pusteni zpet).
 //  Klepnuti: na prostredni kartu = spustit, na kartu vedle = dojet na ni,
-//  na kolecko = OPTIONS, na tlacitko pod kartami = spustit, na tecku = dojet.
+//  na kolecko = OPTIONS, na tlacitko pod kartami = spustit, na tecku = dojet,
+//  B342: na tlacitko vlevo nahore (zrcadlo kolecka) = otocit obrazovku (NA VYSKU / NA SIRKU).
 //  Prst polozeny na jedouci karusel ho zastavi (a klepnuti se nepocita).
 // ====================================================================
 #pragma once
@@ -32,6 +33,7 @@ enum Akce {
   AKCE_NIC = 0,
   AKCE_KARTA = 1000,        // + index karty: spustit (po animaci)
   AKCE_NASTAVENI = 2000,    // kolecko OPTIONS
+  AKCE_OTOCIT = 2001,       // B342: tlacitko otoceni obrazovky vlevo nahore
   AKCE_ZAMCENO = 3000,      // + index: klepnuti na zamcenou kartu (C++ ukaze proc)
 };
 
@@ -60,6 +62,7 @@ struct Rozlozeni {
   float logoX = 0, logoY = 0, logoR = 0;
   float titulY = 0, titulPx = 0, sloganY = 0, sloganPx = 0;
   float ozubX = 0, ozubY = 0, ozubR = 0;
+  float otocX = 0, otocY = 0, otocR = 0;   // B342: otoceni obrazovky (zrcadlo kolecka vlevo)
   // pod kartami
   float popisY = 0, popisW = 0, popisPx = 0;
   float tlacX = 0, tlacY = 0, tlacW = 0, tlacH = 0, tlacPx = 0;
@@ -91,6 +94,9 @@ inline Rozlozeni spoctiRozlozeni(int W, int H, bool tv, int nKaret) {
     r.ozubR = std::min(w * 0.058f, h * 0.03f);
     r.ozubX = w - r.ozubR * 1.9f;
     r.ozubY = r.logoY;
+    r.otocR = r.ozubR;
+    r.otocX = r.ozubR * 1.9f;
+    r.otocY = r.ozubY;
     const float hlavaKonec = r.sloganY + r.sloganPx * 1.2f;
     // pod kartami: popis (2 radky), tlacitko, tecky, podpis
     r.popisPx = std::min(w * 0.040f, h * 0.019f);
@@ -130,6 +136,11 @@ inline Rozlozeni spoctiRozlozeni(int W, int H, bool tv, int nKaret) {
     r.ozubR = h * 0.045f;
     r.ozubX = w - r.ozubR * 2.0f;
     r.ozubY = r.logoY;
+    r.otocR = r.ozubR;
+    r.otocX = r.ozubR * 2.0f;
+    r.otocY = r.ozubY;
+    // skoro ctvercova plocha: mince je u leveho okraje -> otoceni vlevo od kolecka
+    if (r.otocX + r.otocR * 1.6f > r.logoX - r.logoR * 1.15f) r.otocX = r.ozubX - r.ozubR * 2.6f;
     const float hlavaKonec = r.logoY + r.logoR * 1.08f;
     r.popisPx = h * 0.034f;
     r.tlacPx = h * 0.037f;
@@ -483,6 +494,11 @@ class Karusel {
     if (r.ozubR > 0.f) {
       const float dx = x - r.ozubX, dy = y - r.ozubY, rr = r.ozubR * 1.55f;
       if (dx * dx + dy * dy <= rr * rr) { dojedNa((float)vybrana(), 0.f, OMEGA_ZPET); return AKCE_NASTAVENI; }
+    }
+    // B342: otoceni obrazovky vlevo nahore (s rezervou pro prst jako kolecko)
+    if (r.otocR > 0.f) {
+      const float dx = x - r.otocX, dy = y - r.otocY, rr = r.otocR * 1.55f;
+      if (dx * dx + dy * dy <= rr * rr) { dojedNa((float)vybrana(), 0.f, OMEGA_ZPET); return AKCE_OTOCIT; }
     }
     const int i = kartaNa(x, y);
     const int stred = vybrana();

@@ -1,6 +1,9 @@
 /* B314: anglicky slovnik - spolecne texty konzoli Sega a PS1 (panel D-PAD A OVLADANI,
  * profi nastaveni ovladani, uprava rozlozeni, moje hry, mazani hry). Cesky -> anglicky. */
 NapJazyk.slovnik({
+  // B342: tlacitko otoceni obrazovky (spolecne/nap_obrazovka.js) - popisek tlacitka
+  'OBRAZOVKA NA ŠÍŘKU': 'SCREEN TO LANDSCAPE',
+  'OBRAZOVKA NA VÝŠKU': 'SCREEN TO PORTRAIT',
   // panel D-PAD A OVLADANI
   'D-PAD A OVLÁDÁNÍ': 'D-PAD AND CONTROLS',
   'UPRAVIT ROZLOŽENÍ TLAČÍTEK': 'EDIT BUTTON LAYOUT',

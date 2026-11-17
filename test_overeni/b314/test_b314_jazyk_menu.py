@@ -57,6 +57,7 @@ BLOKY_PO_B313 = [
     ('B331', ['PŘIPOJIT OVLADAČ (BLUETOOTH)', 'NASTAVENÍ BLUETOOTH', 'ZAPNOUT POLOHU']),
     ('B338', ['VÝKON ZAŘÍZENÍ', 'AUTO', 'LOW', 'HIGH']),
     ('B339', ['ÚLOŽIŠTĚ']),
+    ('B342', ['OBRAZOVKA', 'NA VÝŠKU', 'NA ŠÍŘKU', 'PODLE TELEFONU']),
 ]
 PRIBYLO_PO_B313 = {
     'Žádný ovladač – po připojení (Retroid, Bluetooth, USB) se dotyková tlačítka ve hře schovají': 'B320',
@@ -154,7 +155,7 @@ def main():
             if a['atributy'] != b0['atributy']:
                 rozdil.append('%s atributy: %s' % (popis, sorted(set(a['atributy']) ^ set(b0['atributy']))[:6]))
         over(not rozdil, '1) cesky: vsech %d stavu stranky ma stejne texty jako B313 (jen radek JAZYK · LANGUAGE a %d zamernych zmen'
-             ' B320-B339 - BLOKY / PRIBYLO / UBYLO_PO_B313)%s'
+             ' B320-B342 - BLOKY / PRIBYLO / UBYLO_PO_B313)%s'
              % (len(KROKY), len(BLOKY_PO_B313) + len(PRIBYLO_PO_B313) + len(UBYLO_PO_B313), '' if not rozdil else ' - ROZDIL: ' + ' | '.join(rozdil[:4])))
         jaz = p1.evaluate("() => [document.getElementById('stJazCs').className, document.getElementById('stJazEn').className, document.documentElement.lang]")
         over(jaz[0] == 'active' and jaz[1] == '', '1b) cesky: v OPTIONS je oznacena CESTINA (%s)' % jaz)

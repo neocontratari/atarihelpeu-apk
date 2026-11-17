@@ -1,0 +1,59 @@
+B342 - pristroj Atari 130XE: tlacitko otoceni obrazovky (na vysku i na sirku)
+
+OK     telefon 1080x2340: pilulka NA SIRKU pod pristrojem vpravo (812,2052 224x53)
+OK     telefon 1080x2340: cela pilulka na displeji, pod skrini pristroje, ne mimo jeho sirku
+OK     telefon 1080x2340: dotyk na pilulku = otoceni
+OK     telefon 1080x2340: vsech 8 servisnich tlacitek (NET ... MENU) dal tam, kde byla
+OK     telefon 1080x2340: otoceni nezasahuje do skrine pristroje (posledni 40 px nad spodkem)
+OK     telefon 1080x2340: tuknuti -> servisni akce 12 (SVC_OTOC = 12)
+OK     telefon 1080x2340: prst odjel z tlacitka -> nic (jako ostatni tlacitka)
+OK     telefon 1080x2340: MENU porad akce 8
+OK     telefon 1080x2340: i pri vypnutem pristroji otoceni funguje
+OK     telefon 1080x1920 (16:9): pilulka NA SIRKU pod pristrojem vpravo (812,1866 224x53)
+OK     telefon 1080x1920 (16:9): cela pilulka na displeji, pod skrini pristroje, ne mimo jeho sirku
+OK     telefon 1080x1920 (16:9): dotyk na pilulku = otoceni
+OK     telefon 1080x1920 (16:9): vsech 8 servisnich tlacitek (NET ... MENU) dal tam, kde byla
+OK     telefon 1080x1920 (16:9): otoceni nezasahuje do skrine pristroje (posledni 40 px nad spodkem)
+OK     telefon 1080x1920 (16:9): tuknuti -> servisni akce 12 (SVC_OTOC = 12)
+OK     telefon 1080x1920 (16:9): prst odjel z tlacitka -> nic (jako ostatni tlacitka)
+OK     telefon 1080x1920 (16:9): MENU porad akce 8
+OK     telefon 1080x1920 (16:9): i pri vypnutem pristroji otoceni funguje
+OK     TV pruh 608x1080: pilulka NA SIRKU pod pristrojem vpravo (455,1028 124x30)
+OK     TV pruh 608x1080: cela pilulka na displeji, pod skrini pristroje, ne mimo jeho sirku
+OK     TV pruh 608x1080: dotyk na pilulku = otoceni
+OK     TV pruh 608x1080: vsech 8 servisnich tlacitek (NET ... MENU) dal tam, kde byla
+OK     TV pruh 608x1080: otoceni nezasahuje do skrine pristroje (posledni 40 px nad spodkem)
+OK     TV pruh 608x1080: tuknuti -> servisni akce 12 (SVC_OTOC = 12)
+OK     TV pruh 608x1080: prst odjel z tlacitka -> nic (jako ostatni tlacitka)
+OK     TV pruh 608x1080: MENU porad akce 8
+OK     TV pruh 608x1080: i pri vypnutem pristroji otoceni funguje
+OK     TV pruh 405x720: pilulka NA SIRKU pod pristrojem vpravo (305,700 84x20)
+OK     TV pruh 405x720: cela pilulka na displeji, pod skrini pristroje, ne mimo jeho sirku
+OK     TV pruh 405x720: dotyk na pilulku = otoceni
+OK     TV pruh 405x720: vsech 8 servisnich tlacitek (NET ... MENU) dal tam, kde byla
+OK     TV pruh 405x720: otoceni nezasahuje do skrine pristroje (posledni 40 px nad spodkem)
+OK     TV pruh 405x720: tuknuti -> servisni akce 12 (SVC_OTOC = 12)
+OK     TV pruh 405x720: prst odjel z tlacitka -> nic (jako ostatni tlacitka)
+OK     TV pruh 405x720: MENU porad akce 8
+OK     TV pruh 405x720: i pri vypnutem pristroji otoceni funguje
+OK     telefon na sirku 2340x1080: rozlozeni na sirku
+OK     telefon na sirku 2340x1080: otoceni vlevo vedle kolecka (otoceni x 2045-2176, kolecko od 2180)
+OK     telefon na sirku 2340x1080: otoceni neprekryva D-pad ani tlacitka (vychozi rozlozeni)
+OK     telefon na sirku 2340x1080: tuknuti na otoceni -> akce 12 (SVC_OTOC)
+OK     telefon na sirku 2340x1080: kolecko porad menu ovladani (akce 10 = SVC_CTRL)
+OK     telefon na sirku 2340x1080: schovane dotykove ovladani (gamepad) - otoceni porad funguje
+OK     na sirku 1920x1080 (TV / telefon 16:9): rozlozeni na sirku
+OK     na sirku 1920x1080 (TV / telefon 16:9): otoceni vlevo vedle kolecka (otoceni x 1631-1763, kolecko od 1766)
+OK     na sirku 1920x1080 (TV / telefon 16:9): otoceni neprekryva D-pad ani tlacitka (vychozi rozlozeni)
+OK     na sirku 1920x1080 (TV / telefon 16:9): tuknuti na otoceni -> akce 12 (SVC_OTOC)
+OK     na sirku 1920x1080 (TV / telefon 16:9): kolecko porad menu ovladani (akce 10 = SVC_CTRL)
+OK     na sirku 1920x1080 (TV / telefon 16:9): schovane dotykove ovladani (gamepad) - otoceni porad funguje
+OK     TV 1280x720: rozlozeni na sirku
+OK     TV 1280x720: otoceni vlevo vedle kolecka (otoceni x 1085-1177, kolecko od 1175)
+OK     TV 1280x720: otoceni neprekryva D-pad ani tlacitka (vychozi rozlozeni)
+OK     TV 1280x720: tuknuti na otoceni -> akce 12 (SVC_OTOC)
+OK     TV 1280x720: kolecko porad menu ovladani (akce 10 = SVC_CTRL)
+OK     TV 1280x720: schovane dotykove ovladani (gamepad) - otoceni porad funguje
+OK     otoceni za chodu (prst na tlacitku): nic nezustane drzene, zadna akce navic
+
+VYSLEDEK: 55 OK, 0 CHYBA

@@ -20,6 +20,10 @@ Atari 130XE with VBXE graphics, all in C++. Keyboard, joystick, tapes, disks and
 ▶ START
 René Frank
 OPTIONS
+SCREEN
+PORTRAIT
+LANDSCAPE
+AUTO-ROTATE
 START WEB TV
 OPEN IN A BROWSER ON YOUR TV OR PC
 same Wi-Fi · click the picture to turn the sound on
