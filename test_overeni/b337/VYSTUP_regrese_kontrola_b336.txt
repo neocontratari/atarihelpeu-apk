@@ -1,0 +1,14 @@
+OK     Y1 odbocka: MediaStreamTrackProcessor (fronta az 400 kousku ~4 s - zadrhnuti stranky nic neztrati), ScriptProcessor 2048 pryc
+OK     Y2 zaloha bez MediaStreamTrackProcessor (WebView pred Chrome 94): ScriptProcessor 4096
+OK     Y3 posila se cely zvuk (i ticho), dokud neco hraje; fronta po 8 kusech (dozene zadrhnuti), zahazuje se az nad 256 kusu (~11 s)
+OK     Y4 log JSLOG "B336 YOUTUBE ZVUK NA TV": cesta zachytu a kazdych 30 s kusu, vzorku/s, fronta, zahozeno
+OK     Y5 skript mostu YouTube (12901 znaku) je ES5
+OK     H1 Hub: zvuk mezi pakety vychozi 250 ms (PS1, menu, Sega jako drive), proud stranky 600 ms (davka YouTube po zadrhnuti)
+OK     H2 zvukMaxMs se omezi pod velikost kruhu zvuku (ZVUK_KAP)
+OK     H3 stranka TV: rezerva zvuku stranky az 0,7 s (davka se nezahodi), hry dal 0,35 s
+OK     A1 ZPET na TV v pristroji Atari -> menu pristroje (po navratu ze stranky s logem, pred menu / historii)
+CHYBA  A2 menu pristroje na TV: NET / HRY, XEX, ATR / DISK, KAZETA, TURBO BASIC, RESET, NAPOVEDA, ZPET DO MENU (stejne akce jako tlacitka na vysku)
+OK     L1 WEB TV /log/predchozi = log predchoziho spusteni (Download/AtariHelp/PS1_LOG_predchozi.txt)
+OK     N1 napoveda CZ / EN: menu pristroje Atari na TV, SEGA / PS1 na novem zarizeni
+CHYBA  N2 build.gradle: versionCode 379 "EMU10-B336-YT-BEZ-CHRAPOTU-TV"
+VYSLEDEK: 13 kontrol, 2 CHYBA

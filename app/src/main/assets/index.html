@@ -109,6 +109,9 @@ body{background:radial-gradient(120% 70% at 50% 40%,#1c1006 0%,#0a0603 45%,#0302
 #stTvAdresa{display:none;margin:8px 0 2px;padding:11px 10px 10px;border-radius:12px;text-align:center;background:rgba(10,30,40,.55);border:1px solid rgba(100,223,255,.55);box-shadow:0 0 18px rgba(80,200,255,.15);}
 #stTvAdresa small{display:block;color:#9fdcff;font:600 11px/1.35 "Chakra Petch",Arial,sans-serif;letter-spacing:.12em;}
 #stTvAdresa b{display:block;margin:6px 0;color:#e9fbff;font:700 min(5.6vw,24px)/1.2 "Chakra Petch",Arial,sans-serif;letter-spacing:.02em;word-break:break-all;user-select:text;-webkit-user-select:text;}
+/* B337: adresa logu appky (televize - log jinak nejde poslat) */
+#stTvAdresa small.stTvLogPopis{margin-top:9px;}
+#stTvLog{display:block;margin:3px 0 0;color:#cfefff;font:700 min(4.2vw,17px)/1.25 "Chakra Petch",Arial,sans-serif;font-style:normal;word-break:break-all;user-select:text;-webkit-user-select:text;}
 /* B312: servisni kod */
 #settingsPanel #stKod{display:block;width:100%;margin-top:8px;padding:12px 10px;border-radius:12px;border:1px solid rgba(255,195,64,.55);
   background:#140c03;color:#ffe6a0;font:800 17px "Chakra Petch",Arial,sans-serif;letter-spacing:.22em;text-align:center;text-transform:uppercase;outline:none;}
@@ -144,7 +147,7 @@ body{background:radial-gradient(120% 70% at 50% 40%,#1c1006 0%,#0a0603 45%,#0302
       <button id="stJazEn" type="button" data-jazyk="en">ENGLISH</button>
     </div>
     <button id="stStartTv" type="button">SPUSTIT WEB TV</button>
-    <div id="stTvAdresa"><small>NA TV NEBO PC OTEVŘI V PROHLÍŽEČI</small><b></b><small>stejná Wi-Fi · zvuk pustíš kliknutím do obrazu</small></div>
+    <div id="stTvAdresa"><small>NA TV NEBO PC OTEVŘI V PROHLÍŽEČI</small><b></b><small>stejná Wi-Fi · zvuk pustíš kliknutím do obrazu</small><small class="stTvLogPopis">LOG APPKY PRO PODPORU</small><i id="stTvLog" data-nepreklad></i></div>
     <button id="stIntro" type="button">PUSTIT INTRO</button>
     <button id="stStahni" type="button">STÁHNOUT HRY A BIOS</button>
     <button id="stAktual" type="button">AKTUALIZOVAT APLIKACI</button>
@@ -379,7 +382,8 @@ function napQualityRefresh(){
 function tvAdresaZ(t){ var m=/https?:\/\/[^\s"']+/.exec(String(t||'')); return m?m[0]:''; }
 function tvAdresaUkaz(adr){
   var el=$('stTvAdresa'), b=$('stStartTv'); if(!el||!b) return;
-  if(adr){ el.querySelector('b').textContent=adr; el.style.display='block'; b.textContent='WEB TV BĚŽÍ'; }
+  if(adr){ el.querySelector('b').textContent=adr; el.style.display='block'; b.textContent='WEB TV BĚŽÍ';
+    var lg=$('stTvLog'); if(lg) lg.textContent=adr.replace(/\/+$/,'')+'/log'; }   // B337: log appky z TV / telefonu
   else { el.style.display='none'; b.textContent='SPUSTIT WEB TV'; }
 }
 function tvAdresaObnov(){

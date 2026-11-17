@@ -144,7 +144,30 @@ body{padding:max(14px,env(safe-area-inset-top)) 12px max(16px,env(safe-area-inse
     $('stavText').textContent = tx(text);
     $('stavText').className = druhTextu || '';
   }
-  function ukaz(id, ano) { $(id).className = $(id).className.replace(/\s*skryte/g, '') + (ano ? '' : ' skryte'); }
+  function ukaz(id, ano) { $(id).className = $(id).className.replace(/\s*skryte/g, '') + (ano ? '' : ' skryte'); poVykresleni(); }
+
+  // B337: TELEVIZE (dalkovy ovladac). Pri nacteni stranky bylo videt jen ◀ DO MENU - zlaty ramecek
+  // zustal na nem i potom, co se ukazalo SPUSTIT SEGU (server: zaplaceno), a OK vratilo do menu
+  // (Rene: "u segy a ps1 to vyskoci zpet do hlavni nabidky"). Ramecek ted jde na hlavni akci
+  // stranky: SPUSTIT / ODEMKNOUT SEGU / ZKONTROLOVAT / ZAPLATIL JSEM / ZKUSIT ZNOVU. Jen kdyz se
+  // hlavni akce zmeni - hlidani platby (kazdych 20 s) cloveku ramecek nebere. Telefon beze zmeny.
+  var TV_AKCE = ['spustit', 'naSegu', 'zkontroluj', 'zaplatil', 'znovu'];
+  var tvCil = '', tvCeka = false;
+  function tvFokus() {
+    tvCeka = false;
+    var T = window.NapTvOvladani;
+    if (!T || !T.vyber || !window.NAP_TV) return;
+    for (var i = 0; i < TV_AKCE.length; i++) {
+      var el = $(TV_AKCE[i]);
+      if (!el || /\bskryte\b/.test(el.className) || el.offsetParent === null || el.disabled) continue;
+      if (tvCil === TV_AKCE[i]) return;
+      if (T.vyber(el)) tvCil = TV_AKCE[i];
+      return;
+    }
+    tvCil = '';
+  }
+  function poVykresleni() { if (!tvCeka) { tvCeka = true; setTimeout(tvFokus, 30); } }
+  window.napTvFokus = tvFokus;   // appka po zapnuti ramecku (NapTvOvladani.zapni) - test
 
   // ---------------------------------------------------------------- postup z appky
   function vykresliPostup() {
@@ -232,6 +255,7 @@ body{padding:max(14px,env(safe-area-inset-top)) 12px max(16px,env(safe-area-inse
     ukaz('ceka', !!p.zadost);
     ukaz('zaplatil', !p.zadost);   // ceka na spravce - podruhe neposilat (ZKONTROLOVAT je v okenku CEKA)
     $('zaplatil').disabled = false;
+    poVykresleni();
   }
 
   // co se na strance ukazuje - kdyz se nic nezmenilo, hlidac (kazdych 20 s) nic neprekresluje

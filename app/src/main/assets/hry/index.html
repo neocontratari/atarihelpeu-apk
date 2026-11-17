@@ -218,6 +218,8 @@ footer a{color:var(--azur);text-decoration:none;}
         hry = [];
         for (var i = 0; i < data.hry.length; i++) {
           var h = data.hry[i];
+          // B337: BIOS PlayStation na serveru (zaloha pro STAHNOUT HRY A BIOS) neni hra - do seznamu ne
+          if (h && typeof h.soubor === 'string' && /bios/i.test(h.soubor)) continue;
           if (h && typeof h.id === 'string' && SYSTEMY.indexOf(h.system) >= 0) hry.push(h);
         }
         nacteno = true;

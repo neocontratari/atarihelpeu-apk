@@ -1,0 +1,6 @@
+OK     S1) zaloha N&P: Sonic = sega-3 (ne dil 2 / & Knuckles / Atari), BIOS = ps1-7 (PS1 pred Atari), jen dil 2 -> sega-9, scph1001.bin -> ps1-11, nic / null -> null
+OK     S2) zaloha N&P: sonic=OK(1,N&P) | na serveru neni: bios=SSLHandshakeException+NP:neni | server nedostupny: bios=HTTP503+NP:server-nedostupny | BIOS ZIP: bios=OK(1,N&P) (jen .bin, bez textu)
+OK     S3) ulozeni: scph5502.bin bios=OK(1), 1000 B jako BIOS bios=jiny-soubor, stranka misto ZIPu sonic=nic-v-zipu, slozka nejde sonic=slozka-nejde, HTML sonic=jiny-soubor
+OK     S4) duvod v okne Nestazeno: slozka-nejde ok; FileNotFoundException(EACCES) ok; SSLHandshakeException ok; SSLHandshakeException ok; UnknownHostException ok; SocketTimeoutException ok; ConnectException ok; HTTP503 ok; nic-v-zipu ok; EN ok, OK bez duvodu, okno: [✓ Sonic the Hedgehog - ulozen | ✗ BIOS pro PlayStation - nestazen: zabezpečené spojení s atarihelp.eu se nepovedlo (certifikát) – zkontroluj datum a čas v zařízení], slozka appky / Download
+OK     S5) slozka appky (Android 9 bez povoleni): bez dalsiKoren nic, s ni Sonic Sonic.md, BIOS je, neceMChybi=false
+VYSLEDEK: 5 testu, 0 CHYBA

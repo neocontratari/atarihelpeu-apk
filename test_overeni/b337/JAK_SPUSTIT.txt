@@ -1,0 +1,62 @@
+B337 - ANDROID TV: SEGA / PS1 BEZ NAVRATU DO MENU, SONIC + BIOS NA ZACATKU, ATARI -> HLAVNI MENU, LOG Z TV (17. 11. 2026)
+=========================================================================================================================
+
+Rene (TV TCL BeyondTV, Android 9, B336): "Atari jede hry nabehnou ale u segy a ps1 to vyskoci zpet do hlavni nabidky -
+mozna spatne odemceno ... A u atari se neda vratit zpet do hlavni nabidky jen zase vyber her. A Nejdou na TV TCL
+stahnout ty prvni dva soubory na zacatku ... log z tv tlc nemam jak poslat ... JInak YT zvuk funguje" (B336 zvuk YouTube OK).
+V okne serveru (KODY A TELEFONY) ma TV "Tv obyvak" Segu i PS1 "zaplaceno 17.11." (odemceno spravcem v 09:51 a v 10:04).
+
+1) SEGA / PS1 "vyskoci zpet do hlavni nabidky"
+   Jedina cesta v kodu "ze stranky konzole rovnou do hlavniho menu" je ZAMEK konzole (B312: stranka emulatoru zamcene
+   konzole se nahradi skokem do menu) - appka v televizi brala konzole jako zamcene. Stav ze serveru (zaplaceno) cte
+   appka pri startu, po 30 min na pozadi a na strance ODEMKNOUT. Spravce odemkl, appka uz bezela -> karta zamcena ->
+   stranka ODEMKNOUT. Na ni byl pri nacteni videt jen "◀ DO MENU" a ramecek dalkoveho ovladace (B334) zustal na nem
+   i potom, co server rekl "zaplaceno" a ukazalo se SPUSTIT SEGU: OK = zpet do hlavniho menu. Overeno v Chromiu se
+   skutecnou strankou B336 (T1). Navic: PS1 zaplacena, ale Sega v appce jeste "nekoupena" -> stranka ukazala SPUSTIT
+   PS1 a appka ji porad brala jako zamcenou (PS1 az po Seze) - SPUSTIT nic neudelalo.
+   OPRAVA:
+   - ODEMKNOUT na TV: ramecek na hlavni akci (SPUSTIT / ODEMKNOUT SEGU / ZKONTROLOVAT / ZAPLATIL JSEM / ZKUSIT ZNOVU),
+     jen kdyz se zmeni (hlidani platby ramecek nebere); NapTvOvladani.vyber(el); telefon beze zmeny,
+   - zamcena karta v menu: zatrese se (0,5 s) a appka se mezitim zepta serveru (/api/v1/stav) - zaplaceno = rovnou
+     konzole, jinak ODEMKNOUT (server neodpovi do 2,5 s -> ODEMKNOUT, obnovi se sama). Log "B337 ZAMCENA KARTA",
+   - menu ukazane a neco zamcene -> stav ze serveru (nejvys 1x za minutu, tise) - karta se odemkne sama,
+   - ODEMKNOUT + server "zaplaceno" -> cely stav ze serveru (Sega i PS1), ne jen tahle konzole.
+   Kdyby to byl pad jadra (32 bitu), ukaze to log z TV (/log/predchozi).
+2) SONIC A BIOS NA ZACATKU ("nejdou stahnout")
+   Bez logu z TV pricina neznama - opraveno vse, co to na Androidu 9 v televizi muze byt:
+   - povoleni uloziste: na STAHNOUT okno povoleni Androidu (Android 9 a starsi), po odpovedi stazeni,
+   - bez povoleni (odmitnuto / "neptat se") -> soubory do slozky appky Android/data/<appka>/files/AtariHelp
+     (getPublicAtariHelpDownloadsDir, jen Android 6-9 bez povoleni; telefon s povolenim a Android 10+ beze zmeny);
+     Sonic a BIOS se tam hledaji i potom (NapStahovaniSeSouhlasem.dalsiKoren, ps1EnsureBios),
+   - HTTPS na atarihelp.eu s doplnenim certifikatu (AtarihelpTls, B298) a poznanim mistniho serveru (B299 - na Reneho
+     Wi-Fi vedlo atarihelp.eu na OSPanel), i u BIOSu pro PS1 (ps1EnsureBios),
+   - atarihelp.eu nejde -> zaloha ze serveru N&P: Sonic ze slozky Sega (C:\ApkaServer\Arcade\Sega, "sonic" v nazvu,
+     ne dily 2 / 3 / & Knuckles), BIOS s "bios" v nazvu (nebo scphNNNN.bin) ze slozky PS1 (Arcade\PS1) - ZIP se rozbali
+     stejne jako z webu; BIOS se v N&P HRY nezobrazuje jako hra,
+   - okno "Nestazeno": u kazdeho souboru PROC (povoleni uloziste, mistni server, certifikat, DNS, spojeni, HTTP, stranka
+     misto souboru) a skutecna slozka; log "B337 STAHOVANI SOUBORU", "B337 ULOZISTE pri startu".
+3) ATARI NA TV -> HLAVNI MENU: ZPET DO MENU byla az 8. polozka (ramecek zacinal na NET / HRY). Ted prvni polozka
+   "⌂ HLAVNI MENU (konec Atari)", ZPET v otevrenem menu = hlavni menu (ZPET 2x), titulek "ZPET znovu = hlavni menu".
+4) LOG Z TV: B336 uz umi WEB TV /log a /log/predchozi - v OPTIONS je ted pod adresou WEB TV i adresa logu (CZ / EN).
+5) Napoveda CZ / EN (Android TV), build.gradle versionCode 380 "EMU10-B337-TV-SEGA-PS1-SOUBORY".
+
+Spoustet z adresare test_overeni/b337 (PRAC = pracovni slozka, AJ = android-34.jar):
+A) Chromium, skutecne stranky + falesne mosty Javy (stara stranka ODEMKNOUT z gitu ac42c22, NAP_B336 = jiny commit):
+   python3 test_b337_tv_stranky.py        -> VYSTUP_test_b337_tv_stranky.txt (8 OK: T1 B336 ramecek na DO MENU -> OK = menu;
+                                             T2 B337 SPUSTIT SEGU -> spustKonzoli; T3 PS1; T4 zamceno -> ZAPLATIL JSEM, hlidani
+                                             ramecek nebere; T5 telefon bez ramecku; T6 OPTIONS adresa logu CZ / EN; T7 BIOS
+                                             neni v seznamu her; T8 bez chyb JavaScriptu)
+B) JVM, skutecna trida NapStahovaniSeSouhlasem:
+   javac -encoding UTF-8 --release 17 -cp AJ -d PRAC ../../app/src/main/java/eu/atarihelp/emu10/{NapStahovaniSeSouhlasem,AtarihelpTls,NapJazyk}.java \
+         jvm/eu/atarihelp/emu10/TestB337.java && java -cp PRAC:AJ eu.atarihelp.emu10.TestB337
+                                          -> VYSTUP_test_b337_java.txt (5 OK: S1 vyber Sonica / BIOSu ze seznamu N&P, S2 zaloha
+                                             N&P, S3 ukladani a chyby, S4 duvody v okne Nestazeno CZ / EN, S5 slozka appky)
+C) Zapojeni: python3 kontrola_b337.py   -> VYSTUP_kontrola_b337.txt (24 OK)
+D) javac vsech zdroju appky proti android-34.jar -> VYSTUP_javac_android.txt (0 chyb)
+E) Regrese (VYSTUP_regrese_*.txt): b321 stranky (39 OK), b322 stranky (36 OK), b334 TV ovladani (13 OK), b311 napoveda CZ
+   (203 nazvu 0 chyb), b314 napoveda EN (195 nazvu 0 chyb), kontrola_b336 (11 OK; A2 a N2 zamerne zmenene v B337 -
+   poradi menu Atari na TV a verze). b314/test_b314_jazyk_menu.py pada STEJNE i na cistem B336 (karusel karet HTML v
+   testu neni) - neni to B337.
+   POZOR: skripty jinych buildu prepisuji sve VYSTUP soubory - po regresi "git checkout -- test_overeni/bNNN".
+
+Na televizi NEOVERENO (Rene). Log z TV: OPTIONS -> SPUSTIT WEB TV -> na PC adresa + /log (a /log/predchozi).

@@ -104,6 +104,7 @@ public class MainActivity extends Activity {
     private static final int PICK_ATARI_CPP_XEX = 21; // B291: XEX/MOBIL na pristroji Atari 130XE (B310: tlacitko ATARI 130XE EMULATOR)
     private static final int PICK_ATARI_CPP_WAV = 22; // B292: EJECT -> kazeta (WAV) z telefonu pro CLOAD
     private static final int PICK_ATARI_CPP_TXT = 23; // B299: BASIC/TBXL TXT -> TXT soubor s programem
+    private static final int REQ_ULOZISTE_STAHOVANI = 37; // B337: povoleni uloziste pred stazenim Sonica a BIOSu (Android 9 a starsi)
     private static final String ATARIHELP_BROWSER_UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36"; // BUILD2SA5K
     private static final long ATARIHELP_MIN_REQUEST_GAP_MS = 30000L; // BUILD2SA5M: no accidental hammering.
     private static final long ATARIHELP_FAIL_COOLDOWN_MS = 15L * 60L * 1000L;
@@ -5488,9 +5489,7 @@ public class MainActivity extends Activity {
         @JavascriptInterface public void stahniSoubory() {
             ui.post(() -> {
                 try {
-                    NapStahovaniSeSouhlasem.zeptejSeAStahni(MainActivity.this,
-                            getPublicAtariHelpDownloadsDir(),
-                            zprava -> appendNativeLog("BUILD2SA27 STAZENI " + zprava));
+                    napStahniSoubory(zprava -> appendNativeLog("BUILD2SA27 STAZENI " + zprava));   // B337
                 } catch (Throwable t) {
                     appendNativeLog("BUILD2SA27 STAZENI_CHYBA " + safeMsg(t));
                 }
@@ -6214,7 +6213,122 @@ public class MainActivity extends Activity {
         File base = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
         File dir = new File(base, "AtariHelp");
         if (!dir.exists()) dir.mkdirs();
+        // B337: Android 9 a starsi BEZ povoleni uloziste (televize: okno povoleni pri prvnim startu
+        // nikdo neodklepl / odmitl) - do Download se nezapise nic (Sonic, BIOS, pametova karta, hry).
+        // Pak slozka appky na externim ulozisti: bez povoleni, prezije aktualizace (ne odinstalaci).
+        // Android 10+ a telefon s povolenim beze zmeny.
+        if (Build.VERSION.SDK_INT <= 28 && !napUlozistePovoleno()) {
+            File alt = napSlozkaAppky();
+            if (alt != null) {
+                if (!napSlozkaAppkyHlasena) {
+                    napSlozkaAppkyHlasena = true;
+                    appendNativeLog("B337 ULOZISTE: Android " + Build.VERSION.RELEASE + " bez povoleni uloziste - soubory do slozky appky "
+                            + alt.getAbsolutePath() + " (Download/AtariHelp: " + (dir.canWrite() ? "zapis jde" : "zapis NEJDE") + ")");
+                }
+                return alt;
+            }
+        }
         return dir;
+    }
+
+    private boolean napSlozkaAppkyHlasena = false;
+
+    /** B337: Android 9 a starsi - ma appka povoleni zapisovat do Download (WRITE_EXTERNAL_STORAGE)? */
+    private boolean napUlozistePovoleno() {
+        if (Build.VERSION.SDK_INT < 23 || Build.VERSION.SDK_INT > 28) return true;
+        try {
+            return checkSelfPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED;
+        } catch (Throwable t) {
+            return true;
+        }
+    }
+
+    private Runnable napPoPovoleniUloziste = null;
+
+    /**
+     * B337: pred stazenim Sonica a BIOSu (STAHNOUT) - Android 9 a starsi bez povoleni uloziste: okno
+     * povoleni Androidu, pak 'pak' (povoleno -> Download/AtariHelp, odmitnuto -> slozka appky).
+     */
+    private void napZajistiUloziste(Runnable pak) {
+        if (napUlozistePovoleno()) { pak.run(); return; }
+        try {
+            napPoPovoleniUloziste = pak;
+            appendNativeLog("B337 ULOZISTE: pred stazenim souboru zadost o povoleni (Android " + Build.VERSION.RELEASE + ")");
+            requestPermissions(new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE, Manifest.permission.READ_EXTERNAL_STORAGE},
+                    REQ_ULOZISTE_STAHOVANI);
+        } catch (Throwable t) {
+            napPoPovoleniUloziste = null;
+            appendNativeLog("B337 ULOZISTE: zadost o povoleni nejde " + safeMsg(t));
+            pak.run();
+        }
+    }
+
+    /**
+     * B337: zaloha pro STAHNOUT HRY A BIOS, kdyz atarihelp.eu nejde (na Wi-Fi vede jinam, ochrana webu,
+     * certifikat): server N&P - Sonic ze slozky Sega, BIOS (ZIP / scphNNNN.bin s "bios" v nazvu) ze slozky PS1.
+     * null = na serveru neni.
+     */
+    private NapStahovaniSeSouhlasem.Zdroj napZalohaSouboru(String co) throws Exception {
+        if (napServer == null || !napServer.sparovano()) throw new IOException("nesparovano");
+        NapServerKlient.Odpoved o = napServer.get("/api/v1/hry");
+        if (!o.ok() || o.json == null) throw new IOException(o.kod == 0 ? "server-nedostupny" : "server-" + o.kod);
+        final Object hry = o.json.get("hry");
+        final java.util.List<?> seznam = hry instanceof java.util.List ? (java.util.List<?>) hry : null;
+        final String id = NapStahovaniSeSouhlasem.vyberZeSeznamu(seznam, co);
+        if (id == null) {
+            appendNativeLog("B337 STAHOVANI " + co + ": na serveru N&P neni (" + (seznam == null ? 0 : seznam.size()) + " souboru v seznamu)");
+            return null;
+        }
+        String soubor = "";
+        for (Object x : seznam) {
+            if (x instanceof java.util.Map && id.equals(String.valueOf(((java.util.Map<?, ?>) x).get("id")))) {
+                soubor = String.valueOf(((java.util.Map<?, ?>) x).get("soubor"));
+                break;
+            }
+        }
+        NapServerKlient.Odpoved h = napServer.get("/api/v1/hra?id=" + id);
+        if (h.kod != 200 || h.data == null || h.data.length == 0) throw new IOException("hra-" + h.kod);
+        appendNativeLog("B337 STAHOVANI " + co + ": ze serveru N&P " + soubor + " (" + h.data.length + " B)");
+        return new NapStahovaniSeSouhlasem.Zdroj(h.data, soubor, "N&P");
+    }
+
+    /** B337: STAHNOUT HRY A BIOS (start appky i OPTIONS) - povoleni uloziste, slozka az po nem, zaloha N&P. */
+    private void napStahniSoubory(NapStahovaniSeSouhlasem.Hotovo pak) {
+        NapStahovaniSeSouhlasem.zeptejSeAStahni(this, this::getPublicAtariHelpDownloadsDir,
+                this::napZajistiUloziste, this::napZalohaSouboru, pak);
+    }
+
+    /**
+     * B337: pri startu - log stahovani Sonica / BIOSu do logu appky, druha slozka pro hledani (slozka appky,
+     * Android 9 a starsi) a radek do logu: povoleni uloziste, kam se uklada, Sonic a BIOS.
+     */
+    private void napDiagnostikaUloziste() {
+        try {
+            NapStahovaniSeSouhlasem.log = this::appendNativeLog;
+            if (Build.VERSION.SDK_INT <= 28) NapStahovaniSeSouhlasem.dalsiKoren = napSlozkaAppky();
+            final File dl = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), "AtariHelp");
+            final File koren = getPublicAtariHelpDownloadsDir();
+            appendNativeLog("B337 ULOZISTE pri startu: Android " + Build.VERSION.RELEASE + " (API " + Build.VERSION.SDK_INT + ")"
+                    + ", povoleni zapisu " + (Build.VERSION.SDK_INT > 28 ? "netreba" : (napUlozistePovoleno() ? "ANO" : "NE"))
+                    + ", Download/AtariHelp " + (dl.isDirectory() ? (dl.canWrite() ? "zapis jde" : "zapis NEJDE") : "neexistuje")
+                    + " | soubory appky: " + koren.getAbsolutePath()
+                    + " | " + NapStahovaniSeSouhlasem.stav(this, koren));
+        } catch (Throwable t) {
+            appendNativeLog("B337 ULOZISTE_CHYBA " + safeMsg(t));
+        }
+    }
+
+    /** B337: slozka appky na externim ulozisti (Android/data/<appka>/files/AtariHelp) - bez povoleni. */
+    private File napSlozkaAppky() {
+        try {
+            File ext = getExternalFilesDir(null);
+            if (ext == null) return null;
+            File d = new File(ext, "AtariHelp");
+            if (!d.isDirectory() && !d.mkdirs()) return null;
+            return d;
+        } catch (Throwable t) {
+            return null;
+        }
     }
 
     // BUILD2SB26: Rene - "kdyz apku vymazu a znova nainstaluji, cd/iso
@@ -8542,6 +8656,7 @@ public class MainActivity extends Activity {
                 if (n <= 0) return false;
             }
             menuZamky();
+            napZamkyZeServeru("menu " + proc);   // B337: odemkl-li spravce mezitim, karta se odemkne hned
             menuNastav("ukazani menu");
             menuSkryteProOptions = false;
             if (menuPlocha == null) {
@@ -8646,9 +8761,10 @@ public class MainActivity extends Activity {
             appendNativeLog("B311 MENU_ZAMCENO karta " + i + " [" + karta + "] (" + odkud + ") "
                     + NapPostup.stav(this));
             // B322: zamcena karta se zatrese (0,5 s) a otevre se ODEMKNOUT HNED - kolik chybi nebo platba
+            // B337: nejdriv server - spravce ji mohl mezitim odemknout (zaplaceno -> rovnou konzole)
             final String[] pk = karta == null ? new String[0] : karta.split("\\|", -1);
             final String zamek = pk.length > 3 ? pk[3].trim() : "";
-            if ("sega".equals(zamek) || "ps1".equals(zamek)) ui.postDelayed(() -> napOtevriOdemknuti(zamek, "karta menu"), 550);
+            if ("sega".equals(zamek) || "ps1".equals(zamek)) napZamcenaKarta(i, karta, zamek);
             return;
         }
         if (kod == NativeMenuBridge.AKCE_NASTAVENI) {
@@ -8663,6 +8779,52 @@ public class MainActivity extends Activity {
             // C++ ted kartu priblizi a zatmi obraz - pak teprve prepnout stranku
             ui.postDelayed(() -> menuSpust(i, k), NativeMenuBridge.SPUSTENI_MS);
         }
+    }
+
+    /**
+     * B337: zamcena karta SEGA / PS1 v menu. Rene na TV: konzoli odemkl v okne serveru (zaplaceno), appka
+     * uz bezela a vedela to az po restartu (stav ze serveru se cte pri startu, po 30 min na pozadi a na
+     * strance ODEMKNOUT) - karta zustala zamcena a ODEMKNOUT s ramecekem na DO MENU ho vratila do menu.
+     * Ted: karta se zatrese (0,5 s) a mezitim se appka zepta serveru. Zaplaceno = rovnou konzole,
+     * jinak stranka ODEMKNOUT jako drive. Server neodpovi do 2,5 s -> ODEMKNOUT (obnovi se sama).
+     */
+    private void napZamcenaKarta(final int i, final String karta, final String zamek) {
+        final long t0 = android.os.SystemClock.uptimeMillis();
+        final java.util.concurrent.atomic.AtomicBoolean rozhodnuto = new java.util.concurrent.atomic.AtomicBoolean(false);
+        final Runnable odemknout = () -> { if (rozhodnuto.compareAndSet(false, true)) napOtevriOdemknuti(zamek, "karta menu"); };
+        if (napServer == null || !napServer.sparovano()) {
+            ui.postDelayed(odemknout, 550);
+            return;
+        }
+        ui.postDelayed(odemknout, 2500);
+        new Thread(() -> {
+            NapServerKlient.Odpoved o = napServer.get("/api/v1/stav");
+            napStavCas = android.os.SystemClock.uptimeMillis();
+            if (o.ok() && o.json != null)
+                napSlucServer(NapJson.mapa(o.json, "odemceno"), NapJson.mapa(o.json, "postup"), NapJson.mapa(o.json, "zadost"),
+                        NapJson.mapa(o.json, "zamek"), "zamcena karta " + zamek);
+            final MainActivity a = MainActivity.this;
+            final boolean otevrena = "ps1".equals(zamek) ? NapPostup.ps1Odemcena(a) : NapPostup.segaOdemcena(a);
+            appendNativeLog("B337 ZAMCENA KARTA " + zamek + ": server " + (o.kod == 0 ? "nedostupny" : o.kod + (o.ok() ? " ok" : " " + o.duvod()))
+                    + " -> " + (otevrena ? "ZAPLACENO / OTEVRENO - spoustim konzoli" : "zamcena - stranka ODEMKNOUT") + " | " + NapPostup.stav(a));
+            final long zbyva = Math.max(0L, 550L - (android.os.SystemClock.uptimeMillis() - t0));
+            ui.postDelayed(() -> {
+                if (!otevrena) { odemknout.run(); return; }
+                if (!rozhodnuto.compareAndSet(false, true)) return;   // uz bezi ODEMKNOUT - ukaze SPUSTIT sama
+                if (menuPlocha != null) menuSpust(i, karta);
+                else napOtevriOdemknuti(zamek, "karta menu (menu uz neni)");
+            }, zbyva);
+        }, "nap-zamcena-karta").start();
+    }
+
+    /** B337: menu ukazane a neco je zamcene -> zeptat se serveru (nejvys 1x za minutu), zamky v menu sedi se serverem. */
+    private void napZamkyZeServeru(String proc) {
+        try {
+            if (napServer == null || !napServer.sparovano()) return;
+            if (NapPostup.segaOdemcena(this) && NapPostup.ps1Odemcena(this)) return;
+            if (napStavCas != 0 && android.os.SystemClock.uptimeMillis() - napStavCas < 60_000L) return;
+            napOverStav(proc, true);
+        } catch (Throwable ignored) {}
     }
 
     private void menuSpust(int i, String karta) {
@@ -9003,36 +9165,55 @@ public class MainActivity extends Activity {
     /** B336: Android TV - menu pristroje Atari na tlacitko ZPET (servisni tlacitka jsou jen na vysku). */
     private void atariCppTvMenu() {
         appendNativeLog("B336 TV: ZPET -> menu pristroje Atari (hry, disketa, kazeta, reset, zpet do menu)");
+        // B337: Rene - "u atari se neda vratit zpet do hlavni nabidky jen zase vyber her". ZPET DO MENU
+        // byla az OSMA polozka (na televizi pod okrajem okna - ramecek zacinal na NET / HRY). Ted je
+        // HLAVNI MENU prvni (ramecek na ni) a ZPET jeste jednou = rovnou hlavni menu.
         final String[] polozky = {
+                tx("⌂ HLAVNÍ MENU (konec Atari)", "⌂ MAIN MENU (quit Atari)"),
                 tx("NET / HRY - hry ze serveru N&P", "NET / GAMES - games from the N&P server"),
                 tx("XEX / SOUBOR - hra nebo cartridge (.car) z televize / USB", "XEX / FILE - a game or cartridge (.car) from the TV / USB"),
                 tx("ATR / DISK - disketa do D1: (vysunout, vyměnit)", "ATR / DISK - disk in D1: (eject, swap)"),
                 tx("KAZETA (WAV) - hry z kazety", "TAPE (WAV) - games on tape"),
                 "TURBO BASIC XL",
                 "RESET ATARI",
-                tx("NÁPOVĚDA", "HELP"),
-                tx("ZPĚT DO MENU", "BACK TO MENU")
+                tx("NÁPOVĚDA", "HELP")
         };
         try {
-            new android.app.AlertDialog.Builder(this)
-                    .setTitle("ATARI 130XE")
+            final android.app.AlertDialog d = new android.app.AlertDialog.Builder(this)
+                    .setTitle(tx("ATARI 130XE · ZPĚT znovu = hlavní menu", "ATARI 130XE · BACK again = main menu"))
                     .setItems(polozky, (dlg, w) -> {
                         switch (w) {
-                            case 0: atariZarizeniAkce(1); break;
-                            case 1: atariZarizeniAkce(2); break;
-                            case 2: atariZarizeniAkce(3); break;
-                            case 3: atariZarizeniAkce(9); break;
-                            case 4: atariZarizeniAkce(4); break;
-                            case 5: NativeAtariCoreBridge.devCtlSafe("atari_reset"); break;
-                            case 6: atariZarizeniAkce(7); break;
-                            default: atariZarizeniAkce(8); break;   // MENU = zpet do hlavniho menu
+                            case 0: atariTvDoMenu("polozka HLAVNI MENU"); break;
+                            case 1: atariZarizeniAkce(1); break;
+                            case 2: atariZarizeniAkce(2); break;
+                            case 3: atariZarizeniAkce(3); break;
+                            case 4: atariZarizeniAkce(9); break;
+                            case 5: atariZarizeniAkce(4); break;
+                            case 6: NativeAtariCoreBridge.devCtlSafe("atari_reset"); break;
+                            default: atariZarizeniAkce(7); break;   // NAPOVEDA
                         }
                     })
                     .setNegativeButton(tx("HRÁT DÁL", "KEEP PLAYING"), null)
-                    .show();
+                    .create();
+            // ZPET v otevrenem menu = hlavni menu (ZPET, ZPET = ven z Atari; HRAT DAL zustava tlacitkem)
+            d.setOnKeyListener((dlg, kod, e) -> {
+                if (kod != KeyEvent.KEYCODE_BACK) return false;
+                if (e.getAction() == KeyEvent.ACTION_UP && !e.isCanceled()) {
+                    try { dlg.dismiss(); } catch (Throwable ignored) {}
+                    atariTvDoMenu("ZPET 2x");
+                }
+                return true;
+            });
+            d.show();
         } catch (Throwable t) {
             appendNativeLog("B336 TV_MENU_ATARI_CHYBA " + safeMsg(t));
         }
+    }
+
+    /** B337: z Atari na TV do hlavniho menu (polozka HLAVNI MENU nebo ZPET 2x). */
+    private void atariTvDoMenu(String proc) {
+        appendNativeLog("B337 TV: ATARI -> HLAVNI MENU (" + proc + ")");
+        atariZarizeniAkce(8);   // MENU = index.html (pristroj se vypne v onPageStarted)
     }
 
     /** Ozubene kolecko na sirku - stejne polozky jako Sega "D-PAD A OVLADANI". */
@@ -10815,7 +10996,7 @@ public class MainActivity extends Activity {
     private NapServerKlient napServer;
     private volatile String napAktualniUrl = "";
     private volatile String napTajemstviApk = null;
-    private long napStavCas = 0;
+    private volatile long napStavCas = 0;   // B337: volatile - pise i vlakno zamcene karty / stranky ODEMKNOUT
     private String napPosledniZprava = "";
     private static int napNabidnutaVerze = 0;   // B324: static - nova kopie aktivity uz nenabizi znovu
     private int napCekajiciVerze = 0, napCekajiciMoje = 0;
@@ -11379,11 +11560,21 @@ public class MainActivity extends Activity {
                 boolean ok = o.ok() && o.json != null;
                 if (ok && NapJson.ano(o.json, "koupeno")) {
                     // spravce mezitim odemkl - zapamatovat hned (a obnovit menu)
+                    // B337: cely stav ze serveru (Sega i PS1). Drive jen tahle konzole: PS1 zaplacena, ale
+                    // Sega v appce jeste "nekoupena" -> stranka ukazala SPUSTIT PS1 a appka ji porad
+                    // brala jako zamcenou (PS1 az po Seze) - SPUSTIT nic neudelalo.
                     final MainActivity a = MainActivity.this;
-                    java.util.HashMap<String, Object> od = new java.util.HashMap<>();
-                    od.put("sega", "sega".equals(c) || NapPostup.segaKoupena(a));
-                    od.put("ps1", "ps1".equals(c) || NapPostup.ps1Koupena(a));
-                    napSlucServer(od, null, null, null, "stranka odemknout");
+                    NapServerKlient.Odpoved s = napServer.get("/api/v1/stav");
+                    napStavCas = android.os.SystemClock.uptimeMillis();
+                    if (s.ok() && s.json != null) {
+                        napSlucServer(NapJson.mapa(s.json, "odemceno"), NapJson.mapa(s.json, "postup"), NapJson.mapa(s.json, "zadost"),
+                                NapJson.mapa(s.json, "zamek"), "stranka odemknout");
+                    } else {
+                        java.util.HashMap<String, Object> od = new java.util.HashMap<>();
+                        od.put("sega", "sega".equals(c) || NapPostup.segaKoupena(a));
+                        od.put("ps1", "ps1".equals(c) || NapPostup.ps1Koupena(a));
+                        napSlucServer(od, null, null, null, "stranka odemknout");
+                    }
                 }
                 if (ok && NapJson.ano(o.json, "zadost") && !napCekaPlatba) ui.post(() -> napHlidejPlatbu(true));
                 napOdpovedStrance("platba", "{\"ok\":" + ok + ",\"kod\":" + o.kod + ",\"duvod\":" + NapJson.uvoz(o.duvod())
@@ -12159,6 +12350,7 @@ public class MainActivity extends Activity {
         appendNativeLog("B314 JAZYK_PRI_STARTU " + NapJazyk.popis(this));
         jazykDoKnihoven("start");
         napServerInit();               // B321: server her N&P - stav parovani telefonu do logu
+        napDiagnostikaUloziste();      // B337: kam appka uklada soubory (televize bez povoleni uloziste)
         // B321: appka spustena vysledkem instalace aktualizace. B324: jen pri novem startu - po obnove
         // aktivity (savedInstanceState) uz ne, jinak by se znovu otviralo potvrzeni stare instalace
         if (savedInstanceState == null) napInstalace(getIntent());
@@ -12553,9 +12745,7 @@ public class MainActivity extends Activity {
                 appendNativeLog("BUILD2SA28 START ptam-se-na-stazeni");
                 ui.postDelayed(() -> {
                     try {
-                        NapStahovaniSeSouhlasem.zeptejSeAStahni(MainActivity.this,
-                                getPublicAtariHelpDownloadsDir(),
-                                zprava -> {
+                        napStahniSoubory(zprava -> {   // B337: povoleni uloziste, zaloha N&P
                                     appendNativeLog("BUILD2SA27 STAZENI " + zprava);
                                     spustIntro.run();     // az ted jede film
                                 });
@@ -13920,6 +14110,10 @@ public class MainActivity extends Activity {
             }
             File root = getPublicAtariHelpDownloadsDir();
             File[] scan = new File[] { root, new File(root, "BIOS"), new File(root, "PS1_BIOS") };
+            // B337: i slozka appky (Android 9 bez povoleni uloziste - STAHNOUT HRY A BIOS ukladalo tam)
+            final File druha = NapStahovaniSeSouhlasem.dalsiKoren;
+            if (druha != null && !druha.equals(root))
+                scan = new File[] { root, new File(root, "BIOS"), new File(root, "PS1_BIOS"), druha, new File(druha, "PS1_BIOS") };
             int adopted = 0;
             for (File d : scan) {
                 if (d == null || !d.isDirectory()) continue;
@@ -13958,6 +14152,7 @@ public class MainActivity extends Activity {
             cand.add("https://atarihelp.eu/wp-content/uploads/2026/07/PS1-BIOS_.zip");
             try {
                 HttpURLConnection pc = (HttpURLConnection) new URL("https://atarihelp.eu/?page_id=1048").openConnection();
+                AtarihelpTls.pouzij(pc, this::appendNativeLog);   // B337
                 pc.setConnectTimeout(8000); pc.setReadTimeout(8000);
                 pc.setRequestProperty("User-Agent", "Mozilla/5.0 (Linux; Android 9) AtariHelpEMU10");
                 java.io.InputStream pin = pc.getInputStream();
@@ -13980,6 +14175,7 @@ public class MainActivity extends Activity {
                 try {
                     appendNativeLog("BUILD2SA12 PS1_BIOS_AUTO_DL_TRY " + bu);
                     HttpURLConnection bc = (HttpURLConnection) new URL(bu).openConnection();
+                    AtarihelpTls.pouzij(bc, this::appendNativeLog);   // B337: certifikat jako u her (B298 / B299)
                     bc.setConnectTimeout(10000); bc.setReadTimeout(20000);
                     bc.setInstanceFollowRedirects(true);
                     bc.setRequestProperty("User-Agent", "Mozilla/5.0 (Linux; Android 9) AtariHelpEMU10");
@@ -14621,6 +14817,15 @@ public class MainActivity extends Activity {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
         if (requestCode == NapBluetooth.REQ_POVOLENI) {   // B331: povoleni pro hledani Bluetooth ovladace
             if (bt != null) bt.povoleniVysledek(grantResults);
+            return;
+        }
+        if (requestCode == REQ_ULOZISTE_STAHOVANI) {   // B337
+            final Runnable r = napPoPovoleniUloziste;
+            napPoPovoleniUloziste = null;
+            final boolean ok = napUlozistePovoleno();
+            appendNativeLog("B337 ULOZISTE: povoleni " + (ok ? "DANO - soubory do Download/AtariHelp"
+                    : "NEDANO - soubory do slozky appky " + getPublicAtariHelpDownloadsDir().getAbsolutePath()));
+            if (r != null) ui.post(r);
             return;
         }
         if (requestCode == PICK_AUDIO_PERMISSION) {

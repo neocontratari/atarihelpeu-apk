@@ -4169,4 +4169,26 @@
      - DALSI KROK: Rene - YouTube na TV (chrapot), Atari na TV (ZPET = menu), log z TV (/log), memory
        card / pozice PS1.
 
+   B337: TV - SEGA / PS1 BEZ NAVRATU DO MENU, SONIC + BIOS, ATARI -> HLAVNI MENU, LOG Z TV (17. 11. 2026).
+   Rene (B336): zvuk YouTube na TV OK; TV TCL (Android 9): Atari hry jedou, "u segy a ps1 to vyskoci zpet
+   do hlavni nabidky - mozna spatne odemceno", z Atari "se neda vratit zpet do hlavni nabidky jen zase vyber
+   her", "nejdou na TV stahnout ty prvni dva soubory", log z TV "nemam jak poslat". Server: TV zaplacena.
+     - SEGA / PS1: jedina cesta "konzole -> rovnou hlavni menu" je zamek (B312). Appka v TV o odemceni
+       nevedela (stav ze serveru jen pri startu / po 30 min / na ODEMKNOUT) a na strance ODEMKNOUT zustal
+       ramecek dalkoveho na "◀ DO MENU" (jedine videt pri nacteni) -> OK = menu, i kdyz uz byla SPUSTIT
+       SEGU (Chromium se strankou B336: T1). Ted ramecek na hlavni akci, zamcena karta se nejdriv zepta
+       serveru (zaplaceno = rovnou konzole), menu obnovi zamky ze serveru (1x/min), ODEMKNOUT + zaplaceno
+       = cely stav (Sega i PS1 - PS1 bez "koupene" Segy v appce zustavala zamcena).
+     - SONIC + BIOS: povoleni uloziste na STAHNOUT (Android 9-), bez nej slozka appky (Android/data/...),
+       HTTPS s AtarihelpTls (B298 / B299 - Reneho Wi-Fi vedla atarihelp.eu na OSPanel), zaloha ze serveru
+       N&P (Arcade\Sega "sonic", Arcade\PS1 "bios"; BIOS neni v seznamu her), okno Nestazeno rika PROC.
+     - ATARI TV: menu pristroje - prvni polozka HLAVNI MENU, ZPET 2x = hlavni menu.
+     - LOG Z TV: OPTIONS -> SPUSTIT WEB TV -> pod adresou i adresa logu (.../log, /log/predchozi).
+     - Testy test_overeni/b337 (JAK_SPUSTIT.txt): Chromium 8 OK, JVM 5 OK, zapojeni 24 OK, javac 0 chyb,
+       regrese b321 / b322 / b334 / napovedy OK (kontrola_b336 A2 + N2 zamerne zmenene).
+     - build.gradle: versionCode 380 "EMU10-B337-TV-SEGA-PS1-SOUBORY". Na TV neovereno.
+     - DALSI KROK: Rene - TV: SEGA / PS1, STAHNOUT (co napise okno Nestazeno), Atari ZPET 2x, log z TV
+       (pricina "demo na TV nebezi"); kdyz atarihelp.eu z jeho Wi-Fi nejde -> Sonic ZIP do Arcade\Sega a
+       BIOS ZIP do Arcade\PS1 na serveru.
+
 ===============================================================================

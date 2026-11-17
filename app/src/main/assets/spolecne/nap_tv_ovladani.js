@@ -271,6 +271,15 @@
       if (!fokus || !D.body.contains(fokus) || !viditelny(fokus)) nastav(prvni(kandidati()));
       return fokus ? (fokus.id || fokus.tagName) : '';
     },
+    /** B337: stranka sama urci, na cem ma ramecek byt (napr. ODEMKNOUT: SPUSTIT SEGU, ne DO MENU).
+     *  Jen na TV (appka zavolala zapni) nebo kdyz uz clovek ovlada sipkami; na telefonu (dotyk) nic. */
+    vyber: function (el) {
+      if (!W.NAP_TV && !aktivni) return '';
+      if (!el || !klikatelny(el) || !viditelny(el)) return '';
+      aktivni = true;
+      nastav(el);
+      return el.id || el.tagName;
+    },
     /** Pro testy: co se da vybrat a co je vybrane. */
     kandidati: kandidati,
     fokus: function () { return fokus; }
