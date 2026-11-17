@@ -1,0 +1,9 @@
+OK     T1) B336: pri nacteni ramecek na "doMenu", server zaplaceno -> SPUSTIT SEGU videt, ramecek porad na "doMenu", OK -> ['menu'] (= Reneho "vyskoci zpet do hlavni nabidky")
+OK     T2) B337: pri nacteni "doMenu", server zaplaceno -> ramecek na "spustit" (SPUSTIT SEGU), OK -> ['spustKonzoli:sega']
+OK     T3) B337: PS1 zaplacena na serveru -> ramecek na "spustit" (SPUSTIT PS1), OK -> ['spustKonzoli:ps1']
+OK     T4) B337: zamceno (platebni udaje) -> ramecek na "zaplatil"; sipkou dolu na "doMenu", hlidani platby (stejna odpoved) -> porad "doMenu"
+OK     T5) telefon (dotyk, bez zapni): SPUSTIT SEGU videt, ramecek zadny (None, 0 prvku s ramcem)
+OK     T6) OPTIONS -> SPUSTIT WEB TV: adresa http://192.0.2.10:8765/, log http://192.0.2.10:8765/log ("LOG APPKY PRO PODPORU" / EN "APP LOG FOR SUPPORT")
+OK     T7) N&P HRY: PS1 ['PS1Crash BandicootCHD286 MB'] (BIOS skryty), SEGA ['SEGASonic-The-Hedgehog-USA-EuropeZIP391 kB']
+OK     T8) zadna chyba JavaScriptu
+VYSLEDEK: 8 testu, 0 CHYBA

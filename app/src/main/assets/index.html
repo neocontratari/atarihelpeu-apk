@@ -207,6 +207,10 @@ body{background:radial-gradient(120% 70% at 50% 40%,#1c1006 0%,#0a0603 45%,#0302
     </div>
     <div class="sthint" id="stVykonHint" data-nepreklad></div>
 
+    <!-- B339: uloziste - kolik je mista (TV ma malo), kolik zabiraji PS1 hry -->
+    <div class="stlabel2">ÚLOŽIŠTĚ</div>
+    <div class="sthint" id="stUloziste" data-nepreklad></div>
+
     <div id="stManual" style="display:none;margin-top:4px;padding-top:6px;border-top:1px solid rgba(255,195,64,.18)">
       <div class="stlabel2">KVALITA OBRAZU (WEB TV)</div>
       <div class="qrow">
@@ -408,7 +412,18 @@ function verzeObnov(){
   el.textContent=J('VERZE ','VERSION ')+c[0]+(c[1]?' ('+c[1]+')':'');
   el.style.display='block';
 }
+// B339: ULOZISTE - volno z celkem, PS1 hry v zarizeni (Java AHRENDER.uloziste, veta uz v jazyce appky).
+// Rene: "nevim jakou ma kapacitu disk v tv". Obnovi se pri kazdem otevreni OPTIONS (po stazeni / smazani hry).
+function ulozisteObnov(){
+  var el=$('stUloziste'); if(!el) return;
+  var o=null;
+  try{ if(window.AHRENDER&&typeof AHRENDER.uloziste==='function') o=JSON.parse(String(AHRENDER.uloziste()||'')); }catch(e){ o=null; }
+  if(!o||!o.popis){ el.textContent=J('Úložiště nejde zjistit','Storage cannot be read'); return; }
+  el.textContent=o.popis;
+}
+if(window.NapJazyk&&NapJazyk.priZmene) NapJazyk.priZmene(ulozisteObnov);
 function openSettings(){if(!sp)return;sp.classList.add('open');sp.setAttribute('aria-hidden','false');sp.scrollTop=0;napQualityRefresh();tvAdresaObnov();
+  try{ ulozisteObnov(); }catch(e){}
   try{ verzeObnov(); }catch(e){}
   try{ ovlObnov(); }catch(e){}
   try{ btObnov(); }catch(e){}

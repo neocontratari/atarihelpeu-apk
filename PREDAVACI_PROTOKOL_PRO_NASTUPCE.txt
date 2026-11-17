@@ -4208,4 +4208,26 @@
        log z TV (NATIVE_RENDER_PERF_RV, coreAvgMs, underrunLoops). Kdyby jadro Segy samo bylo pres 16,7 ms na
        snimek, dalsi krok je preskakovani kresleni snimku v jadru / ladeni prekladu pro 32 bitu.
 
+   B339: TV - ULOZISTE V OPTIONS + PS1 HRY V TELEVIZI (spustit / smazat) + MALO MISTA (17. 11. 2026).
+   Log z TV (B338): AUTO -> LOW, demo preskoceno, Sega kresli ~3 ms / snimek, jadro 14,7-15,7 ms (bez prohlizece
+   na PC), 16,2-17,1 ms s otevrenou WEB TV na PC (prenos = "male chyby", Rene ho na TV nepotrebuje). Rene: "Sega
+   na TV bezi perfektne", PS1 nezkousel - "nevim jakou ma kapacitu disk v tv". Log kapacitu neobsahoval; na TV
+   se stazena PS1 hra nedala smazat (panel CD ISO jen na vysku), hlaska MALO MISTA psala "v telefonu" a nepravdu
+   o automatickem uklidu (od SB14 knihovna her), pri ZIPu se misto na rozbaleni jen odhadovalo (2x ZIP).
+     - OPTIONS -> ULOZISTE (AHRENDER.uloziste, jen stranky appky): volno z celkem, PS1 hry v zarizeni (pocet,
+       velikost), kolik chce stazeni PS1 hry; obnovi se pri kazdem otevreni OPTIONS. Log "B339 ULOZISTE".
+     - TV: menu konzole PS1 (ZPET) -> HRY V TELEVIZI: nativni seznam stazenych her (nazev z katalogu N&P,
+       velikost cele slozky, ulozena pozice) -> SPUSTIT (jako panel CD ISO: nahravani + AHPS1.ps1LibraryLaunch)
+       / SMAZAT HRU / SMAZAT HRU I ULOZENOU POZICI (ps1LibraryDeleteByKey).
+     - PS1 stahovani: hlaska MALO MISTA v jazyce appky (TV: ZPET -> HRY V TELEVIZI, telefon: CD ISO -> kos),
+       na TV navic dialog s HRY V TELEVIZI; misto na rozbaleni ZIPu podle skutecnych velikosti; nepovedene
+       stazeni / rozbaleni (slozka hry bez znacky _ps1_boot.name) se smaze, jen kdyz nezacalo jine stahovani.
+     - Panel CD ISO (telefon): velikost = cela slozka hry (drive u .cue jen par bajtu), jmeno bez pripony /
+       z katalogu N&P.
+     - Testy test_overeni/b339 (JAK_SPUSTIT.txt). build.gradle: versionCode 382 "EMU10-B339-TV-ULOZISTE-PS1".
+       Na TV neovereno.
+     - DALSI KROK: Rene - OPTIONS -> ULOZISTE na TV (kolik je volno), PS1 jedna hra ze serveru N&P (plynulost
+       na TV - PS1 jede 2x rozliseni, "nedotknutelne"; kdyby na TV sekalo, zeptat se, jestli LOW smi na TV
+       PS1 snizit na 1x), HRY V TELEVIZI spustit / smazat.
+
 ===============================================================================

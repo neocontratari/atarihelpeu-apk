@@ -138,4 +138,79 @@ final class NapPravidla {
     static String tvKlik(String id) {
         return "(function(){var b=document.getElementById('" + id + "');if(b&&!b.disabled){b.click();return 'ok';}return 'chybi';})()";
     }
+
+    // ---------------- B339: uloziste, PS1 hry v televizi ----------------
+
+    /** B339: rezerva, ktera v zarizeni po stazeni PS1 hry musi zustat volna (Android pri plnem disku zlobi). */
+    static final long PS1_REZERVA = 200L * 1024 * 1024;
+
+    /** B339: velikost pro cloveka - "2,1 GB", "650 MB", "12 kB" (cesky desetinna carka, anglicky tecka). */
+    static String velikost(long b, boolean en) {
+        if (b < 0) return "?";
+        String s;
+        if (b >= 1024L * 1024 * 1024) s = String.format(Locale.US, "%.1f GB", b / 1073741824.0);
+        else if (b >= 1024L * 1024) s = String.format(Locale.US, "%.0f MB", b / 1048576.0);
+        else s = String.format(Locale.US, "%.0f kB", b / 1024.0);
+        return en ? s : s.replace('.', ',');
+    }
+
+    /**
+     * B339 (puvodne BUILD2SA5AR): kolik volneho mista chce stazeni PS1 hry - stazeny soubor, rozbaleni ZIPu
+     * (ZIP se po rozbaleni smaze) a rezerva. Velikost neznama = 1,6 GB.
+     */
+    static long ps1PotrebaMista(long delka) {
+        return delka > 0 ? delka * 2 + PS1_REZERVA : 1600L * 1024 * 1024;
+    }
+
+    /** B339: misto na rozbaleni ZIPu (ZIP uz je na disku): soucet rozbalenych souboru + rezerva. */
+    static long ps1PotrebaRozbaleni(long rozbaleno) {
+        return Math.max(0L, rozbaleno) + PS1_REZERVA;
+    }
+
+    /** B339: volno 0 = nejde zjistit -> stahovani nebranit (jako drive). */
+    static boolean dostMista(long volno, long potreba) {
+        return volno <= 0 || volno >= potreba;
+    }
+
+    /** B339: hlaska MALO MISTA - bez "v telefonu" a bez nepravdy o automatickem uklidu (od SB14 knihovna her). */
+    static String ps1MaloMista(long potreba, long volno, boolean tv, boolean en) {
+        String p = velikost(potreba, en), v = velikost(volno, en);
+        if (en) return "LOW STORAGE: needs ~" + p + ", free " + v + " – delete an old PS1 game: "
+                + (tv ? "BACK → GAMES ON THIS TV" : "CD ISO → bin");
+        return "MÁLO MÍSTA: potřeba ~" + p + ", volno " + v + " – smaž starou PS1 hru: "
+                + (tv ? "ZPĚT → HRY V TELEVIZI" : "CD ISO → koš");
+    }
+
+    /**
+     * B339: jmeno stazene PS1 hry v knihovne: nazev z katalogu serveru N&P, jinak jmeno souboru bez pripony;
+     * u CUE slozeneho appkou (_ps1_synth.cue - ZIP s vice stopami) jmeno nejvetsiho souboru hry.
+     */
+    static String ps1JmenoHry(String katalog, String boot, String nejvetsi) {
+        if (katalog != null && katalog.trim().length() > 0) return katalog.trim();
+        String n = boot == null ? "" : boot.trim();
+        if (n.toLowerCase(Locale.US).startsWith("_ps1_synth") && nejvetsi != null && nejvetsi.trim().length() > 0) n = nejvetsi.trim();
+        int t = n.lastIndexOf('.');
+        if (t > 0) n = n.substring(0, t);
+        return n.length() > 0 ? n : "PS1";
+    }
+
+    /** B339: OPTIONS -> ULOZISTE: volno z celkem, PS1 hry v zarizeni, kolik chce stazeni PS1 hry. */
+    static String ulozistePopis(long volno, long celkem, int ps1Her, long ps1Bajtu, boolean tv, boolean en) {
+        if (volno <= 0 || celkem <= 0) return en ? "Storage cannot be read" : "Úložiště nejde zjistit";
+        StringBuilder s = new StringBuilder();
+        if (en) {
+            s.append(velikost(volno, true)).append(" free of ").append(velikost(celkem, true))
+             .append(" · PS1 games on this ").append(tv ? "TV" : "device").append(": ").append(ps1Her);
+            if (ps1Her > 0) s.append(" (").append(velikost(ps1Bajtu, true)).append(")");
+            s.append(" · downloading a PS1 game needs about 2× its size + 200 MB free");
+            if (volno < 1024L * 1024 * 1024) s.append(" · LOW STORAGE – delete a PS1 game you no longer play");
+        } else {
+            s.append("Volno ").append(velikost(volno, false)).append(" z ").append(velikost(celkem, false))
+             .append(" · PS1 hry v ").append(tv ? "televizi" : "zařízení").append(": ").append(ps1Her);
+            if (ps1Her > 0) s.append(" (").append(velikost(ps1Bajtu, false)).append(")");
+            s.append(" · stažení PS1 hry chce volno asi 2× její velikost + 200 MB");
+            if (volno < 1024L * 1024 * 1024) s.append(" · MÁLO MÍSTA – smaž PS1 hru, kterou už nehraješ");
+        }
+        return s.toString();
+    }
 }

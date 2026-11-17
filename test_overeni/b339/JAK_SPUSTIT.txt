@@ -1,0 +1,61 @@
+B339 - ANDROID TV: ULOZISTE V OPTIONS + PS1 HRY V TELEVIZI (SPUSTIT / SMAZAT) + MALO MISTA (17. 11. 2026)
+=======================================================================================================
+
+Rene (log z TV TCL BeyondTV, B338): "pri prenesou male chyby - ale tv prenos nepotrebuje a tam to bezi perfektne.
+Jinak PS1 jsem nezkousel - nevm jakou ma kapacitu disk v tv".
+
+CO UKAZAL LOG Z TV (B338):
+ - B338 VYKON: zarizeni SLABE -> AUTO -> LOW, demo preskoceno, Sega kresli ~3 ms na snimek (drive 35-50 ms),
+   150 snimku za 5 s, jadro 14,7-15,7 ms na snimek (limit 16,7 ms), zvuk podtekl 11x za 40 s.
+ - S otevrenou strankou WEB TV na PC jadro 16,2-17,1 ms (nad limitem) -> "male chyby" pri prenosu; Rene prenos
+   na TV nepotrebuje (stranku WEB TV na PC nechat zavrenou).
+ - Kapacitu uloziste log neobsahoval (appka ji nezapisovala).
+
+CO NASLA KONTROLA KODU (PS1 na TV):
+ - Stazenou PS1 hru slo smazat jen v panelu CD ISO na strance PS1 - to tlacitko je jen na vysku, TV je vzdy na
+   sirku -> na TV se hra smazat nedala (TV ma malo mista).
+ - Hlaska pri malo mistu: "MALO MISTA v telefonu ... PS1 cache byla prave automaticky uklizena" - na TV "telefon"
+   a automaticky uklid od SB14 neni (knihovna her). Na strance PS1 navic jen pruh na 9 s (na TV pod obrazem).
+ - Misto se kontrolovalo jen pred stazenim (2x velikost + 200 MB). ZIP se ale rozbaluje vedle sebe: PS1 .bin
+   je v ZIPu i 2x mensi -> kontrola projde a disk dojde v pulce rozbalovani; ZIP a pulka hry pak zustaly lezet.
+ - Panel CD ISO ukazoval u hry .cue velikost par bajtu (jen .cue, ne .bin vedle) a jmeno s priponou;
+   hry ze serveru N&P maji slozku "nap_ps1-<id>".
+
+OPRAVA:
+1) OPTIONS -> ULOZISTE: "Volno 2,1 GB z 4,5 GB · PS1 hry v televizi: 1 (650 MB) · stazeni PS1 hry chce volno
+   asi 2x jeji velikost + 200 MB" (pod 1 GB i MALO MISTA). Java AHRENDER.uloziste (jen stranky appky), obnovi se
+   pri kazdem otevreni OPTIONS. Log pri startu "B339 ULOZISTE: volno ... z ... | PS1 her v zarizeni N = ...".
+2) TV: ZPET ve PS1 -> menu konzole -> HRY V TELEVIZI (hned po HRY ZE SERVERU N&P): seznam stazenych her
+   (nazev z katalogu N&P / souboru, velikost cele slozky, ulozena pozice) -> SPUSTIT (stejna Java jako ▶ v CD
+   ISO - nahravaci obrazovku si stranka zapne sama podle stavu PS1_REMOTE_BOOTING) / SMAZAT HRU (pozice zustane)
+   / SMAZAT HRU I ULOZENOU POZICI; ZPET = seznam. Prazdny seznam -> HRY ZE SERVERU N&P.
+3) PS1 stahovani: hlaska z NapPravidla v jazyce appky ("MALO MISTA: potreba ~1,5 GB, volno 999 MB - smaz
+   starou PS1 hru: ZPET -> HRY V TELEVIZI", telefon "CD ISO -> kos"), na TV navic dialog MALO MISTA V TELEVIZI
+   s tlacitkem HRY V TELEVIZI; pred rozbalenim ZIPu kontrola podle skutecnych velikosti v ZIPu; nepovedene
+   stazeni / rozbaleni (slozka hry bez znacky _ps1_boot.name) se smaze - jen kdyz mezitim nezacalo jine
+   stahovani; hotova hra (se znackou) se nesmaze nikdy.
+4) Panel CD ISO (telefon): velikost cele slozky hry, jmeno bez pripony / z katalogu N&P (JSON pro stranku stejny).
+5) Napoveda CZ / EN (Android TV), build.gradle versionCode 382 "EMU10-B339-TV-ULOZISTE-PS1".
+
+Spoustet z adresare test_overeni/b339 (PRAC = pracovni slozka, AJ = android-34.jar):
+A) JVM (NapPravidla):
+   javac -encoding UTF-8 --release 17 -cp AJ -d PRAC ../../app/src/main/java/eu/atarihelp/emu10/{NapPravidla,NapJson}.java \
+         jvm/eu/atarihelp/emu10/TestB339.java && java -cp PRAC:AJ eu.atarihelp.emu10.TestB339
+                                          -> VYSTUP_test_b339_java.txt (6 OK: velikosti CZ / EN, kolik mista chce PS1,
+                                             hlaska MALO MISTA (TV / telefon, vejde se do pruhu), jmeno hry, veta
+                                             ULOZISTE, skutecny ZIP: kontrola pred stazenim projde, rozbaleni by
+                                             nestacilo -> B339 to pozna pred rozbalenim)
+B) Chromium, skutecne stranky + falesne mosty:  python3 test_b339_stranky.py  -> VYSTUP_test_b339_stranky.txt
+   (6 OK: T1 OPTIONS ULOZISTE + nova hodnota pri dalsim otevreni, T2 EN STORAGE, T3 bez udaju z Javy, T4 PS1 na TV:
+   funkce stranky jsou uvnitr (function(){...})() -> SPUSTIT jde z Javy, nahravaci obrazovka podle stavu
+   PS1_REMOTE_BOOTING a po startu zmizi, T5 telefon CD ISO s daty B339, T6 bez chyb JavaScriptu)
+C) Zapojeni: python3 kontrola_b339.py   -> VYSTUP_kontrola_b339.txt (20 OK)
+D) javac vsech zdroju appky proti android-34.jar -> VYSTUP_javac_android.txt (0 chyb, 117 trid)
+E) Regrese -> VYSTUP_regrese_*.txt: b338 stranky (5 OK), kontrola_b338 (16 OK; K2 = poradi menu konzole PS1 a
+   O3 = verze zamerne zmenene), b337 stranky (8 OK), kontrola_b337 (23 OK; L3 verze), b334 TV ovladani (13 OK,
+   ramecek v OPTIONS beze zmeny - ULOZISTE je jen text), b311 napoveda CZ (208 nazvu 0 chyb), b314 napoveda EN
+   (200 nazvu 0 chyb). b314/test_b314_jazyk_menu.py pada stejne i na B338 (HEAD, overeno ve worktree) - neni B339.
+   POZOR: skripty jinych buildu prepisuji sve VYSTUP soubory - po regresi "git checkout -- test_overeni/bNNN".
+
+Na televizi NEOVERENO (Rene): OPTIONS -> ULOZISTE (kolik je v TV volno), PS1 hra ze serveru N&P (stazeni,
+plynulost - PS1 jede 2x rozliseni), HRY V TELEVIZI spustit / smazat.

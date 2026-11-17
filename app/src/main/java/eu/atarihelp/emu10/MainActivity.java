@@ -6313,6 +6313,18 @@ public class MainActivity extends Activity {
                     + ", Download/AtariHelp " + (dl.isDirectory() ? (dl.canWrite() ? "zapis jde" : "zapis NEJDE") : "neexistuje")
                     + " | soubory appky: " + koren.getAbsolutePath()
                     + " | " + NapStahovaniSeSouhlasem.stav(this, koren));
+            // B339: kolik je mista (Rene: "nevim jakou ma kapacitu disk v tv") - mimo hlavni vlakno (slozky her)
+            new Thread(() -> {
+                try {
+                    final java.util.List<Ps1Hra> hry = ps1KnihovnaHry();
+                    long b = 0L;
+                    for (Ps1Hra h : hry) b += h.bajtu;
+                    appendNativeLog("B339 ULOZISTE: volno " + formatMb(koren.getUsableSpace()) + " z " + formatMb(koren.getTotalSpace())
+                            + " | PS1 her v zarizeni " + hry.size() + " = " + formatMb(b));
+                } catch (Throwable t) {
+                    appendNativeLog("B339 ULOZISTE_CHYBA " + safeMsg(t));
+                }
+            }, "nap-uloziste").start();
         } catch (Throwable t) {
             appendNativeLog("B337 ULOZISTE_CHYBA " + safeMsg(t));
         }
@@ -9225,8 +9237,10 @@ public class MainActivity extends Activity {
     private void konzoleTvMenu(final boolean ps1) {
         final String jm = ps1 ? "PS1" : "SEGA";
         appendNativeLog("B338 TV: ZPET -> menu konzole " + jm + " (hry ze serveru N&P, pozice, hlavni menu)");
+        // B339: PS1 navic HRY V TELEVIZI (stazene hry - spustit / smazat; panel CD ISO je jen na vysku)
         final String[] polozky = ps1 ? new String[]{
                 tx("HRY ZE SERVERU N&P", "GAMES FROM THE N&P SERVER"),
+                tx("HRY V TELEVIZI (stažené – spustit / smazat)", "GAMES ON THIS TV (downloaded – play / delete)"),
                 tx("ULOŽIT POZICI (SAVE GAME)", "SAVE POSITION (SAVE GAME)"),
                 tx("NAČÍST ULOŽENOU POZICI", "LOAD SAVED POSITION"),
                 tx("RESET (BIOS BEZ CD)", "RESET (BIOS WITHOUT CD)"),
@@ -9237,11 +9251,13 @@ public class MainActivity extends Activity {
                 tx("NAČÍST ULOŽENOU POZICI", "LOAD SAVED POSITION"),
                 tx("⌂ HLAVNÍ MENU", "⌂ MAIN MENU")
         };
+        // akce polozek (konzoleTvAkce): 0 N&P, 4 HRY V TELEVIZI, 1 ulozit, 2 nacist, 3 reset, -1 hlavni menu
+        final int[] akce = ps1 ? new int[]{0, 4, 1, 2, 3, -1} : new int[]{0, 1, 2, -1};
         try {
             final android.app.AlertDialog d = new android.app.AlertDialog.Builder(this)
                     .setTitle(tx((ps1 ? "PLAYSTATION" : "SEGA MEGA DRIVE") + " · ZPĚT znovu = hlavní menu",
                                  (ps1 ? "PLAYSTATION" : "SEGA MEGA DRIVE") + " · BACK again = main menu"))
-                    .setItems(polozky, (dlg, w) -> konzoleTvAkce(ps1, w == polozky.length - 1 ? -1 : w))
+                    .setItems(polozky, (dlg, w) -> konzoleTvAkce(ps1, w >= 0 && w < akce.length ? akce[w] : -1))
                     .setNegativeButton(tx("HRÁT DÁL", "KEEP PLAYING"), null)
                     .create();
             d.setOnKeyListener((dlg, kod, e) -> {
@@ -9286,11 +9302,143 @@ public class MainActivity extends Activity {
                         napJs(napTvKlik("btnReset"));
                     }
                     break;
+                case 4:
+                    if (ps1) ps1HryVTv();   // B339
+                    break;
                 default:
                     break;
             }
         } catch (Throwable t) {
             appendNativeLog("B338 TV_AKCE_KONZOLE_CHYBA " + safeMsg(t));
+        }
+    }
+
+    // ---------------- B339: Android TV - PS1 HRY V TELEVIZI, malo mista ----------------
+
+    /**
+     * B339: stazene PS1 hry v televizi - spustit / smazat dalkovym ovladacem. Na telefonu je to panel CD ISO
+     * na strance PS1, ten je ale jen na vysku (TV je vzdy na sirku) - na TV se stazena hra nedala smazat
+     * a TV ma malo mista (Rene: "nevim jakou ma kapacitu disk v tv").
+     */
+    private void ps1HryVTv() {
+        appendNativeLog("B339 TV: PS1 -> HRY V TELEVIZI");
+        new Thread(() -> {
+            final java.util.List<Ps1Hra> hry = ps1KnihovnaHry();
+            long v = 0L, c = 0L;
+            try { File k = getPublicAtariHelpDownloadsDir(); v = k.getUsableSpace(); c = k.getTotalSpace(); } catch (Throwable ignored) {}
+            final long volno = v, celkem = c;
+            appendNativeLog("B339 TV: HRY V TELEVIZI " + hry.size() + " her, volno " + formatMb(volno) + " z " + formatMb(celkem));
+            ui.post(() -> ps1HryVTvUkaz(hry, volno, celkem));
+        }, "nap-ps1-hry-tv").start();
+    }
+
+    private void ps1HryVTvUkaz(final java.util.List<Ps1Hra> hry, long volno, long celkem) {
+        if (isFinishing()) return;
+        final boolean en = NapJazyk.en(this);
+        final String misto = volno > 0 && celkem > 0
+                ? NapPravidla.velikost(volno, en) + tx(" volno z ", " free of ") + NapPravidla.velikost(celkem, en) : "";
+        try {
+            android.app.AlertDialog.Builder b = new android.app.AlertDialog.Builder(this)
+                    .setTitle(tx("HRY V TELEVIZI", "GAMES ON THIS TV") + (misto.isEmpty() ? "" : " · " + misto));
+            if (hry.isEmpty()) {
+                b.setMessage(tx("Zatím tu není žádná stažená PS1 hra.\nHru stáhneš přes HRY ZE SERVERU N&P.",
+                                "No PS1 game downloaded yet.\nGet one from GAMES FROM THE N&P SERVER."))
+                 .setPositiveButton(tx("HRY ZE SERVERU N&P", "GAMES FROM THE N&P SERVER"), (d, w) -> {
+                     appendNativeLog("B339 TV: HRY V TELEVIZI (prazdne) -> HRY ZE SERVERU N&P");
+                     napOtevriHry("ps1");
+                 })
+                 .setNegativeButton(tx("ZAVŘÍT", "CLOSE"), null);
+            } else {
+                final String[] polozky = new String[hry.size()];
+                for (int i = 0; i < hry.size(); i++) {
+                    Ps1Hra h = hry.get(i);
+                    polozky[i] = h.nazev + " · " + NapPravidla.velikost(h.bajtu, en) + (h.pozice ? tx(" · uložená pozice", " · saved position") : "");
+                }
+                b.setItems(polozky, (d, w) -> { if (w >= 0 && w < hry.size()) ps1HraVTv(hry.get(w)); })
+                 .setNegativeButton(tx("ZAVŘÍT", "CLOSE"), null);
+            }
+            b.show();
+        } catch (Throwable t) {
+            appendNativeLog("B339 TV_HRY_V_TV_CHYBA " + safeMsg(t));
+        }
+    }
+
+    /** B339: jedna stazena hra - SPUSTIT / SMAZAT HRU / SMAZAT HRU I ULOZENOU POZICI (jako kos v panelu CD ISO). */
+    private void ps1HraVTv(final Ps1Hra h) {
+        final boolean en = NapJazyk.en(this);
+        final String[] polozky = {
+                tx("▶ SPUSTIT", "▶ PLAY"),
+                tx("SMAZAT HRU (uložená pozice zůstane)", "DELETE GAME (saved position stays)"),
+                tx("SMAZAT HRU I ULOŽENOU POZICI", "DELETE GAME AND SAVED POSITION")
+        };
+        try {
+            new android.app.AlertDialog.Builder(this)
+                    .setTitle(h.nazev + " · " + NapPravidla.velikost(h.bajtu, en))
+                    .setItems(polozky, (d, w) -> {
+                        if (w == 0) ps1HraVTvSpust(h);
+                        else if (w == 1 || w == 2) ps1HraVTvSmaz(h, w == 2);
+                    })
+                    .setNegativeButton(tx("ZPĚT", "BACK"), (d, w) -> ps1HryVTv())
+                    .show();
+        } catch (Throwable t) {
+            appendNativeLog("B339 TV_HRA_V_TV_CHYBA " + safeMsg(t));
+        }
+    }
+
+    /**
+     * B339: spustit stazenou hru - stejna Java jako ▶ v panelu CD ISO (AHPS1.ps1LibraryLaunch). Nahravaci
+     * obrazovku stranka PS1 ukaze sama (sleduje stav "PS1_REMOTE_BOOTING #cislo" - nahravaniStav, B308).
+     */
+    private void ps1HraVTvSpust(final Ps1Hra h) {
+        final String u = web == null ? null : web.getUrl();
+        if (u == null || !isPs1OwnerUrl(u)) {
+            appendNativeLog("B339 TV: HRY V TELEVIZI -> SPUSTIT " + h.key + " - neni otevrena stranka PS1");
+            return;
+        }
+        appendNativeLog("B339 TV: HRY V TELEVIZI -> SPUSTIT " + h.key + " (" + h.soubor + ")");
+        new Thread(() -> {   // jako most stranky (ten bezi mimo hlavni vlakno)
+            try { ps1LibraryLaunchByKey(h.key); } catch (Throwable t) { appendNativeLog("B339 TV: SPUSTIT selhalo " + safeMsg(t)); }
+        }, "nap-ps1-spust-tv").start();
+    }
+
+    private void ps1HraVTvSmaz(final Ps1Hra h, final boolean sPozici) {
+        appendNativeLog("B339 TV: HRY V TELEVIZI -> SMAZAT " + h.key + (sPozici ? " i s ulozenou pozici" : " (pozice zustane)"));
+        new Thread(() -> {
+            String r;
+            try { r = ps1LibraryDeleteByKey(h.key, sPozici); } catch (Throwable t) { r = "PS1_LIBRARY_DELETE_FAIL " + safeMsg(t); }
+            final boolean ok = r.startsWith("PS1_LIBRARY_DELETE_OK");
+            ui.post(() -> {
+                final boolean en = NapJazyk.en(this);
+                try {
+                    android.widget.Toast.makeText(this, ok
+                            ? tx("Smazáno: ", "Deleted: ") + h.nazev + tx(" (uvolněno ~", " (freed ~") + NapPravidla.velikost(h.bajtu, en) + ")"
+                            : tx("Smazat nešlo: ", "Could not delete: ") + h.nazev, android.widget.Toast.LENGTH_LONG).show();
+                } catch (Throwable ignored) {}
+                ps1HryVTv();   // seznam znovu - novy volny prostor
+            });
+        }, "nap-ps1-smazat-tv").start();
+    }
+
+    /** B339: na TV pri MALO MISTA misto mizejici hlasky na strance (pod obrazem) dialog s cestou k HRY V TELEVIZI. */
+    private void ps1MaloMistaTv(long potreba, long volno) {
+        if (isFinishing()) return;
+        appendNativeLog("B339 TV: PS1 MALO MISTA - nabidka HRY V TELEVIZI");
+        final boolean en = NapJazyk.en(this);
+        final String p = NapPravidla.velikost(potreba, en), v = NapPravidla.velikost(volno, en);
+        try {
+            new android.app.AlertDialog.Builder(this)
+                    .setTitle(tx("MÁLO MÍSTA V TELEVIZI", "NOT ENOUGH SPACE ON THE TV"))
+                    .setMessage(tx("Na tuhle PS1 hru je potřeba volno asi " + p + ", v televizi je volno " + v + ".\n\n"
+                                    + "Smaž staženou PS1 hru, kterou už nehraješ (HRY V TELEVIZI), nebo uvolni místo "
+                                    + "v nastavení televize (Úložiště) a zkus to znovu.",
+                                   "This PS1 game needs about " + p + " free, the TV has " + v + " free.\n\n"
+                                    + "Delete a downloaded PS1 game you no longer play (GAMES ON THIS TV) or free up space "
+                                    + "in the TV settings (Storage) and try again."))
+                    .setPositiveButton(tx("HRY V TELEVIZI", "GAMES ON THIS TV"), (d, w) -> ps1HryVTv())
+                    .setNegativeButton(tx("ZAVŘÍT", "CLOSE"), null)
+                    .show();
+        } catch (Throwable t) {
+            appendNativeLog("B339 TV_MALO_MISTA_CHYBA " + safeMsg(t));
         }
     }
 
@@ -10978,6 +11126,28 @@ public class MainActivity extends Activity {
             return vykon();
         }
 
+        /**
+         * B339: OPTIONS -> ULOZISTE. Rene: "nevim jakou ma kapacitu disk v tv". JSON: volno, celkem (bajty, misto
+         * pro appky a soubory - Download/AtariHelp), ps1Her, ps1Bajtu, popis (veta CZ / EN). Jen stranky appky.
+         */
+        @JavascriptInterface
+        public String uloziste() {
+            final String u = napAktualniUrl;
+            if (u == null || !u.startsWith("file:///android_asset/")) return "{}";
+            try {
+                long volno = 0L, celkem = 0L;
+                try { File k = getPublicAtariHelpDownloadsDir(); volno = k.getUsableSpace(); celkem = k.getTotalSpace(); } catch (Throwable ignored) {}
+                final java.util.List<Ps1Hra> hry = ps1KnihovnaHry();
+                long ps1 = 0L;
+                for (Ps1Hra h : hry) ps1 += h.bajtu;
+                final String popis = NapPravidla.ulozistePopis(volno, celkem, hry.size(), ps1, napJeTv(), NapJazyk.en(MainActivity.this));
+                return "{\"volno\":" + volno + ",\"celkem\":" + celkem + ",\"ps1Her\":" + hry.size() + ",\"ps1Bajtu\":" + ps1
+                        + ",\"popis\":" + jsonQuote(popis) + "}";
+            } catch (Throwable t) {
+                return "{}";
+            }
+        }
+
         /** Vrati aktualni tridu (0/1/2). Volat z menu:  AHRENDER.getPerf() */
         @JavascriptInterface
         public int getPerf() {
@@ -12439,8 +12609,10 @@ public class MainActivity extends Activity {
         // B338: SEGA / PS1 na TV - kratka rada, kde jsou hry (menu konzole na ZPET)
         if (isSegaNativeOwnerUrl(url) || isPs1OwnerUrl(url)) {
             try {
-                android.widget.Toast.makeText(this, tx("Ovladač: ZPĚT = menu konzole (hry ze serveru N&P, pozice, hlavní menu)",
-                        "Remote: BACK = console menu (games from the N&P server, positions, main menu)"), android.widget.Toast.LENGTH_LONG).show();
+                final boolean ps1 = isPs1OwnerUrl(url);   // B339: PS1 navic hry v televizi
+                android.widget.Toast.makeText(this, tx("Ovladač: ZPĚT = menu konzole (hry ze serveru N&P" + (ps1 ? ", hry v televizi" : "") + ", pozice, hlavní menu)",
+                        "Remote: BACK = console menu (games from the N&P server" + (ps1 ? ", games on this TV" : "") + ", positions, main menu)"),
+                        android.widget.Toast.LENGTH_LONG).show();
             } catch (Throwable ignored) {}
         }
         try { if (menuPlocha == null && demoPlocha == null) web.requestFocus(); } catch (Throwable ignored) {}
@@ -13613,9 +13785,23 @@ public class MainActivity extends Activity {
         }
         return new File(new File(getFilesDir(), "ps1_saves"), base + ".slot0.state");
     }
-    private String ps1LibraryListJson() {
-        StringBuilder sb = new StringBuilder("[");
-        boolean first = true;
+    /** B339: jedna stazena PS1 hra v knihovne (panel CD ISO na telefonu, HRY V TELEVIZI na TV). */
+    static final class Ps1Hra {
+        final String key, nazev, soubor;
+        final long bajtu;
+        final boolean pozice;
+        Ps1Hra(String key, String nazev, String soubor, long bajtu, boolean pozice) {
+            this.key = key; this.nazev = nazev; this.soubor = soubor; this.bajtu = bajtu; this.pozice = pozice;
+        }
+    }
+
+    /**
+     * Stazene PS1 hry. B339: velikost = cela slozka hry (drive jen spousteci soubor - u .cue par bajtu,
+     * ale .bin vedle zabiraji stovky MB), jmeno z katalogu N&P (slozka "nap_ps1-...") nebo souboru bez pripony.
+     */
+    private java.util.List<Ps1Hra> ps1KnihovnaHry() {
+        java.util.ArrayList<Ps1Hra> hry = new java.util.ArrayList<>();
+        java.util.Map<String, String> nazvy = null;
         try {
             File[] roots = new File[] { new File(getPublicAtariHelpDownloadsDir(), "PS1"), ps1PrivateRemoteGamesDir() };
             java.util.HashSet<String> seenKeys = new java.util.HashSet<>();
@@ -13629,21 +13815,78 @@ public class MainActivity extends Activity {
                     if (!seenKeys.add(key)) continue; // stejna hra v public i private - jen jednou
                     File boot = ps1ReadCachedBootFile(dir);
                     if (boot == null) continue; // rozdelane/nekompletni stazeni - do knihovny nepatri
-                    File save = ps1LibrarySaveStateFor(key, boot.getName());
-                    if (!first) sb.append(",");
-                    first = false;
-                    sb.append("{\"key\":\"").append(jsonEsc(key)).append("\"")
-                      .append(",\"nazev\":\"").append(jsonEsc(boot.getName())).append("\"")
-                      .append(",\"bytes\":").append(boot.length())
-                      .append(",\"ma_ulozenou_hru\":").append(save.exists() ? "true" : "false")
-                      .append("}");
+                    if (nazvy == null && key.startsWith("nap_")) nazvy = napNazvyHer();
+                    String nejvetsi = boot.getName().toLowerCase(Locale.US).startsWith("_ps1_synth") ? ps1NejvetsiSoubor(dir) : null;
+                    String nazev = NapPravidla.ps1JmenoHry(nazvy == null ? null : nazvy.get(key), boot.getName(), nejvetsi);
+                    hry.add(new Ps1Hra(key, nazev, boot.getName(), dirSizeBytes(dir), ps1LibrarySaveStateFor(key, boot.getName()).exists()));
                 }
             }
         } catch (Throwable t) {
             appendNativeLog("BUILD2SB14 PS1_LIBRARY_LIST_FAIL " + safeMsg(t));
         }
+        return hry;
+    }
+
+    private String ps1LibraryListJson() {
+        StringBuilder sb = new StringBuilder("[");
+        for (Ps1Hra h : ps1KnihovnaHry()) {
+            if (sb.length() > 1) sb.append(",");
+            sb.append("{\"key\":").append(NapJson.uvoz(h.key))
+              .append(",\"nazev\":").append(NapJson.uvoz(h.nazev))
+              .append(",\"bytes\":").append(h.bajtu)
+              .append(",\"ma_ulozenou_hru\":").append(h.pozice ? "true" : "false")
+              .append("}");
+        }
         sb.append("]");
         return sb.toString();
+    }
+
+    /** B339: nazvy her N&P z posledniho seznamu ze serveru (nap_hry_seznam.json): slozka "nap_<id>" -> nazev. */
+    private java.util.Map<String, String> napNazvyHer() {
+        java.util.HashMap<String, String> m = new java.util.HashMap<>();
+        try {
+            File f = new File(getFilesDir(), "nap_hry_seznam.json");
+            if (!f.isFile()) return m;
+            java.util.Map<String, Object> o = NapJson.objekt(new String(napCtiSoubor(f, 16 * 1024 * 1024), "UTF-8"));
+            Object hry = o == null ? null : o.get("hry");
+            if (!(hry instanceof java.util.List)) return m;
+            for (Object h : (java.util.List<?>) hry) {
+                if (!(h instanceof java.util.Map)) continue;
+                @SuppressWarnings("unchecked") java.util.Map<String, Object> hm = (java.util.Map<String, Object>) h;
+                String id = NapJson.text(hm, "id"), n = NapJson.text(hm, "nazev");
+                if (id.length() > 0 && n.trim().length() > 0) m.put("nap_" + id, n.trim());
+            }
+        } catch (Throwable ignored) {}
+        return m;
+    }
+
+    /** B339: nejvetsi soubor ve slozce hry (datova stopa) - jmeno hry u CUE slozeneho appkou. */
+    private String ps1NejvetsiSoubor(File dir) {
+        String jm = null;
+        long max = -1L;
+        File[] kids = dir == null ? null : dir.listFiles();
+        if (kids != null) for (File k : kids) {
+            String n = k.getName().toLowerCase(Locale.US);
+            if (!k.isFile() || n.startsWith("_ps1_") || n.endsWith(".cue") || n.endsWith(".part")) continue;
+            if (k.length() > max) { max = k.length(); jm = k.getName(); }
+        }
+        return jm;
+    }
+
+    /**
+     * B339: slozka hry bez znacky _ps1_boot.name = hra nikdy nebyla hotova (nepovedene stazeni / rozbaleni,
+     * zbyly ZIP) -> smazat celou, at na TV nezabira misto. Hotove hry (se znackou) se nemazou nikdy.
+     */
+    private void ps1UklidNedokonceneho(File dir, String proc) {
+        try {
+            if (dir == null || !dir.isDirectory() || ps1RemoteCacheMarker(dir).isFile()) return;
+            long b = dirSizeBytes(dir);
+            boolean ok = deleteTree(dir);
+            appendNativeLog("B339 PS1 nedokoncena hra smazana (" + proc + "): " + dir.getName() + ", uvolneno " + formatMb(b)
+                    + (ok ? "" : " (cast zustala)"));
+        } catch (Throwable t) {
+            appendNativeLog("B339 PS1 uklid nedokoncene hry selhal: " + safeMsg(t));
+        }
     }
     private String jsonEsc(String s) {
         if (s == null) return "";
@@ -13908,6 +14151,16 @@ public class MainActivity extends Activity {
                 appendNativeLog("BUILD2SA9 PS1_BIOS_INSTALLED_FROM_LOADGAME count=" + biosN);
                 throw new IOException("BIOS NAINSTALOVAN (" + biosN + " souboru) - tohle byl BIOS, ne hra. Ted spust HRU a SONY logo pojede.");
             }
+            // B339: misto na rozbaleni podle skutecnych velikosti v ZIPu (ZIP uz je na disku, po rozbaleni se smaze).
+            // Pred stazenim jen odhad 2x velikost ZIPu - PS1 .bin se v ZIPu zmensi i na polovinu, pak by disk
+            // (TV ma malo mista) dosel v pulce rozbalovani.
+            long rozbaleno = 0L;
+            java.util.Enumeration<? extends java.util.zip.ZipEntry> enS = zip.entries();
+            while (enS.hasMoreElements()) {
+                java.util.zip.ZipEntry zs = enS.nextElement();
+                if (zs != null && !zs.isDirectory() && isPs1ZipPayloadName(zs.getName()) && zs.getSize() > 0) rozbaleno += zs.getSize();
+            }
+            ps1OverMisto(dir, NapPravidla.ps1PotrebaRozbaleni(rozbaleno), "rozbaleni ZIP " + formatMb(rozbaleno));
             java.util.zip.ZipEntry cue = null;
             java.util.zip.ZipEntry primary = null;
             java.util.Enumeration<? extends java.util.zip.ZipEntry> en = zip.entries();
@@ -14096,14 +14349,31 @@ public class MainActivity extends Activity {
         return sum;
     }
     private void ps1EnsureFreeSpace(File dir, long contentLength) throws IOException {
-        long need = contentLength > 0 ? (contentLength * 2 + 200L * 1024 * 1024) : 1600L * 1024 * 1024;
-        long usable = 0L;
-        try { usable = dir.getUsableSpace(); } catch (Throwable ignored) {}
-        if (usable > 0 && usable < need) {
-            throw new IOException("MALO MISTA v telefonu: potreba ~" + formatMb(need) + ", volne " + formatMb(usable)
-                    + ". PS1 cache byla prave automaticky uklizena - uvolni jeste misto v telefonu a zkus znovu.");
+        ps1OverMisto(dir, NapPravidla.ps1PotrebaMista(contentLength), "stazeni " + formatMb(contentLength));
+    }
+
+    /**
+     * B339: malo mista pro PS1 hru. Drive hlaska "MALO MISTA v telefonu ... PS1 cache byla prave automaticky
+     * uklizena" - na TV "v telefonu" a uklid uz od SB14 neni (knihovna her). Na TV appka nabidne HRY V TELEVIZI.
+     */
+    static final class Ps1MaloMista extends IOException {
+        final long potreba, volno;
+        Ps1MaloMista(long potreba, long volno, String zprava) {
+            super(zprava);
+            this.potreba = potreba;
+            this.volno = volno;
         }
-        appendNativeLog("BUILD2SA5AR PS1_SPACE_CHECK need=" + formatMb(need) + " usable=" + formatMb(usable));
+    }
+
+    /** B339: je dost volneho mista? Ne -> Ps1MaloMista (hlaska v jazyce appky, na TV s cestou k HRY V TELEVIZI). */
+    private void ps1OverMisto(File dir, long potreba, String co) throws IOException {
+        long volno = 0L;
+        try { volno = dir.getUsableSpace(); } catch (Throwable ignored) {}
+        if (!NapPravidla.dostMista(volno, potreba)) {
+            appendNativeLog("B339 PS1 MALO MISTA (" + co + "): potreba " + formatMb(potreba) + ", volno " + formatMb(volno));
+            throw new Ps1MaloMista(potreba, volno, NapPravidla.ps1MaloMista(potreba, volno, napJeTv(), NapJazyk.en(this)));
+        }
+        appendNativeLog("BUILD2SA5AR PS1_SPACE_CHECK need=" + formatMb(potreba) + " usable=" + formatMb(volno) + " (" + co + ")");
     }
     // ============================================================================
     // BUILD2SB1: VLASTNI TV VYSTUP (Presentation API) - infrastruktura pro CELOU
@@ -14223,10 +14493,12 @@ public class MainActivity extends Activity {
         new Thread(() -> {
             HttpURLConnection c = null;
             File part = null;
+            File hraDir = null;   // B339: pri chybe se nedokoncena hra smaze (malo mista na TV)
             try {
                 String downloadUrl = ps1ResolveRemoteDownloadUrl(url);
                 boolean googleDrive = isGoogleDriveUrl(url);
                 File dir = ps1RemoteCacheDir(url);
+                hraDir = dir;
                 File cached = ps1ReadCachedBootFile(dir);
                 if (cached != null) {
                     synchronized (MainActivity.this) {
@@ -14365,6 +14637,15 @@ public class MainActivity extends Activity {
                 ps1LastBootResult = "PS1_REMOTE_FAIL " + safeMsg(t);
                 setPs1RemoteStatus(ps1LastBootResult);
                 try { if (part != null && part.exists()) part.delete(); } catch (Throwable ignored) {}
+                // B339: nepovedene stazeni / rozbaleni nesmi zabirat misto (ZIP, pulka rozbalenych souboru) -
+                // jen kdyz mezitim nezacalo jine stahovani (stejna slozka hry)
+                boolean moje;
+                synchronized (MainActivity.this) { moje = downloadGen == ps1LifecycleGen; }
+                if (moje) ps1UklidNedokonceneho(hraDir, t instanceof Ps1MaloMista ? "malo mista" : "chyba stahovani");
+                if (t instanceof Ps1MaloMista && napJeTv()) {
+                    final Ps1MaloMista mm = (Ps1MaloMista) t;
+                    ui.post(() -> ps1MaloMistaTv(mm.potreba, mm.volno));
+                }
             } finally {
                 try { if (c != null) c.disconnect(); } catch (Throwable ignored) {}
                 synchronized (MainActivity.this) {
