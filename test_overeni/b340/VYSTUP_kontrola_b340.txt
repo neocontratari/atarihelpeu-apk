@@ -1,0 +1,20 @@
+OK     D1 ve hre klavesa podle konzole (NapDalkovy.proHru(kod, kon) - cisla PS1 / SEGA)
+OK     D2 Atari: cislice = klavesy 0-9 Atari (klavesnice v C++ B302 - drzeni, tempo pro OS), pred prevodem na gamepad
+OK     D3 klavesy jdou do jadra pres podrzeni sipky (NapDrzeniSmeru) + casovac + log B340 PODRZENI SIPKY
+OK     D4 kazde tlacitko ovladace ve hre jednou do logu (kod, scan, jmeno zarizeni) - i ta, co nic nedelaji
+OK     D5 do jadra stejne mosty jako B334 (C++ nap_ovladac.h rozhodne, co tlacitko udela)
+OK     D6 casovac podrzene sipky na vlaknu UI (jako udalosti), konci, kdyz se neceka
+OK     D7 nova stranka: podrzena sipka se zapomene
+OK     P1 NapDalkovy: cisla PS1 (kolem petky) / SEGA (rady A B C) / ATARI, puvodni proHru(k) zustava (JVM TestB340)
+OK     P2 nap_ovladac.h beze zmeny: SEGA leve = A, spodni = B; PS1 horni = TROJUHELNIK (na tom stoji rozlozeni cisel)
+OK     P3 NapDrzeniSmeru: cisty Java (okno 120 ms, cekani 250 ms, zrus) - JVM test vcetne 5000 nahodnych sekvenci
+OK     M1 menu konzole SEGA / PS1: START (PS1 i SELECT, Sega A / B / C), OVLADANI, pri otevreni vse pustit
+OK     M2 akce: START / SELECT / A B C jako klavesy gamepadu (stejne jako cisla), OVLADANI = dialog
+OK     M3 menu pristroje Atari: HLAVNI MENU porad prvni, pak START / SELECT / OPTION, OVLADANI
+OK     M4 stisk z menu: po zavreni dialogu (150 ms), drzeno 250 ms (hra ho uvidi nekolik snimku), pak pusteni
+OK     O1 vstup do konzole na TV: kratke rozlozeni (PS1, SEGA, nove i Atari)
+OK     O2 OVLADANI DALKOVYM OVLADACEM: cele rozlozeni vsech tri konzoli + podrzeni sipky (CZ / EN)
+OK     O3 napoveda CZ / EN: hrani dalkovym ovladacem
+OK     O4 build.gradle: versionCode 383 "EMU10-B340-TV-DALKOVY-OVLADAC"
+OK     T1 test b314 menu opraven: SPUSTIT u zamcene SEGY = stranka ODEMKNOUT (B322, kontrola 1c), zamerne zmeny B320-B339 vyjmenovane
+VYSLEDEK: 19 kontrol, 0 CHYBA

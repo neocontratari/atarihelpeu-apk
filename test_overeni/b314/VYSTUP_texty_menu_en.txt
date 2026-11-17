@@ -16,29 +16,39 @@ ATARIHELP.EU
 OFFICIAL WEBSITE
 HELP
 GUIDE AND FAQ
-Atari 130XE with VBXE graphics, all in C++. Keyboard, joystick, tapes, disks and games from atarihelp.eu.
+Atari 130XE with VBXE graphics, all in C++. Keyboard, joystick, tapes, disks and games from the N&P server.
 ▶ START
 René Frank
 OPTIONS
 START WEB TV
 OPEN IN A BROWSER ON YOUR TV OR PC
 same Wi-Fi · click the picture to turn the sound on
+APP LOG FOR SUPPORT
 PLAY INTRO
 DOWNLOAD GAMES AND BIOS
 UPDATE THE APP
 TV TEST: BOTH
+GAME CONTROLLER
+AUTOMATIC
+ALWAYS TOUCH
+HIDE TOUCH
+CONNECT CONTROLLER (BLUETOOTH)
+BLUETOOTH SETTINGS
+TURN ON LOCATION
 SERVICE
 CONFIRM CODE
 UNLOCK NEXT
 LOCK ALL
 SETTINGS
-AUTOMATIC
 MANUAL
 The app sets everything itself to suit your phone
-PICTURE QUALITY (WEB TV)
+DEVICE PERFORMANCE
+AUTO
 LOW
-MED
 HIGH
+STORAGE
+PICTURE QUALITY (WEB TV)
+MED
 SOUND (LATENCY)
 AUTO - to suit your phone (applies the next time a game starts)
 CLOSE
@@ -48,10 +58,10 @@ aria-label=OPTIONS
 aria-label=Cards
 placeholder=SERVICE CODE
 aria-label=Service code
-LOCKED · Type 47 more program lines on the Atari (numbered lines – they count on RUN or LIST).
-🔒 LOCKED
-LOCKED Type 47 more program lines on the Atari (numbered lines – they count on RUN or LIST).
-LOCKED · Unlock the Sega first, then play it for 30 minutes.
+LOCKED · Type 47 more program lines on the Atari – or unlock it now.
+🔓 UNLOCK
+LOCKED · Unlock the Sega first, then play it for 120 hours.
+No controller – once one is connected (Retroid, Bluetooth, USB) the touch buttons hide in games
 Manual settings - choose below
 LOW - most reliable, highest latency (applies the next time a game starts)
 HIGH - lowest latency, may crackle (applies the next time a game starts)

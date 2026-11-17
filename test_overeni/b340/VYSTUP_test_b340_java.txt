@@ -1,0 +1,12 @@
+OK     R1) PS1 cisla (rada i numericka klavesnice): 0=START 1=L1 2=Y 3=R1 4=X 5=SELECT 6=B 7=L2 8=A 9=R2 -> nap_ovladac.h: Y = TROJUHELNIK, X = CTVEREC, B = KOLECKO, A = KRIZEK
+OK     R2) SEGA cisla: 1 4 7 = X (Sega A), 2 5 8 = A (Sega B), 3 6 9 = B (Sega C), 0 = START
+OK     R3) ATARI cislice -1 (klavesy Atari, B302); sipky, OK, PLAY / MENU = START, barvy, kanaly jako B334 u vsech konzoli; ZPET neni klavesa hry
+OK     R4) cislice (rada / numericka), smer krizku (OK neni smer)
+OK     H1) jedno tlacitko naraz: drzim VPRAVO, OK -> jadro: [0 +RIGHT, 1000 -RIGHT, 1000 +RIGHT, 1000 +A, 1300 -A, 2000 -RIGHT] (pusteni a znovu stisk v tytez ms - hra nepozna; VPRAVO drzeno pres cely skok, navrat VPRAVO od ovladace beze zmeny)
+OK     H2) ovladac se dvema tlacitky naraz: [0 +RIGHT, 500 +A, 800 -A, 1000 -RIGHT] - nic se nepodrzi
+OK     H3) VPRAVO se po skoku nevratilo: drzeno jeste 240 ms po OK, pusteno v 1550 (1550 -RIGHT)
+OK     H4) tuknuti VPRAVO, OK az za 200 ms: [0 +RIGHT, 100 -RIGHT, 300 +A, 400 -A] - nic se nepodrzi
+OK     H5) behem podrzeni VPRAVO prijde VLEVO: [1200 -A, 1250 -RIGHT, 1250 +LEFT] - VPRAVO pusteno, VLEVO stisknuto
+OK     H6) menu konzole / jina stranka: zrus() - nic se nepodrzuje (klavesy v jadru pusti ovladacPustVse)
+OK     H7) 5000 nahodnych sekvenci (pulka jedno tlacitko naraz, pulka vic): po pusteni vseho zaseknuto 0, podrzeni sipky celkem 24571
+VYSLEDEK: 11 testu, 0 CHYBA

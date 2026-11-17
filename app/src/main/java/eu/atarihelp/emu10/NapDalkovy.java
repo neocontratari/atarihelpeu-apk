@@ -52,6 +52,76 @@ final class NapDalkovy {
         }
     }
 
+    // ---------------- B340: hrat jen dalkovym ovladacem ----------------
+    // Rene: "at to jde hrat v zakladu podle dalkoveho ovladace - sipky jsou na kazdym a cisla taky".
+    // Cisla ve hrach drive nedelala nic. Ted podle konzole (co tlacitko udela, rozhoduje dal C++
+    // nap_ovladac.h jako u gamepadu: A = spodni, B = prave, X = leve, Y = horni):
+
+    static final int KONZOLE_PS1 = 1, KONZOLE_SEGA = 2, KONZOLE_ATARI = 3;
+
+    /** B340: cislice dalkoveho ovladace (rada 0-9 i numericka klavesnice) -> 0..9, jinak -1. */
+    static int cislice(int k) {
+        if (k >= KeyEvent.KEYCODE_0 && k <= KeyEvent.KEYCODE_9) return k - KeyEvent.KEYCODE_0;
+        if (k >= KeyEvent.KEYCODE_NUMPAD_0 && k <= KeyEvent.KEYCODE_NUMPAD_9) return k - KeyEvent.KEYCODE_NUMPAD_0;
+        return -1;
+    }
+
+    /**
+     * B340 PS1: cisla kolem petky jako tlacitka ovladace PlayStation - 2 = TROJUHELNIK (horni), 4 = CTVEREC
+     * (leve), 6 = KOLECKO (prave), 8 = KRIZEK (spodni); rohy 1 = L1, 3 = R1, 7 = L2, 9 = R2; 5 SELECT, 0 START.
+     */
+    private static final int[] PS1_CISLA = {
+            KeyEvent.KEYCODE_BUTTON_START,    // 0
+            KeyEvent.KEYCODE_BUTTON_L1,       // 1
+            KeyEvent.KEYCODE_BUTTON_Y,        // 2  horni = TROJUHELNIK
+            KeyEvent.KEYCODE_BUTTON_R1,       // 3
+            KeyEvent.KEYCODE_BUTTON_X,        // 4  leve = CTVEREC
+            KeyEvent.KEYCODE_BUTTON_SELECT,   // 5
+            KeyEvent.KEYCODE_BUTTON_B,        // 6  prave = KOLECKO
+            KeyEvent.KEYCODE_BUTTON_L2,       // 7
+            KeyEvent.KEYCODE_BUTTON_A,        // 8  spodni = KRIZEK
+            KeyEvent.KEYCODE_BUTTON_R2        // 9
+    };
+
+    /**
+     * B340 SEGA: jadro ma ovladac se 3 tlacitky (A B C + START, nap_ovladac.h segaBity) - kazda rada cisel
+     * = A B C (leve = A, prostredni = B, prave = C: 1 4 7 = A, 2 5 8 = B, 3 6 9 = C), 0 START.
+     */
+    private static final int[] SEGA_CISLA = {
+            KeyEvent.KEYCODE_BUTTON_START,                                                     // 0
+            KeyEvent.KEYCODE_BUTTON_X, KeyEvent.KEYCODE_BUTTON_A, KeyEvent.KEYCODE_BUTTON_B,   // 1 2 3 = A B C
+            KeyEvent.KEYCODE_BUTTON_X, KeyEvent.KEYCODE_BUTTON_A, KeyEvent.KEYCODE_BUTTON_B,   // 4 5 6 = A B C
+            KeyEvent.KEYCODE_BUTTON_X, KeyEvent.KEYCODE_BUTTON_A, KeyEvent.KEYCODE_BUTTON_B    // 7 8 9 = A B C
+    };
+
+    /**
+     * B340: klavesa dalkoveho ovladace pro hru konkretni konzole. Cisla: PS1 a SEGA na tlacitka (vyse),
+     * ATARI -1 (cislice jsou klavesy Atari - MainActivity je posle klavesnici Atari, B302). Ostatni
+     * klavesy stejne jako proHru(k).
+     */
+    static int proHru(int k, int konzole) {
+        final int c = cislice(k);
+        if (c >= 0) {
+            if (konzole == KONZOLE_PS1) return PS1_CISLA[c];
+            if (konzole == KONZOLE_SEGA) return SEGA_CISLA[c];
+            return -1;
+        }
+        return proHru(k);
+    }
+
+    /** B340: smer krizku (pro podrzeni sipky - NapDrzeniSmeru). */
+    static boolean jeSmer(int k) {
+        switch (k) {
+            case KeyEvent.KEYCODE_DPAD_UP: case KeyEvent.KEYCODE_DPAD_DOWN:
+            case KeyEvent.KEYCODE_DPAD_LEFT: case KeyEvent.KEYCODE_DPAD_RIGHT:
+            case KeyEvent.KEYCODE_DPAD_UP_LEFT: case KeyEvent.KEYCODE_DPAD_UP_RIGHT:
+            case KeyEvent.KEYCODE_DPAD_DOWN_LEFT: case KeyEvent.KEYCODE_DPAD_DOWN_RIGHT:
+                return true;
+            default:
+                return false;
+        }
+    }
+
     /** Klavesa dalkoveho ovladace -> klavesa gamepadu pro hlavni menu (MainActivity.ovladacMenu), -1 = nic. */
     static int proMenu(int k) {
         switch (k) {

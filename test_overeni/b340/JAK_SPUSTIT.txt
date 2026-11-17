@@ -1,0 +1,55 @@
+B340 - ANDROID TV: HRA JEN DALKOVYM OVLADACEM (CISLA PODLE KONZOLE, START V MENU ZPET, PODRZENI SIPKY) (17. 11. 2026)
+=====================================================================================================================
+
+Rene (porada po B339): "Navrhuji ja at to jde hrat v zakladu podle dalkoveho ovladace - sipky jsou na kazdym a cisla
+taky bt je bonus" ... "Ja nespustim hru v buildu B339 ... mam jen ovladac a bt d-pad neni sparovany ... vidim jen demo"
+... "najdi si ovladac k te televizi a naved me - pokud to v kodu B339 neni udelej kod jak sme se dohodli".
+
+PRICINA "VIDIM JEN DEMO": Sonic na uvodni obrazovce ceka jen na START. OK na ovladaci = tlacitko A (Sonic ho na uvodni
+obrazovce ignoruje a po chvili pusti vlastni demo). START byl v B339 jen na ▶❚❚ / ▶ / ❚❚ / MENU. K TV (log: model
+"BeyondTV", Android 9) daval TCL ovladac RC802N (cisla, barevna tlacitka, ▶ ❚❚) nebo RC802V (mensi, mikrofon, bez cisel
+a bez ▶ - START z ovladace v B339 nedostal). Cisla ve hrach v B339 nedelala nic. Navod Renemu: RC802N -> ▶ / ❚❚ = START.
+
+OPRAVA (jak jsme se dohodli):
+0) OCI (Rene: "bod 4 schvaluju ty musis mit oci"): test_overeni/b314/test_b314_jazyk_menu.py padal od B336 (vyjimka, zadny
+   vysledek): krok "SPUSTIT u zamcene SEGY" od B322 otevre stranku ODEMKNOUT -> dalsi kroky nemely karty. Ted kontrola 1c
+   (SPUSTIT -> hry/odemknout.html?co=sega) a srovnani cestiny s B313 vyjmenovava zamerne zmeny B320-B339 (cele radky
+   OPTIONS + zmenene texty karet). Zkouska: zmeneny text "PUSTIT INTRO" -> test spadne (3 CHYBA). Ted 10 OK.
+1) CISLA PODLE KONZOLE (NapDalkovy.proHru(k, konzole); co tlacitko udela, rozhoduje dal C++ nap_ovladac.h jako u gamepadu):
+   - PS1: kolem petky jako ovladac PlayStation: 2 = TROJUHELNIK, 4 = CTVEREC, 6 = KOLECKO, 8 = KRIZEK; rohy 1 / 3 / 7 / 9 =
+     L1 / R1 / L2 / R2; 5 = SELECT; 0 = START (rada cisel i numericka klavesnice),
+   - SEGA: jadro ma ovladac se 3 tlacitky - kazda rada cisel = A B C (1 4 7 = A, 2 5 8 = B, 3 6 9 = C), 0 = START,
+   - ATARI: cislice = klavesy 0-9 Atari (klavesnice v C++ B302: drzeni, tempo pro OS) - hry "1 nebo 2 hraci".
+   Ostatni klavesy beze zmeny (OK = hlavni tlacitko, ▶❚❚ / MENU = START, barvy, P+ / P-).
+2) START V MENU ZPET (jde s kazdym ovladacem - ZPET ma kazdy): PS1 START + SELECT, SEGA START + A / B / C, ATARI START /
+   SELECT / OPTION (HLAVNI MENU porad prvni). Stisk po zavreni menu, drzeny 250 ms. Polozka OVLADANI DALKOVYM OVLADACEM
+   = cele rozlozeni. Pri otevreni menu se vse pusti (pusteni klavesy by jinak skoncilo v dialogu).
+3) PODRZENI SIPKY (NapDrzeniSmeru): ovladac, ktery posle jen jedno tlacitko naraz - drzim VPRAVO + OK -> ovladac VPRAVO
+   pusti a posle OK. Kdyz akce prijde do 120 ms po pusteni sipky, appka sipku v tytez ms znovu stiskne a drzi ji, dokud
+   trva akce; po akci pocka 250 ms, jestli ji ovladac zase posle (drzeni), jinak ji pusti. Ovladace se dvema tlacitky naraz
+   to nespusti. Pusteni sipky jde do jadra hned (zastaveni postavy se nezpozdi). Log "B340 PODRZENI SIPKY".
+4) LOG: kazde tlacitko ovladace ve hre jednou "B340 DALKOVY TLACITKO: KEYCODE_x (kod, scan, zarizeni "...")" - i ta, co nic
+   nedelaji (zjistime, co posila ⋯ Options ovladace RC802V). Pri vstupu do konzole na TV kratke rozlozeni (i Atari).
+5) Napoveda CZ / EN (Android TV: Hrani dalkovym ovladacem), build.gradle versionCode 383 "EMU10-B340-TV-DALKOVY-OVLADAC".
+
+Spoustet z adresare test_overeni/b340 (PRAC = pracovni slozka, AJ = android-34.jar):
+A) JVM (NapDalkovy, NapDrzeniSmeru):
+   javac -encoding UTF-8 --release 17 -cp AJ -d PRAC ../../app/src/main/java/eu/atarihelp/emu10/{NapDalkovy,NapDrzeniSmeru}.java \
+         jvm/eu/atarihelp/emu10/TestB340.java && java -cp PRAC:AJ eu.atarihelp.emu10.TestB340
+                                          -> VYSTUP_test_b340_java.txt (11 OK: R1-R4 cisla PS1 / SEGA / ATARI, beze zmeny
+                                             ostatni klavesy; H1-H6 podrzeni sipky (jedno / dve tlacitka naraz, pustena
+                                             behem skoku, tuknuti, jina sipka, zrus); H7 5000 nahodnych sekvenci - nic
+                                             nezustane stisknute)
+B) Zapojeni: python3 kontrola_b340.py   -> VYSTUP_kontrola_b340.txt (19 OK)
+C) javac vsech zdroju appky proti android-34.jar -> VYSTUP_javac_android.txt (0 chyb, 120 trid, 33 zdroju)
+D) Oci: python3 ../b314/test_b314_jazyk_menu.py (10 OK, drive padal) -> ../b314/VYSTUP_test_b314_jazyk_menu.txt
+E) Regrese -> VYSTUP_regrese_*.txt: b339 stranky (6 OK), b338 stranky (5 OK), b337 stranky (8 OK), b334 TV ovladani
+   (13 OK), JVM b334 (5 OK) a b338 (4 OK) s novym NapDalkovy, b311 napoveda CZ (209 nazvu 0 chyb), b314 napoveda EN
+   (201 nazvu 0 chyb), b314 menu (10 OK). Zamerne zmenene stare kontroly zapojeni: kontrola_b339 T1 (menu PS1 ma navic
+   START / SELECT / OVLADANI) + N2 verze; kontrola_b338 K2 (menu konzole), K5 (rada pri vstupu = rozlozeni) + O3 verze;
+   kontrola_b337 A1 (menu Atari: START / SELECT / OPTION po HLAVNIM MENU) + L3 verze; kontrola_b336 A2 (uz od B337) + N2;
+   kontrola_b334 D2 (klavesy do jadra pres napDalkovyDoJadra a podrzeni sipky) + N2 verze.
+   POZOR: skripty jinych buildu prepisuji sve VYSTUP soubory - po regresi "git checkout -- test_overeni/bNNN".
+
+Na televizi NEOVERENO (Rene): Sonic - ZPET -> ▶ START (nebo ▶ / ❚❚ / 0 na ovladaci) -> hra zacne; drzet VPRAVO + OK (skok
+za behu - v logu B340 PODRZENI SIPKY, kdyz to ovladac potrebuje); cisla v PS1 / Sega / Atari; log "B340 DALKOVY TLACITKO".

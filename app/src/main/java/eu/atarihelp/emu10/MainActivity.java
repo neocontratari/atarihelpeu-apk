@@ -9177,17 +9177,23 @@ public class MainActivity extends Activity {
     /** B336: Android TV - menu pristroje Atari na tlacitko ZPET (servisni tlacitka jsou jen na vysku). */
     private void atariCppTvMenu() {
         appendNativeLog("B336 TV: ZPET -> menu pristroje Atari (hry, disketa, kazeta, reset, zpet do menu)");
+        napDalkovyPustVse("menu pristroje Atari");   // B340: nic nesmi zustat stisknute (pusteni prijde do dialogu)
         // B337: Rene - "u atari se neda vratit zpet do hlavni nabidky jen zase vyber her". ZPET DO MENU
         // byla az OSMA polozka (na televizi pod okrajem okna - ramecek zacinal na NET / HRY). Ted je
         // HLAVNI MENU prvni (ramecek na ni) a ZPET jeste jednou = rovnou hlavni menu.
+        // B340: START / SELECT / OPTION (konzolova tlacitka Atari) z menu - jdou s kazdym ovladacem
         final String[] polozky = {
                 tx("⌂ HLAVNÍ MENU (konec Atari)", "⌂ MAIN MENU (quit Atari)"),
+                "▶ START",
+                "SELECT",
+                "OPTION",
                 tx("NET / HRY - hry ze serveru N&P", "NET / GAMES - games from the N&P server"),
                 tx("XEX / SOUBOR - hra nebo cartridge (.car) z televize / USB", "XEX / FILE - a game or cartridge (.car) from the TV / USB"),
                 tx("ATR / DISK - disketa do D1: (vysunout, vyměnit)", "ATR / DISK - disk in D1: (eject, swap)"),
                 tx("KAZETA (WAV) - hry z kazety", "TAPE (WAV) - games on tape"),
                 "TURBO BASIC XL",
                 "RESET ATARI",
+                tx("OVLÁDÁNÍ DÁLKOVÝM OVLADAČEM", "PLAYING WITH THE TV REMOTE"),
                 tx("NÁPOVĚDA", "HELP")
         };
         try {
@@ -9196,12 +9202,16 @@ public class MainActivity extends Activity {
                     .setItems(polozky, (dlg, w) -> {
                         switch (w) {
                             case 0: atariTvDoMenu("polozka HLAVNI MENU"); break;
-                            case 1: atariZarizeniAkce(1); break;
-                            case 2: atariZarizeniAkce(2); break;
-                            case 3: atariZarizeniAkce(3); break;
-                            case 4: atariZarizeniAkce(9); break;
-                            case 5: atariZarizeniAkce(4); break;
-                            case 6: NativeAtariCoreBridge.devCtlSafe("atari_reset"); break;
+                            case 1: napTvStiskni(OVL_ATARI, KeyEvent.KEYCODE_BUTTON_START, "START"); break;
+                            case 2: napTvStiskni(OVL_ATARI, KeyEvent.KEYCODE_BUTTON_SELECT, "SELECT"); break;
+                            case 3: napTvStiskni(OVL_ATARI, KeyEvent.KEYCODE_BUTTON_MODE, "OPTION"); break;   // atariBity: MODE = OPTION
+                            case 4: atariZarizeniAkce(1); break;
+                            case 5: atariZarizeniAkce(2); break;
+                            case 6: atariZarizeniAkce(3); break;
+                            case 7: atariZarizeniAkce(9); break;
+                            case 8: atariZarizeniAkce(4); break;
+                            case 9: NativeAtariCoreBridge.devCtlSafe("atari_reset"); break;
+                            case 10: napTvOvladaniDialog(OVL_ATARI); break;
                             default: atariZarizeniAkce(7); break;   // NAPOVEDA
                         }
                     })
@@ -9237,22 +9247,34 @@ public class MainActivity extends Activity {
     private void konzoleTvMenu(final boolean ps1) {
         final String jm = ps1 ? "PS1" : "SEGA";
         appendNativeLog("B338 TV: ZPET -> menu konzole " + jm + " (hry ze serveru N&P, pozice, hlavni menu)");
+        napDalkovyPustVse("menu konzole " + jm);   // B340: nic nesmi zustat stisknute (pusteni prijde do dialogu)
         // B339: PS1 navic HRY V TELEVIZI (stazene hry - spustit / smazat; panel CD ISO je jen na vysku)
+        // B340: START (a SELECT, u Segy A / B / C) - jde s kazdym ovladacem; Rene: "nespustim hru ... vidim jen
+        // demo" (Sonic na uvodni obrazovce ceka jen na START, OK = A; ovladac bez ▶❚❚ / MENU START nema)
         final String[] polozky = ps1 ? new String[]{
                 tx("HRY ZE SERVERU N&P", "GAMES FROM THE N&P SERVER"),
                 tx("HRY V TELEVIZI (stažené – spustit / smazat)", "GAMES ON THIS TV (downloaded – play / delete)"),
+                tx("▶ START (začít hru / pauza)", "▶ START (start the game / pause)"),
+                "SELECT",
                 tx("ULOŽIT POZICI (SAVE GAME)", "SAVE POSITION (SAVE GAME)"),
                 tx("NAČÍST ULOŽENOU POZICI", "LOAD SAVED POSITION"),
                 tx("RESET (BIOS BEZ CD)", "RESET (BIOS WITHOUT CD)"),
+                tx("OVLÁDÁNÍ DÁLKOVÝM OVLADAČEM", "PLAYING WITH THE TV REMOTE"),
                 tx("⌂ HLAVNÍ MENU", "⌂ MAIN MENU")
         } : new String[]{
                 tx("HRY ZE SERVERU N&P", "GAMES FROM THE N&P SERVER"),
+                tx("▶ START (začít hru / pauza)", "▶ START (start the game / pause)"),
+                tx("TLAČÍTKO A", "BUTTON A"),
+                tx("TLAČÍTKO B", "BUTTON B"),
+                tx("TLAČÍTKO C", "BUTTON C"),
                 tx("ULOŽIT POZICI VE HŘE", "SAVE POSITION IN THE GAME"),
                 tx("NAČÍST ULOŽENOU POZICI", "LOAD SAVED POSITION"),
+                tx("OVLÁDÁNÍ DÁLKOVÝM OVLADAČEM", "PLAYING WITH THE TV REMOTE"),
                 tx("⌂ HLAVNÍ MENU", "⌂ MAIN MENU")
         };
-        // akce polozek (konzoleTvAkce): 0 N&P, 4 HRY V TELEVIZI, 1 ulozit, 2 nacist, 3 reset, -1 hlavni menu
-        final int[] akce = ps1 ? new int[]{0, 4, 1, 2, 3, -1} : new int[]{0, 1, 2, -1};
+        // akce polozek (konzoleTvAkce): 0 N&P, 4 HRY V TELEVIZI, 5 START, 6 SELECT, 7 / 8 / 10 SEGA A / B / C,
+        // 1 ulozit, 2 nacist, 3 reset, 9 ovladani, -1 hlavni menu
+        final int[] akce = ps1 ? new int[]{0, 4, 5, 6, 1, 2, 3, 9, -1} : new int[]{0, 5, 7, 8, 10, 1, 2, 9, -1};
         try {
             final android.app.AlertDialog d = new android.app.AlertDialog.Builder(this)
                     .setTitle(tx((ps1 ? "PLAYSTATION" : "SEGA MEGA DRIVE") + " · ZPĚT znovu = hlavní menu",
@@ -9304,6 +9326,24 @@ public class MainActivity extends Activity {
                     break;
                 case 4:
                     if (ps1) ps1HryVTv();   // B339
+                    break;
+                case 5:     // B340: START z menu - jde s kazdym ovladacem
+                    napTvStiskni(ps1 ? OVL_PS1 : OVL_SEGA, KeyEvent.KEYCODE_BUTTON_START, "START");
+                    break;
+                case 6:
+                    if (ps1) napTvStiskni(OVL_PS1, KeyEvent.KEYCODE_BUTTON_SELECT, "SELECT");
+                    break;
+                case 7:     // SEGA A / B / C (nap_ovladac.h segaBity: leve = A, spodni = B, prave = C)
+                    if (!ps1) napTvStiskni(OVL_SEGA, KeyEvent.KEYCODE_BUTTON_X, "A");
+                    break;
+                case 8:
+                    if (!ps1) napTvStiskni(OVL_SEGA, KeyEvent.KEYCODE_BUTTON_A, "B");
+                    break;
+                case 10:
+                    if (!ps1) napTvStiskni(OVL_SEGA, KeyEvent.KEYCODE_BUTTON_B, "C");
+                    break;
+                case 9:
+                    napTvOvladaniDialog(ps1 ? OVL_PS1 : OVL_SEGA);
                     break;
                 default:
                     break;
@@ -12558,6 +12598,106 @@ public class MainActivity extends Activity {
             appendNativeLog("B334 DALKOVY OVLADAC: " + KeyEvent.keyCodeToString(kod) + " -> " + kam);
     }
 
+    // ---------------- B340: hrat jen dalkovym ovladacem ----------------
+    private final NapDrzeniSmeru napDrzeni = new NapDrzeniSmeru();
+    private int napDrzeniKam = OVL_NIC;
+    private boolean napDrzeniHlidaSe = false;
+    private final java.util.HashSet<Integer> napDalkovyZapsano = new java.util.HashSet<>();
+
+    /**
+     * B340: kazde tlacitko dalkoveho ve hre jednou do logu (i to, ktere nic nedela) - aby bylo videt, co
+     * ovladac TV posila (Rene: "najdi si ovladac k te televizi" - RC802N s cisly / RC802V bez cisel).
+     */
+    private void napDalkovyZapis(KeyEvent e, String kde) {
+        final int kod = e.getKeyCode();
+        if (napDalkovyZapsano.size() >= 60 || !napDalkovyZapsano.add(kod)) return;
+        String zar = "";
+        try { InputDevice d = e.getDevice(); if (d != null) zar = d.getName(); } catch (Throwable ignored) {}
+        appendNativeLog("B340 DALKOVY TLACITKO: " + KeyEvent.keyCodeToString(kod) + " (kod " + kod + ", scan " + e.getScanCode()
+                + ", zarizeni \"" + zar + "\") ve hre " + kde);
+    }
+
+    /** B340: klavesa gamepadu do jadra konzole (jako drive primo v napDalkovyKlavesa). */
+    private int napDalkovyDoJadra(int kam, int k, boolean dolu) {
+        if (kam == OVL_PS1) { ovlPouzitPs1 = true; return NativePs1CoreBridge.ovladacKlavesaSafe(k, dolu); }
+        if (kam == OVL_SEGA) { ovlPouzitSega = true; return NativeSegaCoreBridge.ovladacKlavesaSafe(k, dolu); }
+        if (kam == OVL_ATARI) { ovlPouzitAtari = true; return NativeAtariCoreBridge.devOvladacKlavesaSafe(k, dolu); }
+        return 0;
+    }
+
+    /** B340: casovac podrzene sipky - kdyz ji ovladac po akci uz neposle, pustit (NapDrzeniSmeru.CEKANI_MS). */
+    private void napDrzeniHlidej() {
+        if (napDrzeniHlidaSe) return;
+        napDrzeniHlidaSe = true;
+        ui.postDelayed(new Runnable() {
+            @Override public void run() {
+                final int kam = napDrzeniKam;
+                try {
+                    napDrzeni.tik(android.os.SystemClock.uptimeMillis(), (k, d) -> napDalkovyDoJadra(kam, k, d));
+                } catch (Throwable ignored) {}
+                if (napDrzeni.cekaPusteni()) ui.postDelayed(this, 50);
+                else napDrzeniHlidaSe = false;
+            }
+        }, 50);
+    }
+
+    /** B340: menu konzole / odchod ze hry - nic nesmi zustat stisknute (ovladac pusti klavesu uz v dialogu). */
+    private void napDalkovyPustVse(String proc) {
+        napDrzeni.zrus();
+        ovladacPustVse(proc);
+    }
+
+    /**
+     * B340: tlacitko konzole z menu ZPET (START, SELECT, A / B / C, OPTION) - jde s kazdym ovladacem
+     * (ZPET ma kazdy; START jinak jen ▶❚❚ / MENU, cisla nema kazdy). Stisk po zavreni menu, drzeny 250 ms
+     * (hra ho uvidi nekolik snimku), pak pusteni.
+     */
+    private void napTvStiskni(final int kam, final int k, final String jm) {
+        appendNativeLog("B340 TV: menu " + OVL_KAM[kam] + " -> " + jm);
+        ui.postDelayed(() -> { try { napDalkovyDoJadra(kam, k, true); } catch (Throwable ignored) {} }, 150);
+        ui.postDelayed(() -> { try { napDalkovyDoJadra(kam, k, false); } catch (Throwable ignored) {} }, 400);
+    }
+
+    /** B340: OVLADANI DALKOVYM OVLADACEM - cele rozlozeni tlacitek konzole (menu ZPET, napoveda). */
+    private void napTvOvladaniDialog(int kam) {
+        appendNativeLog("B340 TV: OVLADANI DALKOVYM OVLADACEM (" + OVL_KAM[kam] + ")");
+        final String drzeni = tx("\n\nOvladač, který pošle jen jedno tlačítko naráz: drž šipku a zmáčkni tlačítko – appka šipku podrží"
+                        + " za tebe (Sonic skočí za běhu dopředu).",
+                "\n\nA remote that sends only one button at a time: hold an arrow and press a button – the app keeps the arrow"
+                        + " held for you (Sonic jumps forward while running).");
+        String text;
+        if (kam == OVL_PS1) text = tx("Šipky = směr · OK = ✕\n2 = △ · 4 = □ · 6 = ○ · 8 = ✕ (kolem pětky jako na ovladači PlayStation)\n"
+                        + "1 = L1 · 3 = R1 · 7 = L2 · 9 = R2\n5 = SELECT · 0 = START · ▶ / ❚❚ = START\n"
+                        + "P− / P+ (kanál) = L1 / R1 · červená ○ · zelená □ · žlutá △ · modrá SELECT\n"
+                        + "ZPĚT = menu: START, SELECT, hry, pozice, reset",
+                "Arrows = direction · OK = ✕\n2 = △ · 4 = □ · 6 = ○ · 8 = ✕ (around the 5 like on the PlayStation pad)\n"
+                        + "1 = L1 · 3 = R1 · 7 = L2 · 9 = R2\n5 = SELECT · 0 = START · ▶ / ❚❚ = START\n"
+                        + "P− / P+ (channel) = L1 / R1 · red ○ · green □ · yellow △ · blue SELECT\n"
+                        + "BACK = menu: START, SELECT, games, positions, reset");
+        else if (kam == OVL_SEGA) text = tx("Šipky = směr · OK = B (skok)\nkaždá řada čísel = A B C: 1 4 7 = A · 2 5 8 = B · 3 6 9 = C\n"
+                        + "0 = START · ▶ / ❚❚ = START\nP− = A · P+ = C (kanál) · zelená A · červená C\n"
+                        + "ZPĚT = menu: START, A, B, C, hry, pozice",
+                "Arrows = direction · OK = B (jump)\nevery row of numbers = A B C: 1 4 7 = A · 2 5 8 = B · 3 6 9 = C\n"
+                        + "0 = START · ▶ / ❚❚ = START\nP− = A · P+ = C (channel) · green A · red C\n"
+                        + "BACK = menu: START, A, B, C, games, positions");
+        else text = tx("Šipky = joystick · OK = FIRE\nčísla 0–9 = klávesy 0–9 na Atari (např. 1 nebo 2 hráči)\n▶ / ❚❚ = START\n"
+                        + "P− / P+ (kanál) = FIRE · červená FIRE · zelená MEZERA · žlutá RETURN · modrá SELECT\n"
+                        + "ZPĚT = menu: START, SELECT, OPTION, hry, disketa, kazeta, reset",
+                "Arrows = joystick · OK = FIRE\nnumbers 0–9 = keys 0–9 on the Atari (e.g. 1 or 2 players)\n▶ / ❚❚ = START\n"
+                        + "P− / P+ (channel) = FIRE · red FIRE · green SPACE · yellow RETURN · blue SELECT\n"
+                        + "BACK = menu: START, SELECT, OPTION, games, disk, tape, reset");
+        try {
+            new android.app.AlertDialog.Builder(this)
+                    .setTitle(tx("OVLÁDÁNÍ DÁLKOVÝM OVLADAČEM · ", "PLAYING WITH THE TV REMOTE · ") + (kam == OVL_PS1 ? "PLAYSTATION"
+                            : kam == OVL_SEGA ? "SEGA MEGA DRIVE" : "ATARI 130XE"))
+                    .setMessage(text + drzeni)
+                    .setPositiveButton(tx("HRÁT", "PLAY"), null)
+                    .show();
+        } catch (Throwable t) {
+            appendNativeLog("B340 TV_OVLADANI_CHYBA " + safeMsg(t));
+        }
+    }
+
     /** Dalkovy ovladac TV (a OK / START gamepadu v uvodnim demu). true = klavesa spotrebovana. */
     private boolean napDalkovyKlavesa(KeyEvent e) {
         final int akce = e.getAction();
@@ -12584,15 +12724,33 @@ public class MainActivity extends Activity {
             return true;
         }
         if (kam == OVL_PS1 || kam == OVL_SEGA || kam == OVL_ATARI) {
-            final int k = NapDalkovy.proHru(kod);
+            if (dolu && e.getRepeatCount() == 0) napDalkovyZapis(e, OVL_KAM[kam]);   // B340: kazde tlacitko jednou do logu
+            final int kon = kam == OVL_PS1 ? NapDalkovy.KONZOLE_PS1 : kam == OVL_SEGA ? NapDalkovy.KONZOLE_SEGA : NapDalkovy.KONZOLE_ATARI;
+            // B340: Atari - cislice ovladace = klavesy 0-9 Atari (hry: "1 nebo 2 hraci"). Klavesnice v C++ (B302):
+            // drzeni, tempo pro OS Atari, rezim PSANI / HRANI.
+            final int cis = NapDalkovy.cislice(kod);
+            if (kon == NapDalkovy.KONZOLE_ATARI && cis >= 0) {
+                if (dolu && e.getRepeatCount() > 0) return true;
+                ovlPouzitAtari = true;
+                NativeAtariCoreBridge.devPcKlavesaSafe("Digit" + cis, String.valueOf(cis), 0, dolu);
+                if (dolu) napDalkovyLog(kod, "Atari jako klavesa " + cis);
+                return true;
+            }
+            final int k = NapDalkovy.proHru(kod, kon);
             if (k < 0) return false;
             if (dolu && e.getRepeatCount() > 0) return true;      // drzene tlacitko: jadro uz ho ma
-            int t;
-            if (kam == OVL_PS1) { ovlPouzitPs1 = true; t = NativePs1CoreBridge.ovladacKlavesaSafe(k, dolu); }
-            else if (kam == OVL_SEGA) { ovlPouzitSega = true; t = NativeSegaCoreBridge.ovladacKlavesaSafe(k, dolu); }
-            else { ovlPouzitAtari = true; t = NativeAtariCoreBridge.devOvladacKlavesaSafe(k, dolu); }
+            // B340: pres podrzeni sipky (ovladac, ktery posle jen jedno tlacitko naraz - NapDrzeniSmeru)
+            final int[] t = {0};
+            napDrzeniKam = kam;
+            final boolean podrzel = napDrzeni.udalost(k, NapDalkovy.jeSmer(k), dolu, android.os.SystemClock.uptimeMillis(),
+                    (kk, dd) -> t[0] = napDalkovyDoJadra(kam, kk, dd));
+            if (podrzel && napDrzeni.podrzeni() <= 5)
+                appendNativeLog("B340 PODRZENI SIPKY (" + napDrzeni.podrzeni() + "x): ovladac pustil "
+                        + KeyEvent.keyCodeToString(napDrzeni.podrzena()) + " a hned poslal " + KeyEvent.keyCodeToString(k)
+                        + " - umi jen jedno tlacitko naraz, appka sipku drzi za nej (" + OVL_KAM[kam] + ")");
+            if (napDrzeni.cekaPusteni()) napDrzeniHlidej();
             if (dolu) napDalkovyLog(kod, OVL_KAM[kam] + " jako " + KeyEvent.keyCodeToString(k));
-            if (ovladac != null) ovladac.klavesa(e, k, OVL_KAM[kam] + " (dalkovy ovladac)", t);
+            if (ovladac != null) ovladac.klavesa(e, k, OVL_KAM[kam] + " (dalkovy ovladac)", t[0]);
             return true;
         }
         // stranky: sipky a OK resi stranka (nap_tv_ovladani.js) - WebView musi mit focus
@@ -12607,12 +12765,26 @@ public class MainActivity extends Activity {
     private void napTvStrankaNactena(String url) {
         if (!napJeTv() || web == null || url == null || !url.startsWith("file:///android_asset/")) return;
         // B338: SEGA / PS1 na TV - kratka rada, kde jsou hry (menu konzole na ZPET)
-        if (isSegaNativeOwnerUrl(url) || isPs1OwnerUrl(url)) {
+        // B340: + rozlozeni tlacitek dalkoveho ovladace (cele v menu ZPET -> OVLADANI DALKOVYM OVLADACEM), i Atari
+        if (isSegaNativeOwnerUrl(url) || isPs1OwnerUrl(url) || isAtariCppOwnerUrl(url)) {
             try {
-                final boolean ps1 = isPs1OwnerUrl(url);   // B339: PS1 navic hry v televizi
-                android.widget.Toast.makeText(this, tx("Ovladač: ZPĚT = menu konzole (hry ze serveru N&P" + (ps1 ? ", hry v televizi" : "") + ", pozice, hlavní menu)",
-                        "Remote: BACK = console menu (games from the N&P server" + (ps1 ? ", games on this TV" : "") + ", positions, main menu)"),
-                        android.widget.Toast.LENGTH_LONG).show();
+                final String text;
+                if (isPs1OwnerUrl(url))   // B339: PS1 navic hry v televizi
+                    text = tx("Ovladač: OK = ✕ · 2 4 6 8 = △ □ ○ ✕ · 1 3 7 9 = L1 R1 L2 R2 · 5 = SELECT · 0 = START\n"
+                                    + "ZPĚT = menu konzole (START, hry ze serveru N&P, hry v televizi, pozice, hlavní menu)",
+                            "Remote: OK = ✕ · 2 4 6 8 = △ □ ○ ✕ · 1 3 7 9 = L1 R1 L2 R2 · 5 = SELECT · 0 = START\n"
+                                    + "BACK = console menu (START, games from the N&P server, games on this TV, positions, main menu)");
+                else if (isSegaNativeOwnerUrl(url))
+                    text = tx("Ovladač: OK = B (skok) · řada čísel = A B C (1 2 3, 4 5 6, 7 8 9) · 0 = START\n"
+                                    + "ZPĚT = menu konzole (START, hry ze serveru N&P, pozice, hlavní menu)",
+                            "Remote: OK = B (jump) · a row of numbers = A B C (1 2 3, 4 5 6, 7 8 9) · 0 = START\n"
+                                    + "BACK = console menu (START, games from the N&P server, positions, main menu)");
+                else
+                    text = tx("Ovladač: šipky = joystick · OK = FIRE · čísla = klávesy 0–9\n"
+                                    + "ZPĚT = menu přístroje (START, SELECT, OPTION, hry, hlavní menu)",
+                            "Remote: arrows = joystick · OK = FIRE · numbers = keys 0–9\n"
+                                    + "BACK = device menu (START, SELECT, OPTION, games, main menu)");
+                android.widget.Toast.makeText(this, text, android.widget.Toast.LENGTH_LONG).show();
             } catch (Throwable ignored) {}
         }
         try { if (menuPlocha == null && demoPlocha == null) web.requestFocus(); } catch (Throwable ignored) {}
@@ -12875,6 +13047,7 @@ public class MainActivity extends Activity {
                 // odpovedi opret o nic jineho nez o jeho slovo.
                 try { appendNativeLog("BUILD2SA14 OBRAZOVKA url=" + url); } catch (Throwable ignored) {}
                 napAktualniUrl = url == null ? "" : url;   // B321: AHHRY odpovida jen strankam hry/
+                napDrzeni.zrus();                          // B340: podrzena sipka nepatri do dalsi stranky
                 // B321: nesparovany nebo zablokovany telefon - appka jen na strance aktivace (a v HELP)
                 if (napZamekStranky(url)) {
                     try { v.stopLoading(); } catch (Throwable ignored) {}

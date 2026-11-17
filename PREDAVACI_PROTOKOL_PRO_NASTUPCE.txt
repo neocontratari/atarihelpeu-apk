@@ -4230,4 +4230,27 @@
        na TV - PS1 jede 2x rozliseni, "nedotknutelne"; kdyby na TV sekalo, zeptat se, jestli LOW smi na TV
        PS1 snizit na 1x), HRY V TELEVIZI spustit / smazat.
 
+   B340: TV - HRA JEN DALKOVYM OVLADACEM (CISLA, START V MENU ZPET, PODRZENI SIPKY) + OCI (TEST B314) (17. 11. 2026).
+   Log z TV (B339): ULOZISTE 4,9 GB volno z 10,2 GB; Bomberman (ZIP 244 MB, stazeni 49 s, rozbaleni 86 s na 630 MB),
+   HRY V TELEVIZI smazani i s pozici (uvolneno 630 MB), Final Doom (7 stop) stazen a spusten za 78 s. PS1 ve hre
+   s pripojenym prohlizecem na PC (TV divaku 1): Bomberman 43-44 z 50 kroku/s, ~150 vypadku zvuku / 10 s, Final Doom
+   v akci 51-58 z 60; kresleni 2x (gpu_neon, procesor) 12-13 ms / snimek; behem stahovani bezi BIOS naplno. Porada
+   s Renem: ZIP zustava (.chd ne - komunita ma ZIPy), BIOS behem stahovani zastavit (B341, hra se musi spustit vzdy),
+   oci = opravit test b314, "hrat v zakladu dalkovym ovladacem, BT je bonus". Pak: "nespustim hru ... vidim jen demo"
+   (Sonic ceka na START, OK = A; START jen na ▶❚❚ / MENU). TV "BeyondTV": TCL RC802N (cisla, ▶ ❚❚) nebo RC802V (bez).
+     - Cisla podle konzole (NapDalkovy.proHru(k, konzole)): PS1 kolem petky (2 △ 4 □ 6 ○ 8 ✕, 1 3 7 9 = L1 R1 L2 R2,
+       5 SELECT, 0 START), SEGA kazda rada = A B C (jadro 3 tlacitka), 0 START, ATARI cislice = klavesy 0-9 (B302).
+     - Menu ZPET: START (PS1 + SELECT, SEGA + A / B / C, ATARI START / SELECT / OPTION), OVLADANI DALKOVYM OVLADACEM;
+       pri otevreni menu vse pustit. Pri vstupu do konzole na TV kratke rozlozeni (i Atari).
+     - Podrzeni sipky (NapDrzeniSmeru): ovladac s jednim tlacitkem naraz - sipka pustena a do 120 ms akce = drzet dal,
+       po akci 250 ms cekat na navrat. Log "B340 PODRZENI SIPKY", "B340 DALKOVY TLACITKO" (kazde tlacitko jednou).
+     - Oci: test b314 menu (padal od B336 - SPUSTIT u zamcene SEGY od B322 = stranka ODEMKNOUT) opraven, 10 OK.
+     - Testy test_overeni/b340 (JAK_SPUSTIT.txt). build.gradle: versionCode 383 "EMU10-B340-TV-DALKOVY-OVLADAC".
+       Na TV neovereno.
+     - DALSI KROK: Rene - Sonic: ZPET -> ▶ START, drzet VPRAVO + OK (skok za behu), cisla v PS1 / Sega / Atari, log
+       (B340 DALKOVY TLACITKO = co ovladac posila). PS1 se zavrenou WEB TV na PC (2x rozliseni na TV?). B341 podle
+       porady: BIOS behem stahovani zastavit (zaruka startu hry), hezke jmeno hry pri nahravani, misto u her mimo ZIP
+       jen velikost + 200 MB; pozdeji rozbalovani ZIPu uz pri stahovani + "zabere X MB / vejde se" v seznamu her
+       (server by posilal rozbalenou velikost).
+
 ===============================================================================

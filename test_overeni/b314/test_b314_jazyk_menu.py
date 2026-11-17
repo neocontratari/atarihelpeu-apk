@@ -48,11 +48,37 @@ MOCK = {
     'AHTVWEB.status': '',
 }
 
+# B340: co se v cestine hlavni nabidky ZAMERNE zmenilo od B313 (srovnani "cesky beze zmeny" plati pro vsechno
+# ostatni). Novy text v OPTIONS / kartach = pridat sem s cislem buildu, jinak kontrola 1 spadne (oci na cestinu).
+# cele nove radky OPTIONS (souvisly blok textu; AUTOMATICKY / LOW / HIGH uz v B313 byly u jinych radku -
+# jako samostatne texty by se lisil jen jejich pocet a poradi)
+BLOKY_PO_B313 = [
+    ('B320', ['HERNÍ OVLADAČ', 'AUTOMATICKY', 'VŽDY DOTYK', 'SKRÝT DOTYK']),
+    ('B331', ['PŘIPOJIT OVLADAČ (BLUETOOTH)', 'NASTAVENÍ BLUETOOTH', 'ZAPNOUT POLOHU']),
+    ('B338', ['VÝKON ZAŘÍZENÍ', 'AUTO', 'LOW', 'HIGH']),
+    ('B339', ['ÚLOŽIŠTĚ']),
+]
+PRIBYLO_PO_B313 = {
+    'Žádný ovladač – po připojení (Retroid, Bluetooth, USB) se dotyková tlačítka ve hře schovají': 'B320',
+    'Atari 130XE s grafikou VBXE, celé v C++. Klávesnice, joystick, kazety, diskety a hry ze serveru N&P.': 'B321',
+    '🔓 ODEMKNOUT': 'B322',
+    'ZAMČENO · Napiš v Atari ještě 47 řádků programu – nebo odemkni hned.': 'B322',
+    'ZAMČENO · Nejdřív odemkni Segu, pak 120 hodin hraní na Seze.': 'B322',
+    'LOG APPKY PRO PODPORU': 'B337',
+}
+UBYLO_PO_B313 = {
+    'Atari 130XE s grafikou VBXE, celé v C++. Klávesnice, joystick, kazety, diskety a hry z atarihelp.eu.': 'B321',
+    '🔒 ZAMČENO': 'B322',
+    'ZAMČENO · Napiš v Atari ještě 47 řádků programu (řádky s číslem, počítají se při RUN nebo LIST).': 'B322',
+    'ZAMČENO · Nejdřív odemkni Segu, pak 30 minut hraní na Seze.': 'B322',
+}
+
 # kroky v OPTIONS: (popis, javascript) - po kazdem se sbira text
 KROKY = [
     ('menu (karusel v HTML)', "1", 300),
     ('karta SEGA (zamcena)', "document.querySelectorAll('.karta')[1].click()", 900),
-    ('SPUSTIT u zamcene SEGY (hlaska)', "document.getElementById('spustit').click()", 150),
+    # B340: SPUSTIT u zamcene SEGY uz neni hlaska - od B322 otevre stranku ODEMKNOUT (hry/odemknout.html),
+    # stranka menu by odesla a dalsi kroky by nemely karty -> zvlast kontrola 1c
     ('karta PS1 (zamcena)', "document.querySelectorAll('.karta')[2].click()", 900),
     ('OPTIONS otevrene', "window.napOtevriNastaveni()", 150),
     ('RUCNE + zvuk LOW', "document.getElementById('stModeMan').click(); document.getElementById('stPLow').click()", 150),
@@ -71,6 +97,17 @@ KROKY = [
     ('ZAMKNOUT VSE', "document.getElementById('stZamkni').click()", 150),
     ('OPTIONS a AUTOMATICKY', "window.napOtevriNastaveni(); document.getElementById('stModeAuto').click()", 150),
 ]
+
+
+def bez_bloku(texty):
+    """B340: z textu stranky vyjme nove radky OPTIONS (BLOKY_PO_B313) - kazdy blok jednou, jen souvisly."""
+    t = list(texty)
+    for _, blok in BLOKY_PO_B313:
+        for i in range(len(t) - len(blok) + 1):
+            if t[i:i + len(blok)] == blok:
+                del t[i:i + len(blok)]
+                break
+    return t
 
 
 def projdi(page, url, jazyk, chyby_js, sbirej=True):
@@ -110,17 +147,30 @@ def main():
         puv = projdi(p0, zaklad0 + 'index.html', 'cs', chyby_js)
         rozdil = []
         for (popis, a), (_, b0) in zip(cz, puv):
-            ta = [t for t in a['texty'] if t not in ('ČEŠTINA', 'ENGLISH', 'JAZYK · LANGUAGE')]
-            tb = b0['texty']
+            ta = [t for t in bez_bloku(a['texty']) if t not in ('ČEŠTINA', 'ENGLISH', 'JAZYK · LANGUAGE') and t not in PRIBYLO_PO_B313]
+            tb = [t for t in b0['texty'] if t not in UBYLO_PO_B313]
             if ta != tb:
                 rozdil.append('%s: %s' % (popis, sorted(set(ta) ^ set(tb))[:6]))
             if a['atributy'] != b0['atributy']:
                 rozdil.append('%s atributy: %s' % (popis, sorted(set(a['atributy']) ^ set(b0['atributy']))[:6]))
-        over(not rozdil, '1) cesky: vsech %d stavu stranky ma stejne texty jako B313 (jen radek JAZYK · LANGUAGE navic)%s'
-             % (len(KROKY), '' if not rozdil else ' - ROZDIL: ' + ' | '.join(rozdil[:4])))
+        over(not rozdil, '1) cesky: vsech %d stavu stranky ma stejne texty jako B313 (jen radek JAZYK · LANGUAGE a %d zamernych zmen'
+             ' B320-B339 - BLOKY / PRIBYLO / UBYLO_PO_B313)%s'
+             % (len(KROKY), len(BLOKY_PO_B313) + len(PRIBYLO_PO_B313) + len(UBYLO_PO_B313), '' if not rozdil else ' - ROZDIL: ' + ' | '.join(rozdil[:4])))
         jaz = p1.evaluate("() => [document.getElementById('stJazCs').className, document.getElementById('stJazEn').className, document.documentElement.lang]")
         over(jaz[0] == 'active' and jaz[1] == '', '1b) cesky: v OPTIONS je oznacena CESTINA (%s)' % jaz)
         c1.close(); c0.close()
+
+        # --- 1c) B340: SPUSTIT u zamcene SEGY = stranka ODEMKNOUT (od B322; drive hlaska - krok v KROKY odesel ze stranky) ---
+        c5, p5 = stranka('cs')
+        p5.goto(zaklad + 'index.html')
+        p5.wait_for_timeout(400)
+        p5.evaluate("() => document.querySelectorAll('.karta')[1].click()")
+        p5.wait_for_timeout(900)
+        p5.evaluate("() => document.getElementById('spustit').click()")
+        p5.wait_for_timeout(700)
+        over(p5.url.endswith('hry/odemknout.html?co=sega'),
+             '1c) cesky: zamcena SEGA, SPUSTIT -> stranka ODEMKNOUT (%s)' % p5.url.replace(zaklad, ''))
+        c5.close()
 
         # --- 2) anglicky: zadny zbytek cestiny ---
         c2, p2 = stranka('en')
