@@ -1,0 +1,86 @@
+B335 - REGRESE KODEKU / HUBU: testy starsich verzi (b305 kodeky + pasy + hub, b306 hub6, b313 kodek menu, b319 kodek + hub,
+b320 kodek, b333 stranka) s hlavickami B335 a s cistou B334 (git worktree 32f83db) - regrese_kodeky.sh
+
+b305_kodeky: B334 35 kontrol, 0 chyb | B335 35 kontrol, 0 chyb
+b305_pasy: B334 OK | B335 OK
+b305_hub: B334 16 kontrol, 0 chyb | B335 16 kontrol, 0 chyb
+b306_hub6: B334 0 chyb | B335 0 chyb
+b313_kodek_menu: B334 11 OK, 0 CHYBA | B335 11 OK, 0 CHYBA
+b319_kodek: B334 14 OK, 0 CHYBA | B335 14 OK, 0 CHYBA
+b319_hub: B334 4 OK, 0 CHYBA | B335 4 OK, 0 CHYBA
+b320_kodek: B334 12 OK, 0 CHYBA | B335 12 OK, 0 CHYBA
+b333_stranka: B334 13 OK, 0 CHYBA | B335 13 OK, 0 CHYBA
+
+ROZDILY B334 -> B335 (casy, pocty paketu a vzorku zvuku podle rychlosti PC vynechany; radek B335 v logu vynechan):
+--- b305_kodeky
+< OK     320x240: vlastni koder rychlejsi nez stb (1.05 / X ms)
+> OK     320x240: vlastni koder rychlejsi nez stb (0.83 / X ms)
+< OK     640x480: vlastni koder rychlejsi nez stb (3.09 / X ms)
+> OK     640x480: vlastni koder rychlejsi nez stb (3.02 / X ms)
+--- b305_pasy: beze zmeny
+--- b305_hub
+<   prohlizec rychly: N paketu, presnych snimku 360, chybnych 0, starych 0, klicovych 3, beze zmeny 0, preskoceno snimku N, zmen rozmeru 2
+<      zvuk: N vzorku, navazuje 287519, skoku 0, chybnych 0
+>   prohlizec rychly: N paketu, presnych snimku 361, chybnych 0, starych 0, klicovych 3, beze zmeny 0, preskoceno snimku N, zmen rozmeru 2
+>      zvuk: N vzorku, navazuje 287999, skoku 0, chybnych 0
+<      zvuk: N vzorku, navazuje 226556, skoku 3, chybnych 0
+>      zvuk: N vzorku, navazuje 225596, skoku 3, chybnych 0
+< OK     Sega: obraz v obou prohlizecich je vzdy PRESNE snimek jadra (rychly 360, pomaly 124 snimku)
+< OK     Sega: rychly prohlizec dostava kazdy snimek (60.0/s z 60)
+> OK     Sega: obraz v obou prohlizecich je vzdy PRESNE snimek jadra (rychly 361, pomaly 124 snimku)
+> OK     Sega: rychly prohlizec dostava kazdy snimek (60.2/s z 60)
+<   prohlizec rychly: N paketu, obrazu 181, beze zmeny 180, PSNR prumer 37.2 dB nejhorsi 35.6 dB, nesedi 0, chyb 0
+<      zvuk: N vzorku, navazuje 264599, skoku 0, chybnych 0
+>   prohlizec rychly: N paketu, obrazu 182, beze zmeny 180, PSNR prumer 37.2 dB nejhorsi 35.6 dB, nesedi 0, chyb 0
+>      zvuk: N vzorku, navazuje 265040, skoku 0, chybnych 0
+<      zvuk: N vzorku, navazuje 262835, skoku 0, chybnych 0
+>      zvuk: N vzorku, navazuje 261953, skoku 0, chybnych 0
+< OK     PS1: hra na 30 snimku/s = 30 obrazu/s, druhy (stejny) snimek jen zvuk (181 obrazu, 180 beze zmeny)
+> OK     PS1: hra na 30 snimku/s = 30 obrazu/s, druhy (stejny) snimek jen zvuk (182 obrazu, 180 beze zmeny)
+< B306 TV PROUD PS1: prohlizec 2 odpojen po X s - N paketu, 4.0 MB celkem, JPEG kvalita 88 (max 88, snizeno 0x), kodovani prumer X ms max X ms (pasu 1), castecnych 0, zjemneni 0, beze zmeny N z N, zvuk preskoku N, paketu jen se zvukem 0 (zbyva N)
+> B306 TV PROUD PS1: prohlizec 2 odpojen po X s - N paketu, 4.0 MB celkem, JPEG kvalita 88 (max 88, snizeno 0x), kodovani prumer X ms max X ms (pasu 1), castecnych 0, zjemneni 0, beze zmeny N z N, zvuk preskoku N, paketu jen se zvukem 0 (zbyva N)
+--- b306_hub6: beze zmeny
+--- b313_kodek_menu: beze zmeny
+--- b319_kodek
+<    B) 1x 368x240: drive 19.5 kB/snimek, B319 5.3 kB/snimek, kopii 39, polovicnich 0, nejhorsi ctverec 12.8 (drive 12.4)
+>    B) 1x 368x240: drive 19.5 kB/snimek, B319 6.4 kB/snimek, kopii 39, polovicnich 0, nejhorsi ctverec 10.9 (drive 12.4)
+<    C) 3D 640x480: drive 91.9 kB/snimek, B319 91.9 kB/snimek, kopii 0, polovicnich 0; PSNR 24.87 / 24.87 dB; kodovani 2.20 / X ms
+>    C) 3D 640x480: drive 91.9 kB/snimek, B319 91.9 kB/snimek, kopii 0, polovicnich 0; PSNR 24.87 / 24.87 dB; kodovani 2.25 / X ms
+<    E) 736x480 -> 320x240 -> 736x480 -> 257x193: chyb 0, nejhorsi ctverec 32.0 (drive 32.0), kopii 23, polovicnich 120
+< OK     E11) zmena rozliseni a lichy rozmer: obraz porad spravne (nejhorsi ctverec 32.0, drive 32.0)
+>    E) 736x480 -> 320x240 -> 736x480 -> 257x193: chyb 0, nejhorsi ctverec 11.3 (drive 32.0), kopii 23, polovicnich 120
+> OK     E11) zmena rozliseni a lichy rozmer: obraz porad spravne (nejhorsi ctverec 11.3, drive 32.0)
+--- b319_hub
+<    prohlizec B319 : paketu N, 2.95 MB, kopii 299, polovicnich 1386, chyb 0; posledni snimek PSNR 40.60 dB, nejhorsi ctverec 2.2
+<    prohlizec stary: paketu N, 17.38 MB, kopii 0, polovicnich 0, chyb 0; posledni snimek PSNR 38.90 dB, nejhorsi ctverec 3.2
+>    prohlizec B319 : paketu N, 2.96 MB, kopii 299, polovicnich 1386, chyb 0; posledni snimek PSNR 40.60 dB, nejhorsi ctverec 2.2
+>    prohlizec stary: paketu N, 17.39 MB, kopii 0, polovicnich 0, chyb 0; posledni snimek PSNR 38.90 dB, nejhorsi ctverec 3.2
+< OK     4) B319 poslal mene dat nez stary (2884 kB proti 16977 kB)
+> OK     4) B319 poslal mene dat nez stary (2893 kB proti 16978 kB)
+--- b320_kodek
+<       posun mapy: drive 59.1 kB/obraz, B319 45.3 kB, B320 6.8 kB (12 % drivejska)
+<       pri 20 obrazech / s: drive 9.69 Mbit/s, B319 7.41 Mbit/s, B320 1.12 Mbit/s
+<       mapa stoji: drive 27.4 kB, B319 7.5 kB, B320 5.8 kB
+<       vernost PSNR prumer / nejhur / nejhorsi ctverec: drive 30.58 / 29.90 / 14.2, B319 30.60 / 29.92 / 14.2, B320 30.58 / 30.16 / 10.5
+<       polovicni rozliseni: B319 24 z 574 casti, B320 1208 z 1208
+>       posun mapy: drive 59.1 kB/obraz, B319 50.4 kB, B320 6.8 kB (12 % drivejska)
+>       pri 20 obrazech / s: drive 9.69 Mbit/s, B319 8.26 Mbit/s, B320 1.12 Mbit/s
+>       mapa stoji: drive 27.4 kB, B319 8.4 kB, B320 5.8 kB
+>       vernost PSNR prumer / nejhur / nejhorsi ctverec: drive 30.58 / 29.90 / 14.2, B319 30.81 / 30.31 / 14.0, B320 30.58 / 30.16 / 10.5
+>       polovicni rozliseni: B319 24 z 511 casti, B320 1208 z 1208
+< OK     A4) dat pri posunu mapy: B320 11 % drivejska (<= 40 %), 15 % B319 (<= 60 %)
+< OK     A5) 2x obraz s ditheringem v polovicnim rozliseni: 1208 z 1208 casti (B319 24 z 574)
+> OK     A4) dat pri posunu mapy: B320 11 % drivejska (<= 40 %), 13 % B319 (<= 60 %)
+> OK     A5) 2x obraz s ditheringem v polovicnim rozliseni: 1208 z 1208 casti (B319 24 z 511)
+<    B) 3D s ditheringem 640x480: drive 114.7 kB, B320 114.7 kB; kopii 0, polovicnich 0; PSNR 22.09 / 22.09 dB; kodovani 2.30 / X ms
+>    B) 3D s ditheringem 640x480: drive 114.7 kB, B320 114.7 kB; kopii 0, polovicnich 0; PSNR 22.09 / 22.09 dB; kodovani 2.39 / X ms
+<    D) Dune s ditheringem 368x240 (bez Enhanced Resolution): kopie B319 0 z 144, B320 144 z 144; dat drive 29.8 kB, B320 9.0 kB; nejhorsi ctverec 14.1 (drive 13.7)
+< OK     D11) puvodni rozliseni s ditheringem: posun v 144 z 144 obrazu (B319 0), dat 30 % drivejska, nejhorsi ctverec 14.1 (drive 13.7)
+>    D) Dune s ditheringem 368x240 (bez Enhanced Resolution): kopie B319 0 z 144, B320 144 z 144; dat drive 29.8 kB, B320 10.9 kB; nejhorsi ctverec 11.0 (drive 13.7)
+> OK     D11) puvodni rozliseni s ditheringem: posun v 144 z 144 obrazu (B319 0), dat 36 % drivejska, nejhorsi ctverec 11.0 (drive 13.7)
+--- b333_stranka: beze zmeny
+
+Vyklad: menu (b313), stranky appky (b333), Sega / hub (b305, b306) beze zmeny (jen kolisani casovani PC).
+PS1: 1x mapa (b319 B) a rezim 'B319 presne' (b320, bez tolerance - v appce se nepouziva) maji vic dat (male casti
+4:4:4), nejhorsi ctverec mensi; b319 E11 (zmena rozliseni) nejhorsi ctverec 32.0 -> 11.3. Rezim appky (B320 s toleranci) beze zmeny.
+Napoveda: ../b311/kontrola_navodu.py 201 nazvu 0 CHYBA, ../b314/kontrola_navodu_en.py 194 nazvu 0 CHYBA (vystupy nize).

@@ -1,0 +1,81 @@
+B335 - ZVUK YOUTUBE Z APKY NA TV + VODOROVNE CARKY V DUNE 2000 NA TV (17. 11. 2026)
+====================================================================================
+
+Rene (log B333 z telefonu, Android 9): "vsechny testy v poradku az na to ze yt nebere zvuk z apky na tv
+web a v dune vodorovne carky zustaly ale mazou se ... chyby jsou i ve wifi jsem schvalne dal od routeru".
+
+1) YOUTUBE BEZ ZVUKU NA TV
+   PRICINA (log): YOUTUBE_AUDIO_BRIDGE_LIVE_EQ result="controls_ready_ORIGINAL_SOUND_untouched" pri kazdem
+   nacteni YouTube a proud stranky "zvuk 0 vzorku/s". Zvuk na TV jde jen z audio grafu (odbocka ->
+   AHTVWEB.pushYoutubePcm16 -> proud stranky v C++), ale graf se od BUILD2SA14 ("ORIGINAL FIRST") stavel
+   JEN tlacitkem EQ. Bez otevreni EQ tedy TV zvuk nikdy nedostala.
+   OPRAVA (MainActivity.napTvWebInjectYoutubeAudioBridge + AHTVWEB.tvPosloucha):
+   - AHTVWEB.tvPosloucha() = na TV se opravdu nekdo diva (prohlizec pripojeny k proudu stranky z C++,
+     strankaStav bit 2). Bez divaka hraje YouTube v telefonu dal nedotceny original.
+   - kdyz se diva: graf se postavi pri prehravani (posluchac 'play' / 'playing' na dokumentu - YouTube
+     meni videa bez nacteni stranky) a kontrola kazdych 1,5 s (TV se pripoji, az kdyz video uz hraje),
+     jako prehravac MP3 od SH2 ("casting BEZI -> stavim audio graf pro stream");
+   - pripoji se kazdy prehravany <video> / <audio> (Shorts, reklama, dalsi klip) do jednoho grafu
+     (vstup -> EQ -> hlasitost -> repro + odbocka pro TV);
+   - prvek se pripoji, AZ kdyz AudioContext bezi (pripojeny prvek hraje uz jen grafem - stojici kontext
+     by telefon umlcel) a jen zdroj, ktery WebAudio smi cist (blob: = MSE YouTube, stejny web, CORS) -
+     cizi zdroj by dal ticho v telefonu i na TV, tak hraje dal original;
+   - log: "[NAP PLAYER] B335 YOUTUBE ZVUK NA TV: ... -> ok_live_eq" (JSLOG) a v Jave
+     "B335 YOUTUBE ZVUK NA TV: zvuk z YouTube jde do proudu stranky (48000 Hz, 2 kanaly ...)".
+
+2) VODOROVNE CARKY V DUNE 2000 (zustanou, pak se smazou)
+   OPRAVA MOJI CHYBY Z B333: tehdy jsem tvrdil "skoro jiste vykreslovac gpu_neon ve 2x, ne prenos" -
+   NEBYLA to pravda. Carky dela prenos na TV (kodek JPEG), dukaz nize ve skutecnem Chromiu.
+   PRICINA: barvy 4:2:0 (kvalita do 90) - prohlizec pri rozbaleni JPEG dopocitava barvy mezi radky
+   ("fancy upsampling") i pres hranici ctvercu 16x16: spodni radek ctverce (radek obrazu 16k-1) dostane
+   1/4 barvy radku pod hranici. Cast JPEG obsahuje i stojici ctverec nad jednotkou (obdelnik kolem zmen),
+   jeho spodni radek tak dostane 1/4 zelene z pruhu zdravi. Jednotka odejde, posle se jen jeji ctverec -
+   stojici ctverec se nezmenil, kodek ho neposle (pred = presny snimek) a zelena 1/4 zustane. Smaze ji
+   az zjemneni 94 (barvy v plnem rozliseni), ktere se u PS1 dela, jen kdyz CELY obraz stoji - proto
+   "zustaly ale mazou se". Fotka B332: carky na radcich 95, 111, 127, 159, 175, 191 = 16k-1 (presne).
+   OPRAVA (nap_tv_proud_jpeg.h, jen proud PS1 - nastavKodekPs1; menu, stranky appky a demo beze zmeny):
+   - plneBarvyDo = 55 000 bodu: mala cast (jednotky, kurzor, pruh mapy) jde s barvami 4:4:4 - mezi
+     ctverci se nic nedopocitava, carka nevznikne (dat +10-14 % v Dune, obraz vernejsi o 0,7 dB);
+   - velka cast (cely obraz - posun mapy, 3D hra) dal 4:2:0 (koder nema vic prace - S8), ale kodek si
+     pamatuje hrany ctvercu rozbalene se sousedem v temze JPEG (hrany420_); kdyz se soused zmeni a ctverec
+     se neposila, posle se taky (doplnSousedy) - 3D hry 320x240 i 640x480: data i cas koderu jako B334;
+   - kopie (posun B319) posune i smichany radek s jeho pricinou - ctverce z kopie hrany 0 (drive "vsechny
+     hrany" = pri posunu mapy 1x doplnovani kazdy snimek, +54 % dat);
+   - log proudu PS1: "B335: barvy 4:4:4 v castech do 55000 bodu (casti N), ctvercu doplnenych kvuli
+     sousedovi z JPEG 4:2:0 M"; radek logu Hubu 1600 znaku (drive 1100).
+3) Napoveda CZ / EN (WEB TV - V prohlizeci: zvuk YouTube na TV), build.gradle versionCode 378
+   "EMU10-B335-YT-ZVUK-DUNE".
+
+Spoustet z adresare test_overeni/b335 (PRAC = pracovni slozka):
+A) KODEK v C++ (skutecny Hub + KodekJpeg, prohlizec = ../b319/prohlizec_b319.h se stb_image - barvy
+   4:2:0 dopocitava stejne jako prohlizec):
+   g++ -std=c++17 -O2 -pthread -I../../app/src/main/cpp/tvproud -I../../app/src/main/cpp/vendor/stb -I../b319 -I. \
+       -o PRAC/test_b335_kodek test_b335_kodek.cpp && PRAC/test_b335_kodek [PNG320 PNG640]
+                                                -> VYSTUP_test_b335_kodek.txt (13 OK)
+   (scena_dune.h = Dune ve 2x: pisek s texely posunutymi o bod jako polygony gpu_neon, jednotky se
+    zelenym pruhem zdravi jdou sikmo. 1) B334 236 / 239 carek, 100 % na radcich 16k-1, B335 0; po
+    zastaveni oboje cisto. 2) data +9,9 / +13,5 %. 3) 3D snimky z dema B304 (../b305/JAK_SPUSTIT.txt
+    krok 0) beze zmeny. 4) cely obraz 4:2:0 a pak male zmeny: B334 carka, B335 doplni 57 sousedu.
+    5) mapa s posunem 2x a 1x: obraz spravne jako B334. NAP_B335_PRAC=slozka ulozi canvas snimku 599.)
+B) SKUTECNA STRANKA WEB TV v Chromiu (Playwright), proud ze skutecneho kodeku:
+   g++ -std=c++17 -O2 -pthread -I../../app/src/main/cpp/tvproud -I. -o PRAC/gen_proud_b335 gen_proud_b335.cpp
+   mkdir -p PRAC/b334 PRAC/b335; PRAC/gen_proud_b335 PRAC/b334 0; PRAC/gen_proud_b335 PRAC/b335 1
+   python3 test_b335_prohlizec.py PRAC          -> VYSTUP_test_b335_prohlizec.txt (5 OK: B334 v Chromiu
+                                                   236 carek na radcich 16k-1 = pricina potvrzena ve
+                                                   skutecnem prohlizeci; B335 0; obraz spravne; obrazek
+                                                   PRAC/carky_b334_b335.png nahore B334, dole B335)
+C) MOST YOUTUBE v Chromiu (skript presne z MainActivity, video se zdrojem blob: jako MSE YouTube, ton
+   440 Hz, nahrada mostu Javy AHTVWEB):
+   python3 test_b335_youtube.py                 -> VYSTUP_test_b335_youtube.txt (8 OK: ES5, bez TV zadny
+                                                   graf, TV se diva -> PCM 440 Hz stereo, TV az za
+                                                   hrajicim videem, dalsi video, cizi zdroj nepripojen,
+                                                   EQ jako drive)
+D) Zapojeni: python3 kontrola_b335.py           -> VYSTUP_kontrola_b335.txt (16 OK)
+E) javac vsech 110 trid appky proti android-34.jar: 0 chyb.
+F) Regrese: bash regrese_kodeky.sh REPO VYSTUPY PRAC PNG320 PNG640 na B335 i na ciste B334 (git worktree
+   32f83db) -> VYSTUP_regrese_kodeky.txt (vse OK; menu, stranky appky, Sega beze zmeny; PS1 1x a
+   rezim "B319 presne" vic dat, nejhorsi ctverec mensi); ../b319/test_b319_prohlizec.py s proudem B335
+   -> VYSTUP_regrese_b319_prohlizec.txt (7 OK); napoveda CZ 201 / EN 194 nazvu 0 chyb
+   (VYSTUP_regrese_napoveda.txt).
+
+Na telefonu a TV NEOVERENO (Rene).

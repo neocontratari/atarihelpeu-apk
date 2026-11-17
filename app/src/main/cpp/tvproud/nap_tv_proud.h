@@ -350,7 +350,7 @@ class Hub {
     if (ted - k.logMs >= 30000) {
       const double s = (ted - k.logMs) / 1000.0;
       const long long zmen = k.logPaketu - k.logBeze;
-      char b[1100];
+      char b[1600];   // B335: delsi info kodeku (radek B335)
       snprintf(b, sizeof(b), "B306 TV PROUD %s: prohlizec %d - %.1f paketu/s (%.1f snimku/s se zmenou), %.2f Mbit/s, prumer %.1f kB na snimek, %dx%d, "
                "baleni prumer %.2f ms max %.1f ms, zvuk %.0f vzorku/s (preskoku %lld, paketu jen se zvukem %lld), %s",
                jmeno_, k.id, k.logPaketu / s, zmen / s, k.logBajtu * 8.0 / 1e6 / s, k.logBajtu / 1024.0 / std::max(1LL, k.logPaketu), W, H,
@@ -382,7 +382,7 @@ class Hub {
       pocet_.store(celkem, std::memory_order_release);
     }
     const double s = std::max(0.001, (tedMs() - k->startMs) / 1000.0);
-    char b[1100];
+    char b[1600];   // B335: delsi info kodeku (radek B335)
     snprintf(b, sizeof(b), "B306 TV PROUD %s: prohlizec %d odpojen po %.0f s - %lld paketu (%.1f/s), %.1f MB celkem, %s, zvuk preskoku %lld, paketu jen se zvukem %lld (zbyva %d)",
              jmeno_, k->id, s, k->paketu, k->paketu / s, k->bajtu / 1048576.0, k->kodek.info().c_str(), k->zvukSkoku, k->jenZvuk, celkem);
     log(b);

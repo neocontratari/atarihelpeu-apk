@@ -1,0 +1,19 @@
+B335 - PS1 na TV: vodorovne carky v Dune 2000 (barvy 4:2:0 dopocitane pres hranici ctvercu)
+   Dune 2x, kvalita 55: B334 carek 236 (z toho na radku 16k-1 236, nejsilnejsi 54.4, nejvic behem pohybu 239), B335 0 (nejsilnejsi 17.0, nejvic behem pohybu 0)
+OK     1) Dune kvalita 55: B334 carky po ceste jednotek (236 useku, 100 % na radcich 16k-1 jako na fotce), B335 zadna (nejvic 0 v 12 kontrolach)
+OK     1) Dune kvalita 55: jednotky stoji 5 s -> B334 carky zmizi (zjemneni 94 = barvy v plnem rozliseni - "mazou se"), B335 cisto
+OK     2) Dune kvalita 55: dat B335 1.64 MB proti B334 1.49 MB (+9.9 %), PSNR 36.47 proti 35.81 dB, casti 4:4:4 1134
+   6) kodovani Dune (900 snimku, PC): B334 213.8 ms, B335 244.9 ms
+   Dune 2x, kvalita 76: B334 carek 239 (z toho na radku 16k-1 239, nejsilnejsi 53.1, nejvic behem pohybu 239), B335 0 (nejsilnejsi 16.7, nejvic behem pohybu 0)
+OK     1) Dune kvalita 76: B334 carky po ceste jednotek (239 useku, 100 % na radcich 16k-1 jako na fotce), B335 zadna (nejvic 0 v 12 kontrolach)
+OK     1) Dune kvalita 76: jednotky stoji 5 s -> B334 carky zmizi (zjemneni 94 = barvy v plnem rozliseni - "mazou se"), B335 cisto
+OK     2) Dune kvalita 76: dat B335 1.98 MB proti B334 1.74 MB (+13.5 %), PSNR 37.46 proti 36.68 dB, casti 4:4:4 1134
+   6) kodovani Dune (900 snimku, PC): B334 211.9 ms, B335 241.4 ms
+OK     3) 3D 320x240 (120 snimku, kvalita max): dat B335 2.08 MB proti 2.08 MB (+0.0 %), PSNR 37.00 proti 37.00 dB, casti 4:4:4 0, kodovani 135.7 proti 130.7 ms
+OK     3) 3D 320x240 (120 snimku, kvalita 55): dat B335 1.00 MB proti 1.00 MB (+0.0 %), PSNR 31.37 proti 31.37 dB, casti 4:4:4 0, kodovani 112.6 proti 113.1 ms
+OK     3) 3D 640x480 (30 snimku, kvalita max): dat B335 1.01 MB proti 1.01 MB (+0.0 %), PSNR 35.38 proti 35.38 dB, casti 4:4:4 0, kodovani 70.5 proti 68.6 ms
+OK     3) 3D 640x480 (30 snimku, kvalita 55): dat B335 0.68 MB proti 0.68 MB (+0.0 %), PSNR 33.23 proti 33.23 dB, casti 4:4:4 0, kodovani 64.1 proti 59.9 ms
+OK     4) cely obraz se menil (casti 640x480 = 4:2:0) a pak jen pruh: B334 zelena 1/4 nad puvodnim pruhem zustala (6 useku na radku 159), B335 cisto - doplneno 57 ctvercu (soused ze spolecneho JPEG 4:2:0)
+OK     5) mapa s posunem (B319) 2x 736x480: kopii B335 90 (B334 90), polovicnich 658, nejhorsi ctverec 10.2 (B334 10.2), PSNR nejmene 30.27 (B334 30.27) dB, dat 0.86 MB (B334 0.86), doplneno sousedu 0
+OK     5) mapa s posunem (B319) 1x 368x240: kopii B335 90 (B334 90), polovicnich 0, nejhorsi ctverec 13.8 (B334 18.4), PSNR nejmene 29.28 (B334 28.18) dB, dat 1.32 MB (B334 1.08), doplneno sousedu 60
+VYSLEDEK: 13 kontrol, 0 CHYBA

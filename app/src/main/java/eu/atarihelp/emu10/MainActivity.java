@@ -813,6 +813,7 @@ public class MainActivity extends Activity {
     private volatile int napTvWebSystemDpi = 0;
     private volatile String napTvWebPendingScreenUrl = null;
     private volatile long napTvWebYoutubeInAppUntilMs = 0;
+    private volatile long napYtZvukPosledniMs = 0;   // B335: kdy naposledy prisel zvuk z YouTube (log pri rozjezdu)
     private volatile long napTvWebPeriodicLogMs = 0;
     private long napTvWebPeriodicZapisMs = 0;   // B303: TV_WEB_PERIODIC do logu jen jednou za 30 s
     // BUILD2SK70: mereni celeho tick-to-tick cyklu
@@ -2555,18 +2556,35 @@ public class MainActivity extends Activity {
                     + "ahtvInstallControls();"
                     // BUILD2SA14: ORIGINAL FIRST - audio graf se NESTAVI hned. YouTube hraje
                     // 100% nedotceny original, dokud uzivatel poprve neotevre EQ panel.
-                    + "window.__ahtvEnsureGraph=function(){try{"
-                    + "if(window.__AHTV_YT_AUDIO_BRIDGE&&window.__AHTV_YT_AUDIO_BRIDGE.ok)return 'graph_ready';"
-                    + "var v=document.querySelector('video');"
+                    // B335 (Rene: "yt nebere zvuk z apky na tv web"): zvuk na TV jde JEN z grafu
+                    // (odbocka tap -> pushYoutubePcm16 -> proud stranky v C++). Graf se ale stavel jen
+                    // tlacitkem EQ - v logu B333 vsude "controls_ready_ORIGINAL_SOUND_untouched" a proud
+                    // stranky "zvuk 0 vzorku/s". Ted: kdyz se na TV opravdu nekdo diva (AHTVWEB.tvPosloucha
+                    // = prohlizec pripojeny k proudu stranky), graf se postavi pri prehravani videa (jako
+                    // prehravac MP3 od SH2: "casting BEZI -> stavim audio graf pro stream"). Bez TV dal
+                    // original. Pripojuje se kazdy prehravany <video> / <audio> (Shorts, reklama, nove
+                    // video), jen kdyz bezi AudioContext (jinak by telefon ztichl) a jen zdroj, ktery
+                    // WebAudio smi cist (blob: = MSE YouTube, stejny web) - cizi zdroj by dal ticho.
+                    + "function ahtvTv(){try{return !!(window.AHTVWEB&&window.AHTVWEB.tvPosloucha&&window.AHTVWEB.tvPosloucha());}catch(_e){return false;}}"
+                    + "function ahtvLog(m){try{console.log('[NAP PLAYER] B335 YOUTUBE ZVUK NA TV: '+m);}catch(_e){}}"
+                    + "function ahtvHrajici(){try{var m=document.querySelectorAll('video,audio');for(var i=0;i<m.length;i++){if(!m[i].paused&&!m[i].ended)return m[i];}}catch(_e){}return null;}"
+                    + "function ahtvLze(v){try{if(v.srcObject)return true;var s=String(v.currentSrc||v.src||'');if(!s)return false;"
+                    + "if(s.indexOf('blob:')===0||s.indexOf('data:')===0)return true;"
+                    + "var a=document.createElement('a');a.href=s;if(a.protocol+'//'+a.host===location.protocol+'//'+location.host)return true;"
+                    + "return !!v.crossOrigin;}catch(_e){return false;}}"
+                    + "function ahtvZkus(v,proc){var r=window.__ahtvEnsureGraph(v);if(v.__ahtvPosl!==r){v.__ahtvPosl=r;ahtvLog(proc+' -> '+r);}return r;}"
+                    + "window.__ahtvEnsureGraph=function(el){try{"
+                    + "var v=el||ahtvHrajici()||document.querySelector('video');"
                     + "if(!v)return 'no_video';"
-                    + "var old=window.__AHTV_YT_AUDIO_BRIDGE;"
-                    + "if(old&&old.ok&&old.video===v){ahtvApply(old);return 'updated_live_eq';}"
+                    + "if(v.__ahtvSrc){ahtvApply(window.__AHTV_YT_AUDIO_BRIDGE);return 'graph_ready';}"
+                    + "if(!ahtvLze(v))return 'skip_cizi_zdroj_original';"
+                    + "var br=window.__AHTV_YT_AUDIO_BRIDGE;"
+                    + "if(!br||!br.ok||!br.vstup){"
                     + "var C=window.AudioContext||window.webkitAudioContext;"
                     + "if(!C)return 'no_audio_context';"
                     + "var ctx=window.__AHTV_YT_AUDIO_CTX||new C();window.__AHTV_YT_AUDIO_CTX=ctx;"
-                    + "try{if(ctx.resume)ctx.resume();}catch(_r){}"
-                    + "var src=v.__ahtvSrc||ctx.createMediaElementSource(v);v.__ahtvSrc=src;"
-                    + "var freqs=[60,250,1000,4000,16000],filters=[],node=src;"
+                    + "var vstup=ctx.createGain();vstup.gain.value=1;"
+                    + "var freqs=[60,250,1000,4000,16000],filters=[],node=vstup;"
                     + "for(var fi=0;fi<freqs.length;fi++){var biq=ctx.createBiquadFilter();biq.type='peaking';biq.frequency.value=freqs[fi];biq.Q.value=1.0;biq.gain.value=0;node.connect(biq);node=biq;filters.push(biq);}"
                     + "var bass=ctx.createBiquadFilter();bass.type='lowshelf';bass.frequency.value=180;bass.gain.value=0;node.connect(bass);node=bass;"
                     + "var treble=ctx.createBiquadFilter();treble.type='highshelf';treble.frequency.value=3500;treble.gain.value=0;node.connect(treble);node=treble;"
@@ -2601,11 +2619,26 @@ public class MainActivity extends Activity {
                     + "if(q.length>16)q.splice(0,q.length-16);"
                     + "}catch(_e){}};"
                     + "gain.connect(ctx.destination);var mute=ctx.createGain();mute.gain.value=0;gain.connect(tap);tap.connect(mute);mute.connect(ctx.destination);"
-                    + "var br={ok:true,at:Date.now(),video:v,filters:filters,bass:bass,treble:treble,pan:pan,gain:gain};"
+                    + "br={ok:true,at:Date.now(),ctx:ctx,vstup:vstup,filters:filters,bass:bass,treble:treble,pan:pan,gain:gain,tap:tap,prvku:0};"
                     + "window.__AHTV_YT_AUDIO_BRIDGE=br;ahtvApply(br);ahtvInstallControls();"
-                    + "document.addEventListener('click',function(){try{ctx.resume&&ctx.resume();}catch(_e){}},true);"
+                    + "var obnov=function(){try{if(ctx.state!=='running'&&ctx.resume)ctx.resume();}catch(_e){}};"
+                    + "['click','touchstart','keydown'].forEach(function(ev){document.addEventListener(ev,obnov,true);});"
+                    + "}"
+                    // B335: prvek se do grafu pripoji, az AudioContext opravdu bezi - pripojeny prvek
+                    // hraje uz jen grafem (createMediaElementSource nejde vratit), stojici kontext = ticho
+                    + "var cx=br.ctx;"
+                    + "if(cx.state!=='running'){try{var p=cx.resume&&cx.resume();if(p&&p.then)p.then(function(){if(cx.state==='running'&&!v.__ahtvSrc)ahtvZkus(v,'audio kontext bezi');},function(){});}catch(_r){}return 'ctx_'+cx.state+'_ceka';}"
+                    + "var src=cx.createMediaElementSource(v);v.__ahtvSrc=src;src.connect(br.vstup);br.prvku++;"
                     + "return 'ok_live_eq';"
                     + "}catch(e){return 'fail '+(e&&e.message?e.message:e);}};"
+                    // B335: posluchac prehravani (jednou na dokument - YouTube meni videa bez nacteni stranky)
+                    // + kontrola kazdych 1,5 s (TV se pripojila, az kdyz video uz hralo)
+                    + "if(!window.__ahtvTvHook){window.__ahtvTvHook=1;"
+                    + "var ahtvHraje=function(e){try{var t=e&&e.target,tn=t&&t.tagName?String(t.tagName).toUpperCase():'';"
+                    + "if((tn!=='VIDEO'&&tn!=='AUDIO')||t.__ahtvSrc||!ahtvTv())return;ahtvZkus(t,'prehravani '+tn+' a TV se diva');}catch(_e){}};"
+                    + "document.addEventListener('play',ahtvHraje,true);document.addEventListener('playing',ahtvHraje,true);"
+                    + "setInterval(function(){try{var h=ahtvHrajici();if(h&&!h.__ahtvSrc&&ahtvTv())ahtvZkus(h,'hraje a TV se diva');}catch(_e){}},1500);}"
+                    + "if(ahtvTv()){var hv=ahtvHrajici();return 'B335_TV_SE_DIVA_zvuk_do_TV:'+(hv?ahtvZkus(hv,'TV se diva'):'ceka_na_prehravani');}"
                     + "return 'controls_ready_ORIGINAL_SOUND_untouched';"
                     + "}catch(e){return 'fail '+(e&&e.message?e.message:e);}})()";
             web.evaluateJavascript(js, value -> appendNativeLog("BUILD2SA13C18 YOUTUBE_AUDIO_BRIDGE_LIVE_EQ reason=" + reason + " result=" + value));
@@ -6041,6 +6074,12 @@ public class MainActivity extends Activity {
                 return e;
             }
         }
+        // B335: diva se na TV nekdo na stranky appky (prohlizec pripojeny k proudu stranky z C++)?
+        // Most YouTube (napTvWebInjectYoutubeAudioBridge) podle toho stavi audio graf pro zvuk na TV -
+        // bez divaka hraje YouTube v telefonu nedotceny original (BUILD2SA14 "ORIGINAL FIRST").
+        @JavascriptInterface public boolean tvPosloucha() {
+            return napTvWebRunning && tvSmiZvuk() && (NativeMenuBridge.strankaStavSafe() & 2) != 0;
+        }
         @JavascriptInterface public String pushYoutubePcm16(String b64, int sampleRate, int frames, int channels) {
             try {
                 if (!napTvWebRunning) return "TV_WEB_AUDIO_OFF";
@@ -6048,6 +6087,12 @@ public class MainActivity extends Activity {
                 if (b64 == null || b64.length() == 0) return "TV_WEB_AUDIO_EMPTY";
                 byte[] data = Base64.decode(b64, Base64.DEFAULT);
                 NativeMenuBridge.strankaZvukSafe(data, channels <= 1 ? 1 : 2, sampleRate);   // B333: do proudu stranky (C++)
+                // B335: do logu, kdyz zvuk z YouTube zacne tect (prvne / po pauze delsi nez 10 s)
+                final long tYt = android.os.SystemClock.uptimeMillis();
+                if (tYt - napYtZvukPosledniMs > 10000L)
+                    appendNativeLog("B335 YOUTUBE ZVUK NA TV: zvuk z YouTube jde do proudu stranky (" + sampleRate + " Hz, "
+                            + (channels <= 1 ? 1 : 2) + " kanaly, " + (data.length / Math.max(1, (channels <= 1 ? 2 : 4))) + " vzorku v kusu)");
+                napYtZvukPosledniMs = tYt;
                 if (channels <= 1) napTvWebAudioPushMonoPcm16Bytes(data, sampleRate, "YOUTUBE");
                 else napTvWebAudioPushStereoPcm16Bytes(data, sampleRate, "YOUTUBE");
                 return "TV_WEB_AUDIO_YOUTUBE_OK bytes=" + data.length + " frames=" + frames + " hz=" + sampleRate + " ch=" + channels;

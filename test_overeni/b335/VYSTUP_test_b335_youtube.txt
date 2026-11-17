@@ -1,0 +1,10 @@
+B335 - zvuk z YouTube v apce na TV: skript mostu z MainActivity v Chromiu (10595 znaku)
+OK     1) skript ES5, vlozen 3x: controls_ready_ORIGINAL_SOUND_untouched, tlacitko EQ jedno
+OK     2) TV se nediva: video hraje (2.4 s), audio graf NENI, video nepripojene (original), PCM na TV 0 kusu
+OK     4) TV se pripojila pri hrajicim videu: graf za 0.2 s, PCM 33 kusu, 44100 Hz, 2 kanaly, ton 440 Hz, RMS 0.35; log: [NAP PLAYER] B335 YOUTUBE ZVUK NA TV: hraje a TV se diva -> ok_live_eq
+OK     5) dalsi video (Shorts / dalsi klip): pripojeno taky (prvku v grafu 2), zvuk dal: 40 kusu, ton 440 Hz
+OK     6) cizi zdroj bez CORS (WebAudio by dal ticho): video hraje (1.9 s), NEpripojene -> telefon hraje original (skip_cizi_zdroj_original)
+OK     3) TV se diva: vlozeni "B335_TV_SE_DIVA_zvuk_do_TV:ceka_na_prehravani", pri prehravani graf za 0.00 s, PCM 43 kusu po 44100 Hz (= AudioContext), 2 kanaly, ton 435 Hz, RMS 0.35; log "[NAP PLAYER] B335 YOUTUBE ZVUK NA TV: prehravani VIDEO a TV se diva -> ok_live_eq"; dalsi vlozeni "B335_TV_SE_DIVA_zvuk_do_TV:graph_ready"
+OK     7) bez TV: graf az po otevreni EQ (pred False, po True, video pripojeno True, panel block)
+OK     8) zadna chyba JavaScriptu (zadna)
+VYSLEDEK: 8 kontrol, 0 CHYBA

@@ -1,0 +1,19 @@
+B335 - Dune 2000 na TV v Chromiu (skutecna stranka WEB TV, dekoder JPEG prohlizece): vodorovne carky
+stranka z MainActivity.java (47838 znaku); proud B334 1.47 MB, B335 1.62 MB (720 snimku 736x480, kvalita 55)
+OK     1) stranka si rekne o proud s volbami: v=319
+   B334 snimek 150: carek  61 (na radku 16k-1  61), nejsilnejsi 54.4 | PSNR 33.75 dB, nejhorsi ctverec 17.5
+   B334 snimek 300: carek 132 (na radku 16k-1 131), nejsilnejsi 54.4 | PSNR 33.61 dB, nejhorsi ctverec 16.6
+   B334 snimek 450: carek 208 (na radku 16k-1 204), nejsilnejsi 54.4 | PSNR 33.46 dB, nejhorsi ctverec 14.4
+   B334 snimek 599: carek 236 (na radku 16k-1 236), nejsilnejsi 54.4 | PSNR 33.43 dB, nejhorsi ctverec 14.1
+   B334 snimek 719 (stoji): carek   0 (na radku 16k-1   0), nejsilnejsi 4.4 | PSNR 40.44 dB, nejhorsi ctverec 3.1
+   B335 snimek 150: carek   0 (na radku 16k-1   0), nejsilnejsi 19.4 | PSNR 34.51 dB, nejhorsi ctverec 12.4
+   B335 snimek 300: carek   0 (na radku 16k-1   0), nejsilnejsi 19.4 | PSNR 34.59 dB, nejhorsi ctverec 13.2
+   B335 snimek 450: carek   0 (na radku 16k-1   0), nejsilnejsi 20.1 | PSNR 34.61 dB, nejhorsi ctverec 12.7
+   B335 snimek 599: carek   0 (na radku 16k-1   0), nejsilnejsi 17.0 | PSNR 34.63 dB, nejhorsi ctverec 12.9
+   B335 snimek 719 (stoji): carek   0 (na radku 16k-1   0), nejsilnejsi 4.4 | PSNR 40.44 dB, nejhorsi ctverec 3.1
+OK     2) B334 ve skutecnem Chromiu: 236 carek na pisku, 100 % na radcich 16k-1 (jako na fotce) - prohlizec dopocitava barvy 4:2:0 pres hranici ctvercu
+OK     3) B335: zadna carka ve 4 kontrolnich bodech behem pohybu (nejsilnejsi 20.1); po zastaveni cisto B334 i B335 ("mazou se")
+OK     4) obraz B335 v canvasu = snimek hry ve 5 kontrolnich bodech (PSNR nejmene 34.51 dB, nejhorsi ctverec nejvys 13.2)
+OK     5) zadna chyba JavaScriptu (zadna), chyb v datech 0 / 0, proud se neotviral znovu
+   obrazek: PRAC/carky_b334_b335.png (nahore B334, dole B335, snimek 599)
+VYSLEDEK: 5 kontrol, 0 CHYBA

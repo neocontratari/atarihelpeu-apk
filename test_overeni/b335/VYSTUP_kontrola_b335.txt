@@ -1,0 +1,17 @@
+OK     K1 KodekJpeg.plneBarvyDo vychozi 0 (menu, stranky appky, demo jako drive)
+OK     K2 nastavKodekPs1: barvy 4:4:4 v castech do 55 000 bodu (jen PS1 - nastavKodekMenu beze zmeny)
+OK     K3 obdelnik: mala cast 4:4:4 (enc.koduj plneBarvy), JPEG 4:2:0 si zapamatuje hrany ctvercu rozbalene se sousedem
+OK     K4 zakoduj: po nalezeni zmenenych casti se doplni sousede ze spolecneho JPEG 4:2:0 (pred kvalitou a kodovanim)
+OK     K5 doplnSousedy: spousti jen opravdu zmeneny ctverec (doplneny = 2 dal nic nespousti - zadna lavina)
+OK     K6 kopie (posun): ctverce z kopie hrany 0 (posunuly se i se sousedem - bez doplnovani kazdy snimek)
+OK     K7 Hub: radek logu proudu 1600 znaku (info kodeku s radkem B335 se neusekne)
+OK     K8 log proudu PS1: "B335: barvy 4:4:4 v castech do 55000 bodu (casti N), ctvercu doplnenych kvuli sousedovi ..."
+OK     Y1 AHTVWEB.tvPosloucha(): TV prohlizec pripojeny k proudu stranky (C++ strankaStav bit 2)
+OK     Y2 most YouTube: TV se diva -> graf pri prehravani (posluchac play + kontrola 1,5 s), bez TV puvodni zvuk (ORIGINAL FIRST)
+OK     Y3 most YouTube: cizi zdroj (WebAudio = ticho) se nepripoji; prvek se pripoji az pri bezicim AudioContextu (telefon neztichne)
+OK     Y4 tlacitko EQ dal stavi graf na pozadani (bez TV jako drive)
+OK     Y5 pushYoutubePcm16: zvuk do proudu stranky (C++), log "B335 YOUTUBE ZVUK NA TV" pri rozjezdu
+OK     Y6 skript mostu YouTube (10595 znaku) je ES5 (starsi WebView)
+OK     N1 napoveda CZ / EN: zvuk YouTube na TV
+OK     N2 build.gradle: versionCode 378 "EMU10-B335-YT-ZVUK-DUNE"
+VYSLEDEK: 16 kontrol, 0 CHYBA

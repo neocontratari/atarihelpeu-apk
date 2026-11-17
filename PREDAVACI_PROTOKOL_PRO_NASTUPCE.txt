@@ -4121,4 +4121,31 @@
        Pak Dune carky (B335: prepinac 2x v SERVIS / zaznam GPU).
      - build.gradle: versionCode 377 "EMU10-B334-ANDROID-TV". Na TV neovereno.
 
+   B335: ZVUK YOUTUBE NA TV + DUNE CARKY (17. 11. 2026). Rene (log B333, telefon Android 9):
+   "yt nebere zvuk z apky na tv web", "v dune vodorovne carky zustaly ale mazou se".
+     - YOUTUBE: zvuk na TV jde jen z audio grafu (odbocka -> AHTVWEB.pushYoutubePcm16 ->
+       proud stranky v C++), graf se ale od BUILD2SA14 ("ORIGINAL FIRST") stavel jen tlacitkem
+       EQ - v logu vsude "controls_ready_ORIGINAL_SOUND_untouched" a "zvuk 0 vzorku/s". Ted
+       AHTVWEB.tvPosloucha() (prohlizec pripojeny k proudu stranky, strankaStav bit 2): kdyz
+       se na TV nekdo diva, most postavi graf pri prehravani (posluchac play / playing +
+       kontrola 1,5 s), pripoji kazdy prehravany <video> / <audio>, ale jen pri bezicim
+       AudioContextu a jen zdroj citelny pro WebAudio (blob: MSE, stejny web, CORS) - jinak
+       hraje original. Bez divaka original jako drive. Log JSLOG "[NAP PLAYER] B335 YOUTUBE
+       ZVUK NA TV" a "B335 YOUTUBE ZVUK NA TV: zvuk z YouTube jde do proudu stranky".
+     - DUNE CARKY: B333 jsem chybne tvrdil "vykreslovac gpu_neon, ne prenos". Skutecna
+       pricina = prenos: barvy JPEG 4:2:0 prohlizec dopocitava i pres hranici ctvercu 16x16
+       (fancy upsampling, krajni radek dostane 1/4 barvy souseda). Stojici ctverec v casti
+       se zmenenym sousedem si 1/4 stare barvy (zeleny pruh zdravi) necha, kodek ho neposle;
+       smaze ho az zjemneni 94, kdyz stoji cely obraz ("mazou se"). Radky 16k-1 = fotka B332.
+       Overeno ve SKUTECNEM Chromiu (test_b335_prohlizec.py): B334 236 carek na radcich 16k-1,
+       B335 0. Oprava jen pro PS1 (nastavKodekPs1): casti do 55 000 bodu barvy 4:4:4
+       (plneBarvyDo), vetsi dal 4:2:0 + doplnSousedy (hrany420_ = hrany rozbalene se
+       sousedem v temze JPEG; kopie = 0). Dune +10-14 % dat, PSNR +0,7 dB; 3D hry beze zmeny.
+       Menu, stranky appky, demo beze zmeny. Prepinac 2x v SERVIS tedy NENI potreba.
+     - Testy test_overeni/b335 (JAK_SPUSTIT.txt): kodek C++ 13 OK, Chromium Dune 5 OK, most
+       YouTube v Chromiu 8 OK, zapojeni 16 OK, javac 0 chyb, regrese kodeku B334 / B335
+       (regrese_kodeky.sh), b319 prohlizec 7 OK, napoveda CZ 201 / EN 194 0 chyb.
+     - build.gradle: versionCode 378 "EMU10-B335-YT-ZVUK-DUNE". Na telefonu / TV neovereno.
+     - DALSI KROK: Rene - YouTube v apce + TV (zvuk), Dune na TV (carky), Android TV (B334).
+
 ===============================================================================

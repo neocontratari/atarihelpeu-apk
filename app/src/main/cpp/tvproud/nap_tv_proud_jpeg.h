@@ -130,6 +130,23 @@ struct KodekJpeg {
   // ctvercich, ktere prohlizec ma z kopie s toleranci (tol_).
   static constexpr int TOLERANCE_PS1 = 10;
   int tolerance = 0;
+  // B335 (Rene: "v dune vodorovne carky zustaly ale mazou se" - fotka B332: slabe zelene carky na
+  // pisku po ceste jednotek se zelenym pruhem zdravi, na radcich 16k-1). Pricina: barvy 4:2:0 (pod
+  // kvalitou 91) prohlizec dopocitava mezi radky (a sloupci) barev i pres hranici ctvercu 16x16
+  // ("fancy upsampling": krajni radek ctverce dostane 1/4 barvy radku pod / nad nim). Kdyz cast
+  // obsahuje stojici ctverec i jeho souseda a pozdeji se posle jen soused (jednotka odesla), krajni
+  // radek stojiciho ctverce si nechal 1/4 STARE barvy souseda (zeleny pruh) - kodek o tom nevi
+  // (pred = presny snimek), takze ho neopravi, dokud cely obraz nestoji (zjemneni 94 = barvy v plnem
+  // rozliseni - proto se carky "mazou"). Oprava:
+  //  - plneBarvyDo > 0: cast do tolika bodu (jednotky, kurzor, pruh mapy) jde s barvami v plnem
+  //    rozliseni (4:4:4) - mezi ctverci se nic nedopocitava, carky nevzniknou (dat +10-20 %),
+  //  - vetsi cast (3D hra, cely obraz) dal 4:2:0 (koder ma polovic prace - S8), ale kodek si u kazdeho
+  //    ctverce pamatuje, ktere jeho hrany prohlizec rozbalil spolu se sousedem v tomtez JPEG 4:2:0
+  //    (hrany420_); kdyz se soused zmeni (nebo ho prepise kopie) a ctverec se ted neposila, posle se
+  //    taky (doplnSousedy) - jeho krajni radek / sloupec by si jinak nechal 1/4 stare barvy.
+  // 0 = jako drive (menu, stranky, demo; stary prohlizec).
+  int plneBarvyDo = 0;
+  long long casti444 = 0, sousedu420 = 0;   // B335: casti 4:4:4 diky plneBarvyDo, ctvercu doplnenych kvuli sousedovi
   // statistika (do logu)
   long long klicovych = 0, snimku = 0, beze = 0, zjemneni = 0, snizeni = 0, castecnych = 0;
   long long obdelniku = 0, zjemneniZaPohybu = 0, vicecastnych = 0;   // B313
@@ -167,6 +184,11 @@ struct KodekJpeg {
         s += b;
       }
     }
+    if (plneBarvyDo > 0) {
+      snprintf(b, sizeof(b), ", B335: barvy 4:4:4 v castech do %d bodu (casti %lld), ctvercu doplnenych kvuli sousedovi z JPEG 4:2:0 %lld",
+               plneBarvyDo, casti444, sousedu420);
+      s += b;
+    }
     return s;
   }
 
@@ -183,6 +205,7 @@ struct KodekJpeg {
       poslano.assign((size_t)bw * bh, cislo);
       tol_.assign((size_t)bw * bh, 0);     // B320
       tolMa_ = false;
+      hrany420_.assign((size_t)bw * bh, 0); // B335
       qMax = qStrop > 0 ? qStrop : maxKvalita(W, H);
       if (q <= 0 || q > qMax) q = qMax;
       klicovych++;
@@ -240,6 +263,8 @@ struct KodekJpeg {
       if (pocet > 0) { najdiObdelniky(jemnit, obdJem); zjemneniZaPohybu++; }
     }
     najdiObdelniky(zmena, obdZm);
+    // B335: soused ze spolecneho JPEG 4:2:0 zmeneneho ctverce, ktery by ted nesel, jde taky
+    if (plneBarvyDo > 0 && doplnSousedy(kop ? &ko : nullptr)) najdiObdelniky(zmena, obdZm);
     // B313: meni se skoro vse (listovani v menu) - pohyb oko neprecte, staci nizsi kvalita
     // (mene dat, plynulejsi); jakmile se zastavi, stojici casti se zjemni na 94
     // (kdyz sit nestiha a q kleslo, klesne o tolik i tahle kvalita)
@@ -279,6 +304,49 @@ struct KodekJpeg {
   std::vector<uint8_t> skupMaska_;
   std::vector<Obd> rozdeleno_;
   std::vector<uint32_t> poslanoPred_, polBuf_;
+  // B335: hrany ctverce, ktere prohlizec naposledy rozbalil spolu se sousedem v tomtez JPEG 4:2:0
+  // (krajni radek / sloupec ma 1/4 barvy souseda): H420_NAHORE / DOLE / VLEVO / VPRAVO. 0 = barvy
+  // jen vlastni (4:4:4, polovicni rozliseni, zjemneni 94, okraj casti) nebo ctverec z kopie (posun):
+  // kopie posune obsah i se smichanymi radky a jejich pricinou (sedi k sobe dal). Drive "vsechny 4
+  // hrany" po kopii: pri posunu mapy (1x) se pak doplnovalo ~10 ctvercu kazdy snimek (+54 % dat).
+  static constexpr uint8_t H420_NAHORE = 1, H420_DOLE = 2, H420_VLEVO = 4, H420_VPRAVO = 8;
+  std::vector<uint8_t> hrany420_, vCasti_;
+
+  // B335: ctverec, ktery se ted neposila a jehoz hrana byla rozbalena spolu se sousedem, ktery se
+  // zmenil (jde znovu) nebo ho prepsala kopie, ma v krajnim radku / sloupci 1/4 barvy STAREHO obsahu
+  // souseda -> poslat ho taky (zmena = 2). Nezmeneny soused nevadi (1/4 barvy je porad spravna) a
+  // doplneny ctverec uz nic dal nespousti (jeho obsah je stejny). ko = kopie tohoto snimku (nebo nic).
+  bool doplnSousedy(const Obd *ko) {
+    const size_t n = (size_t)bw * bh;
+    if (hrany420_.size() != n || zmena.size() != n) return false;
+    vCasti_.assign(n, 0);
+    auto oznac = [&](const Obd &o) {
+      for (int by = o.y0; by < o.y1; by++) std::memset(&vCasti_[(size_t)by * bw + o.x0], 1, (size_t)(o.x1 - o.x0));
+    };
+    for (const Obd &o : obdZm) oznac(o);
+    for (const Obd &o : obdJem) oznac(o);
+    auto vKopii = [&](int x, int y) { return ko && x >= ko->x0 && x < ko->x1 && y >= ko->y0 && y < ko->y1; };
+    // soused ve smeru s: jeho hrana smerem k menenemu ctverci
+    static const int DX[4] = {0, 0, -1, 1}, DY[4] = {-1, 1, 0, 0};
+    static const uint8_t K_NAM[4] = {H420_DOLE, H420_NAHORE, H420_VPRAVO, H420_VLEVO};
+    bool pridano = false;
+    for (int by = 0; by < bh; by++)
+      for (int bx = 0; bx < bw; bx++) {
+        const size_t i = (size_t)by * bw + bx;
+        const bool zmenen = zmena[i] == 1;              // jen opravdu zmeneny (ne doplneny) ctverec
+        const bool kopirovan = vKopii(bx, by);
+        if (!zmenen && !kopirovan) continue;
+        for (int s = 0; s < 4; s++) {
+          const int nx = bx + DX[s], ny = by + DY[s];
+          if (nx < 0 || ny < 0 || nx >= bw || ny >= bh) continue;
+          const size_t j = (size_t)ny * bw + nx;
+          // (ctverec z kopie ma hrany 0 - posunul se spolu se sousedem)
+          if (vCasti_[j] || zmena[j] || !(hrany420_[j] & K_NAM[s])) continue;
+          zmena[j] = 2; pridano = true; sousedu420++;
+        }
+      }
+    return pridano;
+  }
 
   // ctverce 16x16, ktere se oproti minule poslanemu snimku (pred) zmenily
   // B320: ctverec, ktery ma prohlizec z kopie s toleranci (tol_), se zmenil, az kdyz se nejaky bod
@@ -573,6 +641,7 @@ struct KodekJpeg {
     // kvalita a stari ctverce jdou s obsahem: ctverec po posunu = nejhorsi z (az 4) zdrojovych
     kvalPred_ = kval;
     poslanoPred_ = poslano;
+    const bool s420 = hrany420_.size() == kval.size();   // B335
     for (int by = y0; by < y1; by++)
       for (int bx = x0; bx < x1; bx++) {
         const int sx0 = bx * 16 - vx, sy0 = by * 16 - vy;
@@ -587,6 +656,7 @@ struct KodekJpeg {
           }
         kval[(size_t)by * bw + bx] = (uint8_t)kv;
         poslano[(size_t)by * bw + bx] = ps;
+        if (s420) hrany420_[(size_t)by * bw + bx] = 0;   // B335: kopie = obsah posunuty i se smichanymi radky (viz hrany420_)
       }
     posunu++;
     posunCtvercu += uspora;
@@ -779,6 +849,7 @@ struct KodekJpeg {
     const int zdv = (polovicni && !(rw & 1) && !(rh & 1)) ? zdvojeny(F + (size_t)y0 * W + x0, (size_t)W, rw, rh, tolerance) : 0;
     const bool pol = zdv != 0;
     int kvJ = kv;
+    bool plne = false;                       // B335: barvy 4:4:4 (plneBarvyDo)
     jpg.clear();
     const double t0 = tedMsPresne();
     if (pol) {
@@ -801,7 +872,9 @@ struct KodekJpeg {
       // 512x480, 640x480: 2 jadra (ne vic - emulace PS1 jich potrebuje par sama);
       // B313: menu 1280x720 (bez emulace) az maxCasti
       casti = plocha <= 110000 ? 1 : (plocha <= 520000 ? 2 : std::max(2, maxCasti));
-      enc.koduj(F + (size_t)y0 * W + x0, (size_t)W, rw, rh, kv, jpg, casti);
+      plne = plneBarvyDo > 0 && plocha <= (size_t)plneBarvyDo;
+      if (plne && kv <= 90) casti444++;
+      enc.koduj(F + (size_t)y0 * W + x0, (size_t)W, rw, rh, kv, jpg, casti, plne);
     }
     kodSnimku_ += tedMsPresne() - t0;
     p16(cil, (unsigned)x0); p16(cil, (unsigned)y0); p16(cil, (unsigned)rw); p16(cil, (unsigned)rh);
@@ -814,6 +887,16 @@ struct KodekJpeg {
         kval[(size_t)by * bw + bx] = (uint8_t)kv;
         poslano[(size_t)by * bw + bx] = cislo;
       }
+    // B335: JPEG 4:2:0 - hrany ctvercu uvnitr casti se rozbalily spolu se sousedem (barvy se michaji),
+    // hrany na okraji casti ne (JPEG tam opakuje vlastni krajni radek). 4:4:4 / polovicni = 0.
+    if (hrany420_.size() == kval.size()) {
+      const bool s420 = plneBarvyDo > 0 && !pol && !plne && kv <= 90;
+      for (int by = o.y0; by < o.y1; by++)
+        for (int bx = o.x0; bx < o.x1; bx++)
+          hrany420_[(size_t)by * bw + bx] = !s420 ? (uint8_t)0 :
+              (uint8_t)((by > o.y0 ? H420_NAHORE : 0) | (by < o.y1 - 1 ? H420_DOLE : 0) |
+                        (bx > o.x0 ? H420_VLEVO : 0) | (bx < o.x1 - 1 ? H420_VPRAVO : 0));
+    }
     if (tolMa_)                              // B320: prohlizec ted ma presne snimek hry
       for (int by = o.y0; by < o.y1; by++) std::memset(&tol_[(size_t)by * bw + o.x0], 0, (size_t)(o.x1 - o.x0));
     obdelniku++;
@@ -824,9 +907,13 @@ struct KodekJpeg {
 // posun obrazu, polovicni rozliseni zdvojenych casti a zmeny jako vic obdelniku (po posunu mapy zbyva
 // pruh na kraji a jednotky - jeden obdelnik kolem vseho by byl skoro cely obraz).
 static constexpr int VOLBA_POSUN = 1, VOLBA_POLOVICNI = 2;
+// B335: barvy 4:4:4 v castech do 110 000 bodu (jeden pas koderu: jednotky, kurzor, pruh mapy) - bez
+// carek po jednotkach (Dune); vetsi casti (3D hra, cely obraz) 4:2:0 s doplnenim sousedu (S8 to stiha).
+static constexpr int PLNE_BARVY_PS1 = 55000;
 inline void nastavKodekPs1(KodekJpeg &k, int volby) {
   k.posun = (volby & VOLBA_POSUN) != 0;
   k.polovicni = (volby & VOLBA_POLOVICNI) != 0;
+  k.plneBarvyDo = PLNE_BARVY_PS1;          // B335 (kazda stranka, ktera si o volby rekne - od B319)
   if (k.posun || k.polovicni) {
     k.viceObdelniku = true;
     k.tolerance = KodekJpeg::TOLERANCE_PS1;   // B320: dithering PS1 (stranka WEB TV se nemeni)
