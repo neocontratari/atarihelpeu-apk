@@ -109,6 +109,14 @@ NapJazyk.slovnik({
   'Správce N&P platbu zkontroluje v bance a appka se odemkne sama – stačí ji mít zapnutou.':
     'The N&P admin checks the payment in the bank and the app unlocks by itself – just keep it running.',
   'ZKONTROLOVAT': 'CHECK NOW',
+  // B347: server pozna platbu z banky sam
+  'ODEMKNE SE SAMO': 'UNLOCKS BY ITSELF',
+  'Po zaplacení server N&P platbu pozná z banky a appka se odemkne sama – obvykle do pár minut, stačí ji mít zapnutou. Platí za tebe někdo jiný, třeba rodič? Ať naskenuje tenhle QR kód svou bankovní appkou – nic dalšího dělat nemusíte.':
+    'After paying, the N&P server sees the payment from the bank and the app unlocks by itself – usually within a few minutes, just keep it running. Is someone else paying for you, e.g. a parent? Let them scan this QR code with their banking app – there is nothing else to do.',
+  'Server N&P platbu pozná z banky a appka se odemkne sama – stačí ji mít zapnutou.':
+    'The N&P server sees the payment from the bank and the app unlocks by itself – just keep it running.',
+  'Neodemklo se ani po čtvrthodině? Klepni na ZAPLATIL JSEM – správce N&P platbu zkontroluje ručně.':
+    'Still locked after a quarter of an hour? Tap I HAVE PAID – the N&P admin will check the payment by hand.',
   'DO MENU': 'MENU',
   'SEGA ODEMČENA – díky! Najdeš ji v menu.': 'SEGA UNLOCKED – thank you! It is in the menu.',
   'PS1 ODEMČENA – díky! Najdeš ji v menu.': 'PS1 UNLOCKED – thank you! It is in the menu.'

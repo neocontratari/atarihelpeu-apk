@@ -4388,4 +4388,25 @@
      - DALSI KROK: Rene - C&C z CD ISO (hlaska "obraz disku je poškozený"), pak smazat a stahnout znovu: log
        "PS1_ZIP_EXTRACT_ENTRY ... (v ZIPu ...)" a "POZOR OBRAZ DISKU" rozhodne, jestli je vadny soubor na serveru.
 
+   B347 + SERVER v12.3: PLATBA SE POZNA SAMA Z E-MAILU BANKY (18. 11. 2026).
+   Rene: "Vzor taninek vezme telefon a diteti to zaplati, ale ja to nevidim" -> "chtelo by to automatickou detekci
+   ... aby engine hned vedel, ze je zaplaceno, a sam odemknul". Ucet neni u Fio (prvni navrh s Fio API zahozen).
+   E-maily od banky do schranky enginu (posta.txt).
+     - Server v12.3 (soukromy, /mnt/user-data/outputs/v12_3_server, v GitHubu NENI): banka posle e-mail o kazde
+       prichozi platbe (notifikace v internetbankingu; stejne paruji platby Fakturoid / myUcto).
+       Engine kazdou minutu IMAP (port 993 podle posty, jen cteni: EXAMINE + BODY.PEEK, trvale spojeni),
+       e-maily od csas.cz / airbank.cz / kb.cz za 7 dni, overi podpis DKIM (vlastni overeni rsa-sha256, klic z DNS TXT
+       s EDNS / TCP, d= musi byt banka a sedet s From, l= s pripsanym textem = podvrh), podepsane To = adresa enginu,
+       najde prichozi castku (ne zustatek) a VS (nebo "N&P SEGA 10071"). 90-300 % ceny = odemceno (💳 ZAPLACENO),
+       jinak 🏦 PLATBA pro spravce. Zapina se v 💳 PLATBY (platby.txt banka_email=1). /api/v1/platba: "banka_auto".
+       Testy: cast A 73 (e-maily podepsane nezavislou dkimpy), cast B 50 (cely server + falesny IMAP / DNS), GUI, v12 346.
+     - Appka B347: hry/odemknout.html pri banka_auto okenko 🏦 ODEMKNE SE SAMO (zaplatit muze i rodic - staci QR z
+       obrazovky), stranka se sama pta serveru kazdych 20 s (jen kdyz je videt) a hned po navratu do appky; ZAPLATIL
+       JSEM zustava jako zaloha ("Neodemklo se ani po čtvrthodině?"). Bez banka_auto vse jako B322. Log "B347 PLATBA"
+       (jen zmena). en_hry.js, napoveda CZ / EN. Testy test_overeni/b347 (JAK_SPUSTIT.txt). build.gradle: versionCode 390
+       "EMU10-B347-PLATBA-Z-BANKY". Na telefonu ani TV neovereno.
+     - DALSI KROK: Rene - server v12.3 (NAVOD_v12_3.txt), v bance e-mail o prichozich platbach na adresu enginu,
+       zaskrtnout v 💳 PLATBY, zkusebni platba 75 Kc z jineho uctu. Format e-mailu banky jsem nevidel (rozbor je obecny,
+       cesky i anglicky); kdyz v logu bude "nenašel jsem částku platby", poslat ten radek logu (ne e-mail).
+
 ===============================================================================

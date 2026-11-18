@@ -10,6 +10,9 @@
      hrani Segy - nebo hned po zaplaceni (PS1 az po Seze). Platebni udaje (ucet, VS, texty QR kodu)
      da server N&P (Reneho PC) - v appce ani v GitHubu cislo uctu neni. Clovek zaplati QR kodem,
      klepne ZAPLATIL JSEM, spravce uvidi platbu v bance a v okne serveru klikne ODEMKNOUT.
+     B347: server v12.3 umi platbu poznat sam z e-mailu banky ("banka_auto" v /api/v1/platba) - pak
+     stranka ukaze 🏦 ODEMKNE SE SAMO (zaplatit muze i rodic ze sveho telefonu, staci QR z teto obrazovky)
+     a sama se kazdych 20 s pta serveru (jen kdyz je videt); ZAPLATIL JSEM zustava jako zaloha.
      Most AHHRY (MainActivity.AHHry): odemknuti(), platba(co), zaplatil(co), ulozQr(png, nazev),
      kopiruj(text), odemknout(co), spustKonzoli(co), menu(), zkontroluj().
      QR kod: spolecne/qrcode.js (MIT, licence/qrcode-generator_MIT.txt). -->
@@ -66,6 +69,9 @@ body{padding:max(14px,env(safe-area-inset-top)) 12px max(16px,env(safe-area-inse
 #ceka{border:1px solid #6b5a1c;background:#1a1405;border-radius:12px;padding:12px;margin:0 0 12px;}
 #ceka b{color:var(--zl1);}
 #cekaText{font-size:13.5px;line-height:1.5;margin:4px 0 0;color:var(--text);}
+#sama{border:1px solid #2f6b3c;background:#06170b;border-radius:12px;padding:12px;margin:0 0 12px;}
+#sama b{color:var(--zelena);}
+#samaText{font-size:13.5px;line-height:1.5;margin:4px 0 0;color:var(--text);}
 .kolecko{display:inline-block;width:26px;height:26px;border:3px solid rgba(255,227,154,.2);border-top-color:var(--zl1);border-radius:50%;animation:toc 1s linear infinite;vertical-align:middle;}
 @keyframes toc{to{transform:rotate(360deg);}}
 #platbaStav{font-size:14px;line-height:1.5;color:var(--tlumene);text-align:center;padding:10px 0;}
@@ -103,6 +109,7 @@ body{padding:max(14px,env(safe-area-inset-top)) 12px max(16px,env(safe-area-inse
       <div class="cena"><b id="cenaHlavni" data-nepreklad></b><span id="cenaVedlejsi"></span></div>
       <div id="ceka" class="skryte"><b>⏳ ČEKÁ NA POTVRZENÍ</b><div id="cekaText">Správce N&amp;P platbu zkontroluje v bance a appka se odemkne sama – stačí ji mít zapnutou.</div>
         <button id="zkontroluj" class="tlacitko vedlejsi" type="button">ZKONTROLOVAT</button></div>
+      <div id="sama" class="skryte"><b>🏦 ODEMKNE SE SAMO</b><div id="samaText">Po zaplacení server N&amp;P platbu pozná z banky a appka se odemkne sama – obvykle do pár minut, stačí ji mít zapnutou. Platí za tebe někdo jiný, třeba rodič? Ať naskenuje tenhle QR kód svou bankovní appkou – nic dalšího dělat nemusíte.</div></div>
       <div class="zalozky">
         <button class="zalozka on" type="button" data-druh="cz">QR PLATBA · Kč</button>
         <button class="zalozka" type="button" data-druh="eu">SEPA · €</button>
@@ -112,7 +119,7 @@ body{padding:max(14px,env(safe-area-inset-top)) 12px max(16px,env(safe-area-inse
       <button id="ulozit" class="tlacitko vedlejsi" type="button">📷 ULOŽIT QR DO GALERIE</button>
       <div class="mal" id="radaQr">V bankovní appce zvol platbu QR kódem a načti ho z obrázku (z galerie). Nebo QR naskenuj z jiného telefonu, či údaje opiš.</div>
       <button id="zaplatil" class="tlacitko" type="button">✅ ZAPLATIL JSEM</button>
-      <div class="mal">Po zaplacení klepni na ZAPLATIL JSEM. Odemčení potvrzuje správce N&amp;P ručně, když platbu uvidí v bance – může to chvíli trvat.</div>
+      <div class="mal" id="radaZaplatil">Po zaplacení klepni na ZAPLATIL JSEM. Odemčení potvrzuje správce N&amp;P ručně, když platbu uvidí v bance – může to chvíli trvat.</div>
     </div>
   </div>
 
@@ -227,6 +234,12 @@ body{padding:max(14px,env(safe-area-inset-top)) 12px max(16px,env(safe-area-inse
 
   function eur(t) { return String(t || '').replace('.', ',') + ' €'; }
 
+  // B347: texty podle toho, jestli server platbu pozna z banky sam (banka_auto)
+  var CEKA_RUCNE = 'Správce N&P platbu zkontroluje v bance a appka se odemkne sama – stačí ji mít zapnutou.';
+  var CEKA_SAMA = 'Server N&P platbu pozná z banky a appka se odemkne sama – stačí ji mít zapnutou.';
+  var RADA_RUCNE = 'Po zaplacení klepni na ZAPLATIL JSEM. Odemčení potvrzuje správce N&P ručně, když platbu uvidí v bance – může to chvíli trvat.';
+  var RADA_SAMA = 'Neodemklo se ani po čtvrthodině? Klepni na ZAPLATIL JSEM – správce N&P platbu zkontroluje ručně.';
+
   function vykresliPlatbu() {
     if (!p) return;
     var ud = $('udaje');
@@ -252,6 +265,10 @@ body{padding:max(14px,env(safe-area-inset-top)) 12px max(16px,env(safe-area-inse
       ud.appendChild(radek('Zpráva', '/VS/' + p.vs + ' N&P ' + NAZEV, '/VS/' + p.vs + ' N&P ' + NAZEV));
       kresliQr(p.epc);
     }
+    var sama = !!p.banka_auto;
+    $('cekaText').textContent = tx(sama ? CEKA_SAMA : CEKA_RUCNE);
+    $('radaZaplatil').textContent = tx(sama ? RADA_SAMA : RADA_RUCNE);
+    ukaz('sama', sama && !p.zadost);
     ukaz('ceka', !!p.zadost);
     ukaz('zaplatil', !p.zadost);   // ceka na spravce - podruhe neposilat (ZKONTROLOVAT je v okenku CEKA)
     $('zaplatil').disabled = false;
@@ -259,7 +276,7 @@ body{padding:max(14px,env(safe-area-inset-top)) 12px max(16px,env(safe-area-inse
   }
 
   // co se na strance ukazuje - kdyz se nic nezmenilo, hlidac (kazdych 20 s) nic neprekresluje
-  function klic(d) { return [d.zadost, d.koupeno, d.vs, d.kc, d.eur, d.iban, d.bic, d.jmeno, d.spd, d.epc].join('|'); }
+  function klic(d) { return [d.zadost, d.koupeno, d.banka_auto, d.vs, d.kc, d.eur, d.iban, d.bic, d.jmeno, d.spd, d.epc].join('|'); }
 
   // QR kod: chyba M (doporuceni QR Platby i EPC), ctverecky ostre (cela cisla), tichy okraj 4 moduly
   var qrModuly = null;
@@ -333,13 +350,15 @@ body{padding:max(14px,env(safe-area-inset-top)) 12px max(16px,env(safe-area-inse
       }
       if (!d.nastaveno) { hlidej(false); platbaStav('Platby zatím nejsou nastavené. Napiš správci N&P.', true, false); return; }
       if (co === 'ps1' && !m.sega) { ukaz('hned', false); return; }
-      var bylaZadost = !!(p && p.zadost), stejne = p && klic(p) === klic(d);
+      var stejne = p && klic(p) === klic(d);
       p = d;
       ukaz('platbaStav', false);
       ukaz('znovu', false);
       ukaz('platba', true);
       if (!stejne) vykresliPlatbu();
-      if (!!d.zadost !== bylaZadost || (!!d.zadost && !hlidac)) hlidej(!!d.zadost);
+      // hlidat: po ZAPLATIL JSEM, a B347 i bez nej, kdyz server platbu pozna z banky sam
+      var hlidat = !!d.zadost || !!d.banka_auto;
+      if (hlidat !== !!hlidac) hlidej(hlidat);
     },
     zaplatil: function (r) {
       $('zaplatil').disabled = false;
@@ -390,7 +409,8 @@ body{padding:max(14px,env(safe-area-inset-top)) 12px max(16px,env(safe-area-inse
   $('spustit').addEventListener('click', function () { if (H) H.spustKonzoli(co); });
   $('naSegu').addEventListener('click', function () { if (H) H.odemknout('sega'); });
   $('doMenu').addEventListener('click', function () { if (H) H.menu(); else history.back(); });
-  document.addEventListener('visibilitychange', function () { if (!document.hidden && p && p.zadost && H) H.platba(co); });
+  // navrat do appky (treba z bankovni appky po zaplaceni) - hned se zeptat
+  document.addEventListener('visibilitychange', function () { if (!document.hidden && p && (p.zadost || p.banka_auto) && H) H.platba(co); });
 
   cekejNaMost(function () {
     if (!H) { stav('⚠', 'Odemknutí běží jen v aplikaci.', 'chyba'); ukaz('hned', false); ukaz('zdarma', false); return; }

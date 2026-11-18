@@ -1,0 +1,13 @@
+OK     S1 odemknout.html: okenko #sama (🏦 ODEMKNE SE SAMO) a rada #radaZaplatil
+OK     S2 hlidani kazdych 20 s i bez ZAPLATIL JSEM, kdyz banka_auto
+OK     S3 navrat do appky se pta hned; zmena banka_auto prekresli stranku
+OK     S4 po ZAPLATIL JSEM okenko SAMO zmizi (ČEKÁ uz to rika)
+OK     E1 en_hry.js: vsech 6 textu (2 puvodni + 4 nove B347)
+OK     E2 ODEMKNE SE SAMO = UNLOCKS BY ITSELF
+OK     J1 MainActivity: log B347 PLATBA (jen zmena banka_auto)
+OK     V build.gradle 390 EMU10-B347-PLATBA-Z-BANKY
+OK     N1 napoveda: blok platby CZ i EN 6 polozek (nova o ODEMKNE SE SAMO)
+OK     N2 napoveda CZ / EN: ODEMKNE SE SAMO / UNLOCKS BY ITSELF, platit muze i rodic
+OK     N3 otazka „Zaplatil jsem, ale konzole je pořád zamčená“ CZ / EN doplnena
+OK     P1 v appce zadne podrobnosti o bance ani schrance serveru
+VYSLEDEK: 12 kontrol, 0 CHYBA

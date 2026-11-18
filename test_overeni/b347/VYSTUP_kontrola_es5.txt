@@ -1,0 +1,3 @@
+OK     ES5 hry/odemknout.html skript 1
+OK     ES5 jazyk/en_hry.js
+VYSLEDEK: 2 kontrol, 0 CHYBA

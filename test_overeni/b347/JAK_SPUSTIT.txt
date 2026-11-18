@@ -1,0 +1,44 @@
+B347 + SERVER v12.3 - PLATBA SE POZNA SAMA Z E-MAILU BANKY (18. 11. 2026)
+==========================================================================
+
+Rene: tata zaplati diteti ze sveho telefonu, nikdo neklepne ZAPLATIL JSEM a engine o platbe nevi -> "chtelo by
+to automatickou detekci ... aby engine hned vedel, ze je zaplaceno, a sam odemknul". E-maily od banky jdou do
+schranky enginu (posta.txt).
+
+SERVER v12.3 (soukromy - /mnt/user-data/outputs/v12_3_server, v GitHubu NENI; testy jsou tam ve slozce test):
+ - Banka posle e-mail o kazde prichozi platbe do schranky enginu. Engine kazdou minutu IMAP (jen cteni, trvale
+   spojeni), e-maily od banky za 7 dni, podpis DKIM (klic z DNS), adresat, castka (ne zustatek), VS -> odemknuti
+   jako ✔ ODEMKNOUT. Zapina se v 💳 PLATBY. /api/v1/platba posila "banka_auto".
+ - Testy serveru: cast A 73 kontrol (e-maily CS / Air Bank / KB podepsane NEZAVISLOU knihovnou dkimpy, podvrhy,
+   texty, DNS EDNS / TCP), cast B 50 kontrol (cely server + falesny IMAP s TLS + falesny DNS + sparovany telefon),
+   GUI test okna PLATBY (Xvfb), stare testy v12 346 OK.
+
+APPKA B347:
+ - hry/odemknout.html: pri "banka_auto" okenko 🏦 ODEMKNE SE SAMO (veta pro rodice: naskenovat QR z teto
+   obrazovky), rada pod ZAPLATIL JSEM "Neodemklo se ani po čtvrthodině? …", CEKA text "Server N&P platbu pozná
+   z banky …"; stranka se sama pta serveru kazdych 20 s (jen kdyz je videt) a hned po navratu do appky. Bez
+   banka_auto vse jako B322.
+ - en_hry.js 4 nove texty; MainActivity log "B347 PLATBA sega: server pozna platbu z banky sam ..." (jen zmena);
+   napoveda CZ / EN (blok platby + otazka "Zaplatil jsem, ale konzole je pořád zamčená"); build.gradle 390
+   "EMU10-B347-PLATBA-Z-BANKY".
+
+Spoustet z adresare test_overeni/b347:
+A) python3 test_b347_stranka.py -> VYSTUP_test_b347_stranka.txt (12 OK: okenko + texty, hlidani 20 s bez ZAPLATIL
+   JSEM, navrat do appky, odemceno -> konec hlidani, ZAPLATIL JSEM pri banka_auto, bez banka_auto jako B322,
+   vypnuti za behu, anglicky bez cestiny, zadna chyba JS; Chromium + hodiny Playwright, most AHHRY z testu B322)
+B) python3 kontrola_b347.py -> VYSTUP_kontrola_b347.txt (12 OK; na HEAD B346 11 CHYBA -
+   VYSTUP_kontrola_b347_NA_HEAD_B346.txt)
+C) ES5 (acorn): VYSTUP_kontrola_es5.txt (odemknout.html, en_hry.js); javac s android.jar: VYSTUP_javac_android.txt
+D) Regrese (pravidlo B343 - napoveda): b311/kontrola_navodu.py 219 nazvu 0 CHYBA (+1 ODEMKNE SE SAMO),
+   b314/kontrola_navodu_en.py 211 0 CHYBA (+1 UNLOCKS BY ITSELF), b343/kontrola_b343.py 3 CHYBA ZAMERNE (stejne
+   jako B346: N7 a A6 od B345, V verze). Dalsi: b322/test_b322_stranky.py 36 OK (VYSTUP beze zmeny),
+   b337/test_b337_tv_stranky.py (VYSTUP beze zmeny), b334 TV 13 kontrol 0 CHYBA (VYSTUP_regrese_b334_*: rozdil
+   proti ulozenemu je starsi - TV POKUS pryc od B346).
+   POZOR: skripty jinych buildu prepisuji sve VYSTUP soubory - po regresi "git checkout -- test_overeni/bNNN".
+
+Overi Rene:
+ 1) Server v12.3 podle NAVOD_v12_3.txt, v bance e-mail o prichozich platbach na adresu enginu, zaskrtnout v
+    💳 PLATBY -> v logu modre "🏦 BANKA ... Schránka ... je připojená".
+ 2) Na telefonu ODEMKNOUT -> "🏦 ODEMKNE SE SAMO"; zaplatit QR z jineho telefonu -> do par minut 💳 ZAPLACENO
+    v logu serveru a telefon sam "SEGA ODEMČENA – díky!" (v logu telefonu "B347 PLATBA sega: server pozna
+    platbu z banky sam").

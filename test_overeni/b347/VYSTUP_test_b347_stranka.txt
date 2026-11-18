@@ -1,0 +1,14 @@
+OK     A1 okénko 🏦 ODEMKNE SE SAMO s větou pro rodiče
+OK     A1 ZAPLATIL JSEM zůstává jako záloha, rada „Neodemklo se ani po čtvrthodině?“
+OK     A2 bez ZAPLATIL JSEM se stránka sama ptá serveru každých 20 s
+OK     A4 návrat do appky (visibilitychange) -> hned platba()
+OK     A3 server odemkl -> „SEGA je odemčená“, SPUSTIT, stránka se přestane ptát
+OK     A5 ZAPLATIL JSEM: ČEKÁ s „Server N&P platbu pozná z banky…“, okénko SAMO zmizí
+OK     B1 bez banka_auto: žádné okénko, původní rada a ČEKÁ text, stránka se sama neptá
+OK     B2 banka vypnutá za běhu: hlídání skončí, texty zpět
+OK     C1 anglicky: UNLOCKS BY ITSELF + anglické věty
+OK     C1 anglicky: žádná čeština (kromě účtu, jména, Kč, QR Platba)
+OK     C1 anglicky: ČEKÁ text „The N&P server sees the payment…“
+OK     žádná chyba JavaScriptu
+
+VYSLEDEK: 12 OK, 0 CHYBA

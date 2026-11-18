@@ -11718,6 +11718,7 @@ public class MainActivity extends Activity {
     private static final String NAP_ODEMKNOUT_URL = "file:///android_asset/hry/odemknout.html";
     private volatile boolean napCekaPlatba = false;
     private volatile boolean napViditelna = false;   // appka je na obrazovce (onResume .. onPause)
+    private volatile int napBankaAutoLog = -1;       // B347: server pozna platbu z banky sam? (do logu jen zmena)
     private volatile long napPostupPoslanoMs = 0L;
     private volatile String napPostupPoslano = "";
 
@@ -12065,6 +12066,14 @@ public class MainActivity extends Activity {
                     }
                 }
                 if (ok && NapJson.ano(o.json, "zadost") && !napCekaPlatba) ui.post(() -> napHlidejPlatbu(true));
+                if (ok) {   // B347: server v12.3 cte e-maily od banky -> stranka hlida platbu sama (kazdych 20 s, jen kdyz je videt)
+                    final int ba = NapJson.ano(o.json, "banka_auto") ? 1 : 0;
+                    if (ba != napBankaAutoLog) {
+                        napBankaAutoLog = ba;
+                        appendNativeLog("B347 PLATBA " + c + ": " + (ba == 1 ? "server pozna platbu z banky sam - stranka hlida kazdych 20 s"
+                                : "server platbu z banky necte - odemceni potvrzuje spravce (ZAPLATIL JSEM)"));
+                    }
+                }
                 napOdpovedStrance("platba", "{\"ok\":" + ok + ",\"kod\":" + o.kod + ",\"duvod\":" + NapJson.uvoz(o.duvod())
                         + ",\"zprava\":" + NapJson.uvoz(o.zprava()) + ",\"data\":" + (ok ? o.text() : "null") + ",\"mistni\":" + odemknuti() + "}");
             }, "nap-platba").start();
