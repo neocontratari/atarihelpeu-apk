@@ -4484,4 +4484,32 @@
        other disk" ATR / DISK -> VYMENIT DISKETU BEZ RESTARTU -> SDB z archivu). Pristi build: RAR5 (novy format
        WinRAR) a PPMd - overit na libarchive testech (31x RAR5 v test_read_format_rar5_*).
 
+   B350: RAR5 (NOVY WINRAR) PRO ATARI (18. 11. 2026).
+   Rene po B349 3x "pokracuj" - B349 RAR5 jen poznal ("zatim neumim"), novy WinRAR ho ale dela standardne.
+     - nap_archiv.h, trida Rar5 (podle unrar Unpack5, overeno na libarchive): bloky (priznaky: bity posledniho
+       bajtu, 1-3 bajty velikosti, posledni blok, tabulky; kontrolni bajt 0x5A ^ ...), tabulky BC 20 + LD 306 /
+       DD 64 (RAR 7: 80) / LDD 16 / RD 44 bez delty, kody 257 (opakovani), 258-261 (stare vzdalenosti), 262+
+       (delka 2-4097, vzdalenost + nizke 4 bity z LDD, +1/+2/+3 nad 0x100/0x2000/0x40000), 256 = filtr DELTA /
+       E8 / E8E9 / ARM (pozice v souboru jako unrar WrittenFileSize); blok bez tabulek pouzije predchozi (i v dalsim
+       souboru pevneho archivu). Archiv: hlavicky s CRC32 a vint (hlavni / soubor / sluzebni / sifrovani / konec),
+       CRC32 souboru volitelne (bez nej - otisk BLAKE2 - se kontroluje velikost a stavba dat), rozsireni
+       sifrovani (heslo) a presmerovani (symlink / hardlink = "odkaz", AtariArchiv ho preskoci).
+     - Oprava i pro RAR4 (B349): retez pevneho archivu zacina u posledniho KOMPRIMOVANEHO souboru bez priznaku
+       navaznosti - slozky, odkazy, prazdne a ulozene soubory ho uz nerozdeli (WinRAR 5 uklada prazdny soubor bez
+       dat a bez "solid" uprostred pevneho archivu -> v B349 by dalsi soubor mel spatny CRC). CRC tabulka a pevne
+       kody Inflate: static C++11 (bezpecne z vic vlaken).
+     - nap_atari_native.cpp: hlaska "RAR5 ZATIM NEUMIM" pryc (byla prvni podle "RAR5" v chybe - s B350 by kazdou
+       chybu RAR5 archivu, treba poskozenou hlavicku, hlasila jako "neumim"), nove "TENHLE RAR JE MOC NOVY" (verze
+       komprese > RAR 7) a "STARY RAR (1.5 / 2.0) NEUMIM"; log B350.
+       Napoveda CZ / EN: RAR5 umi; neumi heslo, vice dilu a stary RAR s PPMd.
+     - Testy test_overeni/b350 (JAK_SPUSTIT.txt): vyrob_rar5.py (vlastni koder RAR 5 - bsdtar vsechno rozbali na
+       puvodni data, i pevny archiv; tenhle test nasel chybu retezu), test_b350_rar5 11 OK (vsechny kody a filtry,
+       pevny i na preskacku, bez CRC + odkaz, vyber PoP v RAR5, 1700 poskozenych RAR5, 27 cizich RAR5: 15 celych
+       OK = vsechny platne z libarchive / rarfile, 12 zamerne poskozenych odmitnuto), ASan / UBSan + fuzz,
+       test_b350_jni 13 OK (skutecny native: RAR5 strana A -> boot -> vymena za B z RAR5 -> SIO cte sektor). Regrese:
+       b349 42 OK (cizich archivu cele OK 14 -> 29) + JNI 19 OK, b348 41 + 16 OK, napoveda 220 / 212 / 3 zamerne.
+       build.gradle: versionCode 393 "EMU10-B350-RAR5-ATARI". Na telefonu ani TV neovereno.
+     - DALSI KROK: Rene / tester - hra v RAR5 (WinRAR 5+ / 7) pres XEX / MOBIL nebo NET HRY. Zbyva PPMd (RAR4
+       "nejlepsi" komprese textu; libarchive compress_best, rarfile unicode.rar) a RAR 1.5 / 2.0.
+
 ===============================================================================

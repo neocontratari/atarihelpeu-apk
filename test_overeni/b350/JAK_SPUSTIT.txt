@@ -1,0 +1,48 @@
+B350 - RAR5 (NOVY WINRAR) PRO ATARI - overeni na PC
+=====================================================
+
+Rene po B349 3x "pokracuj". B349 rozbalil ZIP a RAR4, RAR5 jen poznal ("zatim neumim") - jenze novy WinRAR
+dela RAR5 standardne. B350 RAR5 rozbali, cele v C++ (nap_archiv.h, trida Rar5 + hlavicky RAR5 v Archiv).
+Podrobne v PREDAVACI_PROTOKOL_PRO_NASTUPCE.txt (B350).
+
+Spoustet z adresare test_overeni/b350. Cizi testovaci archivy (libarchive, rarfile) v repozitari NEJSOU - testy je
+berou ze slozky v argumentu (libarchive/test/test_read_format_rar5_*.rar.uu dekodovane, rarfile test/files).
+
+1) Testovaci RAR5 (deterministicke, nic se nestahuje; bere atr() / xex() z ../b349/vyrob_archivy.py):
+     python3 vyrob_rar5.py /tmp/b350_archivy                       -> VYSTUP_vyrob_rar5.txt
+   Vlastni maly koder RAR 5 jen pro testy (tokeny -> bloky a bitovy proud presne podle unrar Unpack5). Nezavisla
+   kontrola - bsdtar (libarchive) je rozbali na puvodni data, vcetne pevneho archivu a filtru:
+     bash ../b349/over_bsdtar.sh /tmp/b350_archivy                 -> VYSTUP_over_bsdtar.txt
+   (Prvni verze B350 mela v pevnem archivu za prazdnym souborem spatny CRC - bsdtar ho rozbalil spravne, chyba byla
+   v retezu pevneho archivu v nap_archiv.h - opraveno pro RAR5 i RAR4.)
+
+2) Rozbaleni a vyber (cisty C++):
+     g++ -std=c++17 -O2 -Wall -Wextra -I../../app/src/main/cpp/atari -o test_b350_rar5 test_b350_rar5.cpp
+     ./test_b350_rar5 /tmp/b350_archivy [--cizi SLOZKA_libarchive SLOZKA_rarfile]   -> VYSTUP_test_b350_rar5.txt (11 OK)
+   A ulozeny RAR5 + slozka; vsechny kody a filtry (300 kB: 257, 258-261, 262+ se shodami az 4097 B a vzdalenosti
+     nad 256 kB, 14 bloku s / bez tabulek, DELTA / E8 / E8E9 / ARM); pevny RAR5 (2. soubor bez tabulek, 3. prazdny
+     bez dat uprostred, 4. s novymi tabulkami) i na preskacku; bez CRC32 (jako BLAKE2) + odkaz (symlink)
+   B vyber: PoP v RAR5 (DD, sada SDA / SDB), pevny RAR5 (SDA startuje), strany A / B, odkaz se nenabizi
+   C 1700 poskozenych / nahodnych RAR5: zadny pad ani zaseknuti
+   D cizi RAR5: 27 archivu, 15 celych OK (vsechny platne: pevne, vic souboru, filtr ARM, BLAKE2, win32, odkazy,
+     rarfile rar5-solid / rar5-solid-qo), 12 odmitnutych (zamerne poskozene testy libarchive, vice dilu), 0 jinych
+   S kontrolou pameti (-fsanitize=address,undefined) + fuzz ../b349/fuzz_b349.cpp s RAR5 vzory:
+                                                                     -> VYSTUP_test_b350_asan.txt
+
+3) SKUTECNY nap_atari_native.cpp (stuby z ../b291/stub, JAVA_HOME = JDK):
+     g++ -std=c++17 -O2 -pthread -I../b291/stub -I$JAVA_HOME/include -I$JAVA_HOME/include/linux \
+         -I../../app/src/main/cpp/atari -o test_b350_jni test_b350_jni.cpp
+     ./test_b350_jni /tmp/b350_archivy                              -> VYSTUP_test_b350_jni.txt (13 OK)
+   RAR5 (strana B v archivu prvni, navod, strana A s programem z ../b348) -> devArchivNative vrati stranu A ->
+   boot; devArchivSouborNative(1) + "atr_vymena" -> program vlastnim SIO pres POKEY cte sektor 4 strany B;
+   PoP v RAR5 -> DD; radky "B349 ARCHIV ... (RAR5, rozbaleno za N ms)" a "B350 RAR5" v logu.
+
+4) Regrese na zdrojich B350:
+     ../b349: test_b349_archiv 42 OK (cizi archivy cele OK 14 -> 29: pribyly RAR5; odkazy se v pocitani
+              preskakuji), test_b349_jni 19 OK           -> VYSTUP_regrese_b349_archiv.txt, VYSTUP_regrese_b349_jni.txt
+     ../b348: test_b348_sio 41 OK, test_b348_jni 16 OK -> VYSTUP_regrese_b348_*.txt
+   Pravidlo B343 (napoveda): b311 220 nazvu 0 CHYBA, b314 212 0 CHYBA, b343 3 CHYBA ZAMERNE (N7, A6, V)
+                                                       -> VYSTUP_regrese_b311_*, VYSTUP_regrese_b314_*, VYSTUP_regrese_b343_*
+
+Overi Rene / tester (telefon): hra zabalena novym WinRARem (RAR5, i "pevny archiv") pres XEX / MOBIL, ATR / DISK
+nebo NET HRY - spusti se jako ZIP / RAR4 v B349. Kdyz ne: log, radky "B349 ARCHIV" (typ RAR5 a duvod).

@@ -1,0 +1,2 @@
+rar5_kody.rar: 300000 B, tokeny blok=14 filtr=11 lit=2300 match=883 old=214 rep=98, filtry DELTA=2 E8=3 E8E9=1 ARM=5, shod nad 256 kB: 3, delka > 1000: 53, zabaleno 6287 B
+hotovo: 7 archivu RAR5 v /tmp/b350_archivy

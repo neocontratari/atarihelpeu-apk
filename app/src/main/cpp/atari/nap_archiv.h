@@ -10,11 +10,13 @@
 //    s algoritmem RAR 2.9 (verze rozbaleni 29 / 36): LZ + Huffmanovy tabulky
 //    + standardni filtry (E8, E8E9, Itanium, Delta, RGB, Audio); pevny archiv
 //    (solid) se rozbaluje postupne od zacatku,
-//  - RAR 5 (signatura "Rar!" 1A 07 01 00): pozna a poctive rekne, ze ho
-//    zatim neumi (zabalit jako ZIP nebo RAR 4).
-// Kazdy rozbaleny soubor se kontroluje CRC32 z archivu - kdyby se rozbaleni
+//  - RAR 5 (signatura "Rar!" 1A 07 01 00, WinRAR 5.0+): B350 - hlavicky s vint,
+//    ulozeno i komprese RAR 5 / RAR 7 (bloky, Huffman, filtry DELTA / E8 / E8E9 /
+//    ARM), pevny archiv.
+// Kazdy rozbaleny soubor se kontroluje CRC32 z archivu (RAR 5 jen kdyz ho ma -
+// pri otisku BLAKE2 se kontroluje velikost a stavba dat) - kdyby se rozbaleni
 // nepovedlo, appka spatna data nespusti (napise chybu).
-// Neumi: heslo, archiv na vice dilu, bloky PPMd v RAR (napise to do chyby).
+// Neumi: heslo, archiv na vice dilu, bloky PPMd v RAR 4 (napise to do chyby).
 #pragma once
 #include <cstdint>
 #include <cstdlib>
@@ -30,18 +32,19 @@ namespace archiv {
 //  CRC32 (ZIP i RAR 4: polynom EDB88320)
 // ---------------------------------------------------------------------
 inline uint32_t crc32(const uint8_t *d, size_t n, uint32_t c = 0) {
-  static uint32_t tab[256];
-  static bool hotovo = false;
-  if (!hotovo) {
-    for (uint32_t i = 0; i < 256; i++) {
-      uint32_t r = i;
-      for (int k = 0; k < 8; k++) r = (r & 1) ? (r >> 1) ^ 0xEDB88320u : r >> 1;
-      tab[i] = r;
+  struct Tabulka {
+    uint32_t t[256];
+    Tabulka() {
+      for (uint32_t i = 0; i < 256; i++) {
+        uint32_t r = i;
+        for (int k = 0; k < 8; k++) r = (r & 1) ? (r >> 1) ^ 0xEDB88320u : r >> 1;
+        t[i] = r;
+      }
     }
-    hotovo = true;
-  }
+  };
+  static const Tabulka tab;                       // C++11: bezpecne i z vic vlaken
   c = ~c;
-  for (size_t i = 0; i < n; i++) c = tab[(c ^ d[i]) & 0xFF] ^ (c >> 8);
+  for (size_t i = 0; i < n; i++) c = tab.t[(c ^ d[i]) & 0xFF] ^ (c >> 8);
   return ~c;
 }
 
@@ -648,6 +651,268 @@ class Rar29 {
 };
 
 // ---------------------------------------------------------------------
+//  RAR 5 (WinRAR 5.0 a novejsi, signatura "Rar!" 1A 07 01 00) - B350.
+//  LZ s Huffmanem v blocich (hlavicka bloku: priznaky, kontrola, velikost),
+//  tabulky bez delty, shody 262+, opakovani 257, stare vzdalenosti 258-261,
+//  filtry DELTA / E8 / E8E9 / ARM (zadny VM ani PPMd). Verze algoritmu
+//  0 = RAR 5 (64 slotu vzdalenosti), 1 = RAR 7 (80 slotu, vetsi slovnik).
+//  Podle rozbalovace unrar (Unpack5) - overeno na testech libarchive.
+// ---------------------------------------------------------------------
+class Rar5 {
+ public:
+  // rozbali jeden soubor; pevny archiv (solid) = dalsi volani na stejnem objektu
+  bool rozbal(const uint8_t *in, size_t n, uint64_t velikost, bool znamaVelikost, bool solid, int verze,
+              std::vector<uint8_t> &out, std::string &chyba) {
+    vstup = in; vstupN = n; adr = 0; bit = 0; chyb = nullptr;
+    if (verze != 0 && verze != 1) { chyba = "rar5: neznama verze komprese " + std::to_string(verze) + " (novejsi WinRAR)"; return false; }
+    if (!solid || !inicializovano) zacni();
+    DC = verze == 1 ? 80 : 64;
+    filtry.clear();                                   // filtry nikdy nepresahuji soubor (unrar InitFilters)
+    if (znamaVelikost && velikost > (64u << 20)) { chyba = "rar5: soubor je moc velky"; return false; }
+    const uint64_t start = okno.size();
+    const uint64_t strop = start + (znamaVelikost ? velikost : (uint64_t)(64u << 20));
+    if (!ctiBlok()) { chyba = chyb ? chyb : "rar5: spatna hlavicka bloku"; return false; }
+    if (!tabulky) { chyba = "rar5: chybi Huffmanovy tabulky"; return false; }
+    for (;;) {
+      bool hotovo = false;
+      while (konecBloku()) {                            // i prazdny blok jen s tabulkami
+        if (posledni) { hotovo = true; break; }
+        if (!ctiBlok()) { chyba = chyb ? chyb : "rar5: spatna hlavicka bloku"; return false; }
+      }
+      if (hotovo) break;
+      if (okno.size() > strop) { chyba = "rar5: vic dat, nez ma soubor"; return false; }
+      const int c = dekod(LD);
+      if (c < 256) { okno.push_back((uint8_t)c); continue; }
+      if (c >= 262) {
+        uint32_t delka = delkaZeSlotu(c - 262);
+        const int slot = dekod(DD);
+        uint64_t vzd = 1;
+        int db = 0;
+        if (slot < 4) vzd += (uint64_t)slot;
+        else { db = slot / 2 - 1; vzd += (uint64_t)(2 | (slot & 1)) << db; }
+        if (db > 0) {
+          if (db >= 4) {
+            if (db > 4) { vzd += bity(db - 4) << 4; }
+            vzd += (uint64_t)dekod(LDD);
+          } else vzd += bity(db);
+        }
+        if (vzd > 0x100) { delka++; if (vzd > 0x2000) { delka++; if (vzd > 0x40000) delka++; } }
+        stare[3] = stare[2]; stare[2] = stare[1]; stare[1] = stare[0]; stare[0] = vzd;
+        posledniDelka = delka;
+        kopiruj(delka, vzd);
+        continue;
+      }
+      if (c == 256) { if (!ctiFiltr()) { chyba = chyb ? chyb : "rar5: spatny filtr"; return false; } continue; }
+      if (c == 257) { if (posledniDelka) kopiruj(posledniDelka, stare[0]); continue; }
+      // 258-261: stara vzdalenost 0-3, delka z tabulky RD
+      const int k = c - 258;
+      const uint64_t vzd = stare[k];
+      for (int j = k; j > 0; j--) stare[j] = stare[j - 1];
+      stare[0] = vzd;
+      const uint32_t delka = delkaZeSlotu(dekod(RD));
+      posledniDelka = delka;
+      kopiruj(delka, vzd);
+    }
+    if (znamaVelikost) {
+      if (okno.size() < strop) { chyba = "rar5: data skoncila driv"; return false; }
+      okno.resize(strop);
+    }
+    out.assign(okno.begin() + (long)start, okno.end());
+    return pouzijFiltry(start, out, chyba);
+  }
+
+ private:
+  struct Dekoder { uint32_t len[16]; uint32_t pos[16]; uint16_t num[512]; uint32_t max; };
+  struct Filtr { uint64_t start; uint32_t delka; int typ; int kanalu; };
+  enum { F_DELTA = 0, F_E8 = 1, F_E8E9 = 2, F_ARM = 3 };
+  static constexpr int NC = 306, LDC = 16, RC = 44, BC = 20, DCMAX = 80;
+
+  const uint8_t *vstup = nullptr; size_t vstupN = 0, adr = 0; int bit = 0;
+  const char *chyb = nullptr;
+  std::vector<uint8_t> okno;                          // cely rozbaleny proud (bez filtru)
+  bool inicializovano = false, tabulky = false, posledni = false;
+  int DC = 64;
+  Dekoder LD, DD, LDD, RD, BD;
+  uint64_t stare[4] = {0, 0, 0, 0};
+  uint32_t posledniDelka = 0;
+  int64_t blokKonec = 0;                              // konec bloku v bitech od zacatku vstupu
+  std::vector<Filtr> filtry;
+
+  void zacni() {
+    okno.clear(); tabulky = false; inicializovano = true;
+    stare[0] = stare[1] = stare[2] = stare[3] = 0; posledniDelka = 0;
+  }
+  uint32_t bity16() const {
+    const uint32_t b0 = adr < vstupN ? vstup[adr] : 0, b1 = adr + 1 < vstupN ? vstup[adr + 1] : 0, b2 = adr + 2 < vstupN ? vstup[adr + 2] : 0;
+    return (((b0 << 16) | (b1 << 8) | b2) >> (8 - bit)) & 0xFFFF;
+  }
+  void pridej(int k) { k += bit; adr += (size_t)(k >> 3); bit = k & 7; }
+  uint64_t bity(int k) {                              // k bitu (1..40), MSB napred
+    uint64_t v = 0;
+    while (k > 0) { const int t = k > 16 ? 16 : k; v = (v << t) | (bity16() >> (16 - t)); pridej(t); k -= t; }
+    return v;
+  }
+  bool konecBloku() const { return (int64_t)adr * 8 + bit >= blokKonec; }
+
+  bool ctiBlok() {
+    if (bit) { adr++; bit = 0; }                      // hlavicka bloku je zarovnana na bajt
+    if (adr + 3 > vstupN) { chyb = "rar5: data skoncila (hlavicka bloku)"; return false; }
+    const uint8_t prizn = vstup[adr], kontrola = vstup[adr + 1];
+    const unsigned bajtu = ((prizn >> 3) & 3) + 1;
+    if (bajtu == 4 || adr + 2 + bajtu > vstupN) { chyb = "rar5: spatna hlavicka bloku"; return false; }
+    uint32_t velikost = 0;
+    for (unsigned i = 0; i < bajtu; i++) velikost |= (uint32_t)vstup[adr + 2 + i] << (8 * i);
+    const uint8_t k = (uint8_t)(0x5A ^ prizn ^ velikost ^ (velikost >> 8) ^ (velikost >> 16));
+    if (k != kontrola) { chyb = "rar5: poskozena hlavicka bloku (kontrolni soucet)"; return false; }
+    adr += 2 + bajtu;
+    if (adr + velikost > vstupN) { chyb = "rar5: blok za koncem dat"; return false; }
+    blokKonec = (int64_t)(adr + velikost) * 8 - 8 + ((prizn & 7) + 1);
+    posledni = (prizn & 0x40) != 0;
+    if (prizn & 0x80) return ctiTabulky();
+    return true;
+  }
+
+  static void stavDekoder(const uint8_t *delky, int pocet, Dekoder &d) {
+    uint32_t cnt[16]; std::memset(cnt, 0, sizeof cnt);
+    for (int i = 0; i < pocet; i++) cnt[delky[i] & 15]++;
+    cnt[0] = 0;
+    std::memset(d.num, 0, sizeof d.num);
+    d.pos[0] = 0; d.len[0] = 0;
+    uint32_t horni = 0;
+    for (int i = 1; i < 16; i++) {
+      horni += cnt[i];
+      d.len[i] = horni << (16 - i);
+      horni *= 2;
+      d.pos[i] = d.pos[i - 1] + cnt[i - 1];
+    }
+    uint32_t kopie[16]; std::memcpy(kopie, d.pos, sizeof kopie);
+    for (int i = 0; i < pocet; i++) { const int l = delky[i] & 15; if (l) d.num[kopie[l]++] = (uint16_t)i; }
+    d.max = (uint32_t)pocet;
+  }
+  int dekod(const Dekoder &d) {
+    const uint32_t b = bity16() & 0xFFFE;
+    int bitu = 15;
+    for (int i = 1; i < 15; i++) if (b < d.len[i]) { bitu = i; break; }
+    pridej(bitu);
+    uint32_t p = d.pos[bitu] + ((b - d.len[bitu - 1]) >> (16 - bitu));
+    if (p >= d.max) p = 0;
+    return d.num[p];
+  }
+  bool ctiTabulky() {
+    uint8_t bl[BC];
+    for (int i = 0; i < BC; i++) {
+      const uint8_t l = (uint8_t)(bity16() >> 12); pridej(4);
+      if (l == 15) {
+        int nuly = (int)(bity16() >> 12); pridej(4);
+        if (nuly == 0) bl[i] = 15;
+        else { nuly += 2; while (nuly-- > 0 && i < BC) bl[i++] = 0; i--; }
+      } else bl[i] = l;
+    }
+    stavDekoder(bl, BC, BD);
+    const int hts = NC + DC + LDC + RC;
+    uint8_t tab[NC + DCMAX + LDC + RC];
+    for (int i = 0; i < hts;) {
+      if ((int64_t)adr * 8 + bit > blokKonec + 64) { chyb = "rar5: data skoncila v tabulkach"; return false; }
+      const int c = dekod(BD);
+      if (c < 16) { tab[i++] = (uint8_t)c; continue; }
+      int k;
+      if (c == 16 || c == 18) { k = (int)(bity16() >> 13) + 3; pridej(3); }
+      else { k = (int)(bity16() >> 9) + 11; pridej(7); }
+      if (c < 18) {
+        if (i == 0) { chyb = "rar5: spatna tabulka"; return false; }
+        while (k-- > 0 && i < hts) { tab[i] = tab[i - 1]; i++; }
+      } else while (k-- > 0 && i < hts) tab[i++] = 0;
+    }
+    stavDekoder(tab, NC, LD);
+    stavDekoder(tab + NC, DC, DD);
+    stavDekoder(tab + NC + DC, LDC, LDD);
+    stavDekoder(tab + NC + DC + LDC, RC, RD);
+    tabulky = true;
+    return true;
+  }
+  uint32_t delkaZeSlotu(int slot) {
+    if (slot < 8) return 2u + (uint32_t)slot;
+    const int lb = slot / 4 - 1;
+    return 2u + ((uint32_t)(4 | (slot & 3)) << lb) + (uint32_t)bity(lb);
+  }
+  void kopiruj(uint32_t delka, uint64_t vzd) {
+    const size_t n = okno.size();
+    for (uint32_t i = 0; i < delka; i++) {
+      const size_t p = n + i;
+      okno.push_back(vzd != 0 && vzd <= p ? okno[p - (size_t)vzd] : (uint8_t)0);   // pred zacatkem okna nuly
+    }
+  }
+  uint32_t ctiFiltrData() {
+    const int bajtu = (int)(bity16() >> 14) + 1; pridej(2);
+    uint32_t v = 0;
+    for (int i = 0; i < bajtu; i++) { v |= (bity16() >> 8) << (8 * i); pridej(8); }
+    return v;
+  }
+  bool ctiFiltr() {
+    Filtr f;
+    const uint32_t odsud = ctiFiltrData();
+    f.delka = ctiFiltrData();
+    f.typ = (int)(bity16() >> 13); pridej(3);
+    f.kanalu = 0;
+    if (f.typ == F_DELTA) { f.kanalu = (int)(bity16() >> 11) + 1; pridej(5); }
+    if (f.delka > 0x400000) f.delka = 0;               // unrar MAX_FILTER_BLOCK_SIZE: neplatny filtr se ignoruje
+    f.start = okno.size() + odsud;
+    if (filtry.size() >= 8192) { chyb = "rar5: prilis mnoho filtru"; return false; }
+    filtry.push_back(f);
+    return true;
+  }
+  bool pouzijFiltry(uint64_t start, std::vector<uint8_t> &out, std::string &chyba) {
+    uint64_t hotovo = start;                          // vse pred timhle je uz zapsane (filtry jdou po sobe)
+    for (const Filtr &f : filtry) {
+      if (f.delka == 0 || f.start < hotovo || f.start + f.delka > start + out.size()) continue;
+      uint8_t *d = out.data() + (size_t)(f.start - start);
+      const uint32_t n = f.delka;
+      const uint32_t ofs = (uint32_t)(f.start - start);   // pozice bloku v souboru (unrar WrittenFileSize)
+      if (f.typ == F_E8 || f.typ == F_E8E9) {
+        const uint32_t velikostSouboru = 0x1000000;
+        const uint8_t cmp2 = f.typ == F_E8E9 ? 0xE9 : 0xE8;
+        for (uint32_t pos = 0; pos + 4 < n;) {
+          const uint8_t c = d[pos++];
+          if (c == 0xE8 || c == cmp2) {
+            const uint32_t posun = (pos + ofs) % velikostSouboru;
+            const uint32_t a = le32(d + pos);
+            uint32_t nova = a;
+            bool zmena = false;
+            if (a & 0x80000000u) { if (((a + posun) & 0x80000000u) == 0) { nova = a + velikostSouboru; zmena = true; } }
+            else if (((a - velikostSouboru) & 0x80000000u) != 0) { nova = a - posun; zmena = true; }
+            if (zmena) { d[pos] = (uint8_t)nova; d[pos + 1] = (uint8_t)(nova >> 8); d[pos + 2] = (uint8_t)(nova >> 16); d[pos + 3] = (uint8_t)(nova >> 24); }
+            pos += 4;
+          }
+        }
+      } else if (f.typ == F_ARM) {
+        for (uint32_t pos = 0; pos + 3 < n; pos += 4) {
+          uint8_t *b = d + pos;
+          if (b[3] == 0xEB) {
+            uint32_t o = b[0] + (uint32_t)b[1] * 0x100 + (uint32_t)b[2] * 0x10000;
+            o -= (ofs + pos) / 4;
+            b[0] = (uint8_t)o; b[1] = (uint8_t)(o >> 8); b[2] = (uint8_t)(o >> 16);
+          }
+        }
+      } else if (f.typ == F_DELTA) {
+        // vstup = puvodni data z okna (stejna jako v out pred filtrem)
+        std::vector<uint8_t> o(n);
+        uint32_t src = 0;
+        for (int ch = 0; ch < f.kanalu; ch++) {
+          uint8_t prev = 0;
+          for (uint32_t dst = (uint32_t)ch; dst < n; dst += (uint32_t)f.kanalu) o[dst] = (prev = (uint8_t)(prev - d[src++]));
+        }
+        std::memcpy(d, o.data(), n);
+      } else {
+        chyba = "rar5: neznamy filtr " + std::to_string(f.typ);
+        return false;
+      }
+      hotovo = f.start + f.delka;
+    }
+    return true;
+  }
+};
+
+// ---------------------------------------------------------------------
 //  Archiv: seznam souboru a rozbaleni jednoho z nich
 // ---------------------------------------------------------------------
 struct Polozka {
@@ -657,6 +922,8 @@ struct Polozka {
   // vnitrni
   size_t data = 0; uint64_t baleno = 0; int metoda = 0; uint32_t crc = 0; int verze = 0;
   bool solid = false, heslo = false, dily = false;
+  bool maCrc = true, znamaVelikost = true;          // RAR 5: CRC32 je volitelne (jinak BLAKE2), velikost taky
+  bool odkaz = false;                               // RAR 5: symbolicky / pevny odkaz (bez vlastnich dat)
 };
 
 class Archiv {
@@ -676,10 +943,11 @@ class Archiv {
 
   bool otevri(const uint8_t *d, size_t n) {
     buf.assign(d, d + n); polozky.clear(); chyba.clear(); rar.reset(); rarZacatek = rarDalsi = 0;
+    rar5.reset(); rar5Zacatek = rar5Dalsi = 0;
     typ = poznej(d, n);
     if (typ == ZIP) return otevriZip();
     if (typ == RAR4) return otevriRar4();
-    if (typ == RAR5) { chyba = "RAR5 (novy format WinRAR) zatim neumim - zabal hru jako ZIP nebo RAR4"; return false; }
+    if (typ == RAR5) return otevriRar5();
     chyba = "neni to ZIP ani RAR";
     return false;
   }
@@ -689,19 +957,20 @@ class Archiv {
     if (i >= polozky.size()) { chyba = "neni takovy soubor"; return false; }
     const Polozka &p = polozky[i];
     if (p.adresar) { chyba = "je to slozka"; return false; }
+    if (p.odkaz) { chyba = "je to odkaz (symlink / hardlink), ne soubor"; return false; }
     if (p.heslo) { chyba = "soubor je zaheslovany"; return false; }
     if (p.velikost > limit) { chyba = "soubor je moc velky"; return false; }
-    bool ok = typ == ZIP ? rozbalZip(p, out) : rozbalRar4(i, out);
+    bool ok = typ == ZIP ? rozbalZip(p, out) : typ == RAR4 ? rozbalRar4(i, out) : rozbalRar5(i, out);
     if (!ok) return false;
-    if (out.size() != p.velikost) { chyba = "rozbaleno " + std::to_string(out.size()) + " B misto " + std::to_string(p.velikost); return false; }
-    const uint32_t c = crc32(out.data(), out.size());
-    if (c != p.crc) { chyba = "kontrolni soucet (CRC) nesedi - archiv je poskozeny"; return false; }
+    if (p.znamaVelikost && out.size() != p.velikost) { chyba = "rozbaleno " + std::to_string(out.size()) + " B misto " + std::to_string(p.velikost); return false; }
+    if (p.maCrc && crc32(out.data(), out.size()) != p.crc) { chyba = "kontrolni soucet (CRC) nesedi - archiv je poskozeny"; return false; }
     return true;
   }
 
  private:
   std::vector<uint8_t> buf;
   std::unique_ptr<Rar29> rar; size_t rarZacatek = 0, rarDalsi = 0;   // pevny RAR: retez od rarZacatek, dalsi na rade rarDalsi
+  std::unique_ptr<Rar5> rar5; size_t rar5Zacatek = 0, rar5Dalsi = 0;  // totez pro RAR 5
 
   // ---------------- ZIP ----------------
   bool otevriZip() {
@@ -759,6 +1028,20 @@ class Archiv {
     if (p.metoda == 8) return Inflate::rozbal(d, (size_t)p.baleno, out, (size_t)p.velikost + 1, chyba);
     chyba = "ZIP: metoda " + std::to_string(p.metoda) + " (jen 0 a 8 = deflate)";
     return false;
+  }
+
+  // pevny (solid) archiv: zacatek retezu = posledni KOMPRIMOVANY soubor bez priznaku navaznosti pred i
+  // (vcetne); slozky, odkazy, prazdne a ulozene soubory slovnik nemeni - pres ne se jde dal
+  // (WinRAR RAR 5 uklada prazdny soubor bez dat a bez priznaku solid uprostred pevneho archivu)
+  size_t zacatekRetezu(size_t i) const {
+    size_t z = i;
+    while (z > 0) {
+      const Polozka &q = polozky[z];
+      const bool pruhledna = q.adresar || q.odkaz || q.baleno == 0 || (typ == RAR4 ? q.metoda == 0x30 : q.metoda == 0);
+      if (!pruhledna && !q.solid) break;
+      z--;
+    }
+    return z;
   }
 
   // ---------------- RAR 4 ----------------
@@ -819,8 +1102,7 @@ class Archiv {
     }
     // pevny (solid) archiv: soubor navazuje na slovnik predchozich -> rozbalit retez od jeho
     // zacatku (soubor bez priznaku navaznosti); pri postupnem rozbalovani 0, 1, 2 ... se jen pokracuje
-    size_t zacatek = i;
-    while (zacatek > 0 && polozky[zacatek].solid) zacatek--;
+    const size_t zacatek = zacatekRetezu(i);
     if (!rar || rarZacatek != zacatek || rarDalsi > i) { rar.reset(new Rar29()); rarZacatek = zacatek; rarDalsi = zacatek; }
     for (; rarDalsi <= i; rarDalsi++) {
       const Polozka &q = polozky[rarDalsi];
@@ -836,6 +1118,101 @@ class Archiv {
     }
     if (p.baleno == 0) { out.clear(); return true; }
     chyba = "RAR: pevny archiv - soubor nenalezen";
+    return false;
+  }
+
+  // ---------------- RAR 5 ----------------
+  // cislo promenne delky: 7 bitu na bajt, nejnizsi napred, horni bit = pokracuje
+  static bool vint(const uint8_t *d, size_t n, size_t &p, uint64_t &v) {
+    v = 0;
+    for (int s = 0; s < 70 && p < n; s += 7) {
+      const uint8_t b = d[p++];
+      if (s < 64) v |= (uint64_t)(b & 0x7F) << s;
+      if (!(b & 0x80)) return true;
+    }
+    return false;
+  }
+  bool otevriRar5() {
+    const uint8_t *d = buf.data(); const size_t n = buf.size();
+    size_t p = 8;
+    while (p + 4 <= n) {
+      const uint32_t crc = le32(d + p);
+      size_t q = p + 4;
+      uint64_t hv = 0;
+      if (!vint(d, n, q, hv) || hv == 0 || hv > (2u << 20)) { chyba = "RAR5: spatna hlavicka"; return false; }
+      const size_t hlavaKonec = q + (size_t)hv;
+      if (hlavaKonec > n) { chyba = "RAR5: archiv je zkraceny (hlavicka)"; return false; }
+      if (crc32(d + p + 4, hlavaKonec - (p + 4)) != crc) { chyba = "RAR5: poskozena hlavicka (CRC)"; return false; }
+      uint64_t typHl = 0, prizn = 0, extra = 0, dat = 0;
+      if (!vint(d, hlavaKonec, q, typHl) || !vint(d, hlavaKonec, q, prizn)) { chyba = "RAR5: spatna hlavicka"; return false; }
+      if ((prizn & 1) && !vint(d, hlavaKonec, q, extra)) { chyba = "RAR5: spatna hlavicka"; return false; }
+      if ((prizn & 2) && !vint(d, hlavaKonec, q, dat)) { chyba = "RAR5: spatna hlavicka"; return false; }
+      if (extra > hlavaKonec - q) { chyba = "RAR5: spatna hlavicka (rozsireni)"; return false; }
+      const size_t dataStart = hlavaKonec;
+      if (dat > n - dataStart) {
+        if (typHl == 2 && (prizn & 0x10)) { chyba = "RAR5 na vice dilu (part1, part2 ...) zatim neumim"; return false; }
+        chyba = "RAR5: archiv je zkraceny";
+        return false;
+      }
+      if (typHl == 1) {                                  // hlavni hlavicka
+        uint64_t af = 0;
+        if (!vint(d, hlavaKonec, q, af)) { chyba = "RAR5: spatna hlavicka"; return false; }
+        if (af & 1) { chyba = "RAR5 na vice dilu (part1, part2 ...) zatim neumim"; return false; }
+      } else if (typHl == 2) {                           // soubor
+        Polozka it;
+        uint64_t ff = 0, vel = 0, attr = 0, ci = 0, os = 0, ln = 0;
+        if (!vint(d, hlavaKonec, q, ff) || !vint(d, hlavaKonec, q, vel) || !vint(d, hlavaKonec, q, attr)) { chyba = "RAR5: spatna hlavicka souboru"; return false; }
+        if (ff & 2) q += 4;                              // cas zmeny
+        if (ff & 4) { if (q + 4 > hlavaKonec) { chyba = "RAR5: spatna hlavicka souboru"; return false; } it.crc = le32(d + q); q += 4; }
+        if (!vint(d, hlavaKonec, q, ci) || !vint(d, hlavaKonec, q, os) || !vint(d, hlavaKonec, q, ln) || ln > hlavaKonec - q) { chyba = "RAR5: spatna hlavicka souboru"; return false; }
+        it.jmeno.assign((const char *)d + q, (size_t)ln);
+        for (char &c : it.jmeno) if (c == '\\') c = '/';
+        it.adresar = (ff & 1) != 0;
+        it.velikost = vel;
+        it.znamaVelikost = (ff & 8) == 0;
+        it.maCrc = (ff & 4) != 0;
+        it.verze = (int)(ci & 0x3F);
+        it.solid = (ci & 0x40) != 0;
+        it.metoda = (int)((ci >> 7) & 7);
+        it.dily = (prizn & 0x18) != 0;
+        // rozsireni: zaznamy (velikost, typ, data); typ 1 = sifrovani
+        size_t e = hlavaKonec - (size_t)extra;
+        while (e < hlavaKonec) {
+          uint64_t rv = 0, rt = 0;
+          if (!vint(d, hlavaKonec, e, rv) || rv == 0 || rv > hlavaKonec - e) break;
+          const size_t dalsi = e + (size_t)rv;
+          if (!vint(d, dalsi, e, rt)) break;
+          if (rt == 1) it.heslo = true;
+          if (rt == 5) it.odkaz = true;                  // presmerovani: symlink, hardlink, kopie souboru
+          e = dalsi;
+        }
+        it.data = dataStart; it.baleno = dat;
+        polozky.push_back(it);
+      } else if (typHl == 4) {
+        chyba = "RAR5: zaheslovany archiv (i seznam souboru)";
+        return false;
+      } else if (typHl == 5) break;                       // konec archivu
+      p = dataStart + (size_t)dat;
+    }
+    if (polozky.empty() && chyba.empty()) chyba = "RAR5: zadne soubory";
+    return !polozky.empty();
+  }
+  bool rozbalRar5(size_t i, std::vector<uint8_t> &out) {
+    const Polozka &p = polozky[i];
+    if (p.dily) { chyba = "RAR5: soubor pokracuje v dalsim dilu archivu"; return false; }
+    if (p.metoda == 0) { out.assign(buf.begin() + (long)p.data, buf.begin() + (long)(p.data + p.baleno)); return true; }
+    const size_t zacatek = zacatekRetezu(i);             // pevny archiv: retez od komprimovaneho souboru bez "solid"
+    if (!rar5 || rar5Zacatek != zacatek || rar5Dalsi > i) { rar5.reset(new Rar5()); rar5Zacatek = zacatek; rar5Dalsi = zacatek; }
+    for (; rar5Dalsi <= i; rar5Dalsi++) {
+      const Polozka &q = polozky[rar5Dalsi];
+      if (q.adresar || q.baleno == 0 || q.metoda == 0) continue;
+      if (q.heslo || q.dily) { chyba = "RAR5: pevny archiv - predchozi soubor " + q.jmeno + " nejde rozbalit"; rar5.reset(); return false; }
+      std::vector<uint8_t> o;
+      if (!rar5->rozbal(buf.data() + q.data, (size_t)q.baleno, q.velikost, q.znamaVelikost, rar5Dalsi != rar5Zacatek, q.verze, o, chyba)) { rar5.reset(); return false; }
+      if (rar5Dalsi == i) { out.swap(o); rar5Dalsi++; return true; }
+    }
+    if (p.baleno == 0) { out.clear(); return true; }
+    chyba = "RAR5: pevny archiv - soubor nenalezen";
     return false;
   }
 };

@@ -1,0 +1,21 @@
+test_b350_rar5 prelozeny s -fsanitize=address,undefined (stejne argumenty jako VYSTUP_test_b350_rar5.txt):
+  chyb pameti / nedefinovaneho chovani: 0
+OK     RAR5 ulozeny (metoda 0): 3 soubory, slozka Hry/ se preskoci
+OK     RAR5 se vsemi kody: literaly, 257, 258-261 + RD, 262+ (shody az 4097 B, vzdalenost nad 256 kB), 14 bloku s / bez tabulek, filtry DELTA E8 E8E9 ARM
+OK     pevny RAR5: 2. soubor zacina blokem bez tabulek, 3. prazdny bez dat (uprostred retezu), 4. s novymi tabulkami
+OK     pevny RAR5 na preskacku (retez od 1. komprimovaneho souboru, prazdny soubor ho nerozdeli)
+OK     RAR5 bez CRC32 (jako s otiskem BLAKE2): rozbali se (obsah = puvodni data), odkaz (symlink) neni soubor
+OK     Prince of Persia v RAR5: startuje DD, SDA + SDB sada k vymene, readme preskocen
+OK     pevny RAR5 (v archivu nejdriv SDB): startuje SDA, SDB k vymene
+OK     strany A / B v RAR5 (B prvni v archivu): startuje strana A
+OK     RAR5 s odkazem: odkaz se ani nenabizi, ani nehlasi jako chyba
+     1700 poskozenych / nahodnych RAR5 za 2856 ms (nejdelsi 20.9 ms), otevreno 132
+OK     zadny pad ani zaseknuti (s -fsanitize=address,undefined i bez chyb pameti)
+OK     skutecne RAR5 (WinRAR): pevne, vic souboru, filtr ARM, BLAKE2, win32, odkazy ... - vsechny soubory rozbalene, CRC sedi
+VYSLEDEK: 11 kontrol, 0 chyb
+
+../b349/fuzz_b349.cpp pod ASan / UBSan, vzory RAR5 (vyrob_rar5.py + libarchive arm / solid / win32 / multiple_files_solid, rarfile rar5-solid-qo) + RAR4 a ZIP z B349, 3 x 150 s, seminka 21-23:
+   fuzz: 51679 pokusu, 7917 otevreno, nejdelsi 48.1 ms
+   fuzz: 52793 pokusu, 8029 otevreno, nejdelsi 42.1 ms
+   fuzz: 52514 pokusu, 7898 otevreno, nejdelsi 38.7 ms
+ -> zadna chyba pameti ani nedefinovane chovani.

@@ -1,0 +1,8 @@
+bsdtar 3.7.2 - libarchive 3.7.2 zlib/1.3 liblzma/5.4.5 bz2lib/1.0.8 liblz4/1.9.4 libzstd/1.5.5 
+rar5_bez_crc.rar              1 shodne s puvodnimi daty, 0 jinak
+rar5_kody.rar                 1 shodne s puvodnimi daty, 0 jinak
+rar5_pevny.rar                4 shodne s puvodnimi daty, 0 jinak
+rar5_ulozeny.rar              3 shodne s puvodnimi daty, 0 jinak
+vyber_pop5.rar                4 shodne s puvodnimi daty, 0 jinak
+vyber_sd_pevny5.rar           3 shodne s puvodnimi daty, 0 jinak
+vyber_strany5.rar             3 shodne s puvodnimi daty, 0 jinak

@@ -96,7 +96,7 @@ class AtariArchiv {
     if (hloubka == 0) typ = archiv::Archiv::nazevTypu(a.typ);
     for (size_t i = 0; i < a.polozky.size(); i++) {
       const archiv::Polozka &p = a.polozky[i];
-      if (p.adresar) continue;
+      if (p.adresar || p.odkaz) continue;
       const std::string male = maleBezCesty(p.jmeno), ext = pripona(male);
       const size_t lom = p.jmeno.find_last_of('/');
       std::string kratke = predpona + (lom == std::string::npos ? p.jmeno : p.jmeno.substr(lom + 1));

@@ -365,7 +365,7 @@ static void castE(const std::vector<std::string> &slozky) {
         int k = 0, kOk = 0;
         std::string ch;
         for (size_t i = 0; i < a.polozky.size(); i++) {
-          if (a.polozky[i].adresar) continue;
+          if (a.polozky[i].adresar || a.polozky[i].odkaz) continue;   // B350: odkaz (symlink) v RAR5 neni soubor
           std::vector<uint8_t> o;
           k++;
           if (a.rozbal(i, o)) kOk++; else if (ch.empty()) ch = a.chyba;

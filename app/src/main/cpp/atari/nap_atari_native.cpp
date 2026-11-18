@@ -1477,7 +1477,9 @@ Java_eu_atarihelp_emu10_NativeAtariCoreBridge_devStartNative(JNIEnv *, jclass, j
              "drzi casovace 3+4, hraci ve VBLANK po hires radku, fantomove DMA hracu).");
       devLog("B349 ARCHIVY: hra v ZIP / RAR (XEX/MOBIL, ATR/DISK, NET HRY) se rozbali v C++ (deflate, RAR 2.9 vcetne "
              "pevneho a filtru); spusti se samostatna disketa > sada (strana A / Disk 1) > XEX > CAR, ostatni diskety "
-             "z archivu nabidne ATR/DISK (i VYMENIT BEZ RESTARTU); RAR5, PPMd, heslo a vic dilu zatim ne.");
+             "z archivu nabidne ATR/DISK (i VYMENIT BEZ RESTARTU).");
+      devLog("B350 RAR5 (novy WinRAR 5 / 7): hlavicky vint + CRC32, komprese v blocich, filtry DELTA / E8 / E8E9 / ARM, "
+             "pevny archiv (i s prazdnym souborem uprostred), odkazy se preskoci; PPMd (RAR4 text), heslo a vic dilu zatim ne.");
     }
     g_strojBezi = zapnuto;
   }
@@ -2331,8 +2333,10 @@ Java_eu_atarihelp_emu10_NativeAtariCoreBridge_devLoadTapeNative(JNIEnv *env, jcl
 
 // kratka hlaska pro pristroj podle chyby archivu
 static std::string hlaskaArchivu(const std::string &ch) {
-  if (ch.find("RAR5") != std::string::npos) return nap::tx(u8"RAR5 ZATÍM NEUMÍM - ZABAL JAKO ZIP", "RAR5 NOT SUPPORTED YET - USE ZIP");
+  // B350: RAR5 uz umi - zbyva novejsi verze komprese nez RAR 7
+  if (ch.find("neznama verze komprese") != std::string::npos) return nap::tx(u8"TENHLE RAR JE MOC NOVÝ - ZABAL JAKO ZIP", "THIS RAR IS TOO NEW - USE ZIP");
   if (ch.find("PPMd") != std::string::npos) return nap::tx(u8"TENHLE RAR (PPMD) NEUMÍM - ZABAL JAKO ZIP", "THIS RAR (PPMD) IS NOT SUPPORTED - USE ZIP");
+  if (ch.find("stary format") != std::string::npos) return nap::tx(u8"STARÝ RAR (1.5 / 2.0) NEUMÍM - ZABAL JAKO ZIP", "OLD RAR (1.5 / 2.0) NOT SUPPORTED - USE ZIP");
   if (ch.find("heslo") != std::string::npos || ch.find("zaheslovan") != std::string::npos) return nap::tx(u8"ARCHIV MÁ HESLO", "THE ARCHIVE HAS A PASSWORD");
   if (ch.find("vice dilu") != std::string::npos || ch.find("dalsim dilu") != std::string::npos) return nap::tx(u8"ARCHIV NA VÍCE DÍLŮ NEUMÍM", "MULTI-PART ARCHIVES NOT SUPPORTED");
   if (ch.find("neni hra pro Atari") != std::string::npos) return nap::tx(u8"V ARCHIVU NENÍ HRA PRO ATARI", "NO ATARI GAME IN THE ARCHIVE");
