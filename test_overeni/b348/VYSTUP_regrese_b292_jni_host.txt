@@ -1,0 +1,53 @@
+B348 - regrese ../b292/test_b292_jni_host (SKUTECNY nap_atari_native.cpp, vlakna v realnem case, ATR=acid800.atr Reneho)
+stary kod B347 (git archive 7f0b755) vs novy B348, casy (ms, s, x, MIPS) a cisla snimku zamaskovane
+
+stare B347: VYSLEDEK: 84 kontrol, 0 chyb   (druhy beh: VYSLEDEK: 84 kontrol, 0 chyb)
+nove  B348: VYSLEDEK: 84 kontrol, 0 chyb
+radky OK / CHYBA: SHODNE (84 x OK)
+
+Rozdily ve vypisu (vysvetleni):
+ - SELFTEST cpuHash 29C55806 -> 4A2C6CBA: LXA jako SALLY (ocekavano)
+ - radek B348 DISKETA D1: ... (novy popis pri startu)
+ - kazeta_b292.wav pri 600 Bd 264 -> 265 bajtu: rozbor WAV na PC vidi zakmit za 1. zaznamem jako bajt $FF (CSAVE
+   posunuty o ~100 cyklu - casovac 4 v async rezimu stoji); zaznamy 2, soucty OK 2, CLOAD + LIST stejne
+ - ovladac vlevo+FIRE+START: CONSOL 2 -> 6: OPTION uz neni drzene 3 s po bootu z diskety (test 6) - jen START (spravne)
+ - B299 PAMET STAV / CRC32 $0100-$01FF: okamzik snimku pameti v realnem case - lisi se i mezi dvema behy STAREHO kodu:
+     jni_stare: B299 PAMET STAV: PC=$F309 A=$80 X=$80 Y=$01 S=$F3 P=$A0, P | $0100-$01FF C6380FFA
+     jni_stare2: B299 PAMET STAV: PC=$F305 A=$06 X=$80 Y=$01 S=$F3 P=$20, P | $0100-$01FF 46FC97EE
+     jni_nove: B299 PAMET STAV: PC=$F2FD A=$FF X=$80 Y=$01 S=$F3 P=$23, P | $0100-$01FF E4097DC1
+
+diff stare nove:
+1,2c1,2
+< B292 ATARI_SELFTEST cpu=29C55806 instr=51200 #s | mem=B0649DC5 reads=16252928 #s | #MIPS = #x realny cas Atari (cely stroj po cyklech)
+< SELFTEST {"cpuHash":"29C55806","cpuInstr":51200,"cpuSec":0.00,"memHash":"B0649DC5","memReads":16252928,"memSec":0.05,"mips":3.90,"realtimeX":8.8,"abi":"jine","charSigned":1}
+---
+> B292 ATARI_SELFTEST cpu=4A2C6CBA instr=51200 #s | mem=B0649DC5 reads=16252928 #s | #MIPS = #x realny cas Atari (cely stroj po cyklech)
+> SELFTEST {"cpuHash":"4A2C6CBA","cpuInstr":51200,"cpuSec":0.00,"memHash":"B0649DC5","memReads":16252928,"memSec":0.04,"mips":4.48,"realtimeX":10.2,"abi":"jine","charSigned":1}
+13a14
+> B348 DISKETA D1: i na urovni bajtu SIO jako skutecna 1050 (hry s vlastnim zavadecem - xBIOS, Prince of Persia: ramec prikazu pres POKEY a linku COMMAND, odpovedi A/C/N/E, cteni/zapis/STATUS/FORMAT, 19200 Bd); OPTION pri bootu z 
+39a41
+> B348 DISKETA D1: i na urovni bajtu SIO jako skutecna 1050 (hry s vlastnim zavadecem - xBIOS, Prince of Persia: ramec prikazu pres POKEY a linku COMMAND, odpovedi A/C/N/E, cteni/zapis/STATUS/FORMAT, 19200 Bd); OPTION pri bootu z 
+56c58
+< B292 KAZETA VLOZENA OK kazeta_b292.wav: #s, 44100 Hz, 1 kanal(y) (FSK v kanalu 1), 16 bit; pri 600 Bd 264 bajtu v 2 zaznamech (kontrolni soucet OK 2, spatne 0), chyb ramce v zaznamech 0 (sum v mezerach 0); druh: BASIC program (C
+---
+> B292 KAZETA VLOZENA OK kazeta_b292.wav: #s, 44100 Hz, 1 kanal(y) (FSK v kanalu 1), 16 bit; pri 600 Bd 265 bajtu v 2 zaznamech (kontrolni soucet OK 2, spatne 0), chyb ramce v zaznamech 0 (sum v mezerach 0); druh: BASIC program (C
+58c60
+< devLoadTape: OK kazeta_b292.wav: #s, 44100 Hz, 1 kanal(y) (FSK v kanalu 1), 16 bit; pri 600 Bd 264 bajtu v 2 zaznamech (kontrolni soucet OK 2, spatne 0), chyb ramce v zaznamech 0 (sum v mezerach 0); druh: BASIC program (CLOAD); 
+---
+> devLoadTape: OK kazeta_b292.wav: #s, 44100 Hz, 1 kanal(y) (FSK v kanalu 1), 16 bit; pri 600 Bd 265 bajtu v 2 zaznamech (kontrolni soucet OK 2, spatne 0), chyb ramce v zaznamech 0 (sum v mezerach 0); druh: BASIC program (CLOAD); 
+71c73
+< B292 KAZETA VLOZENA OK kazeta_b292.wav: #s, 44100 Hz, 1 kanal(y) (FSK v kanalu 1), 16 bit; pri 600 Bd 264 bajtu v 2 zaznamech (kontrolni soucet OK 2, spatne 0), chyb ramce v zaznamech 0 (sum v mezerach 0); druh: BASIC program (C
+---
+> B292 KAZETA VLOZENA OK kazeta_b292.wav: #s, 44100 Hz, 1 kanal(y) (FSK v kanalu 1), 16 bit; pri 600 Bd 265 bajtu v 2 zaznamech (kontrolni soucet OK 2, spatne 0), chyb ramce v zaznamech 0 (sum v mezerach 0); druh: BASIC program (C
+151c153
+< ovladac vlevo+FIRE+START: PORTA $B TRIG0 0 CONSOL 2
+---
+> ovladac vlevo+FIRE+START: PORTA $B TRIG0 0 CONSOL 6
+335c337
+< B299 PAMET STAV: PC=$F309 A=$80 X=$80 Y=$01 S=$F3 P=$A0, PORTB=$FF (ROM OS zap, BASIC vyp, rozsirena pamet pro CPU vyp banka 3), NMIEN=$40, DLIST=$BC20, SAVMSC=$BC40, DDEVIC=$4F, D1: prazdna, rychly timeout SIO ne, XEX stav 4, p
+---
+> B299 PAMET STAV: PC=$F2FD A=$FF X=$80 Y=$01 S=$F3 P=$23, PORTB=$FF (ROM OS zap, BASIC vyp, rozsirena pamet pro CPU vyp banka 3), NMIEN=$40, DLIST=$BC20, SAVMSC=$BC40, DDEVIC=$4F, D1: prazdna, rychly timeout SIO ne, XEX stav 4, p
+337c339
+< B299 PAMET CRC32: $00-$7F C1CAF356, $80-$FF 3DBEFA57, $0100-$01FF C6380FFA, $0200-$03FF E6686D04, $0400-$06FF BC263CB1, $0700-$1FFF ECA9A3DC, $2000-$3FFF A5FE58A8, $4000-$7FFF 3F868A9B, $8000-$BFFF A1992622, RAM pod ROM $C000-$C
+---
+> B299 PAMET CRC32: $00-$7F C1CAF356, $80-$FF 3DBEFA57, $0100-$01FF E4097DC1, $0200-$03FF E6686D04, $0400-$06FF BC263CB1, $0700-$1FFF ECA9A3DC, $2000-$3FFF A5FE58A8, $4000-$7FFF 3F868A9B, $8000-$BFFF A1992622, RAM pod ROM $C000-$C

@@ -1,0 +1,46 @@
+B348 - regrese jadra Atari: stare jadro (B347) vs nove (B348) - stejne testy, porovnani vystupu
+
+STEJNE  boot (25 radku)
+STEJNE  xe130 (60 radku)
+ROZDIL  kazeta:
+        4c4
+        < PASKA: #s, 44100 Hz, kanalu 1 (FSK v kanalu 0), pri 600 Bd: 264 bajtu, 2 zaznamu, 0 chyb ramce
+        ---
+        > PASKA: #s, 44100 Hz, kanalu 1 (FSK v kanalu 0), pri 600 Bd: 265 bajtu, 2 zaznamu, 0 chyb ramce
+ROZDIL  bootkazeta:
+        3c3
+        < snimek 1658: motor od snimku 123, $0600=$42 COLOR4=$34 PC=$071F, prijato z pasky 262 B, chyb ramce pri cteni 0, energie zvuku s motorem 875.8
+        ---
+        > snimek 1658: motor od snimku 123, $0600=$42 COLOR4=$34 PC=$071F, prijato z pasky 262 B, chyb ramce pri cteni 0, energie zvuku s motorem 935.4
+STEJNE  pokey (11 radku)
+STEJNE  txt_basic (41 radku)
+STEJNE  txt_tbxl (42 radku)
+STEJNE  tbxl_disketa (16 radku)
+STEJNE  vlozeni (69 radku)
+STEJNE  pc_klav (105 radku)
+STEJNE  tv_proud (21 radku)
+STEJNE  popeye (7 radku)
+STEJNE  wolf3d (7 radku)
+ROZDIL  b291_runtime:
+        39c39
+        < pruchodu nulou: 251041 (10399 za s)
+        ---
+        > pruchodu nulou: 248015 (10274 za s)
+STEJNE  b316_core (60 radku)
+ROZDIL  memhash:
+        1c1
+        < cpuHash 29C55806 cpuInstr 51200 memHash B0649DC5 memReads 16252928
+        ---
+        > cpuHash 4A2C6CBA cpuInstr 51200 memHash B0649DC5 memReads 16252928
+STEJNE  hra_Donkey_Kong_Junior__Title_Version_.xex (2 radku)
+STEJNE  hra_Popeye__VBXE,_PAL_Version__2_.xex (2 radku)
+STEJNE  hra_Postcard_Atari_Rocky.xex (2 radku)
+STEJNE  hra_The_Activision_Decathlon.xex (2 radku)
+STEJNE  hra_The_Activision_Decathlon.xex (2 radku)
+STEJNE  hra_commando230810.xex (2 radku)
+STEJNE  hra_mission.xex (2 radku)
+STEJNE  hra_nightdriver_vbxe.xex (2 radku)
+STEJNE  hra_rrumble.xex (2 radku)
+STEJNE  hra_wolf3d_1_.atr (2 radku)
+
+VYSLEDEK: 22 stejne, 4 s rozdilem

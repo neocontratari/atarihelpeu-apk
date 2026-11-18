@@ -1,0 +1,68 @@
+B348 - PRINCE OF PERSIA SE NESPUSTIL + TESTY ACID800 - overeni na PC
+=====================================================================
+
+Rene: tester hlasi "prince se nespusti" + "testy ... projed to v atari" (prilohy Prince of Persia ATR a
+Acid800 0.1). Hry ani testy Reneho v repozitari NEJSOU (autori PoP chteji odkaz na AtariAge, ne kopie) -
+testy niz je berou z cesty v argumentu, jinak bezi na vymyslenych disketach.
+
+PRICINA A OPRAVA (podrobne v PREDAVACI_PROTOKOL_PRO_NASTUPCE.txt, B348):
+ - PoP: zavadec xBIOS cte disketu vlastnim SIO primo pres POKEY; jednotka D1: v jadru umela jen "SIO patch"
+   na urovni OS (SIOV $E459) -> zavadec cekal navzdy. Ted SioBus v nap_atari_machine.h: D1: i na urovni bajtu
+   (ramec prikazu pri stazene COMMAND = PBCTL $34, odpovedi 'A' 'C' 'N' 'E' + data do SERIN, 19200 Bd).
+ - Appka drzela pri bootu OPTION 3 s -> xBIOS ukazal svou nabidku souboru. Ted 1 s (OS OPTION cte ~8. snimek).
+ - Acid800 V0.1: 34 -> 38 z 38 (LXA, asynchronni prijem POKEY, hraci ve VBLANK po hires radku, fantomove DMA).
+
+Spoustet z adresare test_overeni/b348.
+
+1) Program se SIO pres POKEY (jako xBIOS) - zdrojak test_b348_sio.asm, prelozeny maly assembler asm6502.py:
+     python3 asm6502.py test_b348_sio.asm test_b348_program.h B348 START,TAB,CMD,KONEC,WG
+   (test_b348_program.h je v repozitari; preklad jen kdyz se zmeni .asm)
+
+2) Jadro na PC (bez her; volitelne Acid800 a Prince of Persia DD Reneho):
+     g++ -std=c++17 -O2 -I../../app/src/main/cpp/atari -o test_b348_sio test_b348_sio.cpp
+     ./test_b348_sio [acid800.atr] [PoP_DD_20211206_final.atr]   -> VYSTUP_test_b348_sio.txt (41 OK)
+   A LXA ($AB) = A & imm (3 vektory z Acid800)
+   B boot pres OS, vymena diskety bez restartu, pak SIO pres POKEY: SD (cteni, posledni sektor, NAK, STATUS,
+     PUT + cteni zpet, spatny soucet = ticho, D2: = ticho, '?' = NAK, WRITE), DD (256 B, sektory 1-3 po 128 B,
+     STATUS $30), zamcena (PUT -> 'E', STATUS $18); zapsane sektory opravdu v ATR; zadna chyba ramce
+   C casovac 4: v asynchronnim prijmu (SKCTL $13) stoji, bez nej ($03) preruseni da
+   D Acid800 V0.1 38 z 38, Prince of Persia DD nahraje hru (432 sektoru, 417 prikazu SIO pres POKEY)
+   Stejny test proti jadru B347 (git archive 7f0b755 app/src/main/cpp/atari | tar -x -C /tmp/b347):
+     g++ -std=c++17 -O2 -I/tmp/b347/app/src/main/cpp/atari -I. -o test_stare test_b348_sio.cpp
+                                                     -> VYSTUP_test_b348_sio_NA_JADRE_B347.txt (26 CHYBA)
+
+3) SKUTECNY nap_atari_native.cpp (vlakna jako v telefonu, stuby z ../b291/stub, JAVA_HOME = JDK):
+     g++ -std=c++17 -O2 -pthread -I../b291/stub -I$JAVA_HOME/include -I$JAVA_HOME/include/linux \
+         -I../../app/src/main/cpp/atari -o test_b348_jni test_b348_jni.cpp
+     ./test_b348_jni                                 -> VYSTUP_test_b348_jni.txt (16 OK)
+   samokontrola cpuHash 4A2C6CBA (= NativeAtariCoreBridge.OCEKAVANY_CPU_HASH), devLoadAtrNative: OPTION drzene
+   do 50. snimku a BASIC vypnuty, program z diskety nabootoval, devCtlNative "atr_vymena" + devLoadAtrNative =
+   VYMENIT DISKETU BEZ RESTARTU, pak SIO pres POKEY (cteni, zapis a zpet, NAK), casovac 4, radek "B348 SIO" v logu.
+
+4) Regrese: stare jadro (B347) vs nove (B348) - stejne testy, otisky obrazu a vystupy:
+     mkdir /tmp/b347 && git archive 7f0b755 app/src/main/cpp/atari test_overeni/b291 test_overeni/b292 \
+         test_overeni/b316 test_overeni/b323 | tar -x -C /tmp/b347
+     bash regrese_jadra.sh /tmp/b347 <pracovni slozka>               -> VYSTUP_regrese_jadra.txt
+   22 stejne (boot, xe130, POKEY, TXT BASIC/TBXL, TBXL disketa, vlozeni, klavesnice PC, TV proud, Popeye VBXE,
+   Wolfenstein ATR, b316 cartridge, 10 her z test_assets), 4 rozdily vysvetlene:
+     memhash         cpuHash 29C55806 -> 4A2C6CBA (LXA; memHash beze zmeny)
+     kazeta          CSAVE WAV posunuty o ~100 cyklu: OS bez diskety zkousi boot (vlastni SIO, nikdo neodpovi) a
+     b291_runtime    necha SKCTL $13 (asynchronni prijem) -> casovac 4 stoji do CSAVE (jako na skutecnem Atari)
+                     a startuje jinak v fazi. Data stejna (264 SEROUT, CLOAD + LIST stejne); rozbor WAV na PC
+                     vidi za 1. zaznamem jeden "bajt" $FF navic ze zakmitu pri konci zaznamu (byl i drive, jen kratsi).
+     bootkazeta      energie zvuku pri cteni kazety: kanal 4 (AUDC4 $A8) zni jen pri prijmu bajtu (casovace 3+4
+                     drzene mezi bajty); nahrano 262 B, 0 chyb, hra bezi stejne.
+   (SingleStepTests ../b292/test_6502_sst.cpp si nastavi magicLxa $EE - data T. Harte jsou s $EE.)
+   Skutecny b292/test_b292_jni_host (ATR=acid800.atr) ve starem a novem kodu -> VYSTUP_regrese_b292_jni_host.txt.
+
+5) Pravidlo B343 (napoveda): b311/kontrola_navodu.py 219 nazvu 0 CHYBA, b314/kontrola_navodu_en.py 211 0 CHYBA,
+   b343/kontrola_b343.py 3 CHYBA ZAMERNE (N7, A6 od B345, V verze - stejne jako B346 / B347)
+   -> VYSTUP_regrese_b311_*, VYSTUP_regrese_b314_*, VYSTUP_regrese_b343_* (skripty prepisuji sve VYSTUP soubory -
+   po regresi "git checkout -- test_overeni/bNNN").
+
+Overi Rene / tester:
+ 1) Prince of Persia DD (jedna disketa, PoP_DD_20211206_final.atr) pres ATR / DISK: intro (preskocit klavesou),
+    nahravani, titulka, pribeh, hra.
+ 2) Verze SD: strana A; pri "Insert other disk" ATR / DISK -> VYMENIT DISKETU BEZ RESTARTU -> strana B, pak FIRE
+    (nebo RETURN).
+ 3) Kdyz se neco zasekne: log - radky "B348 SIO" (pocet prikazu, NAK, spatne soucty).

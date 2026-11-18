@@ -781,6 +781,11 @@ static std::atomic<long long> g_snimkuCelkem{0};
 // ztratit mezi dvema snimky. (Klavesy se ztratit nemuzou - jdou pres IRQ.)
 static int g_consolChtene = 7;
 static long long g_consolDrzetDo[3] = {0, 0, 0};
+// B348: jak dlouho drzet OPTION po zapnuti s disketou (BASIC vypnuty). OS 130XE OPTION
+// precte uz ~8. snimek po zapnuti (zmereno v jadru: drzeni do 8. snimku = BASIC vypnuty).
+// Drive 150 snimku (3 s) - to uz bezel zavadec hry a OPTION videl taky: xBIOS (Prince of
+// Persia a dalsi nove hry) s drzenym OPTION ukaze svou nabidku souboru misto hry.
+static const long long B348_OPTION_PRI_BOOTU = 50;
 // B296: joystick 1 - z doteku na obrazovce a z herniho ovladace (bity:
 // 0 nahoru, 1 dolu, 2 vlevo, 3 vpravo, 4 FIRE); START/SELECT/OPTION z
 // ovladace (1/2/4 = stisknuto). Vse pod g_mStroj.
@@ -1044,7 +1049,9 @@ static void emuVlaknoMain() {
               g_statusText = nap::tx(u8"BOOT Z KAZETY - RETURN STISKNU SÁM", "BOOT FROM TAPE - I WILL PRESS RETURN"); g_statusMs = 8000;
             } else if (g_stroj && g_stroj->disk.mounted) {
               // B295: s disketou v D1: se startuje jako s hrou - OPTION drzene (BASIC vypnuty)
-              g_consolDrzetDo[2] = g_snimkuCelkem.load() + 150;
+              // B348: jen 1 s (50 snimku) - OS OPTION cte ~8. snimek po zapnuti; dele drzene
+              // OPTION videly zavadece her (xBIOS v Prince of Persia -> nabidka misto hry)
+              g_consolDrzetDo[2] = g_snimkuCelkem.load() + B348_OPTION_PRI_BOOTU;
               devLog("B295 POWER s disketou v D1: (" + g_stroj->disk.name + ") - OPTION drzeno pri startu, BASIC vypnuty, bootuje disketa");
               // B298: at je videt, proc se zase nahrava hra (Rene: "W3D nepomuze ani vypnout a zapnout")
               {   // nazev zkratit, at se zprava vejde na radek pod pristrojem
@@ -1234,6 +1241,23 @@ static void emuVlaknoMain() {
           hlaseni++;
         }
         g_vbxeXdlPred = xdl; g_vbxeRezimPred = rez;
+      }
+      // B348: hra cte disketu vlastnim zavadecem (SIO primo pres POKEY) - do logu prvni prikaz
+      // a pak souhrn kazdych ~10 s, dokud prikazy chodi (NAK / spatne soucty / cizi jednotky)
+      {
+        static long long pred = 0, nakPred = 0, souPred = 0, ciziPred = 0, posledniSnimek = -1000;
+        const nap::SioBus &s = g_stroj->sio;
+        if (s.prikazu < pred) pred = nakPred = souPred = ciziPred = 0;          // novy stroj (studeny start)
+        const long long f = g_snimkuCelkem.load();
+        if (s.prikazu > pred && (pred == 0 || f - posledniSnimek >= 500)) {
+          char b[300];
+          snprintf(b, sizeof(b), "B348 SIO: program mluvi s D1: primo pres POKEY (vlastni zavadec) - prikazu %lld (posledni $%02X '%c' sektor %d), "
+                   "nacteno sektoru %lld, zapsano %lld, NAK %lld, spatny soucet %lld, jina jednotka %lld",
+                   s.prikazu, s.posledni[1], (s.posledni[1] >= 32 && s.posledni[1] < 127) ? s.posledni[1] : '?', s.posledni[2] | (s.posledni[3] << 8),
+                   g_stroj->disk.reads, g_stroj->disk.writes, s.nak - nakPred, s.spatnySoucet - souPred, s.cizi - ciziPred);
+          devLog(b);
+          pred = s.prikazu; nakPred = s.nak; souPred = s.spatnySoucet; ciziPred = s.cizi; posledniSnimek = f;
+        }
       }
       g_motorOn = nap::CsaveRecorder::motor(*g_stroj);
       // B295: co se deje s kazetou - do logu a pod pristroj
@@ -1441,6 +1465,10 @@ Java_eu_atarihelp_emu10_NativeAtariCoreBridge_devStartNative(JNIEnv *, jclass, j
       devLog("B303 TV/PC CELE V C++: kazdy snimek Atari (50/s) jako paleta + jen zmenene radky a zvuk v jednom proudu "
              "(/atari.stream) - Java uz nezvetsuje ani nekomprimuje (H.264/JPEG); Ctrl+V nebo pretazeny TXT v prohlizeci "
              "= program do BASICu bez NEW (UTF-8 s e s hackem uz neni ATASCII), jiny text = klavesy.");
+      devLog("B348 DISKETA D1: i na urovni bajtu SIO jako skutecna 1050 (hry s vlastnim zavadecem - xBIOS, Prince of "
+             "Persia: ramec prikazu pres POKEY a linku COMMAND, odpovedi A/C/N/E, cteni/zapis/STATUS/FORMAT, 19200 Bd); "
+             "OPTION pri bootu z diskety jen 1 s; Acid800 V0.1 38/38 (LXA jako SALLY, asynchronni prijem POKEY "
+             "drzi casovace 3+4, hraci ve VBLANK po hires radku, fantomove DMA hracu).");
     }
     g_strojBezi = zapnuto;
   }
@@ -2317,9 +2345,10 @@ Java_eu_atarihelp_emu10_NativeAtariCoreBridge_devLoadAtrNative(JNIEnv *env, jcla
     g_stroj->disk = std::move(d);
     g_stroj->sioRychlyTimeout = false;
     g_strojBezi = true;
-    // OPTION drzet pri startu (~3 s), pak pustit - hry ho pak ctou samy
+    // OPTION drzet pri startu, pak pustit - hry ho pak ctou samy
+    // (B348: 1 s misto 3 s - viz B348_OPTION_PRI_BOOTU)
     g_consolChtene = 7;
-    g_consolDrzetDo[2] = g_snimkuCelkem.load() + 150;
+    g_consolDrzetDo[2] = g_snimkuCelkem.load() + B348_OPTION_PRI_BOOTU;
     g_consolDrzetDo[0] = g_consolDrzetDo[1] = 0;
     vyzvednoutVystupyLocked();
   }

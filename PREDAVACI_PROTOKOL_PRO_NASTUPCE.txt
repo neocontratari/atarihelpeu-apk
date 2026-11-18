@@ -4408,12 +4408,43 @@
      - DALSI KROK: Rene - server v12.3 (NAVOD_v12_3.txt), v bance e-mail o prichozich platbach na adresu enginu,
        zaskrtnout v 💳 PLATBY, zkusebni platba 75 Kc z jineho uctu. Format e-mailu banky jsem nevidel (rozbor je obecny,
        cesky i anglicky); kdyz v logu bude "nenašel jsem částku platby", poslat ten radek logu (ne e-mail).
-     - Server v12.3.1 (18. 11.): schranka enginu nemusi byt na Seznamu - server IMAP engine hleda sam
+     - Server v12.3.1 (18. 11.): schranka enginu nemusi byt u predpokladaneho poskytovatele - server IMAP engine hleda sam
        (NapBanka.ImapServery: "smtp" -> "imap" v adrese, u "xxx-smtp" i "xxx.imap", imap.domena schranky, nakonec server
        SMTP; prvni, ktery odpovi jako IMAP s platnym certifikatem; imap_server= v nastaveni.txt ma prednost). V okne
        💳 PLATBY i v navodu: e-mail upozorneni v internetbankingu jen na webu, kontaktni e-mail = schranka enginu.
      - OVERENO U RENEHO (18. 11. 17:56): platba 75 Kc z jineho telefonu -> e-mail banky asi za 2 minuty -> engine sam
        odemkl Segu (v okne KODY "zaplaceno 18.11.", podpis banky prosel) -> appka (NOX) sama SPUSTIT. Prodleva je na
        strane banky (e-mail chodi asi 2 minuty po platbe), engine se diva kazdou minutu.
+
+   B348: PRINCE OF PERSIA SE V ATARI NESPUSTIL + TESTY ACID800 (18. 11. 2026).
+   Rene: tester hlasi "prince se nespusti" + "testy ... projed to v atari" (prilohy: Prince of Persia ATR - SD
+   2021-10, SD + DD 2021-12 - a Acid800 0.1). Soubory v repozitari NEJSOU (autori PoP chteji odkaz na AtariAge, ne
+   kopie); testy je berou z cesty v argumentu.
+     - PRICINA: PoP ma zavadec xBIOS - po bootu pres OS (SIOV = nas "SIO patch") cte disketu VLASTNIM SIO primo pres
+       POKEY (ramec prikazu se stazenou linkou COMMAND, odpovedi ze SERIN). Jednotka D1: v jadru umela jen patch ->
+       zavadec cekal navzdy (modra obrazovka, 15 sektoru). Navic appka drzela pri bootu OPTION 3 s a xBIOS s
+       drzenym OPTION ukaze svou nabidku souboru (LAUNCHER) misto hry.
+     - Jadro (nap_atari_machine.h, SioBus): D1: i na urovni bajtu jako skutecna 1050. Bajty ze SEROUT (konec stop
+       bitu) pri stazene COMMAND (PBCTL CB2: $34 stazena / $3C uvolnena) = ramec prikazu; po uvolneni odpoved do SERIN
+       19200 Bd (92,4 cyklu na bit, bajt v SERIN ve stredu stop bitu, SKSTAT bit 1 = prijem, bit 4 = uroven linky):
+       'A' po ~0,85 ms, u cteni 'C' + data + soucet. Prikazy R, P / W (datovy ramec, 'A' 'C', zamcena 'E'), S,
+       ! / " (format); spatny sektor, '?' (vysoka rychlost), PERCOM = 'N'; spatny soucet / jina jednotka = ticho;
+       vysilani mimo 19200 Bd +-7 % = neplatny ramec. Patch na $E459 (OS SIOV) zustava beze zmeny.
+       Na PC: PoP DD intro -> titulka -> pribeh -> palac; SD strana A do "Insert other disk", po VYMENIT DISKETU BEZ
+       RESTARTU (strana B) + FIRE / RETURN pokracuje.
+     - Appka (nap_atari_native.cpp): OPTION pri bootu z diskety 50 snimku (1 s) misto 150 - OS ho cte uz ~8. snimek
+       (zmereno); log "B348 SIO: program mluvi s D1: primo pres POKEY ..." (prvni prikaz, pak souhrn po ~10 s).
+     - Acid800 V0.1: B347 34 z 38 -> B348 38 z 38 (testy overene na skutecnem Atari): LXA ($AB) = A & imm
+       (konstanta $00; samokontrola cpuHash 4A2C6CBA v NativeAtariCoreBridge, harness SingleStepTests si nastavi $EE),
+       asynchronni prijem POKEY (SKCTL bit 4) drzi casovace 3+4, dokud neprijde start bit; VBLANK po hires radku
+       (rezim 2/3/F na radku 247) - hraci/strely se dal srazeji ("hires chyba" ANTIC); fantomove DMA hracu/strel
+       (GRACTL bez DMA ANTIC: GTIA vezme bajt ze sbernice - podle Acid800 o cyklus za slotem DMA).
+     - Testy test_overeni/b348 (JAK_SPUSTIT.txt): test_b348_sio 41 OK (na jadru B347 26 CHYBA), test_b348_jni 16 OK
+       (skutecny native: OPTION uvolneno 51. snimek, vymena diskety, SIO), regrese stare / nove jadro: hry z test_assets
+       beze zmeny; jinak jen cpuHash a zvuk / WAV kazety posunuty o ~100 cyklu (casovac 4 drzeny v async rezimu po
+       neuspesnem bootu OS bez diskety - data i CLOAD stejne). build.gradle: versionCode 391
+       "EMU10-B348-SIO-PRINCE-ACID800". Na telefonu ani TV neovereno.
+     - DALSI KROK: Rene / tester - PoP DD (jedna disketa) pres ATR / DISK; verze SD: strana A, pri "Insert other disk"
+       ATR / DISK -> VYMENIT DISKETU BEZ RESTARTU -> strana B, pak FIRE. Kdyz nepujde: log (radky B348 SIO).
 
 ===============================================================================

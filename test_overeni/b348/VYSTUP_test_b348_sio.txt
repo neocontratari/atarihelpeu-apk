@@ -1,0 +1,55 @@
+B348 - jednotka D1: na urovni bajtu SIO, casovac 4 v asynchronnim prijmu, LXA (jadro na PC, bez her)
+
+      LXA #$00 s A=$00 -> A=$00 X=$00 P=$22 (ocekavano $00)
+      LXA #$55 s A=$33 -> A=$11 X=$11 P=$20 (ocekavano $11)
+      LXA #$80 s A=$FF -> A=$80 X=$80 P=$A0 (ocekavano $80)
+OK     A LXA ($AB) jako SALLY v Atari: A = X = A & imm (3 vektory z Acid800)
+--- SD disketa (128 B) ---
+OK     B SD disketa (128 B): program nabootoval pres OS (SIO patch, 6 prikazu SIOV, snimek 88)
+OK     B SD disketa (128 B): program dobehl (108 snimku, nizkourovnovych prikazu jednotky 8)
+OK     B SD disketa (128 B): cteni sektoru 4 -> 'A' 'C' + 128 B + soucet ['A' $00 'C' $01]
+OK     B SD disketa (128 B): cteni posledniho sektoru 720 ['A' $00 'C' $01]
+OK     B SD disketa (128 B): sektor 721 neexistuje -> 'N' (NAK) ['N' $00 $00 $00]
+OK     B SD disketa (128 B): STATUS -> 'A' 'C' $10 $FF $E0 $00 ['A' $00 'C' $01] stav 10 FF E0 00
+OK     B SD disketa (128 B): PUT sektoru 10 -> 'A', datovy ramec, 'A' 'C' ['A' 'A' 'C' $00]
+OK     B SD disketa (128 B): sektor 10 precten zpet = zapsana data ['A' $00 'C' $01]
+OK     B SD disketa (128 B): spatny soucet ramce prikazu -> jednotka mlci [$00 $00 $00 $00]
+OK     B SD disketa (128 B): prikaz pro D2: -> nikdo neodpovi [$00 $00 $00 $00]
+OK     B SD disketa (128 B): '?' (vysoka rychlost) -> 'N' - jednotka umi jen 19200 Bd ['N' $00 $00 $00]
+OK     B SD disketa (128 B): WRITE (s kontrolou) sektoru 11 -> 'A' 'A' 'C' ['A' 'A' 'C' $00]
+OK     B SD disketa (128 B): sektor 10 je na diskete opravdu zapsany (128 B)
+OK     B SD disketa (128 B): sektor 11 je na diskete opravdu zapsany (128 B)
+OK     B SD disketa (128 B): zadna chyba ramce ani preteceni v SKSTAT
+OK     C SD disketa (128 B): casovac 4 v asynchronnim prijmu (SKCTL $13) bez start bitu stoji (IRQST bit 2 = 1)
+OK     C SD disketa (128 B): casovac 4 bez asynchronniho prijmu (SKCTL $03) preruseni da
+--- DD disketa (256 B) ---
+OK     B DD disketa (256 B): program nabootoval pres OS (SIO patch, 6 prikazu SIOV, snimek 88)
+OK     B DD disketa (256 B): program dobehl (27 snimku, nizkourovnovych prikazu jednotky 6)
+OK     B DD disketa (256 B): cteni sektoru 4 = 256 B ['A' $00 'C' $01]
+OK     B DD disketa (256 B): cteni sektoru 1 = 128 B (sektory 1-3 jsou i u DD po 128 B) ['A' $00 'C' $01]
+OK     B DD disketa (256 B): STATUS -> $30 (dvojita hustota) ['A' $00 'C' $01] stav 30 FF E0 00
+OK     B DD disketa (256 B): PUT sektoru 10 (256 B) ['A' 'A' 'C' $00]
+OK     B DD disketa (256 B): sektor 10 precten zpet = zapsana data ['A' $00 'C' $01]
+OK     B DD disketa (256 B): sektor 721 -> 'N' ['N' $00 $00 $00]
+OK     B DD disketa (256 B): sektor 10 je na diskete opravdu zapsany (256 B)
+OK     B DD disketa (256 B): zadna chyba ramce ani preteceni v SKSTAT
+OK     C DD disketa (256 B): casovac 4 v asynchronnim prijmu (SKCTL $13) bez start bitu stoji (IRQST bit 2 = 1)
+OK     C DD disketa (256 B): casovac 4 bez asynchronniho prijmu (SKCTL $03) preruseni da
+--- zamcena SD disketa ---
+OK     B zamcena SD disketa: program nabootoval pres OS (SIO patch, 6 prikazu SIOV, snimek 88)
+OK     B zamcena SD disketa: program dobehl (10 snimku, nizkourovnovych prikazu jednotky 3)
+OK     B zamcena SD disketa: PUT na zamcenou disketu -> 'A' 'A' 'E' (chyba) ['A' 'A' 'E' $00]
+OK     B zamcena SD disketa: STATUS -> $18 (bit 3 = zamceno) ['A' $00 'C' $01] stav 18 FF E0 00
+OK     B zamcena SD disketa: cteni jde i ze zamcene ['A' $00 'C' $01]
+OK     B zamcena SD disketa: sektor 10 na zamcene diskete zustal puvodni
+OK     B zamcena SD disketa: zadna chyba ramce ani preteceni v SKSTAT
+OK     C zamcena SD disketa: casovac 4 v asynchronnim prijmu (SKCTL $13) bez start bitu stoji (IRQST bit 2 = 1)
+OK     C zamcena SD disketa: casovac 4 bez asynchronniho prijmu (SKCTL $03) preruseni da
+--- volitelne: acid800.atr ---
+      Acid800 V0.1: Passed: 38  Failed: 0  Skipped: 0
+OK     D Acid800 V0.1: vsech 38 testu proslo
+--- volitelne: PoP_DD_20211206_final.atr ---
+      Prince of Persia: nacteno sektoru 432, prikazu SIOV 19, nizkourovnovych 417, PC=$91AC jam=0
+OK     D Prince of Persia DD: vlastni zavadec (xBIOS) nahral hru z diskety (>= 400 sektoru)
+
+VYSLEDEK: 41 kontrol, 0 chyb

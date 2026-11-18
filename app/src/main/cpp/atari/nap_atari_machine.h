@@ -145,6 +145,41 @@ struct AtrDisk {
 };
 
 // ---------------------------------------------------------------------
+//  B348: linka SIO na urovni bajtu - disketova jednotka D1: jako skutecna
+//  1050. Hry s vlastnim zavadecem (xBIOS - Prince of Persia ...) neprochazi
+//  SIOV v OS (tam staci "SIO patch" na urovni prikazu), ale mluvi s jednotkou
+//  primo pres POKEY: se stazenou linkou COMMAND (PIA PBCTL CB2 = 0) poslou
+//  ramec prikazu (jednotka, prikaz, AUX1, AUX2, soucet), linku uvolni a
+//  cekaji na odpoved v SERIN: 'A' (ACK), u cteni pak 'C' (COMPLETE) + data
+//  sektoru + soucet; u zapisu jednotka po 'A' prijme datovy ramec a odpovi
+//  'A' + 'C'. Spatny prikaz/sektor = 'N' (NAK). Rychlost 19200 Bd.
+// ---------------------------------------------------------------------
+struct SioBus {
+  static const int OUT_MAX = 272;            // 'A' + 'C' + 256 B dat + soucet
+  bool cmdLine = false;                      // linka COMMAND stazena
+  uint8_t cmd[5] = {0, 0, 0, 0, 0};
+  int cmdN = 0;                              // bajtu ramce prikazu (>5 = neplatny)
+  // datovy ramec od pocitace (zapis): delka vcetne souctu, 0 = necekame
+  int frameLen = 0, frameN = 0, frameSec = 0;
+  bool frameBad = false;
+  uint8_t frame[260];
+  // vysilani jednotky: bajt + cyklus zacatku jeho start bitu
+  uint8_t outB[OUT_MAX];
+  uint64_t outS[OUT_MAX];
+  int outN = 0, outI = 0;
+  bool rxBusy = false;                       // bajt prave bezi po lince (start .. stop)
+  // diagnostika
+  long long prikazu = 0, nak = 0, spatnySoucet = 0, cizi = 0, zapisu = 0;
+  uint8_t posledni[5] = {0, 0, 0, 0, 0};
+  void clear() { cmdN = 0; frameLen = frameN = 0; frameBad = false; outN = outI = 0; rxBusy = false; }
+  static uint8_t soucet(const uint8_t *d, int n) {
+    unsigned s = 0;
+    for (int i = 0; i < n; i++) { s += d[i]; if (s > 255) s = (s & 255) + 1; }
+    return (uint8_t)s;
+  }
+};
+
+// ---------------------------------------------------------------------
 //  Kazetovy magnetofon (CLOAD): na pasce jsou urovne linky SIO DATA IN
 //  (mark=1 / space=0) ziskane z WAV demodulaci FSK (nap_atari_tape.h).
 //  Pasek se posouva jen pri zapnutem motoru (PACTL) a stisknutem PLAY.
@@ -208,6 +243,8 @@ public:
   TapeDeck tape;
   Cartridge cart;                     // B316: slot pro cartridge (.car) - nap_atari_cart.h
   long long sioPrikazu = 0;
+  SioBus sio;                         // B348: jednotka D1: na urovni bajtu (vlastni zavadece her)
+  uint64_t sioNext = ~(uint64_t)0;    // B348: dalsi udalost na lince SIO (start bitu / prijem bajtu)
 
   // ---------------- VBXE (B296) ----------------
   // Karta je "zasunuta" porad: programy bez VBXE ji nevidi (registry na
@@ -272,6 +309,7 @@ public:
     pfBase = 0; pfOffset = 0; pfDmaEnabled = pfDmaActive = false; hscrollEnabled = hscrollDelay = false; hscrollDmaOffset = 0;
     pfWidth = 0; wsyncPending = 0; rdyHalt = false; chbaseDelay = 0;
     pendingNMIs = 0; earlyNMIEN = 0; lateNMI = false; charInvert = 0; charBlink = 0xFF;
+    vblankHires = false; std::memset(phantomQ, 0xFF, sizeof phantomQ);   // B348
     std::memset(dmaPat, 0, sizeof dmaPat);
     updatePlayfieldTiming();
     // GTIA
@@ -283,6 +321,8 @@ public:
     colbk = colbkR = 0; rcN = 0; lastSyncCc = 0;
     // POKEY
     pokeyCold();
+    // B348: linka SIO (jednotka D1: na urovni bajtu)
+    sio.clear(); sio.cmdLine = false; sioNext = ~(uint64_t)0;
     // VBXE: po zapnuti prazdna VRAM, paleta 0 = barvy Atari
     {
       uint32_t p[256];
@@ -307,6 +347,9 @@ public:
     dmactlReg = 0; nmien = 0; updatePlayfieldTiming();
     wsyncPending = 0; rdyHalt = false; nmiLatch = false;
     mem.pia = Pia();
+    // B348: PIA po resetu = linka COMMAND uvolnena; rozpracovany ramec prikazu
+    // se zahodi (jednotka by ho bez uvolneni linky stejne nedostala cely)
+    sio.cmdLine = false; sio.cmdN = 0;
     vbx.warmReset();                    // VBXE: XDL, MEMAC, blitter, IRQ vypnout
     updateIrq();
     cpu.reset();
@@ -537,6 +580,7 @@ public:
   uint64_t last64 = 0, last15 = 0, polyBase = 0, polyShutOff = 0;
   int stimerDelay = 0;
   int serOutCounter = 0; bool serOutValid = false, serOutState = true; uint8_t serOutShift = 0;
+  bool serOutBusy = false;             // B348: v posuvnem registru je opravdu bajt (ne jen "rozjezd")
   int serOutTickDelay = 0;
   int keyHoldFrames = 0;
   double audLevel = 0, audLevelStart = 0, tapeLevel = 0, tapeLevelStart = 0;
@@ -558,6 +602,7 @@ public:
   inline void endCycle() {
     pokeyTick();
     ++cyc;
+    if (cyc >= sioNext) sioLineEvent();                  // B348: bajt od jednotky D1: na lince SIO
     if (vbx.stopEvent && vbx.tick(cyc)) updateIrq();    // VBXE: blitter dobehl -> IRQ
     if (++x >= CYCLES_PER_LINE) endScanline();
   }
@@ -593,6 +638,17 @@ public:
   bool anticSpecial() {
     bool busy = false;
     const bool zobrazeni = (unsigned)(line - 8) < 240;
+    // B348: "fantomove" DMA hracu/strel - GTIA (GRACTL) bere bajt ze sbernice
+    // i kdyz ANTIC DMA hracu/strel nedela; pak je na sbernici to, co cte/zapisuje
+    // procesor. Acid800 "GTIA: Phantom PMG DMA" (overeny na skutecnem Atari)
+    // ukazuje, ze hrac 0 dostane bajt z cyklu ZA svym slotem DMA (procesor tam
+    // nacita opcode $AD) -> slot c se zapise na zacatku cyklu c+2 (busData =
+    // hodnota z cyklu c+1); na obraz jde v case slotu.
+    if (x < 8 && phantomQ[x] >= 0) {
+      const int s = phantomQ[x]; phantomQ[x] = -1;
+      if (s == 4) gtiaMissileDma(busData, 0);
+      else gtiaPlayerDma(s, busData, (s + 2) * 2);
+    }
     switch (x) {
       case 0: {
         // strely - DMA hracu zapina i strely
@@ -602,7 +658,7 @@ public:
           else b = anticRead((uint16_t)(((pmbase & 0xFC) << 8) + 0x180 + (line >> 1)));
           busy = true;
           gtiaMissileDma(b);
-        }
+        } else if ((gractl & 1) && zobrazeni) phantomQ[2] = 4;
         dlDmaInTime = (dmactlReg & 0x20) != 0;
         dlistLatch = dlist;
         break;
@@ -680,7 +736,7 @@ public:
           else b = anticRead((uint16_t)(((pmbase & 0xFC) << 8) + 0x200 + 0x80 * i + (line >> 1)));
           busy = true;
           gtiaPlayerDma(i, b);
-        }
+        } else if ((gractl & 2) && zobrazeni) phantomQ[x + 2] = (int8_t)(x - 2);
         break;
       }
       case 6: {
@@ -731,6 +787,11 @@ public:
       case 9: if (lateNMI) { nmiLatch = true; lateNMI = false; } break;
       case 10: {
         vblankLine = !zobrazeni;
+        // B348: "hires chyba" ANTIC - kdyz posledni radek pred VBLANK byl v rezimu
+        // 2/3/F, ANTIC GTIA neohlasi zatemneni a hraci/strely se ve VBLANK dal
+        // kresli a srazeji (Acid800 "ANTIC: Hires bug"; na obrazovce to neni videt)
+        if (line == 248) vblankHires = pushMode == 2;
+        else if (line == 8) vblankHires = false;
         break;
       }
       case 16: {
@@ -751,6 +812,8 @@ public:
     return busy;
   }
   bool lineHiresAntic = false;
+  bool vblankHires = false;            // B348: VBLANK po hires radku (hraci se dal srazeji)
+  int8_t phantomQ[8] = {-1, -1, -1, -1, -1, -1, -1, -1};   // B348: fantomove DMA - v cyklu i zapsat hrace 0-3 / strely (4)
 
   void updateFont() { charBase128 = (uint16_t)((chbase & 0xFC) << 8); charBase64 = (uint16_t)((chbase & 0xFE) << 8); }
   void updateCurrentCharRow() {
@@ -1008,13 +1071,14 @@ public:
     rc[i].pos = pos; rc[i].reg = reg; rc[i].val = val; rcN++;
   }
 
-  void gtiaPlayerDma(int i, uint8_t b) {
+  // pos = barevny takt cyklu DMA (-1 = ted; B348 fantomove DMA se zpracuje o cyklus pozdeji)
+  void gtiaPlayerDma(int i, uint8_t b, int pos = -1) {
     if (gractl & 2) {
-      if ((line & 1) || !(vdelay & (0x10 << i))) gtiaAddChange(xclock() + 3, (uint8_t)(0x0D + i), b);
+      if ((line & 1) || !(vdelay & (0x10 << i))) gtiaAddChange((pos < 0 ? xclock() : pos) + 3, (uint8_t)(0x0D + i), b);
     }
   }
-  void gtiaMissileDma(uint8_t b) {
-    if (gractl & 1) gtiaAddChange(xclock() + 3, 0x20, b);
+  void gtiaMissileDma(uint8_t b, int pos = -1) {
+    if (gractl & 1) gtiaAddChange((pos < 0 ? xclock() : pos) + 3, 0x20, b);
   }
 
   // Dokreslit radek do barevneho taktu (x*2 + offset + 2)
@@ -1125,7 +1189,7 @@ public:
         s.shift |= s.latch;
       }
     }
-    if (vblankLine || cc < 34 || cc >= 222) {
+    if ((vblankLine && !vblankHires) || cc < 34 || cc >= 222) {
       for (int i = 0; i < 8; i++) if (spr[i].shift) sprStep(spr[i]);
       if (cc >= 32 && cc < 224) {
         lineOut[cc * 2] = lineOut[cc * 2 + 1] = 0;
@@ -1134,7 +1198,8 @@ public:
       return;
     }
     uint8_t m = 0;
-    const bool inPf = (cc >> 1) >= pfDisplayStart && (cc >> 1) < pfDisplayEnd && pushMode != 0;
+    // B348: ve VBLANK po hires radku (vblankHires) jen hraci/strely - hraci pole tam neni
+    const bool inPf = !vblankLine && (cc >> 1) >= pfDisplayStart && (cc >> 1) < pfDisplayEnd && pushMode != 0;
     uint8_t hb = 0;
     if (inPf) { m = merge[cc]; hb = anData[cc]; }
     const int gmode = prior & 0xC0;
@@ -1545,7 +1610,14 @@ public:
       case 0: if (mem.pia.ctlA & 4) mem.pia.orA = v; else mem.pia.ddrA = v; break;
       case 1: if (mem.pia.ctlB & 4) mem.pia.orB = v; else mem.pia.ddrB = v; break;
       case 2: mem.pia.ctlA = v & 0x3F; break;
-      default: mem.pia.ctlB = v & 0x3F; break;
+      default: {
+        mem.pia.ctlB = v & 0x3F;
+        // B348: CB2 jako vystup (bity 5-4 = 11) s bitem 3 = 0 -> linka COMMAND stazena
+        // (OS i zavadece pisou $34 = stazena, $3C = uvolnena)
+        const bool c = (mem.pia.ctlB & 0x38) == 0x30;
+        if (c != sio.cmdLine) sioCommandLine(c);
+        break;
+      }
     }
   }
 
@@ -1556,7 +1628,7 @@ public:
     for (int i = 0; i < 4; i++) { audf[i] = 0; audc[i] = 0; audfP1[i] = 1; pcnt[i] = 1; pborrow[i] = 0; chOut[i] = 0; }
     audctl = 0; irqen = 0; irqst = 0xFF; skctl = 0; skstat = 0xFF; kbcode = 0xFF; serin = 0xFF;
     hpf[0] = hpf[1] = 0; stimerDelay = 0;
-    serOutCounter = 0; serOutValid = false; serOutState = true; serOutShift = 0; serOutTickDelay = 0;
+    serOutCounter = 0; serOutValid = false; serOutState = true; serOutShift = 0; serOutTickDelay = 0; serOutBusy = false;
     last64 = last15 = polyBase = polyShutOff = 0;
     audLevel = audLevelStart = 0; audEv.clear(); audFrom = 0;
     tapeLevel = tapeLevelStart = 0; tapeEv.clear(); tapeFrom = 0;
@@ -1620,9 +1692,10 @@ public:
       case 0x0D: return serin;
       case 0x0E: return irqst;
       case 0x0F: {
-        // bit 4 = primy stav seriove vstupni linky (kazeta: demodulovana FSK)
+        // bit 4 = primy stav seriove vstupni linky (kazeta: demodulovana FSK,
+        // B348: i bity, ktere prave vysila jednotka D1:)
         uint8_t s = skstat;
-        if (tapeDataLevel()) s |= 0x10; else s &= ~0x10;
+        if (tapeDataLevel() && sioLineLevel()) s |= 0x10; else s &= ~0x10;
         return s;
       }
       default: return 0xFF;
@@ -1657,7 +1730,7 @@ public:
         if (prvInit != newInit) {
           if (!newInit) { last15 = cyc + 81 - 114; last64 = cyc + 22 - 28; polyBase = cyc + 1; }
           else polyShutOff = cyc;     // poly citace bezi dal (dobeh posuvu), pak RANDOM = $FF
-          serOutCounter = 0; serOutValid = false; serOutState = false;
+          serOutCounter = 0; serOutValid = false; serOutState = false; serOutBusy = false;
           // zmena init rezimu nuluje i prijimaci posuvny registr - rozpracovany
           // bajt z kazety se zahodi (OS tim po zmereni rychlosti zahodi druhy $55)
           tape.rxPhase = 0;
@@ -1689,7 +1762,13 @@ public:
     // kanaly 1+2
     if (link12) tickLinked(0, fast1 || slow, fast1);
     else { tickCh(0, fast1 || slow); tickCh(1, slow); }
-    if (link34) tickLinked(1, fast3 || slow, fast3);
+    // B348: asynchronni prijem (SKCTL bit 4): casovace 3+4 jsou drzene v nule,
+    // dokud na seriovy vstup neprijde start bit - bez prijmu nebezi a casovac 4
+    // nedava preruseni (Acid800 "POKEY: Asynchronous receive mode")
+    if ((skctl & 0x10) && !sio.rxBusy && !tape.rxPhase) {
+      if (link34) { pcnt16[1] = ((audf[3] << 8) | audf[2]) + 1; pborrow16[1] = 0; }
+      else { pcnt[2] = audfP1[2]; pcnt[3] = audfP1[3]; pborrow[2] = pborrow[3] = 0; }
+    } else if (link34) tickLinked(1, fast3 || slow, fast3);
     else { tickCh(2, fast3 || slow); tickCh(3, slow); }
     serialTickDelayed();
   }
@@ -1764,10 +1843,14 @@ public:
       bool st = bit == 0 ? false : (bit <= 8 ? ((serOutShift >> (bit - 1)) & 1) != 0 : true);
       if (st != serOutState) { serOutState = st; updateAudioLevel(); }
     } else {
+      // B348: dobehl stop bit bajtu -> po lince SIO ho dostane jednotka D1:
+      // (dvoutonovy rezim = kazeta, tam jednotka nic nepozna)
+      if (serOutBusy) { serOutBusy = false; if (!(skctl & 0x08)) sioDriveRx(serOutShift); }
       if (serOutValid) {
         serOutCounter = 20;
         serOutShift = serout;
         serOutValid = false;
+        serOutBusy = true;
         bool st = false;                   // start bit
         if (st != serOutState) { serOutState = st; updateAudioLevel(); }
         irqst |= 0x08;
@@ -1994,6 +2077,161 @@ public:
     cpu.pc = (uint16_t)(((hi << 8) | lo) + 1);
     for (int i = 0; i < 6; i++) { beginCpuCycle(false); endCycle(); }
     if (sioRychlyTimeout) sioZkratek++;
+  }
+
+  // =================================================================
+  //  B348: SIO na urovni bajtu - jednotka D1: (viz SioBus nahore)
+  // =================================================================
+  // 19200 Bd na PAL (1,773447 MHz): 92,4 cyklu na bit, bajt = 10 bitu
+  static constexpr double SIO_BIT = 1773447.0 / 19200.0;
+  static const int SIO_BYTE = 924;
+  static const int SIO_ACK = 1500;        // COMMAND uvolnena / konec datoveho ramce -> start 'A' (~0,85 ms)
+  static const int SIO_COMPLETE = 2000;   // konec 'A' -> start 'C' (~1,1 ms)
+  static const int SIO_GAP = 400;         // konec 'C' -> prvni bajt dat
+
+  // pul bitu VYSILANI pocitace (hodiny = casovac 4, pri SKCTL bitech 6-5 = 11 casovac 2)
+  double serialOutHalfBitCycles() const {
+    if ((skctl & 0x60) != 0x60) return serialHalfBitCycles();
+    const double base = (audctl & 1) ? 114.0 : 28.0;
+    if (audctl & 0x10) {
+      const int f = (audf[1] << 8) | audf[0];
+      return (audctl & 0x40) ? (double)(f + 7) : (double)(f + 1) * base;
+    }
+    return (double)(audf[1] + 1) * base;
+  }
+
+  // zmena linky COMMAND (PBCTL)
+  void sioCommandLine(bool c) {
+    sio.cmdLine = c;
+    if (c) {
+      // novy prikaz: jednotka prestane vysilat a posloucha ramec prikazu
+      if (sio.rxBusy) skstat |= 0x02;
+      sio.clear();
+      sioNext = ~(uint64_t)0;
+      return;
+    }
+    if (sio.cmdN == 5) sioDriveCommand();
+    sio.cmdN = 0;
+  }
+
+  // bajt, ktery pocitac prave odvysilal (SEROUT)
+  void sioDriveRx(uint8_t b) {
+    if (!disk.mounted) return;
+    const double bit = 2.0 * serialOutHalfBitCycles();
+    const bool ok = bit > SIO_BIT * 0.93 && bit < SIO_BIT * 1.07;   // 1050 rozumi jen ~19200 Bd
+    if (sio.cmdLine) {
+      if (!ok) { sio.cmdN = 6; return; }
+      if (sio.cmdN < 5) sio.cmd[sio.cmdN] = b;
+      if (sio.cmdN < 6) sio.cmdN++;
+      return;
+    }
+    if (sio.frameLen) {
+      if (!ok) sio.frameBad = true;
+      sio.frame[sio.frameN++] = b;
+      if (sio.frameN >= sio.frameLen) sioDriveFrame();
+    }
+  }
+
+  // bajt od jednotky do fronty (s = cyklus zacatku start bitu)
+  void sioOut(uint8_t b, uint64_t s) {
+    if (sio.outN >= SioBus::OUT_MAX) return;
+    sio.outB[sio.outN] = b; sio.outS[sio.outN] = s; sio.outN++;
+    if (sio.outN - 1 == sio.outI && !sio.rxBusy) sioNext = s;   // fronta byla prazdna
+  }
+  // datovy ramec jednotky: data + soucet, bajty tesne za sebou
+  void sioOutFrame(const uint8_t *d, int n, uint64_t &t) {
+    for (int i = 0; i < n; i++) { sioOut(d[i], t); t += SIO_BYTE; }
+    sioOut(SioBus::soucet(d, n), t); t += SIO_BYTE;
+  }
+
+  // ramec prikazu je cely (5 bajtu) a linka COMMAND uvolnena
+  void sioDriveCommand() {
+    const uint8_t *c = sio.cmd;
+    std::memcpy(sio.posledni, c, 5);
+    if (SioBus::soucet(c, 4) != c[4]) { sio.spatnySoucet++; return; }   // jednotka ramec ignoruje
+    if (c[0] != 0x31) { sio.cizi++; return; }                           // neni pro D1: - nikdo neodpovi
+    sio.prikazu++;
+    const int sec = c[2] | (c[3] << 8);
+    uint64_t t = cyc + SIO_ACK;
+    size_t off = 0; int len = 0;
+    switch (c[1]) {
+      case 0x52:                                         // READ SECTOR
+        if (!disk.sec(sec, off, len)) break;
+        sioOut('A', t); t += SIO_BYTE + SIO_COMPLETE;
+        sioOut('C', t); t += SIO_BYTE + SIO_GAP;
+        sioOutFrame(&disk.data[off], len, t);
+        disk.reads++;
+        return;
+      case 0x53: {                                       // STATUS
+        const uint8_t s[4] = {(uint8_t)(0x10 | (disk.sectorSize == 256 ? 0x20 : 0) | (disk.writeProtect ? 0x08 : 0)), 0xFF, 0xE0, 0x00};
+        sioOut('A', t); t += SIO_BYTE + SIO_COMPLETE;
+        sioOut('C', t); t += SIO_BYTE + SIO_GAP;
+        sioOutFrame(s, 4, t);
+        return;
+      }
+      case 0x57: case 0x50:                              // WRITE (s kontrolou) / PUT: ceka se datovy ramec
+        if (!disk.sec(sec, off, len)) break;
+        sioOut('A', t);
+        sio.frameLen = len + 1; sio.frameN = 0; sio.frameSec = sec; sio.frameBad = false;
+        return;
+      case 0x21: case 0x22: {                            // FORMAT: vymazat, seznam vadnych sektoru = zadne
+        uint8_t f[256]; std::memset(f, 0xFF, sizeof f);
+        const int n = (disk.sectorSize == 256 && c[1] == 0x21) ? 256 : 128;
+        sioOut('A', t); t += SIO_BYTE + SIO_COMPLETE;
+        if (disk.writeProtect) sioOut('E', t);
+        else { std::fill(disk.data.begin(), disk.data.end(), (uint8_t)0); sioOut('C', t); }
+        t += SIO_BYTE + SIO_GAP;
+        sioOutFrame(f, n, t);
+        return;
+      }
+      default: break;                                    // '?' (vysoka rychlost), PERCOM ... 1050 neumi
+    }
+    sioOut('N', t); sio.nak++;
+  }
+
+  // datovy ramec zapisu je cely
+  void sioDriveFrame() {
+    const int len = sio.frameLen - 1;
+    sio.frameLen = 0;
+    uint64_t t = cyc + SIO_ACK;
+    if (sio.frameBad || SioBus::soucet(sio.frame, len) != sio.frame[len]) { sioOut('N', t); sio.nak++; return; }
+    sioOut('A', t); t += SIO_BYTE + SIO_COMPLETE;
+    size_t off = 0; int l = 0;
+    if (disk.writeProtect || !disk.sec(sio.frameSec, off, l)) { sioOut('E', t); return; }
+    std::memcpy(&disk.data[off], sio.frame, (size_t)(l < len ? l : len));
+    disk.writes++; sio.zapisu++;
+    sioOut('C', t);
+  }
+
+  // udalost na lince: zacatek start bitu / bajt dorazil do SERIN
+  void sioLineEvent() {
+    if (sio.outI >= sio.outN) { sio.outI = sio.outN = 0; sio.rxBusy = false; sioNext = ~(uint64_t)0; return; }
+    if (!sio.rxBusy) {
+      // start bit: prijimac je obsazeny (SKSTAT bit 1 = 0); pri asynchronnim
+      // prijmu (SKCTL bit 4) start bit pusti casovace 3+4 od zacatku
+      sio.rxBusy = true;
+      skstat &= ~0x02;
+      if (skctl & 0x10) {
+        if (audctl & 0x08) { pcnt16[1] = ((audf[3] << 8) | audf[2]) + 1; pborrow16[1] = 0; }
+        else { pcnt[2] = audfP1[2]; pcnt[3] = audfP1[3]; pborrow[2] = pborrow[3] = 0; }
+      }
+      sioNext = sio.outS[sio.outI] + (uint64_t)(9.5 * SIO_BIT);   // stred stop bitu
+      return;
+    }
+    sio.rxBusy = false;
+    skstat |= 0x02;
+    receiveSerialByte(sio.outB[sio.outI++], SIO_BIT);
+    if (sio.outI >= sio.outN) { sio.outI = sio.outN = 0; sioNext = ~(uint64_t)0; }
+    else sioNext = sio.outS[sio.outI] > cyc ? sio.outS[sio.outI] : cyc + 1;
+  }
+
+  // uroven datove linky od jednotky (1 = klid / mark)
+  int sioLineLevel() const {
+    if (!sio.rxBusy) return 1;
+    const int k = (int)((double)(cyc - sio.outS[sio.outI]) / SIO_BIT);
+    if (k <= 0) return 0;                                // start bit
+    if (k <= 8) return (sio.outB[sio.outI] >> (k - 1)) & 1;
+    return 1;                                            // stop bit
   }
 };
 

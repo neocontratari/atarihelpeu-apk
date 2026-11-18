@@ -45,7 +45,10 @@ struct Cpu6502T {
   // dotaz na preruseni uz v teto instrukci probehl (pro RDY/WSYNC - viz Machine)
   bool polled = false;
   // ANE/LXA: "magicka" konstanta nestabilnich instrukci (zavisi na kusu cipu)
-  uint8_t magicAne = 0xEE, magicLxa = 0xEE;
+  // B348: LXA ($AB) na SALLY v Atari = A = X = A & imm (konstanta $00) - tak
+  // to ocekava Acid800 (overeny na skutecnem Atari): LXA #$55 s A=$33 -> $11.
+  // SingleStepTests (T. Harte) generuji LXA s $EE - jejich test si ji nastavi sam.
+  uint8_t magicAne = 0xEE, magicLxa = 0x00;
   uint64_t instr = 0;            // pocet provedenych instrukci (diagnostika)
 
   // --- pomocne ---

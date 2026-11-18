@@ -19,7 +19,10 @@ public final class NativeAtariCoreBridge {
     // samokontrola v nap_atari_selftest.h) - cisla z test_overeni/b292/
     // test_b292_jni_host (x86_64): procesor vcetne poctu cyklu na sbernici,
     // pamet 130XE pres vsech 256 hodnot PORTB (CPU i ANTIC).
-    public static final String OCEKAVANY_CPU_HASH = "29C55806";
+    // (procesor: B292 az B347 "29C55806". B348: nestabilni LXA ($AB) jako na SALLY
+    // v Atari - A = X = A & imm (konstanta $00 misto $EE, Acid800). Cislo z
+    // test_overeni/b323/memhash.cpp na x86_64; s $EE vychazi znovu 29C55806.)
+    public static final String OCEKAVANY_CPU_HASH = "4A2C6CBA";
     // (pamet: B292 az B322 "D3949DC5" = 130XE se 4 bankami. B323: rozsirena pamet
     // 320K Compy Shop - 16 bank, PORTB bity 6-7 navic; banky 130XE beze zmeny.
     // Cislo z test_overeni/b323/memhash.cpp na x86_64.)

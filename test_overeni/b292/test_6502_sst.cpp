@@ -56,6 +56,7 @@ int main(int argc, char **argv) {
   long celkem = 0, chyb = 0;
   static TestBus bus;
   nap::Cpu6502T<TestBus> cpu; cpu.bus = &bus;
+  cpu.magicLxa = 0xEE;   // B348: data SST maji LXA s konstantou $EE (Atari/Acid800: $00 - vychozi v jadru)
   for (int fi = 1; fi < argc; fi++) {
     FILE *f = fopen(argv[fi], "rb");
     if (!f) { printf("nelze otevrit %s\n", argv[fi]); return 2; }
