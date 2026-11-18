@@ -4408,5 +4408,12 @@
      - DALSI KROK: Rene - server v12.3 (NAVOD_v12_3.txt), v bance e-mail o prichozich platbach na adresu enginu,
        zaskrtnout v 💳 PLATBY, zkusebni platba 75 Kc z jineho uctu. Format e-mailu banky jsem nevidel (rozbor je obecny,
        cesky i anglicky); kdyz v logu bude "nenašel jsem částku platby", poslat ten radek logu (ne e-mail).
+     - Server v12.3.1 (18. 11.): schranka enginu nemusi byt na Seznamu - server IMAP engine hleda sam
+       (NapBanka.ImapServery: "smtp" -> "imap" v adrese, u "xxx-smtp" i "xxx.imap", imap.domena schranky, nakonec server
+       SMTP; prvni, ktery odpovi jako IMAP s platnym certifikatem; imap_server= v nastaveni.txt ma prednost). V okne
+       💳 PLATBY i v navodu: e-mail upozorneni v internetbankingu jen na webu, kontaktni e-mail = schranka enginu.
+     - OVERENO U RENEHO (18. 11. 17:56): platba 75 Kc z jineho telefonu -> e-mail banky asi za 2 minuty -> engine sam
+       odemkl Segu (v okne KODY "zaplaceno 18.11.", podpis banky prosel) -> appka (NOX) sama SPUSTIT. Prodleva je na
+       strane banky (e-mail chodi asi 2 minuty po platbe), engine se diva kazdou minutu.
 
 ===============================================================================

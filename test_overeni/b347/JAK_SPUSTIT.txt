@@ -42,3 +42,6 @@ Overi Rene:
  2) Na telefonu ODEMKNOUT -> "🏦 ODEMKNE SE SAMO"; zaplatit QR z jineho telefonu -> do par minut 💳 ZAPLACENO
     v logu serveru a telefon sam "SEGA ODEMČENA – díky!" (v logu telefonu "B347 PLATBA sega: server pozna
     platbu z banky sam").
+
+OVERENO U RENEHO (18. 11. 17:56): platba 75 Kc z jineho telefonu -> e-mail banky asi za 2 minuty -> engine v12.3.1
+sam odemkl Segu ("zaplaceno 18.11.") -> appka v NOXu sama ukazala SPUSTIT.
