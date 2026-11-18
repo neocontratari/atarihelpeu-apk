@@ -91,6 +91,14 @@ ZNACKY_ENT = {'⚙': ['&#9881;', '⚙'], '△': ['△', '&#9651;', '\\u25b3', 't
               '○': ['○', '&#9675;', 'circle', 'KOLE'], '✕': ['✕', '&#10005;', 'cross', 'KRIZ', 'KŘÍŽ'],
               '□': ['□', '&#9633;', 'square', 'CTVER', 'ČTVER']}
 
+# B343: napisy nakreslene v obrazku konzole Sega (SBÍRKA, ULOŽENÉ, NÁVODY) - uzivatel je vidi s hacky a carkami,
+# v kodu je jen neviditelne tlacitko bez diakritiky (btnCollection "SBIRKA" ...) nad obrazkem
+OBRAZEK = {
+    'SBÍRKA': ('assets/emu_sega/index.html', 'id="btnCollection" class="hit" type="button">SBIRKA<'),
+    'ULOŽENÉ': ('assets/emu_sega/index.html', 'id="btnSaves" class="hit" type="button">ULOZENE<'),
+    'NÁVODY': ('assets/emu_sega/index.html', 'id="btnManuals" class="hit" type="button">NAVODY<'),
+}
+
 vystup = []
 chyb = 0
 
@@ -111,6 +119,13 @@ for c in cipy:
                 ok = True
                 break
         tisk('%s  %-34s kreslena znacka (%s)' % ('OK   ' if ok else 'CHYBA', c, popis))
+        chyb += 0 if ok else 1
+        continue
+    if c in OBRAZEK:
+        f, kus = OBRAZEK[c]
+        ok = kus in open(os.path.join(R, f), encoding='utf-8', errors='replace').read() \
+            and os.path.exists(os.path.join(R, 'assets/emu_sega/sega_megadrive_screen.png'))
+        tisk('%s  %-34s napis na obrazku konzole (%s)' % ('OK   ' if ok else 'CHYBA', c, kus.split('>')[1].rstrip('<')))
         chyb += 0 if ok else 1
         continue
     kde = [jm for jm, t in korpus if c in t]

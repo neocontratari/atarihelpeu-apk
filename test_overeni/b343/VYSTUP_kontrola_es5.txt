@@ -1,0 +1,10 @@
+OK     ES5 jazyk/en_ps1.js
+OK     ES5 jazyk/en_sega.js
+OK     ES5 spolecne/nap_jazyk.js
+OK     ES5 napoveda/index.html skript 1
+OK     ES5 napoveda/index.html skript 2
+OK     ES5 napoveda/en.html skript 1
+OK     ES5 napoveda/en.html skript 2
+OK     ES5 emu_sega/index.html skript 1
+OK     ES5 emu_ps1/index.html skript 1
+VYSLEDEK: 9 kontrol, 0 CHYBA

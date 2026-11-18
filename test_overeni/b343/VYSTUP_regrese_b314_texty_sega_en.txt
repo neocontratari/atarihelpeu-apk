@@ -1,0 +1,83 @@
+B314 - vsechny anglicke texty stranky sega (emu_sega/index.html), pro kontrolu ocima
+SEGA MEGA DRIVE – READY CATALOG = N&P server games GAMES = your games · CARTRIDGE = ROM from the phone MANUALS = short guide
+LOG
+CONSOLE
+JOYSTICK
+CATALOG
+SAVES
+GAMES
+MANUALS
+WEB
+MENU
+AUTO COMPAT INFO
+CARTRIDGE SLOT
+CARTRIDGE
+RESET
+START
+SAVE
+LOAD GAME
+A
+B
+C
+DPAD
+SEGA PERFORMANCE
+HIGH QUALITY
+LOW PERFORMANCE
+Hold CATALOG = performance. With OPTIONS → DEVICE PERFORMANCE LOW the Sega always plays LOW.
+Drag a button wherever you like.
+IN GROUPS
+DEFAULT
+DONE
+D-PAD AND CONTROLS
+EDIT BUTTON LAYOUT
+CONTROLS: SENSITIVITY AND LOOK
+SWAP D-PAD AND ACTIONS (LEFT-HANDED)
+SAVE GAME POSITION
+LOAD SAVED POSITION
+EXPORT LOG (DIAGNOSTICS)
+CLOSE
+CONTROLS — pro settings
+D-pad sensitivity
+— how far from the center your finger has to move before a direction switches on.
+Sensitivity: 7 %
+Button transparency
+Transparency: 100 %
+Button size
+— A/B/C, Start.
+Size: 100 %
+D-pad size
+— just the round pad, on its own.
+D-pad size: 100 %
+Vibrate when a button is pressed
+DEFAULT CONTROL SETTINGS
+MY GAMES
+Games downloaded to the phone. Tap a game to start it, the bin deletes it.
+REFRESH THE LIST
+PICK A FILE ON THE PHONE MANUALLY
+DELETE GAME
+What exactly do you want to delete?
+JUST THE GAME (the saved position stays)
+THE GAME AND THE SAVED POSITION
+CANCEL
+SAVED POSITIONS
+Positions saved in games. Tap a game to load its position. (The log export is elsewhere: in landscape the gear ⚙ → EXPORT LOG.)
+aria-label=SEGA Mega Drive module
+alt=SEGA Mega Drive
+aria-label=SEGA Mega Drive status canvas
+[titulek] SEGA Mega Drive FINAL USER UI — N&P Vision
+SEGA – SHORT GUIDE CATALOG = N&P server games (hold = performance) GAMES = your games · CARTRIDGE = ROM from the phone SAVES = saved positions Button with a phone = play in landscape Landscape: D-pad, A B C, START, SAVE / LOAD GAME Gear ⚙ = layout, sensitivity, left-handed, log Keys: WASD, K = A, L = B, O = C, P = START TV: BACK = console menu Full guide: main menu → the HELP card
+BUILD2OU SEGA AUTO COMPAT This main Sega branch uses the stable EU compatibility code from BUILD2OL. USA/World ROM: no patch. Problematic EU ROMs: patched in memory only. The original ROM file is not changed. Sound: 48 kHz playback + hard reset. The 16-BIT PANEL is just info now, it does not switch branches.
+Group: grab any button of a group (actions A/B/C) and the whole group moves. The D-pad and Start always move alone.
+ONE BY ONE
+Sonic the Hedgehog
+512 KB
+saved position
+Columns
+128 KB
+aria-label=Start
+aria-label=Delete
+sonic.bin
+No downloaded game yet. Pick one manually or from the CATALOG.
+80 KB
+aria-label=Load
+No saved position yet. Press SAVE GAME POSITION while playing.

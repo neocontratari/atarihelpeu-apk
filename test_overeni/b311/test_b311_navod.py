@@ -33,6 +33,17 @@ def over(ok, co):
     vystup.append(r)
 
 
+def pockej_na_klid(pg, max_ms=6000):
+    """B343: navod je dlouhy (~37 000 px) - plynuly posun pres celou stranku trva v Chromiu i 1,5 s
+    (driv pevnych 1200 ms -> test hlasil CHYBU, prestoze stranka dojela spravne). Ceka, az se stranka
+    zastavi (scrollY 300 ms beze zmeny), nejdel max_ms."""
+    pg.wait_for_timeout(150)
+    pg.evaluate("() => { window.__klidY = -1; window.__klidN = 0; }")
+    pg.wait_for_function("""() => { const y = window.scrollY;
+        if (window.__klidY === y) window.__klidN++; else { window.__klidY = y; window.__klidN = 0; }
+        return window.__klidN >= 6; }""", polling=50, timeout=max_ms)
+
+
 URL = 'file://' + os.path.join(A, 'napoveda/index.html')
 
 with sync_playwright() as p:
@@ -80,7 +91,7 @@ with sync_playwright() as p:
     hist0 = pg.evaluate('history.length')
     url0 = pg.url
     pg.click('#obsah a[href="#tv"]')
-    pg.wait_for_timeout(1200)
+    pockej_na_klid(pg)
     st = pg.evaluate("""() => { const r = document.getElementById('tv').getBoundingClientRect();
         return {y: scrollY, top: r.top, lista: document.querySelector('.lista').offsetHeight, hist: history.length, url: location.href}; }""")
     over(st['y'] > 1000 and 0 <= st['top'] - st['lista'] <= 30 and st['hist'] == hist0 and st['url'] == url0,
@@ -90,13 +101,13 @@ with sync_playwright() as p:
     nah = pg.evaluate("document.getElementById('nahoru').classList.contains('ukaz')")
     over(nah, '3) po odjeti z obsahu se ukaze plovouci tlacitko nahoru')
     pg.click('#nahoru')
-    pg.wait_for_timeout(1200)
+    pockej_na_klid(pg)
     st2 = pg.evaluate("""() => ({top: document.getElementById('obsah').getBoundingClientRect().top, hist: history.length})""")
     over(0 < st2['top'] < 140 and st2['hist'] == hist0, '3) tlacitko nahoru vrati na obsah (bez historie)')
     # odkaz v textu kapitoly (Odemykani)
     pg.evaluate("document.querySelector('#sega .uvod a[href=\"#odemykani\"]').scrollIntoView()")
     pg.click('#sega .uvod a[href="#odemykani"]')
-    pg.wait_for_timeout(1200)
+    pockej_na_klid(pg)
     st3 = pg.evaluate("""() => ({top: document.getElementById('odemykani').getBoundingClientRect().top, hist: history.length})""")
     over(0 <= st3['top'] < 100 and st3['hist'] == hist0, '3) odkaz v textu (Sega -> Odemykani) posune na kapitolu, bez historie')
     pg.screenshot(path=os.path.join(PRAC, 'navod_3_odemykani.png'))

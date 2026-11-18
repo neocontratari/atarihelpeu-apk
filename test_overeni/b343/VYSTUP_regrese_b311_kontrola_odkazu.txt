@@ -1,0 +1,2 @@
+relativnich odkazu v HTML: 153, url() ve stylech: 20, cest k assetum v Jave a C++: 26, souboru z karty.txt: 13
+VYSLEDEK: 0 chyb

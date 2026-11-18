@@ -41,6 +41,16 @@ def over(ok, co):
     vystup.append(r)
 
 
+def pockej_na_klid(pg, max_ms=6000):
+    """B343: navod je dlouhy - plynuly posun trva v Chromiu i pres 1,2 s (driv pevne cekani -> falesna
+    CHYBA, stranka ale dojela spravne). Ceka, az se stranka zastavi (scrollY 300 ms beze zmeny)."""
+    pg.wait_for_timeout(150)
+    pg.evaluate("() => { window.__klidY = -1; window.__klidN = 0; }")
+    pg.wait_for_function("""() => { const y = window.scrollY;
+        if (window.__klidY === y) window.__klidN++; else { window.__klidY = y; window.__klidN = 0; }
+        return window.__klidN >= 6; }""", polling=50, timeout=max_ms)
+
+
 CZ = 'file://' + os.path.join(A, 'napoveda/index.html')
 EN = 'file://' + os.path.join(A, 'napoveda/en.html')
 KARTY = 'file://' + os.path.join(A, 'menu/karty.txt')
@@ -129,7 +139,7 @@ with sync_playwright() as p:
     hist0 = pg.evaluate('history.length')
     url0 = pg.url
     pg.click('#obsah a[href="#options"]')
-    pg.wait_for_timeout(1200)
+    pockej_na_klid(pg)
     st = pg.evaluate("""() => { const r = document.getElementById('options').getBoundingClientRect();
         return {y: scrollY, top: r.top, lista: document.querySelector('.lista').offsetHeight, hist: history.length, url: location.href}; }""")
     over(st['y'] > 1000 and 0 <= st['top'] - st['lista'] <= 30 and st['hist'] == hist0 and st['url'] == url0,

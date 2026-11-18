@@ -3,15 +3,17 @@
 NapJazyk.slovnik({
   'Cekam...': 'Waiting...',
   // HELP panel
-  'otevira lokalni PS1 soubor z telefonu.': 'opens a local PS1 file from the phone.',
-  'otevre tvoji PS1 stranku na AtariHelp.eu s Google Drive odkazy.': 'opens your PS1 page on AtariHelp.eu with Google Drive links.',
-  'Drive muze vracet .zip/.bin/.iso/.img/.pbp/.chd; .7z neni podporovane.': 'Drive can return .zip/.bin/.iso/.img/.pbp/.chd; .7z is not supported.',
-  'Prvni spusteni Drive hry stahne a rozbali ZIP do cache; dalsi spusteni bere hotovy lokalni soubor.':
-    'The first start of a Drive game downloads and unpacks the ZIP into the cache; later starts use the ready local file.',
-  'ulozi presnou pozici.': 'saves the exact position.',
-  'NACIST RYCHLOU POZICI': 'LOAD QUICK POSITION',
-  '(v panelu D-PAD A OVLADANI) ji zase nahraje - presne tam, kde jsi skoncil.': '(in the D-PAD AND CONTROLS panel) loads it again - exactly where you left off.',
-  'STAV CORE:': 'CORE STATE:',
+  // B343: texty panelu podle skutecnosti (LOAD GAME = server N&P, ne Google Drive)
+  '= tvoje stažené hry: klepnutím hru spustíš, koš ji smaže. Hru z telefonu vybereš přes VYBRAT SOUBOR RUČNĚ V TELEFONU.':
+    '= your downloaded games: tap a game to start it, the bin deletes it. Pick a game from the phone with PICK A FILE ON THE PHONE MANUALLY.',
+  '= hry ze serveru N&P. Poprvé se hra stáhne a rozbalí (volno asi 2× velikost hry + 200 MB), příště se spustí rovnou z telefonu.':
+    '= games from the N&P server. The first time a game downloads and unpacks (needs about 2× its size + 200 MB free), next time it starts straight from the phone.',
+  'Formáty: .bin .cue .iso .img .pbp .chd a .zip (.7z appka neumí).': 'Formats: .bin .cue .iso .img .pbp .chd and .zip (the app cannot do .7z).',
+  'uloží přesnou pozici.': 'saves the exact position.',
+  '(v panelu D-PAD A OVLÁDÁNÍ) ji zase nahraje – přesně tam, kde jsi skončil.': '(in the D-PAD AND CONTROLS panel) loads it again – exactly where you left off.',
+  'Úplný návod: hlavní menu → karta HELP → PS1.': 'Full guide: main menu → the HELP card → PS1.',
+  'STAV JÁDRA:': 'CORE STATE:',
+  'HRY ZE SERVERU N&P': 'GAMES FROM THE N&P SERVER',
   'PS1 core je napojen; log ukazuje boot, audio a remote download.': 'The PS1 core is connected; the log shows boot, audio and remote download.',
   'PS1 PRIMA URL': 'PS1 DIRECT URL',
   'PS1 CACHE CESTA': 'PS1 CACHE PATH',
@@ -27,8 +29,8 @@ NapJazyk.slovnik({
   'Zatím žádná stažená hra. Stáhni hru přes LOAD GAME.': 'No downloaded game yet. Download one via LOAD GAME.',
   // pametova karta
   'PAMĚŤOVÁ KARTA': 'MEMORY CARD',
-  'Skutečná PS1 karta - jedna, pořád zasunutá, sdílená všemi hrami i BIOSem (viz B218). O ukládání se stará jádro samo, tady jen vidíš stav.':
-    'A real PS1 card - one, always inserted, shared by all games and the BIOS (see B218). The core takes care of saving by itself, here you just see the state.',
+  'Skutečná PS1 karta - jedna, pořád zasunutá, sdílená všemi hrami i BIOSem. O ukládání se stará jádro samo, tady jen vidíš stav.':
+    'A real PS1 card - one, always inserted, shared by all games and the BIOS. The core takes care of saving by itself, here you just see the state.',
   'OBNOVIT STAV': 'REFRESH STATE',
   'Zjišťuji…': 'Checking…',
   'Nejde zjistit - jádro ještě neběží.': 'Cannot tell - the core is not running yet.',
@@ -49,7 +51,7 @@ NapJazyk.slovnik({
   'START TRVÁ PŘÍLIŠ DLOUHO - pošli LOG (kolečko → ULOŽIT LOG A ODESLAT)': 'THE START TAKES TOO LONG - send the LOG (gear → SAVE AND SEND THE LOG)',
   // stazeni z Drive (pruh nahore)
   'PS1: start': 'PS1: start',
-  'PS1: pripojuji Drive': 'PS1: connecting to Drive',
+  'PS1: pripojuji server': 'PS1: connecting to the server',
   'PS1: stahuji hru': 'PS1: downloading the game',
   'PS1: ZIP stazen': 'PS1: ZIP downloaded',
   'PS1: rozbaluji ZIP': 'PS1: unpacking the ZIP',
@@ -144,7 +146,7 @@ NapJazyk.vzory([
   [/^PS1 CACHE cesta chyba: ([\s\S]*)$/, 'PS1 CACHE path error: $1'],
   [/^PS1 CACHE mazani chyba: ([\s\S]*)$/, 'PS1 CACHE delete error: $1'],
   [/^PS1 URL chyba: ([\s\S]*)$/, 'PS1 URL error: $1'],
-  [/^PS1 Google stranka chyba: ([\s\S]*)$/, 'PS1 Google page error: $1'],
+  [/^PS1 hry N&P chyba: ([\s\S]*)$/, 'PS1 N&P games error: $1'],
   [/^ULOZENI LOGU CHYBA: ([\s\S]*)$/, 'LOG SAVE ERROR: $1'],
   [/^ANALYZA CHYBA: ([\s\S]*)$/, 'ANALYSIS ERROR: $1'],
   [/^CHYBA cteni souboru: ([\s\S]*)$/, 'ERROR reading the file: $1'],

@@ -1,0 +1,62 @@
+B343 - TOTALNI KONTROLA NAPOVEDY (HELP): KAZDE TVRZENI PROTI KODU (18. 11. 2026)
+================================================================================
+
+Rene: "udelej totalni kontrolu HELP - mam pocit ze tam neco nesedi a nedelas v kazdem Buildu aktualizaci".
+
+CO NESEDELO A JE OPRAVENO (napoveda CZ napoveda/index.html i EN en.html, stejna stavba):
+ 1) Zapati: natvrdo "ATARIHELP.EU · B322" (appka byla B342) -> verze z appky (AHJAZYK.verze, jako OPTIONS -> VERZE):
+    "ATARIHELP.EU · B343 (386)"; bez mostu jen "ATARIHELP.EU". Uz nikdy rucne.
+ 2) Prvni spusteni: poradi jako v appce (jazyk -> stahnout Sonic / BIOS -> aktivace -> film), film na TV OK,
+    na slabem zarizeni (VYKON LOW) se nepousti.
+ 3) Hlavni menu: dalkovy ovladac TV (vlevo / vpravo, OK, nahoru / MENU = OPTIONS). Rychly start: Android TV.
+ 4) Atari: na sirku i tlacitkem NA SIRKU (B342), ne jen otocenim telefonu.
+ 5) Sega: tlacitka jako na obrazku konzole (SBÍRKA, ULOŽENÉ, NÁVODY - kontrola_navodu zna napisy z obrazku),
+    NAVODY = kratky navod (ne "technicke informace"), klavesy K i mezernik = A, P i Enter = START, sipky,
+    pri VYKON ZARIZENI LOW hraje Sega vzdy LOW (Java B338).
+ 6) PS1: kolecko na sirku (seznam) / na vysku (panel), BIOS i ze serveru N&P, misto 2x hra + 200 MB a MALO MISTA,
+    klavesy F / G = L3 / R3.
+ 7) OPTIONS: STAHNOUT HRY A BIOS zkousi i server N&P; NOVE bloky Vykon zarizeni (AUTO / LOW / HIGH) a Uloziste.
+ 8) WEB TV a PC -> podtitul "PROHLIZEC A ANDROID TV"; menu Atari na TV (START / SELECT / OPTION, XEX, OBRAZOVKA,
+    OVLADANI DALKOVYM OVLADACEM), menu SEGA / PS1 (HRY V TELEVIZI, START, A / B / C, OBRAZOVKA, OVLADANI),
+    slabe zarizeni (32 bitu, pod 1,5 GHz NEBO nejvys 2 jadra - drive "jen 32 bitu, nejvys 1,5 GHz"), tlacitko
+    STAHNOUT (bez hacku jako v okne), klavesnice Sega / PS1 jako v appce.
+ 9) Soubory: BIOS je v PS1_BIOS (drive "emu/ps1" - appka nepouziva), Android 9 bez povoleni -> slozka appky.
+10) Log: novy blok Televize (…:8765/log, …:8765/log/predchozi).
+11) Caste otazky: prehravac MP3, WAV, M4A, AAC, OGG, OPUS, FLAC, WEBM (drive "MP3 a WAV"); nove "Jak otocim
+    obrazovku" a "Jak hraju na televizi jen dalkovym ovladacem".
+NAVODY PRIMO V APPCE:
+12) PS1 kolecko na vysku (helpPanel): "LOAD GAME otevre PS1 stranku na AtariHelp.eu s Google Drive odkazy" ->
+    server N&P; tlacitko "PS1 GOOGLE DRIVE" -> "HRY ZE SERVERU N&P"; formaty, misto, odkaz na HELP; cesky s hacky.
+    Pruh stahovani "PS1: pripojuji Drive" -> "server". Pametova karta bez "(viz B218)".
+13) Sega NAVODY: technicke poznamky "BUILD2RV ... safe-audit governor" (useknute) -> kratky navod (10 radku, vejde
+    se); obrazovka bez hry "SEGA C++ ONLY READY / SBIRKA=vykon" -> co je kde; ULOZENE POZICE: export logu je na
+    sirku v kolecku (drive neexistujici "OVLADANI -> NAVODY"); menu vykonu: LOW zarizeni drzi LOW.
+14) Atari HELP (MainActivity.atariCppHelpDialog + ATARI_HELP_EN): cesky cely s diakritikou, NA SIRKU tlacitkem,
+    NET / HRY = server N&P (drive "z atarihelp.eu"), ovladac L1 / R1, televize (dalkovy, ZPET = menu), odkaz na HELP.
+15) build.gradle versionCode 386 "EMU10-B343-HELP-KONTROLA".
+
+Spoustet z adresare test_overeni/b343 (PRAC = pracovni slozka):
+A) python3 kontrola_b343.py -> VYSTUP_kontrola_b343.txt (71 OK: kazde opravene tvrzeni proti kodu - MAPA klaves Segy,
+   KeyF / KeyG v nap_ps1_native.cpp, polozky menu TV v MainActivity, NapPravidla.jeSlabeZarizeni, AUDIO_JMENO,
+   ps1PotrebaMista, PS1_BIOS, /log na 8765, karta HELP, stejna stavba CZ / EN ...).
+   Zkouska: stejny skript na HEAD B342 (git worktree) -> 45 CHYBA (presne veci vyse).
+B) python3 test_b343_napoveda.py PRAC -> VYSTUP_test_b343_napoveda.txt (27 OK, Chromium, skutecne stranky + falesne mosty):
+   zapati s verzi / bez verze, nove otazky dojedou na mista, hledani "úložiště" / "storage" / "L3", PS1 panel CZ / EN
+   (bez cestiny, HRY ZE SERVERU N&P -> AHNET.openPs1Games), Sega NAVODY cele videt na 360x800 / 412x915 / 393x873
+   CZ i EN, obrazovka Segy bez hry, menu vykonu, zadna chyba JS. Obrazky v PRAC (navod_*_zapati, sega_navody_*, ...).
+C) VYSTUP_kontrola_es5.txt - slovniky a skripty napovedy / Segy / PS1 jako ES5 (acorn): 0 chyb.
+D) VYSTUP_javac_android.txt - javac vsech zdroju proti android-34.jar: exit 0 (123 trid, 35 zdroju vc. eu/atarihelp/nap).
+E) Regrese -> VYSTUP_regrese_*.txt:
+   b311 kontrola_navodu (219 nazvu, 0 chyb; SBÍRKA = napis na obrazku), kontrola_odkazu (0), test_b311_navod (23 OK),
+   b314 kontrola_navodu_en (211, 0), test_b314_jazyk_navod (34, jen 5) - stara zakladna B313, padala uz pred B343),
+   b314 jazyk_stranky sega / ps1 (b) anglicky bez cestiny OK, c) JS OK; a) "texty jako B313" ukazuje zamerne zmeny),
+   b311 mosty (130, 0 chybi), b342 stranky (22 OK), b338 (5), b339 (6), b320 (13), b337 (8), b334 TV ovladani (13),
+   b318 PS1 (29, 1 = zakladna textu B317 vs. zamerne nove texty panelu), b317 (31, 3 = stejne jako v B342).
+   Stare kontroly zapojeni b332-b342: stejne CHYBY jako v regresi B342 + verze (zamerne).
+   OPRAVENO V TESTECH: test_b311_navod 3) a test_b314_jazyk_navod 2) cekaly pevne 1200 ms na plynuly posun - navod je
+   dnes ~37 000 px a posun trva ~1,5 s (stranka dojela spravne, test hlasil CHYBU uz na HEAD B342) -> cekaji, az se
+   stranka zastavi. kontrola_navodu.py zna napisy z obrazku konzole Sega (SBÍRKA, ULOŽENÉ, NÁVODY).
+   POZOR: skripty jinych buildu prepisuji sve VYSTUP soubory - po regresi "git checkout -- test_overeni/bNNN".
+
+Na telefonu a TV overi Rene: HELP (zapati B343 (386), OPTIONS -> Vykon a Uloziste, WEB TV a PC, nove otazky),
+PS1 kolecko na vysku, Sega NAVODY a obrazovka bez hry, Atari HELP (servisni tlacitko HELP / na TV ZPET -> NAPOVEDA).

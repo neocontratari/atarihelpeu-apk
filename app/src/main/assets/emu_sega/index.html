@@ -311,7 +311,7 @@ body.tvCastActive .segaRychlyPruh{animation-play-state:paused!important;}
     <div class="pmTitle">SEGA VYKON</div>
     <button id="perfHigh" type="button">HIGH QUALITY</button>
     <button id="perfLow" type="button">LOW PERFORMANCE</button>
-    <div class="pmNote">SBIRKA = vyber vykonu, CARTRIDGE = vyber ROM</div>
+    <div class="pmNote">Podržené SBÍRKA = výkon. Při OPTIONS → VÝKON ZAŘÍZENÍ LOW hraje Sega vždy LOW.</div>
   </div>
   <div id="segaLayoutEditBar" class="layoutEditBar" aria-hidden="true">
     <span id="segaLayoutHint" class="layoutEditHint">Přetáhni tlačítko, kam chceš.</span>
@@ -411,7 +411,7 @@ body.tvCastActive .segaRychlyPruh{animation-play-state:paused!important;}
 <div id="segaSavedPanel" class="panel" aria-hidden="true">
   <div class="box">
     <h2>ULOŽENÉ POZICE</h2>
-    <p>Pozice uložené ve hrách (ne export logu - to najdeš v OVLÁDÁNÍ → NÁVODY). Klepnutím na hru pozici načteš.</p>
+    <p>Pozice uložené ve hrách. Klepnutím na hru pozici načteš. (Export logu je jinde: na šířku kolečko ⚙ → EXPORTOVAT LOG.)</p>
     <div id="segaSavedList"></div>
     <button id="segaSavedRefresh" type="button" class="secondary">OBNOVIT SEZNAM</button>
     <button id="segaSavedClose" type="button" class="zavrit">ZAVŘÍT</button>
@@ -650,7 +650,7 @@ function updateNativeCppRect(){try{
   var x=Math.round(cssLeft*dpr), y=Math.round(cssTop*dpr), ww=Math.round(cssW*dpr), hh=Math.round(cssH*dpr);
   if(window.AHNATIVE&&AHNATIVE.setNativeRect){var res=AHNATIVE.setNativeRect(x,y,ww,hh);pushLog('BUILD2RV NATIVE_RECT_DPR css='+Math.round(cssLeft)+','+Math.round(cssTop)+','+Math.round(cssW)+'x'+Math.round(cssH)+' dpr='+dpr+' native='+x+','+y+','+ww+'x'+hh+' landscapeFullVideo='+(land?'YES':'NO')+' result='+res);}
 }catch(e){pushLog('BUILD2RV NATIVE_RECT_FAIL '+(e.message||e));}}
-function armNativeCppForRom(reason){nativeCppMode=true;nativeCppInputCount=0;stopWrapper('nativeCppArm:'+reason);drawStatus();showMonitor('SEGA C++ ONLY READY\nSBIRKA=vykon LOW/HIGH, ROM pres CARTRIDGE.\nBez ROM uz nespoustim cernou native vrstvu.');nativeCppLastStatus='NATIVE_ARMED_WAITING_FOR_ROM';pushLog('BUILD2RV NATIVE_ARMED_WAITING_FOR_ROM reason='+reason+' noBlackNativeView=YES');toast('SEGA C++ ONLY pripraven - SBIRKA=vykon, CARTRIDGE=ROM',2600);}
+function armNativeCppForRom(reason){nativeCppMode=true;nativeCppInputCount=0;stopWrapper('nativeCppArm:'+reason);drawStatus();showMonitor('SEGA MEGA DRIVE – PŘIPRAVENO\nSBÍRKA = hry ze serveru N&P\nHRY = tvoje hry · CARTRIDGE = ROM z telefonu\nNÁVODY = krátký návod');nativeCppLastStatus='NATIVE_ARMED_WAITING_FOR_ROM';pushLog('BUILD2RV NATIVE_ARMED_WAITING_FOR_ROM reason='+reason+' noBlackNativeView=YES');toast('SEGA C++ ONLY pripraven - SBIRKA=vykon, CARTRIDGE=ROM',2600);}
 function startNativeCppInPlace(reason){nativeCppMode=true;nativeCppInputCount=0;stopWrapper('nativeCppInPlace:'+reason);var w=$('clownFrameWrap');if(w){w.style.display='none';w.classList.remove('booting','menuMode','playMode');}drawStatus();hideMonitor();try{if(window.AHNATIVE&&AHNATIVE.enableInPlace){AHNATIVE.enableInPlace();nativeCppLastStatus='NATIVE_IN_PLACE_ENABLED';}}catch(e){nativeCppLastStatus='NATIVE_ENABLE_ERROR '+(e.message||e);showMonitor('C++ CORE ERROR\n'+nativeCppLastStatus);}[60,260,700].forEach(function(ms){setTimeout(updateNativeCppRect,ms);});pushLog('BUILD2RV NATIVE_IN_PLACE_START reason='+reason+' normalSegaUI=YES noSeparateWindow=YES noRecreateOnRotate=YES');toast('SEGA C++ ONLY: normalni Sega obrazovka, vyber ROM pres CARTRIDGE',2600);}
 function loadRomToNativeCpp(name,buf){
   try{
@@ -1405,7 +1405,8 @@ var joy=$('btnJoystick');if(joy)joy.disabled=true;
 bindKeyButton('btnA','A');bindKeyButton('btnB','B');bindKeyButton('btnC','C');bindKeyButton('btnStart','START');
 var dpad=$('dpad'),dpadPointerId=null,dpadActive=false;if(dpad){dpad.addEventListener('pointerdown',function(e){if(isLandscapeNow()&&window.__napMobileTouchEngineActive&&e.pointerType==='touch'){return;}e.preventDefault();e.stopPropagation();dpadPointerId=e.pointerId;dpadActive=true;try{dpad.setPointerCapture(e.pointerId);}catch(_){}setDpadDir(dpadDirectionFromEvent(e));},true);dpad.addEventListener('pointermove',function(e){if(dpadActive&&(dpadPointerId===null||e.pointerId===dpadPointerId)){e.preventDefault();e.stopPropagation();setDpadDir(dpadDirectionFromEvent(e));}},true);function endDpad(e){e.preventDefault();e.stopPropagation();dpadActive=false;dpadPointerId=null;setDpadDir(null);}dpad.addEventListener('pointerup',endDpad,true);dpad.addEventListener('pointercancel',endDpad,true);dpad.addEventListener('pointerleave',function(e){if(dpadActive&&isLandscapeNow()){e.preventDefault();e.stopPropagation();}},true);dpad.addEventListener('click',function(e){e.preventDefault();e.stopPropagation();},true);}
 bindUiAction('btnSaves','savedPositions',function(){showSegaSaved();});
-bindUiAction('btnManuals','manuals',function(){showMonitor('BUILD2RV SEGA CLEAN UI + AUDIO MASTER NOSTARVE\n\nSBIRKA:\n- vyber vykonu HIGH / LOW\n\nCARTRIDGE / CART:\n- vyber ROM v nasi appce\n- ROM jde primo do C++ bridge\n- Java/WebView wrapper je vypnuty\n- C++ CORE DOM cesta je odstranena; zadny cerny prekryv pres skin\n\nREGION:\n- C++ uz neprepisuje Europe/PAL ROM na U/NTSC\n- core respektuje header ROM\n\nMOBIL:\n- landscape cisti stare WebView vrstvy\n- portrait navrat ignoruje nulovy rect\n\nZVUK:\n- FM/PSG audio ma zeroed buffery a RR recovery safe-audit governor; S8 ma no-starve profil; LOW/HIGH nemeni barvu zvuku.');});
+// B343: NAVODY = kratky navod pro hrace (do B342 technicke poznamky BUILD2RV, na obrazovce useknute)
+bindUiAction('btnManuals','manuals',function(){showMonitor('SEGA – KRÁTKÝ NÁVOD\nSBÍRKA = hry ze serveru N&P (podržet = výkon)\nHRY = tvoje hry · CARTRIDGE = ROM z telefonu\nULOŽENÉ = uložené pozice\nTlačítko s telefonem = hraní na šířku\nNa šířku: D-pad, A B C, START, SAVE / LOAD GAME\nKolečko ⚙ = rozložení, citlivost, levák, log\nKlávesy: WASD, K = A, L = B, O = C, P = START\nTV: ZPĚT = menu konzole\nÚplný návod: hlavní menu → karta HELP');});
 bindUiAction('btnMenu','menu',function(){pushLog('BUILD2RV MENU_CLICK stop native and leave sega');try{stopNativeCppInPlace('menuButton');}catch(_){}try{location.href='../index.html';}catch(_){}});
 /* B321: web atarihelp.eu v prohlizeci telefonu (WEDOS appku v okne odmita - 503) */
 bindUiAction('btnWeb','web',function(){pushLog('BUILD2RV WEB_CLICK');try{if(window.AHNET&&AHNET.openInBrowser)AHNET.openInBrowser('https://atarihelp.eu/');else location.href='https://atarihelp.eu/';}catch(_){}});

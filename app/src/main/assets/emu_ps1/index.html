@@ -430,15 +430,16 @@ body.mysLeveDrzi .mysUkazDrzi{display:block;}
 <div id="helpPanel" class="panel" aria-hidden="true">
   <div class="box">
     <h2>PS1 — PlayStation 1</h2>
-    <p><b>CD / ISO</b> otevira lokalni PS1 soubor z telefonu.</p>
-    <p><b>LOAD GAME</b> otevre tvoji PS1 stranku na AtariHelp.eu s Google Drive odkazy.</p>
-    <p>Drive muze vracet .zip/.bin/.iso/.img/.pbp/.chd; .7z neni podporovane.</p>
-    <p>Prvni spusteni Drive hry stahne a rozbali ZIP do cache; dalsi spusteni bere hotovy lokalni soubor.</p>
-    <p><b>SAVE GAME</b> ulozi presnou pozici. <b>NACIST RYCHLOU POZICI</b> (v panelu D-PAD A OVLADANI) ji zase nahraje - presne tam, kde jsi skoncil.</p>
-    <p><b>STAV CORE:</b> <span id="coreState">PS1 core je napojen; log ukazuje boot, audio a remote download.</span></p>
+    <!-- B343: texty podle skutecnosti (do B342 Google Drive a AtariHelp.eu - LOAD GAME je od B321 server N&P) -->
+    <p><b>CD ISO</b> = tvoje stažené hry: klepnutím hru spustíš, koš ji smaže. Hru z telefonu vybereš přes VYBRAT SOUBOR RUČNĚ V TELEFONU.</p>
+    <p><b>LOAD GAME</b> = hry ze serveru N&amp;P. Poprvé se hra stáhne a rozbalí (volno asi 2× velikost hry + 200 MB), příště se spustí rovnou z telefonu.</p>
+    <p>Formáty: .bin .cue .iso .img .pbp .chd a .zip (.7z appka neumí).</p>
+    <p><b>SAVE GAME</b> uloží přesnou pozici. <b>NAČÍST RYCHLOU POZICI</b> (v panelu D-PAD A OVLÁDÁNÍ) ji zase nahraje – přesně tam, kde jsi skončil.</p>
+    <p>Úplný návod: hlavní menu → karta HELP → PS1.</p>
+    <p><b>STAV JÁDRA:</b> <span id="coreState">PS1 core je napojen; log ukazuje boot, audio a remote download.</span></p>
     <h2 style="margin-top:14px;">PS1 TEST LOG</h2>
     <textarea id="ps1LogView" readonly style="width:100%;min-height:220px;background:#01050a;color:#bfe9ff;border:1px solid rgba(125,200,255,.45);border-radius:10px;font:700 11px/1.4 'Courier New',monospace;padding:8px;white-space:pre;"></textarea>
-    <button id="psGooglePage" type="button">PS1 GOOGLE DRIVE</button>
+    <button id="psGooglePage" type="button">HRY ZE SERVERU N&amp;P</button>
     <button id="psRemoteUrl" type="button">PS1 PRIMA URL</button>
     <button id="psCachePath" type="button">PS1 CACHE CESTA</button>
     <button id="psCacheClear" type="button">SMAZAT PS1 CACHE</button>
@@ -510,7 +511,7 @@ body.mysLeveDrzi .mysUkazDrzi{display:block;}
 <div id="memCardStatusPanel" class="panel" aria-hidden="true">
   <div class="box">
     <h2>PAMĚŤOVÁ KARTA</h2>
-    <p>Skutečná PS1 karta - jedna, pořád zasunutá, sdílená všemi hrami i BIOSem (viz B218). O ukládání se stará jádro samo, tady jen vidíš stav.</p>
+    <p>Skutečná PS1 karta - jedna, pořád zasunutá, sdílená všemi hrami i BIOSem. O ukládání se stará jádro samo, tady jen vidíš stav.</p>
     <p id="memCardStatusText" style="color:#f1d78e;font-size:12px;line-height:1.5;"></p>
     <button id="memCardRefresh" type="button" class="secondary">OBNOVIT STAV</button>
     <button id="memCardClose" type="button" class="zavrit">ZAVŘÍT</button>
@@ -749,7 +750,7 @@ function remoteProgressValue(st){
 }
 function remoteTitleFor(st){
   if(/^PS1_REMOTE_START/.test(st))return 'PS1: start';
-  if(/^PS1_REMOTE_CONNECT/.test(st))return 'PS1: pripojuji Drive';
+  if(/^PS1_REMOTE_CONNECT/.test(st))return 'PS1: pripojuji server';   // B343: hry jsou ze serveru N&P (do B342 "Drive")
   if(/^PS1_REMOTE_DOWNLOAD/.test(st))return 'PS1: stahuji hru';
   if(/^PS1_REMOTE_ZIP_READY/.test(st))return 'PS1: ZIP stazen';
   if(/^PS1_REMOTE_ZIP_(CUE|PRIMARY|EXTRACT)/.test(st))return 'PS1: rozbaluji ZIP';
@@ -1671,7 +1672,7 @@ function openPs1GooglePage(){
     if(window.AHNET&&window.AHNET.openPs1Games)window.AHNET.openPs1Games();
     else location.href=PS1_GOOGLE_PAGE;
   }catch(e){
-    toast('PS1 Google stranka chyba: '+(e&&e.message),3200);
+    toast('PS1 hry N&P chyba: '+(e&&e.message),3200);
   }
 }
 function bootPs1RemoteUrl(){

@@ -1,0 +1,21 @@
+OK     U1 AHRENDER.uloziste: jen stranky appky, volno / celkem, PS1 hry, veta z NapPravidla (CZ / EN, TV / zarizeni)
+OK     U2 OPTIONS: ULOZISTE (EN STORAGE), obnova pri kazdem otevreni OPTIONS a pri zmene jazyka
+OK     U3 log pri startu "B339 ULOZISTE: volno ... z ... | PS1 her" (mimo hlavni vlakno)
+CHYBA  T1 menu konzole PS1: HRY V TELEVIZI hned po HRY ZE SERVERU N&P (akce 4), Sega beze zmeny
+OK     T2 akce 4 -> ps1HryVTv (jen PS1)
+OK     T3 HRY V TELEVIZI: seznam a misto mimo hlavni vlakno, dialog na hlavnim
+OK     T4 seznam: nazev, velikost, ulozena pozice; prazdny -> HRY ZE SERVERU N&P
+OK     T5 hra: SPUSTIT / SMAZAT HRU / SMAZAT HRU I ULOZENOU POZICI, ZPET = seznam
+OK     T6 SPUSTIT = ps1LibraryLaunchByKey (jako ▶ v CD ISO), jen na strance PS1, nahravani si stranka zapne sama (PS1_REMOTE_BOOTING)
+OK     T7 SMAZAT = ps1LibraryDeleteByKey (jako kos v CD ISO) mimo hlavni vlakno, pak seznam znovu (nove volno)
+OK     S1 MALO MISTA: hlaska z NapPravidla (jazyk, TV / telefon), stara veta "v telefonu ... uklizena" pryc
+OK     S2 ZIP: misto na rozbaleni podle velikosti v ZIPu - po rozpoznani BIOSu, PRED rozbalovanim
+OK     S3 chyba stahovani: uklid nedokoncene hry (jen kdyz nezacalo jine stahovani; BIOS ZIP mimo), na TV dialog MALO MISTA
+OK     S4 uklid maze jen slozku BEZ znacky _ps1_boot.name (hotova hra se nesmaze nikdy)
+OK     S5 TV dialog MALO MISTA -> HRY V TELEVIZI
+OK     L1 knihovna (CD ISO i TV): velikost cele slozky, jmeno z katalogu N&P / souboru, nedokoncene se neukazuji; JSON pro stranku stejny
+OK     L2 NapPravidla: ciste funkce (JVM test TestB339)
+OK     N1 napoveda CZ / EN: HRY V TELEVIZI, ULOZISTE
+CHYBA  N2 build.gradle: versionCode 382 "EMU10-B339-TV-ULOZISTE-PS1"
+OK     E skripty index.html jsou ES5
+VYSLEDEK: 20 kontrol, 2 CHYBA

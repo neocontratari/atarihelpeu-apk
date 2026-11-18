@@ -4295,4 +4295,29 @@
        VYSKA (ted je vychozi cela obrazovka jako dosud). Pak fronta z porady B340: BIOS behem stahovani zastavit
        (zaruka startu hry), hezke jmeno hry pri nahravani, misto u her mimo ZIP jen velikost + 200 MB.
 
+   B343: TOTALNI KONTROLA NAPOVEDY (HELP) - KAZDE TVRZENI PROTI KODU (18. 11. 2026).
+   Rene: "udelej totalni kontrolu HELP - mam pocit ze tam neco nesedi a nedelas v kazdem Buildu aktualizaci".
+   Pravda: napoveda se od B336 (TV) skoro neaktualizovala, v zapati natvrdo "B322".
+     - Zapati napovedy (CZ / EN): verze z appky (AHJAZYK.verze() jako OPTIONS -> VERZE) - "ATARIHELP.EU · B343 (386)",
+       uz nikdy natvrdo cislo buildu.
+     - Opraveno v napovede (CZ i EN, stejna stavba): poradi prvniho spusteni (jazyk -> Sonic / BIOS -> aktivace ->
+       film; film na TV OK, na LOW se nepousti), klavesy Segy (K i mezernik = A, P i Enter = START, sipky), PS1
+       F / G = L3 / R3, PS1 kolecko na vysku (panel) / na sirku, misto na PS1 hru (2x + 200 MB, MALO MISTA),
+       BIOS i ze serveru N&P, OPTIONS: novy Vykon zarizeni a Uloziste, menu TV (Atari / SEGA / PS1 jako v appce
+       B336-B342), pravidlo slabeho zarizeni (32 bitu, < 1,5 GHz nebo <= 2 jadra), Soubory (BIOS je v PS1_BIOS,
+       Android 9 bez povoleni = slozka appky), Log z televize, prehravac umi 9 formatu, 2 nove caste otazky
+       (otoceni obrazovky, hrani jen dalkovym), Sega tlacitka jako na obrazku (SBÍRKA, ULOŽENÉ, NÁVODY), Sega na
+       LOW zarizeni vzdy LOW.
+     - Navody v appce: PS1 panel kolecka na vysku (byl Google Drive / AtariHelp.eu -> server N&P, tlacitko HRY ZE
+       SERVERU N&P), Sega NAVODY (byly technicke poznamky BUILD2RV, useknute -> kratky navod pro hrace), obrazovka
+       Segy bez hry ("SBIRKA=vykon" -> co je kde), ULOŽENÉ POZICE (neexistujici "OVLÁDÁNÍ → NÁVODY"), menu vykonu,
+       PS1 pruh stahovani "pripojuji server" (ne Drive), Atari HELP (MainActivity, CZ s diakritikou, NA SIRKU
+       tlacitkem, NET / HRY = server N&P, L1 / R1, televize).
+     - PRAVIDLO PRO DALSI BUILDY: co meni, co hrac vidi nebo ovlada (tlacitko, menu, OPTIONS, TV), opravi i
+       napoveda/index.html + en.html (stejna stavba) a pusti b311/kontrola_navodu.py, b314/kontrola_navodu_en.py,
+       b343/kontrola_b343.py (tvrzeni napovedy proti kodu - kdyz se zmeni kod, spadne a rekne co).
+     - Testy test_overeni/b343 (JAK_SPUSTIT.txt). build.gradle: versionCode 386 "EMU10-B343-HELP-KONTROLA".
+     - DALSI KROK: Rene - projit HELP na telefonu a TV (zapati B343 (386), OPTIONS, WEB TV, otazky), PS1 kolecko na
+       vysku, Sega NAVODY; pak fronta z porady B340 (BIOS pri stahovani, jmeno hry, misto mimo ZIP).
+
 ===============================================================================

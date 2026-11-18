@@ -1,0 +1,29 @@
+OK     J1 obsah okna = cerny obal NapObal, v nem rootFrame (vsechny plochy C++ i stranka); hned volba hlavniho menu
+OK     J2 NapObal: pruh = deti meri na sirku 9:16 a klade na stred, po stranach cerno (jinak cela obrazovka)
+OK     J3 onPageStarted: kazda stranka pouzije volbu sve skupiny (menu / Atari / Sega / PS1)
+OK     J4 napObrazPouzij: TV = jen pruh (zadne setRequestedOrientation - TV by se mohla otocit bokem), telefon = setRequestedOrientation jen pri zmene
+OK     J5 napObrazPrepni: opak toho, co je na obrazovce, ulozit pro skupinu, pouzit, log a kratke potvrzeni
+OK     J6 OPTIONS: NA VYSKU / NA SIRKU = hlavni menu, PODLE TELEFONU = vsechny skupiny zpet (AUTO)
+OK     J7 most AHOBRAZ (stav / prepni / nastav) - jen stranky appky, zmeny na UI vlakne
+OK     J8 hlavni menu: AKCE_OTOCIT 2001 (C++ i Java) -> napObrazPrepni
+OK     J9 pristroj Atari: servisni akce 12 (SVC_OTOC) -> napObrazPrepni
+OK     J10 TV menu konzole (ZPET) PS1 / SEGA: polozka OBRAZOVKA NA VYSKU / NA SIRKU (akce 11) - pocet polozek = pocet akci
+OK     J11 konzoleTvAkce 11 -> napObrazPrepni
+OK     J12 TV menu Atari: OBRAZOVKA NA VYSKU / NA SIRKU (10) pred OVLADANIM (11), NAPOVEDA posledni (13 polozek: 13)
+OK     J13 intro PS1: plocha podle velikosti appky (rootFrame), ne displeje - na TV muze byt pruh
+OK     J14 manifest: zadna pevna orientace, otoceni bez restartu aktivity (configChanges) - rozhoduje NapObrazovka
+OK     J15 NapObrazovka: telefon PORTRAIT / SENSOR_LANDSCAPE / UNSPECIFIED (AUTO), TV pruh 9:16
+OK     C1 karusel: klepnuti na otoceni (pred kartami) = AKCE_OTOCIT; kolecko beze zmeny
+OK     C2 rozlozeni: na vysku zrcadlo kolecka vlevo, na sirku vlevo (u skoro ctverce vedle kolecka)
+OK     C3 kresba: ikona typ 9 (jen na displeji, ne v obrazu pro TV / PC), animace po klepnuti
+OK     C4 shader FS_UI typ 9: telefon + dve zahnute sipky (SDF)
+OK     C5 pristroj Atari: na vysku pilulka NA SIRKU ve stavovem radku, na sirku pilulka vedle kolecka -> SVC_OTOC
+OK     S1 Sega: tlacitko otoceni (za listou uprav - pri uprave rozlozeni schovane), skript nap_obrazovka.js
+OK     S2 PS1: tlacitko otoceni (za listou uprav), skript nap_obrazovka.js
+OK     S3 nap_obrazovka.js: klik -> AHOBRAZ.prepni (dvojklik = jednou), ikona a popisek podle otoceni, bez mostu schovane
+OK     S4 OPTIONS: radek OBRAZOVKA hned pod jazykem (NA VYSKU / NA SIRKU / PODLE TELEFONU), obnovi se pri otevreni
+OK     S5 anglicky: OPTIONS (en_menu.js) a popisek tlacitka (en_konzole.js)
+OK     S6 nap_obrazovka.js a skripty index.html / Sega / PS1 jsou ES5
+OK     N1 napoveda CZ / EN: Obrazovka na vysku a na sirku (+ odkazy z menu, Atari, Segy, PS1 a TV)
+CHYBA  N2 build.gradle: versionCode 385 "EMU10-B342-OBRAZOVKA-SIRKA-VYSKA"
+VYSLEDEK: 28 kontrol, 1 CHYBA
