@@ -1,0 +1,12 @@
+OK     D1) panel PS1: PS1 PRIMA URL / PS1 CACHE CESTA / SMAZAT PS1 CACHE pryc i s JS, zbytek panelu zustal
+OK     D2) preklady a mosty tlacitek pryc (ps1RemoteCachePath, ps1ClearRemoteCache), ps1DownloadAndBoot pro web zustal
+OK     D3) OPTIONS -> TV POKUS pryc: tlacitko, JS, most AHINTRO.tvPokus, prepinac a jeho podminky v TV prenosu, preklady
+OK     O1) nap_ps1_obraz.h: cisty C++ (bez JNI / Androidu) - velikost sektoru stopy, vada velikosti, .bin bez .cue
+OK     O2) nap_ps1_native.cpp: denik kontroluje cele sektory (CUE i .bin bez .cue), odmitnuta hra s vadou -> PS1_HRA_FAIL obraz
+OK     O3) Java: veta pro hrace NapPravidla.ps1ProcNespustila v obou cestach startu (stazena hra / knihovna i vyber souboru)
+OK     O4) rozbaleni ZIPu: soubor musi mit velikost z ZIPu (jinak "ZIP je poškozený"), log ukaze obe velikosti
+OK     S1) stranka PS1: chybu spusteni rekne jednou (hlaska okna, jinak pruh), dlouha hlaska az 15 s
+OK     N1) napoveda CZ / EN: veta o poskozenem obrazu, TV POKUS / TV TEST pryc
+OK     N2) napoveda CZ a EN maji stejnou stavbu (479 prvku)
+OK     V) verze 389 "EMU10-B346-UKLID-OBRAZ-DISKU"
+VYSLEDEK: 11 kontrol, 0 CHYBA

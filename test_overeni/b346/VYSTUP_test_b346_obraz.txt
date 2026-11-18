@@ -1,0 +1,10 @@
+OK     O1) dobry obraz: PS1_HRA_OK, bez varovani
+OK     O2) obraz jako C&C: hra bezi (PS1_HRA_OK), denik: PS1 POZOR OBRAZ DISKU: cac.bin ma 557574385 B - neni cely pocet sektoru 2352 B (237063 celych + 2209 B, do celeho chybi 143 B) - obraz je asi useknuty nebo poskozeny (spatne stazeny / vadny soubor)
+OK     O3) jadro odmitne vadny obraz -> "PS1_HRA_FAIL obraz" + denik OBRAZ DISKU JE POSKOZENY
+OK     O4) jadro odmitne dobry obraz -> "PS1_HRA_FAIL jadro" (beze zmeny)
+OK     O5) vic stop: varovani jen u hudby (hudba.bin ma 1177000 B - neni cely pocet sektoru 2352 B (500 celych + )
+OK     O6) MODE1/2048 a MODE2/2336 s celymi sektory: bez varovani
+OK     O7) .bin bez .cue (ani 2352, ani 2048) -> varovani; .iso po 2048 B bez varovani
+OK     O8) po vadnem obrazu dalsi start s dobrym -> "PS1_HRA_FAIL jadro" (vada se neprenese)
+OK     O9) start bez disku (BIOS): PS1_BIOS_OK
+VYSLEDEK: 9 kontrol, 0 CHYBA

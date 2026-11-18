@@ -1,0 +1,7 @@
+tsan_denik (../b308/tsan_denik.cpp, -fsanitize=thread) se SKUTECNYM nap_ps1_native.cpp B346:
+start: PS1_HRA_OK
+stop: PS1_STOPPED, krokem emulace 817, soubeznych ulozeni 0, ulozeni 78
+bios: PS1_BIOS_OK
+stop: PS1_STOPPED
+denik: 72441 bajtu, ZDRAVI ano
+varovani ThreadSanitizer: 0

@@ -1,0 +1,2 @@
+rozhrani: AHATARICPP=AHAtariCpp, AHBT=AHBluetooth, AHHRY=AHHry, AHINTRO=AHIntro, AHJAZYK=AHJazyk, AHNATIVE=AHNative, AHNET=AHNet, AHOBRAZ=AHObrazovka, AHOVL=AHOvladac, AHPICK=AHPick, AHPS1=AHPS1, AHRENDER=AHRENDER, AHSAVE=AHSave, AHSega=AHSega, AHTVWEB=AHTvWeb
+volani mostu z JS: 128 v poradku, 0 chybi

@@ -193,6 +193,23 @@ final class NapPravidla {
     }
 
     /**
+     * B346: proc se PS1 hra nespustila - veta pro hrace (okno a pruh stranky PS1, bez dalsiho prekladu).
+     * r = vysledek jadra z C++ (nap_ps1_native.cpp): "PS1_HRA_FAIL obraz" = soubor hry nema cele sektory CD
+     * (nap_ps1_obraz.h, Command & Conquer v logu 18. 11.), jinak technicky kod v zavorce jako drive.
+     */
+    static String ps1ProcNespustila(String r, boolean en) {
+        String v = r == null ? "" : r.trim();
+        String proc;
+        if (v.startsWith("PS1_HRA_FAIL obraz"))
+            proc = en ? "the disc image is damaged (the game file does not have whole CD sectors) – delete the game in "
+                    + "CD ISO and download it again; if that does not help, the file on the server is bad"
+                    : "obraz disku je poškozený (soubor hry nemá celé sektory CD) – smaž hru v CD ISO a stáhni ji znovu; "
+                    + "když to nepomůže, je vadný soubor na serveru";
+        else proc = (en ? "the core did not start the game (" : "jádro hru nespustilo (") + v + ")";
+        return proc + (en ? " – details in the LOG (PS1 diary)" : " – podrobnosti v LOGu (deník PS1)");
+    }
+
+    /**
      * B339: jmeno stazene PS1 hry v knihovne: nazev z katalogu serveru N&P, jinak jmeno souboru bez pripony;
      * u CUE slozeneho appkou (_ps1_synth.cue - ZIP s vice stopami) jmeno nejvetsiho souboru hry.
      */

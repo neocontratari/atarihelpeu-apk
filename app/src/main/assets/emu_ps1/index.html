@@ -449,9 +449,6 @@ body.mysLeveDrzi .mysUkazDrzi{display:block;}
     <h2 style="margin-top:14px;">PS1 TEST LOG</h2>
     <textarea id="ps1LogView" readonly style="width:100%;min-height:220px;background:#01050a;color:#bfe9ff;border:1px solid rgba(125,200,255,.45);border-radius:10px;font:700 11px/1.4 'Courier New',monospace;padding:8px;white-space:pre;"></textarea>
     <button id="psGooglePage" type="button">HRY ZE SERVERU N&amp;P</button>
-    <button id="psRemoteUrl" type="button">PS1 PRIMA URL</button>
-    <button id="psCachePath" type="button">PS1 CACHE CESTA</button>
-    <button id="psCacheClear" type="button">SMAZAT PS1 CACHE</button>
     <button id="tvWebCast" type="button">TV WEB CAST</button>
     <button id="btnDpadMenuFromHelp" type="button">D-PAD A OVLÁDÁNÍ</button>
     <button id="logSave" type="button">ULOŽIT LOG A ODESLAT</button>
@@ -720,7 +717,9 @@ function nahravaniKonec(ok,zprava){
   hideMonitorLoading();
   if(!jePanelOtevreny()){try{if(window.AHPS1&&window.AHPS1.ps1PlochaVisible)window.AHPS1.ps1PlochaVisible(true);}catch(_){}}
   log('NAHRAVANI_KONEC '+(ok?'OK':'CHYBA')+' po '+Math.round((Date.now()-NAHR.od)/100)/10+' s'+(zprava?' - '+zprava:''));
-  if(zprava)toast(zprava,ok?2400:7000);
+  // B346: dlouha veta chyby (obraz disku je poskozeny ...) potrebuje na precteni vic nez 7 s
+  if(zprava)toast(zprava,ok?2400:Math.max(7000,Math.min(15000,zprava.length*60)));
+  if(zprava&&!ok)window.__napChybaToastem=Date.now();   // B346: chybu spusteni uz rekla hlaska - pruh ji neopakuje
 }
 /* stav z appky (kazdych 450 ms): CD ISO a stazeni z Drive hlasi
    "PS1_REMOTE_BOOTING #cislo jmeno" - nahravaci okno se zapne samo.
@@ -817,7 +816,7 @@ function chybaStahovani(st){
   st=String(st||'').trim();
   var m=/^PS1_REMOTE_FAIL (boot )?([\s\S]*)$/.exec(st)||/^PS1_REMOTE_BOOT_(EXCEPTION) ?([\s\S]*)$/.exec(st);
   if(!m)return null;
-  return {titul:m[1]?TX('HRA SE NESPUSTILA','THE GAME DID NOT START'):TX('HRU SE NEPODAŘILO STÁHNOUT','THE GAME COULD NOT BE DOWNLOADED'),
+  return {spusteni:!!m[1],titul:m[1]?TX('HRA SE NESPUSTILA','THE GAME DID NOT START'):TX('HRU SE NEPODAŘILO STÁHNOUT','THE GAME COULD NOT BE DOWNLOADED'),
           text:String(m[2]||'').replace(/ path=[\s\S]*$/,'').trim()};
 }
 function updateRemoteBanner(st){
@@ -826,6 +825,9 @@ function updateRemoteBanner(st){
   if(!ch){b.classList.remove('show');window.__napRemoteChyba='';return;}
   if(String(st)===window.__napRemoteChyba)return;
   window.__napRemoteChyba=String(st);
+  // B346: chybu SPUSTENI hlasi nahravaci okno (HRA SE NESPUSTILA: ...) - bezi-li, nebo to prave rekl, pruh ji
+  // neopakuje; pruh ji ukaze, kdyz okno start nehlidalo (rychla chyba mezi dotazy, HRY V TELEVIZI na TV)
+  if(ch.spusteni&&(NAHR.on||Date.now()-(window.__napChybaToastem||0)<5000))return;
   $('remoteTitle').textContent=ch.titul;
   $('remotePercent').textContent='';
   $('remoteDetail').textContent=ch.text;
@@ -1706,11 +1708,6 @@ function bootPs1Native(){
     ensurePs1ScreenAndPoll();
   } else openPicker('LOAD GAME');
 }
-function ps1NormalizeRemoteUrl(u){
-  u=String(u||'').trim();
-  if(/^https?:\/\//i.test(u))return u;
-  return u;
-}
 function openPs1GooglePage(){
   try{
     log('PS1_GOOGLE_PAGE '+PS1_GOOGLE_PAGE);
@@ -1721,47 +1718,9 @@ function openPs1GooglePage(){
     toast('PS1 hry N&P chyba: '+(e&&e.message),3200);
   }
 }
-function bootPs1RemoteUrl(){
-  try{
-    if(!(window.AHPS1&&window.AHPS1.ps1DownloadAndBoot)){
-      toast('PS1 URL: AHPS1 most chybi',2600);
-      return;
-    }
-    var last='';try{last=localStorage.getItem('napPs1RemoteUrl')||'';}catch(_){}
-    var u=prompt('PS1 prima URL (.zip/.cue/.bin/.iso/.img/.pbp/.chd nebo Google Drive file link)',last||'https://');
-    if(!u)return;
-    u=ps1NormalizeRemoteUrl(u);
-    if(!/^https?:\/\//i.test(u)){toast('PS1 URL musi zacinat http:// nebo https://',3200);return;}
-    try{localStorage.setItem('napPs1RemoteUrl',u);}catch(_){}
-    log('PS1_REMOTE_REQUEST '+u);
-    toast('PS1: stahuju z Drive / netu, pockej na BOOT OK',3600);
-    window.AHPS1.ps1DownloadAndBoot(u);
-    ensurePs1ScreenAndPoll();
-  }catch(e){
-    toast('PS1 URL chyba: '+(e&&e.message),3600);
-    log('PS1_REMOTE_ERROR '+(e&&e.message));
-  }
-}
-function ps1ShowCachePath(){
-  try{
-    if(window.AHPS1&&window.AHPS1.ps1RemoteCachePath){
-      var r=String(window.AHPS1.ps1RemoteCachePath());
-      log('PS1_CACHE_PATH '+r);
-      toast('PS1 cache: '+r,7000);
-    }else toast('PS1 CACHE: AHPS1 most chybi',2600);
-  }catch(e){toast('PS1 CACHE cesta chyba: '+(e&&e.message),3600);}
-}
-function ps1ClearCache(){
-  try{
-    if(window.AHPS1&&window.AHPS1.ps1ClearRemoteCache){
-      if(!confirm('Smazat PS1 stazene hry/cache z telefonu?'))return;
-      var r=String(window.AHPS1.ps1ClearRemoteCache());
-      log('PS1_CACHE_CLEAR_RESULT '+r);
-      try{var sc=document.getElementById('ps1Screen');if(sc){sc.style.display='none';sc.removeAttribute('src');}}catch(_){ } // BUILD2SA5AS: po smazani nesmi zustat obraz hry
-      toast(r,7000);
-    }else toast('PS1 CACHE CLEAR: AHPS1 most chybi',2600);
-  }catch(e){toast('PS1 CACHE mazani chyba: '+(e&&e.message),4200);}
-}
+/* B346: Rene - "vyvojarske tlacitka smaz - co potrebujeme mame v logu na tv web log". Pryc PS1 PRIMA URL
+   (stazeni z libovolne adresy - hry jsou ze serveru N&P; most AHPS1.ps1DownloadAndBoot zustava pro web),
+   PS1 CACHE CESTA a SMAZAT PS1 CACHE (hry se mazou kosem v CD ISO / HRY V TELEVIZI). */
 function tvWebCastStart(){
   try{
     if(window.AHTVWEB&&window.AHTVWEB.start){
@@ -1887,10 +1846,7 @@ $('dpadMenuMore').addEventListener('click',function(e){e.preventDefault();closeD
 $('btnLogOdeslat').addEventListener('click',function(e){e.preventDefault();closeDpadMenu();$('logSave').click();},true);
 $('btnQuickLoad').addEventListener('click',function(e){e.preventDefault();ps1QuickLoad();},true);
 $('btnDpadMenuFromHelp').addEventListener('click',function(e){e.preventDefault();closeHelp();showDpadMenu();},true);
-if($('psRemoteUrl'))$('psRemoteUrl').addEventListener('click',function(e){e.preventDefault();bootPs1RemoteUrl();},true);
 if($('psGooglePage'))$('psGooglePage').addEventListener('click',function(e){e.preventDefault();openPs1GooglePage();},true);
-if($('psCachePath'))$('psCachePath').addEventListener('click',function(e){e.preventDefault();ps1ShowCachePath();},true);
-if($('psCacheClear'))$('psCacheClear').addEventListener('click',function(e){e.preventDefault();ps1ClearCache();},true);
 if($('tvWebCast'))$('tvWebCast').addEventListener('click',function(e){e.preventDefault();tvWebCastStart();},true);
 $('btnEditLayout').addEventListener('click',function(e){e.preventDefault();layoutEditEnter();},true);
 $('layoutEditDone').addEventListener('click',function(e){e.preventDefault();layoutEditExit(true);},true);

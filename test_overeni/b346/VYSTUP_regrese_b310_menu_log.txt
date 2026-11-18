@@ -1,0 +1,36 @@
+Traceback (most recent call last):
+  File "/home/claude/atarihelpeu-apk/test_overeni/b310/test_b310_menu.py", line 60, in <module>
+    href = pg.eval_on_selector('#btnAtari', 'a => a.href')
+  File "/usr/local/lib/python3.13/site-packages/playwright/sync_api/_generated.py", line 9517, in eval_on_selector
+    self._sync(
+    ~~~~~~~~~~^
+        self._impl_obj.eval_on_selector(
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<4 lines>...
+        )
+        ^
+    )
+    ^
+  File "/usr/local/lib/python3.13/site-packages/playwright/_impl/_sync_base.py", line 115, in _sync
+    return task.result()
+           ~~~~~~~~~~~^^
+  File "/usr/local/lib/python3.13/site-packages/playwright/_impl/_page.py", line 492, in eval_on_selector
+    return await self._main_frame.eval_on_selector(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        selector, expression, arg, strict
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/usr/local/lib/python3.13/site-packages/playwright/_impl/_frame.py", line 468, in eval_on_selector
+    await self._channel.send(
+    ...<10 lines>...
+    )
+  File "/usr/local/lib/python3.13/site-packages/playwright/_impl/_connection.py", line 76, in send
+    return await self._connection.wrap_api_call(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<3 lines>...
+    )
+    ^
+  File "/usr/local/lib/python3.13/site-packages/playwright/_impl/_connection.py", line 632, in wrap_api_call
+    raise rewrite_error(error, f"{parsed_st['apiName']}: {error}") from None
+playwright._impl._errors.Error: Page.eval_on_selector: Failed to find element matching selector "#btnAtari"

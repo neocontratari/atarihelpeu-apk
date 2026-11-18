@@ -1,0 +1,2 @@
+OK nap_ps1_obraz.h sama: sektory stop (MODE2/2352, AUDIO, MODE1/2048 malymi, MODE2/2336, CDG, nezname), vada C&C presne, .iso/.bin bez .cue
+OK (clang) nap_ps1_obraz.h sama: sektory stop (MODE2/2352, AUDIO, MODE1/2048 malymi, MODE2/2336, CDG, nezname), vada C&C presne, .iso/.bin bez .cue

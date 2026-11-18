@@ -1,0 +1,11 @@
+OK     U1) CZ panel PS1: ['HRY ZE SERVERU N&P', 'TV WEB CAST', 'D-PAD A OVLÁDÁNÍ', 'ULOŽIT LOG A ODESLAT', 'KOPIROVAT LOG', 'ZAVRIT'] (vyvojarska tlacitka pryc, mosty cache / prima URL nikdo nevola)
+OK     U2) EN panel PS1: ['GAMES FROM THE N&P SERVER', 'TV WEB CAST', 'D-PAD AND CONTROLS', 'SAVE AND SEND THE LOG', 'COPY LOG', 'CLOSE']
+OK     T1) CS OPTIONS: bez TV POKUS, zustalo AKTUALIZOVAT APLIKACI, STÁHNOUT HRY A BIOS, PUSTIT INTRO
+OK     T2) EN OPTIONS: bez TV TEST, zustalo UPDATE THE APP, DOWNLOAD GAMES AND BIOS, PLAY INTRO
+OK     O1) CS: okno "NAHRÁVÁM HRU…" -> hlaska "HRA SE NESPUSTILA: obraz disku je poškozený (soubor hry nemá…", pruh "…"
+OK     O2) EN: okno "LOADING THE GAME…" -> hlaska "THE GAME DID NOT START: the disc image is damaged (the game …", pruh "…"
+OK     O3) chyba mezi dotazy (okno start nehlidalo): pruh "HRA SE NESPUSTILA | obraz disku je poškozený (soubor hry nemá celé sek…"
+OK     N1) CS napoveda: veta o poskozenem obrazu, TV POKUS pryc
+OK     N1) EN napoveda: veta o poskozenem obrazu, TV TEST pryc
+OK     J) zadna chyba JavaScriptu
+VYSLEDEK: 10 kontrol, 0 CHYBA

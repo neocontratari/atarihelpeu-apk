@@ -160,7 +160,6 @@ body{background:radial-gradient(120% 70% at 50% 40%,#1c1006 0%,#0a0603 45%,#0302
     <button id="stIntro" type="button">PUSTIT INTRO</button>
     <button id="stStahni" type="button">STÁHNOUT HRY A BIOS</button>
     <button id="stAktual" type="button">AKTUALIZOVAT APLIKACI</button>
-    <button id="stTvPokus" type="button">TV POKUS: OBOJÍ</button>
 
     <!-- B320: HERNI OVLADAC (Retroid Pocket 6, Bluetooth / USB gamepad) - dotykova tlacitka ve hrach, kdyz hraje ovladac -->
     <div class="stlabel2">HERNÍ OVLADAČ</div>
@@ -727,16 +726,7 @@ $('stAktual').addEventListener('click',function(e){
   log('SETTINGS_AKTUALIZACE');
   closeSettings();
 },true);
-// BUILD2SA49: TV pokus (oboji -> jen zvuk -> jen obraz); B310 bez KRESLENIM
-var tvPokusStav=0, stTvP=$('stTvPokus');
-stTvP.addEventListener('click',function(e){
-  e.preventDefault();e.stopPropagation();
-  tvPokusStav=(tvPokusStav+1)%3;
-  var jm=['OBOJÍ','JEN ZVUK','JEN OBRAZ'][tvPokusStav];
-  try{ if(window.AHINTRO&&AHINTRO.tvPokus) AHINTRO.tvPokus(tvPokusStav); }catch(err){}
-  stTvP.textContent='TV POKUS: '+jm;
-  log('TV_POKUS '+jm);
-},true);
+// B346: OPTIONS -> TV POKUS (oboji / jen zvuk / jen obraz) pryc - Rene: "vyvojarske tlacitka smaz"
 // B314: JAZYK · LANGUAGE - Java ulozi volbu (NapJazyk) a prepne C++ menu, Atari a intro;
 // stranka se prelozi hned (bez nacteni znovu), karusel v HTML se postavi znovu
 function jazykUkaz(){

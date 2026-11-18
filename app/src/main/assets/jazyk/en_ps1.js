@@ -15,9 +15,6 @@ NapJazyk.slovnik({
   'STAV JÁDRA:': 'CORE STATE:',
   'HRY ZE SERVERU N&P': 'GAMES FROM THE N&P SERVER',
   'PS1 core je napojen; log ukazuje boot, audio a remote download.': 'The PS1 core is connected; the log shows boot, audio and remote download.',
-  'PS1 PRIMA URL': 'PS1 DIRECT URL',
-  'PS1 CACHE CESTA': 'PS1 CACHE PATH',
-  'SMAZAT PS1 CACHE': 'DELETE PS1 CACHE',
   'KOPIROVAT LOG': 'COPY LOG',
   // D-PAD panel
   'NAČÍST RYCHLOU POZICI': 'LOAD QUICK POSITION',
@@ -55,9 +52,6 @@ NapJazyk.slovnik({
   'SAVE STATE nacten': 'SAVE STATE loaded',
   'SAVE STATE: AHPS1 most chybi': 'SAVE STATE: the AHPS1 bridge is missing',
   'LOAD STATE: AHPS1 most chybi': 'LOAD STATE: the AHPS1 bridge is missing',
-  'PS1 CACHE: AHPS1 most chybi': 'PS1 CACHE: the AHPS1 bridge is missing',
-  'PS1 CACHE CLEAR: AHPS1 most chybi': 'PS1 CACHE CLEAR: the AHPS1 bridge is missing',
-  'PS1 URL: AHPS1 most chybi': 'PS1 URL: the AHPS1 bridge is missing',
   'TV WEB CAST: AHTVWEB most chybi': 'TV WEB CAST: the AHTVWEB bridge is missing',
   'LOG zkopirovan do schranky': 'LOG copied to the clipboard',
   'Kopirovani selhalo - oznac text rucne': 'Copying failed - select the text manually',
@@ -65,8 +59,6 @@ NapJazyk.slovnik({
   'AHSAVE most neni dostupny - pouzij KOPIROVAT LOG': 'The AHSAVE bridge is not available - use COPY LOG',
   'Oteviram PS1 Google Drive stranku': 'Opening the PS1 Google Drive page',
   'Otevírám hry PS1 ze serveru N&P': 'Opening PS1 games from the N&P server',   // B321
-  'PS1 URL musi zacinat http:// nebo https://': 'The PS1 URL must start with http:// or https://',
-  'PS1: stahuju z Drive / netu, pockej na BOOT OK': 'PS1: downloading from Drive / the net, wait for BOOT OK',
   'PS1 BOOT: vyber .bin/.iso hry': 'PS1 BOOT: choose the game .bin/.iso',
   'CHYBA cteni .cue': 'ERROR reading the .cue',
   '.CUE precten, ale FILE radek nenalezen - vyber primo .bin': '.CUE read, but no FILE line found - pick the .bin directly',
@@ -116,9 +108,7 @@ NapJazyk.slovnik({
   'v prohlížeči na PC nebo TV (WEB TV) klikni do obrazu – kurzor hry pak ovládá myš počítače, její tlačítka jsou tlačítka myši PlayStation. Esc = myš pustit.':
     'in the browser on a PC or TV (WEB TV) click into the picture – the computer mouse then moves the game cursor and its buttons are the PlayStation mouse buttons. Esc = release the mouse.',
   // dialogy
-  'Smazat PS1 stazene hry/cache z telefonu?': 'Delete the downloaded PS1 games/cache from the phone?',
-  'Na TV otevri tuto adresu v prohlizeci / AirScreen browseru:': 'On the TV open this address in a browser / the AirScreen browser:',
-  'PS1 prima URL (.zip/.cue/.bin/.iso/.img/.pbp/.chd nebo Google Drive file link)': 'PS1 direct URL (.zip/.cue/.bin/.iso/.img/.pbp/.chd or a Google Drive file link)'
+  'Na TV otevri tuto adresu v prohlizeci / AirScreen browseru:': 'On the TV open this address in a browser / the AirScreen browser:'
 });
 NapJazyk.vzory([
   [/^Uprava rozlozeni: (portrait|landscape) - preusporadej a das HOTOVO$/, function (m, o) {
@@ -127,14 +117,10 @@ NapJazyk.vzory([
   [/^Rozlozeni ulozeno \((portrait|landscape)\)$/, 'Layout saved ($1)'],
   [/^Rozložení vráceno na výchozí \((portrait|landscape)\)$/, 'Layout reset to default ($1)'],
   [/^Rozložení uloženo \((portrait|landscape)\)$/, 'Layout saved ($1)'],
-  [/^PS1 cache: ([\s\S]*)$/, 'PS1 cache: $1'],
   [/^TV WEB CAST: otevri na TV ([\s\S]*)$/, 'TV WEB CAST: open on the TV $1'],
   [/^TV WEB CAST chyba: ([\s\S]*)$/, 'TV WEB CAST error: $1'],
   [/^SAVE STATE chyba: ([\s\S]*)$/, 'SAVE STATE error: $1'],
   [/^LOAD STATE chyba: ([\s\S]*)$/, 'LOAD STATE error: $1'],
-  [/^PS1 CACHE cesta chyba: ([\s\S]*)$/, 'PS1 CACHE path error: $1'],
-  [/^PS1 CACHE mazani chyba: ([\s\S]*)$/, 'PS1 CACHE delete error: $1'],
-  [/^PS1 URL chyba: ([\s\S]*)$/, 'PS1 URL error: $1'],
   [/^PS1 hry N&P chyba: ([\s\S]*)$/, 'PS1 N&P games error: $1'],
   [/^ULOZENI LOGU CHYBA: ([\s\S]*)$/, 'LOG SAVE ERROR: $1'],
   [/^ANALYZA CHYBA: ([\s\S]*)$/, 'ANALYSIS ERROR: $1'],

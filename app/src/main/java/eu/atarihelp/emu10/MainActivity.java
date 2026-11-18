@@ -127,26 +127,8 @@ public class MainActivity extends Activity {
     private volatile long segaHrajeOd = 0L;
     private long introTvDiagMs = 0L;
 
-    // ==================================================================
-    //  BUILD2SA49: POKUS, KTERY TO ROZHODNE
-    //
-    //  TV ma dve pulky: OBRAZ a ZVUK. Timhle prepinacem (OPTIONS -> TV POKUS)
-    //  se da jedna z nich vypnout a hned se pozna, ktera zpusobuje potize:
-    //
-    //    "jen zvuk"  -> obraz se nesnima,
-    //    "jen obraz" -> zvuk se neposila,
-    //    "oboji"     -> normalni provoz.
-    //
-    //  B310: smazano se starym Atari v JavaScriptu (emu_vbxe): fronta na jeho
-    //  zvuk (BUILD2SA48, pushAtariPcm16 -> atariZvuk*) a ctvrta volba
-    //  "kreslenim" (BUILD2SA50 - snimani jeho stranky bez PixelCopy). Atari 130XE
-    //  v C++ posila obraz i zvuk na TV primo z jadra (/atari.stream).
-    // ==================================================================
-    public static final int TV_OBOJI = 0, TV_JEN_ZVUK = 1, TV_JEN_OBRAZ = 2;
-    private volatile int tvPokusRezim = TV_OBOJI;
-
-    private boolean tvSmiObraz() { return tvPokusRezim != TV_JEN_ZVUK; }
-    private boolean tvSmiZvuk()  { return tvPokusRezim != TV_JEN_OBRAZ; }
+    // B346: OPTIONS -> TV POKUS (BUILD2SA49: jen zvuk / jen obraz - zkouska, ktera pulka TV prenosu seka) pryc,
+    // Rene: "vyvojarske tlacitka smaz - co potrebujeme mame v logu na tv web log". TV posila vzdy obraz i zvuk.
 
     /** BUILD2SA41: zvuk intra - pocita se v Jave, at jde i na TV. */
     private final NapIntroZvuk introZvuk = new NapIntroZvuk();
@@ -977,7 +959,7 @@ public class MainActivity extends Activity {
                 // ADRESA - stejne jako u Segy a PS1. Kdyz jsme v Atari,
                 // snimek dava ono a napTvWebCaptureFromCore() vrati true,
                 // takze se sem vubec nedojde.
-                if (napTvWebRunning && appCapture && tvSmiObraz()
+                if (napTvWebRunning && appCapture
                         && rootFrame != null && rootFrame.getWidth() > 0 && rootFrame.getHeight() > 0) {
                     int sw = rootFrame.getWidth(), sh = rootFrame.getHeight();
                     boolean landscape = sw > sh;
@@ -1186,7 +1168,7 @@ public class MainActivity extends Activity {
                     // na displej (SurfaceView), snimani okna ho nevidi a na TV/PC
                     // byla jen stranka s testy pod nim. Obraz i zvuk ted primo z jadra.
                     // B333: stara cesta vypnuta - zvuk Atari jde jen v /atari.stream (kruhovy buffer v C++ se prepisuje sam)
-                    if (!NAP_TV_STARA_CESTA_VYPNUTA && atariZarizeni != null && !atariZarizeniSkryte && tvSmiZvuk() && napTvAtariProudKlientu.get() == 0) {
+                    if (!NAP_TV_STARA_CESTA_VYPNUTA && atariZarizeni != null && !atariZarizeniSkryte && napTvAtariProudKlientu.get() == 0) {
                         try {
                             if (tvAtariPcm == null) tvAtariPcm = new short[16384];
                             int gotA = NativeAtariCoreBridge.devPullTvAudioSafe(tvAtariPcm);
@@ -5456,19 +5438,6 @@ public class MainActivity extends Activity {
             });
         }
 
-        /**
-         * BUILD2SA49: prepinani pokusu. 0 = oboji, 1 = jen zvuk, 2 = jen obraz.
-         * Slouzi k tomu, aby se poznalo, ktera pulka TV zpusobuje kousani.
-         */
-        @JavascriptInterface public String tvPokus(int rezim) {
-            tvPokusRezim = (rezim < 0 || rezim > 2) ? TV_OBOJI : rezim;
-            String jm = tvPokusRezim == TV_JEN_ZVUK ? "JEN ZVUK (obraz se nesnima)"
-                      : tvPokusRezim == TV_JEN_OBRAZ ? "JEN OBRAZ (zvuk se neposila)"
-                      : "OBOJI (normalni provoz)";
-            appendNativeLog("BUILD2SA49 TV_POKUS -> " + jm);
-            return jm;
-        }
-
         /** RENEHO ZADNI VRATKA: vrati vse na zacatek. B312: jen s otevrenym servisem ("OK" / "ZAMCENO"). */
         @JavascriptInterface public String zamkniVse() {
             if (!NapServis.otevreno(System.currentTimeMillis())) {
@@ -6116,7 +6085,6 @@ public class MainActivity extends Activity {
         @JavascriptInterface public String pushPlayerPcm16(String b64, int sampleRate, int frames, int channels) {
             try {
                 if (!napTvWebRunning) return "TV_WEB_AUDIO_OFF";
-                if (!tvSmiZvuk()) return "TV_WEB_AUDIO_VYPNUT_POKUSEM";
                 if (b64 == null || b64.length() == 0) return "TV_WEB_AUDIO_EMPTY";
                 byte[] data = Base64.decode(b64, Base64.DEFAULT);
                 NativeMenuBridge.strankaZvukSafe(data, channels <= 1 ? 1 : 2, sampleRate);   // B333: do proudu stranky (C++)
@@ -6133,12 +6101,11 @@ public class MainActivity extends Activity {
         // Most YouTube (napTvWebInjectYoutubeAudioBridge) podle toho stavi audio graf pro zvuk na TV -
         // bez divaka hraje YouTube v telefonu nedotceny original (BUILD2SA14 "ORIGINAL FIRST").
         @JavascriptInterface public boolean tvPosloucha() {
-            return napTvWebRunning && tvSmiZvuk() && (NativeMenuBridge.strankaStavSafe() & 2) != 0;
+            return napTvWebRunning && (NativeMenuBridge.strankaStavSafe() & 2) != 0;
         }
         @JavascriptInterface public String pushYoutubePcm16(String b64, int sampleRate, int frames, int channels) {
             try {
                 if (!napTvWebRunning) return "TV_WEB_AUDIO_OFF";
-                if (!tvSmiZvuk()) return "TV_WEB_AUDIO_VYPNUT_POKUSEM";
                 if (b64 == null || b64.length() == 0) return "TV_WEB_AUDIO_EMPTY";
                 byte[] data = Base64.decode(b64, Base64.DEFAULT);
                 NativeMenuBridge.strankaZvukSafe(data, channels <= 1 ? 1 : 2, sampleRate);   // B333: do proudu stranky (C++)
@@ -7152,16 +7119,8 @@ public class MainActivity extends Activity {
         /** B345: bezi opravdu stahovani? Stav "PS1_REMOTE_DOWNLOAD ..." sam nestaci (zustava i po zruseni). */
         @JavascriptInterface
         public boolean ps1RemoteAktivni() { return ps1RemoteDownloadActive; }
-        @JavascriptInterface
-        public String ps1RemoteCachePath() {
-            try { return ps1RemoteGamesDir().getAbsolutePath(); }
-            catch (Throwable t) { return "PS1_CACHE_PATH_FAIL " + safeMsg(t); }
-        }
-        @JavascriptInterface
-        public String ps1ClearRemoteCache() {
-            try { return clearPs1RemoteCaches(); }
-            catch (Throwable t) { return "PS1_CACHE_CLEAR_FAIL " + safeMsg(t); }
-        }
+        // B346: mosty ps1RemoteCachePath / ps1ClearRemoteCache pryc - patrily vyvojarskym tlacitkum PS1 CACHE CESTA
+        // a SMAZAT PS1 CACHE (Rene: "vyvojarske tlacitka smaz"). Hry se mazou v CD ISO / HRY V TELEVIZI.
         @JavascriptInterface
         public void ps1Input(String button, boolean down) {
             int id = ps1ButtonId(button);
@@ -14035,42 +13994,6 @@ public class MainActivity extends Activity {
         return f.delete();
     }
 
-    private String clearPs1RemoteCaches() throws IOException {
-        if (ps1RemoteDownloadActive) {
-            String busy = "PS1_CACHE_CLEAR_BUSY download prave bezi, pockej na dokonceni";
-            setPs1RemoteStatus(busy);
-            return busy;
-        }
-        // BUILD2SA5AR: drive tlacitko pri BEZICI hre jen tise ohlasilo BUSY a Rene
-        // si myslel, ze cache smazal. Ted se hra napred korektne zastavi a maze se.
-        if (ps1BootActive || ps1SessionActive) {
-            try { NativePs1CoreBridge.stopSafe(); } catch (Throwable ignored) {}
-            ps1BootActive = false;
-            ps1SessionActive = false;
-            ps1ClearJsPreview();
-            appendNativeLog("BUILD2SA5AR PS1_CACHE_CLEAR_AUTOSTOP hra zastavena kvuli mazani cache");
-        }
-        int targets = 0;
-        StringBuilder sb = new StringBuilder();
-        File publicDir = null;
-        try { publicDir = new File(getPublicAtariHelpDownloadsDir(), "PS1"); } catch (Throwable ignored) {}
-        if (publicDir != null && publicDir.exists()) {
-            targets++;
-            boolean ok = deleteTree(publicDir);
-            sb.append("downloads=").append(ok ? "OK" : "FAIL").append(":").append(publicDir.getAbsolutePath()).append(" ");
-        }
-        File privateDir = ps1PrivateRemoteGamesDir();
-        if (privateDir != null && privateDir.exists()) {
-            targets++;
-            boolean ok = deleteTree(privateDir);
-            sb.append("private=").append(ok ? "OK" : "FAIL").append(":").append(privateDir.getAbsolutePath()).append(" ");
-        }
-        if (targets == 0) sb.append("nic ke smazani");
-        String res = "PS1_CACHE_CLEAR " + sb.toString().trim();
-        setPs1RemoteStatus(res);
-        return res;
-    }
-
     private String ps1StableHash(String value) {
         try {
             java.security.MessageDigest md = java.security.MessageDigest.getInstance("SHA-1");
@@ -14525,8 +14448,17 @@ public class MainActivity extends Activity {
             try { in.close(); } catch (Throwable ignored) {}
         }
         if (total <= 0L) throw new IOException("ZIP entry je prazdny: " + entry.getName());
+        // B346: rozbaleny soubor musi mit presne velikost z ZIPu - jinak je ZIP poskozeny (drive se nekontrolovalo;
+        // Command & Conquer v logu 18. 11. mel .BIN bez celych sektoru CD a nebylo poznat, odkud vada je)
+        long vZipu = entry.getSize();
+        if (vZipu >= 0 && vZipu != total) {
+            try { part.delete(); } catch (Throwable ignored) {}
+            throw new IOException(tx("ZIP je poškozený: ", "the ZIP is damaged: ") + zipLeafName(entry.getName())
+                    + tx(" se rozbalil na " + total + " B, v ZIPu má " + vZipu + " B",
+                         " unpacked to " + total + " B, the ZIP says " + vZipu + " B"));
+        }
         if (!part.renameTo(out)) throw new IOException("nejde prejmenovat .part na " + out.getName());
-        appendNativeLog("BUILD2SA5AM PS1_ZIP_EXTRACT_ENTRY name=" + out.getName() + " bytes=" + total);
+        appendNativeLog("BUILD2SA5AM PS1_ZIP_EXTRACT_ENTRY name=" + out.getName() + " bytes=" + total + " (v ZIPu " + vZipu + ")");
         return out;
     }
 
@@ -15320,8 +15252,11 @@ public class MainActivity extends Activity {
                 } else {
                     ps1SessionActive = false;
                     ps1LastBootResult = "PS1_REMOTE_FAIL boot " + r;
-                    setPs1RemoteStatus(ps1LastBootResult);
-                    ps1StartDokoncen("CHYBA jadro hru nespustilo (" + r + ") - podrobnosti v LOGu (denik PS1)");
+                    // B346: veta pro hrace (poskozeny obraz disku = proc), technicky kod zustava v logu
+                    // (PS1_HRA_DO_MONITORU ... vysledek=...)
+                    String proc = NapPravidla.ps1ProcNespustila(r, NapJazyk.en(MainActivity.this));
+                    setPs1RemoteStatus("PS1_REMOTE_FAIL boot " + proc);
+                    ps1StartDokoncen("CHYBA " + proc);
                 }
             } else {
                 ps1BootActive = false;
@@ -16004,8 +15939,9 @@ public class MainActivity extends Activity {
                         setPs1RemoteStatus("PS1_REMOTE_BOOT_OK " + pickedName);
                         ps1StartDokoncen("OK " + pickedName);
                     } else if (!ok) {
-                        setPs1RemoteStatus("PS1_REMOTE_FAIL boot " + ps1LastBootResult);
-                        ps1StartDokoncen("CHYBA jadro hru nespustilo (" + ps1LastBootResult + ") - podrobnosti v LOGu (denik PS1)");
+                        String proc = NapPravidla.ps1ProcNespustila(ps1LastBootResult, NapJazyk.en(MainActivity.this));   // B346
+                        setPs1RemoteStatus("PS1_REMOTE_FAIL boot " + proc);
+                        ps1StartDokoncen("CHYBA " + proc);
                     } else {
                         ps1StartDokoncen("ZRUSENO");
                     }

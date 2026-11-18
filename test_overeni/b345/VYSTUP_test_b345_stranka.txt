@@ -12,7 +12,7 @@ OK     C3) po 12 s pruh zmizel a s tim samym stavem se uz neukaze (drive porad d
 OK     Z1) stav "stahuji" zbyl po zruseni (ps1RemoteAktivni = false) -> zadne okno, plocha nedotcena
 OK     P1) panel otevren a zavren behem stahovani -> plocha zustava schovana [False, False], okno STAHUJI dal
 OK     R1) RESET behem stahovani: "RESETUJI (BIOS BEZ CD)…" i kdyz Java jeste hlasi stahovani, po BIOS_OK okno pryc
-OK     B1) hra se nespustila: toast "HRA SE NESPUSTILA: jadro hru nespustilo (PS1_HRA_FAIL jadro)", pruh "HRA SE NESPUSTILA | PS1_HRA_FAIL jadro"
+OK     B1) hra se nespustila: hlaska "HRA SE NESPUSTILA: jadro hru nespustilo (PS1_HRA_FAIL jadro)", pruh ji neopakuje
 OK     K1) hra uz v zarizeni: "SPOUŠTÍM HRU… | Crash Bandicoot | 0 s"
 OK     K2) jine stahovani bezi: "UŽ SE STAHUJE JINÁ HRA…"
 OK     E1) EN na sirku: "DOWNLOADING THE GAME… | Final Fantasy VII | 37 % | 182.4 MB of 492.0 MB | The game starts by itself once it is downloaded."

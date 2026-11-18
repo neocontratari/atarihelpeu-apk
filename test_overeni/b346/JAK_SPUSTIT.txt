@@ -1,0 +1,83 @@
+B346 - UKLID VYVOJARSKYCH TLACITEK + POSKOZENY OBRAZ DISKU PS1 (COMMAND & CONQUER) (18. 11. 2026)
+=========================================================================================
+
+Rene po testu B345 (log telefonu): "ano vyvojarske tlacitka smaz - co potrebujeme mame v logu na tv web log",
+"nevim proc se nespusti CaC ale to muze byt chyba souboru".
+
+B345 V LOGU TELEFONU (18. 11. 12:32) - funguje:
+ - Final Doom ze serveru N&P: PS1_SPACE_CHECK need=632.0MB (stazeni 216.0MB ZIP) = 2x + 200 MB, "B345 PS1 BIOS ceka -
+   stahuje se hra "Final Doom (USA)"", od odchodu do katalogu az po start hry ZADNY PS1_BIOS_START, rozbaleni,
+   "PS1_REMOTE_BOOTING #3 Final Doom (USA)" (hezke jmeno), PS1_HRA_OK. Podruhe z CD ISO taky s hezkym jmenem.
+
+COMMAND & CONQUER V LOGU (12:35):
+ - CUE: 1 stop MODE2/2352, .BIN 557 574 385 B. Jadro: "CheckCdrom: missing lic sector?" (sektor 4 nema licencni text
+   Sony na svem miste) a "unsupported/invalid CD image" (nenasel SYSTEM.CNF ani PSX.EXE) -> PS1_HRA_FAIL jadro.
+ - 557 574 385 B = 237 063 celych sektoru po 2352 B + 2 209 B, do celeho sektoru chybi 143 B. Surova stopa CD ma vzdy
+   cele sektory -> soubor je useknuty / poskozeny. Licencni sektor ani adresar disku na zacatku jadro nenaslo = vadny
+   je uz zacatek souboru, ne jen useknuty konec. Ostatni hry (Final Doom, SpongeBob) jdou -> vadny je tenhle soubor.
+ - Kdy se poskodil, z logu nejde poznat (stazeny pred 16. 11.). Rozbaleni ZIPu velikost dosud nekontrolovalo.
+
+CO JE NOVE:
+1) Panel PS1 (kolecko na vysku): pryc PS1 PRIMA URL, PS1 CACHE CESTA, SMAZAT PS1 CACHE (+ JS, preklady, mosty
+   AHPS1.ps1RemoteCachePath / ps1ClearRemoteCache a clearPs1RemoteCaches). Most ps1DownloadAndBoot zustal (web).
+   Hry se mazou v CD ISO (kos) / HRY V TELEVIZI.
+2) OPTIONS: pryc TV POKUS (oboji / jen zvuk / jen obraz) - tlacitko, JS, most AHINTRO.tvPokus, prepinac
+   tvPokusRezim a jeho podminky v TV prenosu (vychozi bylo vzdy OBOJI = beze zmeny), preklady, napoveda.
+3) Poskozeny obraz disku - cisty C++ nap_ps1_obraz.h (bez Androidu): velikost sektoru stopy z radku TRACK
+   (MODE2/2352, MODE1/2352, AUDIO 2352, MODE2/2336, MODE1/2048, CDG 2448), vada = velikost neni cely pocet sektoru.
+   nap_ps1_native.cpp: denik pri startu kontroluje kazdy soubor .cue (podle jeho prvni stopy) i .bin / .img / .iso
+   bez .cue -> "POZOR OBRAZ DISKU: cac.bin ma 557574385 B - neni cely pocet sektoru 2352 B (237063 celych + 2209 B,
+   do celeho chybi 143 B) - obraz je asi useknuty nebo poskozeny". Hru NEBLOKUJE (jadro rozhodne samo); kdyz ji
+   jadro odmitne -> "CHYBA STARTU: OBRAZ DISKU JE POSKOZENY - ..." a vysledek "PS1_HRA_FAIL obraz" (drive "jadro").
+4) Java: NapPravidla.ps1ProcNespustila - veta pro hrace CZ / EN: "obraz disku je poškozený (soubor hry nemá celé
+   sektory CD) – smaž hru v CD ISO a stáhni ji znovu; když to nepomůže, je vadný soubor na serveru – podrobnosti
+   v LOGu (deník PS1)", jinak "jádro hru nespustilo (<kod>) – ..." (drive bez diakritiky a jen cesky). Obe cesty
+   startu (stazena hra / knihovna / HRY V TELEVIZI i vyber souboru).
+5) Rozbaleni ZIPu: soubor musi mit presne velikost z ZIPu, jinak chyba "ZIP je poškozený: ... se rozbalil na X B,
+   v ZIPu má Y B"; log PS1_ZIP_EXTRACT_ENTRY ukaze obe velikosti ("bytes=... (v ZIPu ...)").
+6) Stranka PS1: chybu SPUSTENI rekne jednou - hlaska nahravaciho okna (dlouha veta az 15 s), pruh pod monitorem ji
+   neopakuje (B345 ji ukazoval dvakrat); kdyz okno start nehlidalo (chyba mezi dvema dotazy, HRY V TELEVIZI), rekne
+   ji pruh.
+7) Napoveda CZ / EN (stejna stavba): PS1 -> Hry a BIOS veta o poskozenem obrazu; OPTIONS bez TV POKUS / TV TEST.
+8) build.gradle versionCode 389 "EMU10-B346-UKLID-OBRAZ-DISKU".
+
+Spoustet z adresare test_overeni/b346 (PRAC = pracovni slozka, S = ../b305/stub, INC = hlavicky EGL/GLES):
+A) JVM: javac -encoding UTF-8 --release 17 -d PRAC ../../app/src/main/java/eu/atarihelp/emu10/NapPravidla.java \
+        jvm/eu/atarihelp/emu10/TestB346.java && java -Dstdout.encoding=UTF-8 -cp PRAC eu.atarihelp.emu10.TestB346 \
+        VYSTUP_test_b346_java.txt                                   -> 3 OK (veta CZ / EN, ostatni kody, delka)
+B) C++ hlavicka sama: g++ (i clang++) -std=c++17 -Wall -Wextra -I../../app/src/main/cpp test_obraz_hlavicka.cpp
+   -> VYSTUP_test_obraz_hlavicka.txt (sektory stop, vada C&C presne, .iso / .bin bez .cue)
+C) SKUTECNY nap_ps1_native.cpp v harnessu B308 (jadro nahrazene - odmitne cestu s "ODMITNOUT"):
+   g++ -std=c++17 -O2 -shared -fPIC -pthread -Wall -Wno-unused-function -DANDROID -I../b305/stub -I../b291/stub \
+       -IINC -I$JAVA_HOME/include -I$JAVA_HOME/include/linux -o PRAC/libps1_b346.so ../b308/ps1_harness.cpp \
+       -Wl,--no-undefined -l:libEGL.so.1 -l:libGLESv2.so.2
+   EGL_PLATFORM=surfaceless python3 test_b346_obraz.py PRAC/libps1_b346.so PRAC/obraz -> VYSTUP_test_b346_obraz.txt
+   (9 OK: dobry obraz, obraz jako C&C (presna cisla, hra bezi), odmitnuty vadny -> PS1_HRA_FAIL obraz, odmitnuty
+   dobry -> PS1_HRA_FAIL jadro, vic stop, MODE1/2048 a 2336, .bin bez .cue a .iso, vada se neprenese, BIOS)
+D) python3 test_b346_stranky.py PRAC -> VYSTUP_test_b346_stranky.txt (10 OK, Chromium: panel PS1 CZ / EN bez
+   tlacitek a bez volani mostu, OPTIONS CZ / EN bez TV POKUS, poskozeny obraz CZ / EN jednou, chyba mezi dotazy
+   v pruhu, napoveda, zadna chyba JS)
+E) python3 kontrola_b346.py -> VYSTUP_kontrola_b346.txt (11 OK; na HEAD B345 10 CHYBA - N2 stavba plati i tam)
+F) ES5 VYSTUP_kontrola_es5.txt (10 skriptu), VYSTUP_javac_android.txt (exit 0, 124 trid, 35 zdroju)
+G) Regrese -> VYSTUP_regrese_*.txt (*_log.txt = cely vystup testu, ktery svuj VYSTUP nezmenil):
+   Napoveda (pravidlo B343): b311/kontrola_navodu.py 218 nazvu 0 CHYBA (o 3 mene - OBOJÍ / JEN ZVUK / JEN OBRAZ),
+   b314/kontrola_navodu_en.py 210 nazvu 0 CHYBA, b343/kontrola_b343.py 3 CHYBA ZAMERNE (N7 a A6 od B345, V verze).
+   Bez chyby: b311 mosty (128 volani, 0 chybi - o 3 mene, smazana tlacitka), odkazy, test_b311_navod (23),
+   b343 napoveda (27), b344 stranky (10), b339 stranky (6), b342 stranky (22), b320 stranky (13), b334 TV (13),
+   b338 TV (5), test B345 stranky (23 - B1 upraven: chybu spusteni uz rekne jen hlaska okna).
+   Denik B308 se skutecnym C++ (63 kontrol, 1 CHYB "tlacitka a divaci" - stejne na HEAD B345, format ZDRAVI od
+   B320), ThreadSanitizer 0 varovani.
+   Zamerne: b314 test_b314_jazyk_menu klika na smazane TV POKUS (vyjimka) -> regrese_b314_menu_bez_tv_pokus.py
+   (stejny test bez tech 2 kroku) 10 kontrol 0 CHYBA jako HEAD; b314 stranky ps1 klika na smazane PS1 CACHE ->
+   regrese_b314_ps1_bez_cache.py: b) anglicky bez cestiny OK, c) zadna chyba JS OK, a) zakladna B313 (pada i na
+   HEAD); kontrola_b345 V (verze); B345 test B308 cesky 1 CHYB (zamerne od B345).
+   Stejne jako na HEAD B345 (VYSTUP_regrese_NA_HEAD_B345_*): b310 / b311 test menu (padaji vyjimkou uz tam - stary
+   karusel), b314 navod (jen 5 - zakladna B313).
+   POZOR: skripty jinych buildu prepisuji sve VYSTUP soubory - po regresi "git checkout -- test_overeni/bNNN".
+
+Overi Rene:
+ 1) Panel PS1 (kolecko na vysku) - jen HRY ZE SERVERU N&P, TV WEB CAST, D-PAD A OVLÁDÁNÍ, log; OPTIONS bez TV POKUS.
+ 2) C&C z CD ISO -> hlaska "HRA SE NESPUSTILA: obraz disku je poškozený ..." (v logu "POZOR OBRAZ DISKU").
+ 3) C&C smazat (CD ISO -> kos) a stahnout znovu: log "PS1_ZIP_EXTRACT_ENTRY ... bytes=... (v ZIPu ...)" a
+    "POZOR OBRAZ DISKU" -> kdyz je .BIN zase 557 574 385 B, je vadny soubor na serveru (vymenit); kdyz hra jde,
+    poskodilo se to pri starem stazeni.

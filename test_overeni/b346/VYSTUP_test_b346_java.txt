@@ -1,0 +1,4 @@
+OK     P1) poskozeny obraz: "obraz disku je poškozený (soubor hry nemá celé sektory CD) – smaž hru v CD ISO a stáhni ji znovu; když to nepomůže, je vadný soubor na serveru – podrobnosti v LOGu (deník PS1)" / "the disc image is damaged (the game file does not have whole CD sectors) – delete the game in CD ISO and download it again; if that does not help, the file on the server is bad – details in the LOG (PS1 diary)"
+OK     P2) ostatni: "jádro hru nespustilo (PS1_HRA_FAIL jadro) – podrobnosti v LOGu (deník PS1)" / "the core did not start the game (PS1_HRA_FAIL jadro) – details in the LOG (PS1 diary)"
+OK     P3) vety navazuji za "HRA SE NESPUSTILA: " (male pismeno, bez tecky), nejdelsi 209 znaku
+VYSLEDEK: 3 testu, 0 CHYBA

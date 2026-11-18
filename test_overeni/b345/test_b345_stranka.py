@@ -218,8 +218,9 @@ with sync_playwright() as p:
          'CHYBA jadro hru nespustilo (PS1_HRA_FAIL jadro) - podrobnosti v LOGu (denik PS1)')
     toast = pg.evaluate("() => document.getElementById('toast').textContent")
     t = pruh(pg)
-    over(okno(pg) == '' and toast.startswith('HRA SE NESPUSTILA: jadro hru nespustilo') and t == 'HRA SE NESPUSTILA\nPS1_HRA_FAIL jadro',
-         'B1) hra se nespustila: toast "%s", pruh "%s"' % (toast[:60], t.replace('\n', ' | ')))
+    # B346: chybu spusteni rekne jen hlaska nahravaciho okna, pruh pod monitorem ji neopakuje (byla dvakrat)
+    over(okno(pg) == '' and toast.startswith('HRA SE NESPUSTILA: jadro hru nespustilo') and t == '',
+         'B1) hra se nespustila: hlaska "%s", pruh ji neopakuje' % toast[:60])
     ctx.close()
 
     # ---------------- K) uz stazena / jine stahovani ----------------

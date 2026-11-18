@@ -38,6 +38,7 @@
 #include "tvproud/nap_tv_proud_jpeg.h"
 #include "nap_ps1_mys.h"                // B317: mys PlayStation (dotyk jako touchpad, mys z PC)
 #include "nap_ovladac.h"                // B320: herni ovladac (Retroid Pocket 6, gamepad)
+#include "nap_ps1_obraz.h"              // B346: obraz disku bez celych sektoru = poskozeny (C&C)
 #include <signal.h>   // A10: zachytavac padu (sigaction)
 #include <fcntl.h>    // A10: open() - zapis padu do log souboru (async-signal-safe)
 #include <unistd.h>   // A10: write()/close()
@@ -240,6 +241,11 @@ static std::string ps1_pripona(const std::string &p) {
   return e;
 }
 
+// B346: vada obrazu disku z posledniho startu ("" = v poradku) - kdyz jadro hru odmitne, appka rekne proc
+// (PS1_HRA_FAIL obraz). Plni ps1_denik_start / ps1_denik_cue, cte ps1BootDoMonitoru - vse ve stejnem vlakne
+// pod g_life_mutex.
+static std::string g_obraz_vada;
+
 // .cue: jake stopy ma a jestli jsou VSECHNY soubory, na ktere ukazuje, na disku
 static void ps1_denik_cue(const std::string &cue) {
   FILE *f = fopen(cue.c_str(), "r");
@@ -250,6 +256,9 @@ static void ps1_denik_cue(const std::string &cue) {
   int stop = 0, audio = 0, data = 0, souboru = 0, chybi = 0;
   long long celkem = 0;
   std::string seznam, chybejici;
+  std::string souborJm;            // B346: soubor posledniho radku FILE - kontrola podle jeho prvni stopy
+  long long souborVel = -1;
+  bool cekamStopu = false;
   while (fgets(r, sizeof(r), f)) {
     char *s = r;
     while (*s == ' ' || *s == '\t') s++;
@@ -265,6 +274,7 @@ static void ps1_denik_cue(const std::string &cue) {
       const size_t l2 = jm.find_last_of("/\\");
       if (l2 != std::string::npos) jm = jm.substr(l2 + 1);
       const long long v = ps1_soubor_velikost(adr + "/" + jm);
+      souborJm = jm; souborVel = v; cekamStopu = true;   // B346
       souboru++;
       if (v < 0) { chybi++; if (chybejici.size() < 300) chybejici += (chybejici.empty() ? "" : ", ") + jm; }
       else celkem += v;
@@ -272,6 +282,14 @@ static void ps1_denik_cue(const std::string &cue) {
     } else if (strncasecmp(s, "TRACK", 5) == 0) {
       stop++;
       if (strcasestr(s, "AUDIO")) audio++; else data++;
+      if (cekamStopu) {   // B346: soubor musi mit cele sektory te stopy (MODE2/2352 -> 2352 B ...)
+        cekamStopu = false;
+        const std::string v = nap_obraz::vada(souborJm, souborVel, nap_obraz::sektor_stopy(s));
+        if (!v.empty()) {
+          ps1_denik("POZOR OBRAZ DISKU: %s - obraz je asi useknuty nebo poskozeny (spatne stazeny / vadny soubor)", v.c_str());
+          if (g_obraz_vada.empty()) g_obraz_vada = v;
+        }
+      }
     }
   }
   fclose(f);
@@ -305,6 +323,7 @@ static void ps1_denik_start(const std::string &hra, const std::string &sys) {
   g_denik_start_ms.store(ps1_ms_ted());
   g_jadro_hlasek.store(0);
   g_ps1_vlaken_hlaseno.store(0);   // B332
+  g_obraz_vada.clear();   // B346
   ps1_denik("==================== PS1 START: %s ====================", hra.empty() ? "BEZ DISKU (menu BIOSu)" : "HRA");
   if (!hra.empty()) {
     const std::string pr = ps1_pripona(hra);
@@ -313,6 +332,13 @@ static void ps1_denik_start(const std::string &hra, const std::string &sys) {
               pr.c_str(), ps1_velikost(ps1_soubor_velikost(hra)).c_str(), hra.c_str());
     if (pr == "cue") ps1_denik_cue(hra);
     else if (pr == "bin" || pr == "img") ps1_denik("HRA: .%s bez .cue - jen jedna datova stopa (hudba z CD chybet muze)", pr.c_str());
+    if (pr == "bin" || pr == "img" || pr == "iso") {   // B346: bez .cue - cele sektory 2352 / 2048 / 2336 B
+      const std::string v = nap_obraz::vada_bez_cue(l == std::string::npos ? hra : hra.substr(l + 1), ps1_soubor_velikost(hra));
+      if (!v.empty()) {
+        ps1_denik("POZOR OBRAZ DISKU: %s - obraz je asi useknuty nebo poskozeny (spatne stazeny / vadny soubor)", v.c_str());
+        g_obraz_vada = v;
+      }
+    }
   }
   ps1_denik_bios_slozka(sys);
 }
@@ -2860,6 +2886,11 @@ Java_eu_atarihelp_emu10_NativePs1CoreBridge_ps1BootDoMonitoru(JNIEnv *env, jclas
                    jeHra ? "hru" : "start bez disku");
       ps1_denik("CHYBA STARTU: jadro odmitlo %s (retro_load_game) - viz radky JADRO vyse a CUE / HRA: "
                 "chybejici soubor, nepodporovany format (.7z), poskozeny obraz disku", jeHra ? "hru" : "start bez disku");
+      // B346: soubor hry nema cele sektory CD -> rict proc (drive jen "jadro"); Java z toho udela vetu pro hrace
+      if (jeHra && !g_obraz_vada.empty()) {
+        ps1_denik("CHYBA STARTU: OBRAZ DISKU JE POSKOZENY - %s", g_obraz_vada.c_str());
+        return env->NewStringUTF("PS1_HRA_FAIL obraz");
+      }
       return env->NewStringUTF(jeHra ? "PS1_HRA_FAIL jadro" : "PS1_BIOS_FAIL jadro");
     }
   }

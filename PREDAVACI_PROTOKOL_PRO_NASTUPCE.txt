@@ -4367,5 +4367,25 @@
      - DALSI KROK: Rene - nova PS1 hra ze serveru N&P na telefonu i TV: STAHUJI HRU + nazev, BIOS se neukaze, hra
        nabehne sama; ZPET behem stahovani. Uklid (PS1 PRIMA URL / PS1 CACHE CESTA / SMAZAT PS1 CACHE, OPTIONS TV
        POKUS) porad ceka na Reneho. Pozdeji server: rozbalovani ZIPu na serveru, katalog "zabere X MB / vejde se".
+     - OVERENO NA TELEFONU (log 18. 11. 12:32): Final Doom - misto 2x + 200 MB (ZIP), "B345 PS1 BIOS ceka", zadny
+       BIOS az do hry, "PS1_REMOTE_BOOTING #3 Final Doom (USA)", PS1_HRA_OK.
+
+   B346: UKLID VYVOJARSKYCH TLACITEK + POSKOZENY OBRAZ DISKU PS1 (18. 11. 2026).
+   Rene: "ano vyvojarske tlacitka smaz - co potrebujeme mame v logu na tv web log", "nevim proc se nespusti CaC ale
+   to muze byt chyba souboru".
+     - Pryc: panel PS1 PS1 PRIMA URL / PS1 CACHE CESTA / SMAZAT PS1 CACHE (+ mosty ps1RemoteCachePath,
+       ps1ClearRemoteCache, clearPs1RemoteCaches; most ps1DownloadAndBoot ZUSTAL pro web), OPTIONS TV POKUS
+       (+ AHINTRO.tvPokus, tvPokusRezim a jeho podminky v TV prenosu - vychozi bylo vzdy OBOJI), preklady, napoveda.
+     - C&C (log 12:35): .BIN 557 574 385 B neni cely pocet sektoru 2352 B (do celeho chybi 143 B), jadro "missing lic
+       sector?" + "unsupported/invalid CD image" -> vadny soubor (ostatni hry jdou). Novy cisty C++ nap_ps1_obraz.h:
+       denik pri startu kontroluje cele sektory (.cue podle stopy, .bin / .img / .iso bez .cue) -> "POZOR OBRAZ
+       DISKU ..."; odmitnuta hra s vadou -> "PS1_HRA_FAIL obraz". Hru to neblokuje (rozhoduje jadro).
+     - Java: NapPravidla.ps1ProcNespustila (veta CZ / EN "obraz disku je poškozený ... smaž hru v CD ISO a stáhni ji
+       znovu; když to nepomůže, je vadný soubor na serveru"), rozbaleni ZIPu kontroluje velikost proti ZIPu.
+       Stranka PS1: chyba spusteni jen jednou (hlaska okna; pruh, jen kdyz okno start nehlidalo).
+     - Testy test_overeni/b346 (JAK_SPUSTIT.txt; skutecny C++ v harnessu B308). build.gradle: versionCode 389
+       "EMU10-B346-UKLID-OBRAZ-DISKU". Na telefonu ani TV neovereno.
+     - DALSI KROK: Rene - C&C z CD ISO (hlaska "obraz disku je poškozený"), pak smazat a stahnout znovu: log
+       "PS1_ZIP_EXTRACT_ENTRY ... (v ZIPu ...)" a "POZOR OBRAZ DISKU" rozhodne, jestli je vadny soubor na serveru.
 
 ===============================================================================
