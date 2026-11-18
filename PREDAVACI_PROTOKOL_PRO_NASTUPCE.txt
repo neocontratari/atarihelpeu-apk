@@ -4338,5 +4338,9 @@
      - DALSI KROK: Rene - TV: ovladac do parovani, OPTIONS -> PRIPOJIT OVLADAC -> klepnout na nej (log "paruji
        znovu", "PRIPOJEN"). Navrhy k dalsimu uklidu (cekaji na Reneho): PS1 panel PS1 PRIMA URL / PS1 CACHE
        CESTA / SMAZAT PS1 CACHE, OPTIONS TV POKUS. Pak fronta z porady B340.
+     - GITHUB A RENE (18. 11.): stranka Actions mu ukazala "Sign in" a Rene se lekl, ze nevi, jak se prihlasuje.
+       Jak se prihlasuje, ma Rene v poznamce PAMET_GITHUB_PRIHLASENI.txt (dostal ji v chatu; zpusob prihlaseni
+       sem NEPSAT - repozitar je verejny). Kdyz se to zopakuje: nejdriv F5 (stara kopie stranky), cookies
+       NEMAZAT, pak prihlasit tak, jak ma v poznamce. Buildy na jeho prihlaseni nezavisi (jen stazeni app-debug).
 
 ===============================================================================
