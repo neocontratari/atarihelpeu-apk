@@ -1,0 +1,79 @@
+B349 - HRY PRO ATARI V ZIP / RAR - overeni na PC
+=================================================
+
+Rene: "potrebuju u atari to co u ps1 pokud to bude zabalene v rar v zipu tak at si stim atari poradi -
+opravdu nehodlam davat 5 souboru ciste ven chapes ?" (Prince of Persia: RAR s DD + SDA + SDB + readme).
+
+CO SE ZMENILO (podrobne v PREDAVACI_PROTOKOL_PRO_NASTUPCE.txt, B349):
+ - app/src/main/cpp/atari/nap_archiv.h: cisty C++ bez knihoven - ZIP (metoda 0 a deflate, ZIP64) a RAR 4.x
+   (ulozeno + RAR 2.9: Huffman, shody, filtry E8 / E8E9 / Itanium / Delta / RGB / Audio, pevny archiv), CRC32.
+ - app/src/main/cpp/atari/nap_atari_archiv.h: co z archivu spustit (podle obsahu: ATR / XEX / CAR / XFD) a ktere
+   diskety nabidnout k vymene (sady SDA / SDB, Disk 1 / 2, Side A / B).
+ - nap_atari_native.cpp: devArchivNative, devArchivSouborNative, devCtlNative "archiv*"; MainActivity: XEX/MOBIL,
+   ATR/DISK, NET HRY i stazeni z webu (.rar) posilaji cely archiv do C++, ATR / DISK nabidne diskety z archivu.
+ - Neumi (poctiva hlaska): RAR5, blok PPMd (komprese textu u RAR "nejlepsi"), heslo, vice dilu, RAR 1.5.
+
+Spoustet z adresare test_overeni/b349. Rene hry ani cizi testovaci archivy v repozitari NEJSOU (PoP: autori chteji
+odkaz na AtariAge; libarchive / rarfile jen lokalne) - testy je berou z cesty v argumentu.
+
+1) Testovaci archivy (deterministicke, nic se nestahuje):
+     python3 vyrob_archivy.py /tmp/b349_archivy                     -> VYSTUP_vyrob_archivy.txt
+   ZIP pres modul zipfile / zlib (cizi deflate), RAR vlastnim malym koderem RAR 2.9 (jen pro testy: tokeny ->
+   bitovy proud presne podle unrar Unpack29 / ReadTables30). Nezavisla kontrola - bsdtar (libarchive) je rozbali
+   na puvodni data:
+     bash over_bsdtar.sh /tmp/b349_archivy                          -> VYSTUP_over_bsdtar.txt
+   (bsdtar 3.7 neumi pevny RAR a po nove tabulce nenuluje "nizke bity" vzdalenosti - unrar, 7-Zip i libarchive
+   od 2025 nuluji, overeno ve zdrojich; presne tenhle pripad zkousi rar_nizke_po_tabulce.rar.)
+
+2) Rozbaleni a vyber (cisty C++, bez Androidu):
+     g++ -std=c++17 -O2 -Wall -Wextra -I../../app/src/main/cpp/atari -o test_b349_archiv test_b349_archiv.cpp
+     ./test_b349_archiv /tmp/b349_archivy [PoP_ATR_20211206_final.rar PoP_SD_20211024_final.rar acid800-0.1.zip]
+                        [--cizi SLOZKA_libarchive SLOZKA_rarfile]   -> VYSTUP_test_b349_archiv.txt (42 OK)
+   A rozbaleni ZIP / RAR (obsah = puvodni data): ulozeno, deflate (ulozene / pevne / dynamicke bloky, 17 MB),
+     ZIP64, poskozeny CRC, zkraceny, heslo; RAR ulozeny, RAR 2.9 se vsemi kody (300 kB), kod 16 po nove tabulce,
+     pevny RAR (i na preskacku), RAR5 = "zatim neumim", zkraceny RAR
+   B vyber: PoP (DD startuje, SDA + SDB sada), pevny RAR SDB/SDA, Disk 1-3, Side A/B, XEX + readme, datova
+     disketa + XEX, PAL/NTSC, ZIP v ZIPu, RAR v ZIPu, XFD, __MACOSX, jen readme, CAR, dve ruzne hry, slozky,
+     soubor nad 16 MB, neznamy obsah, jmena (UTF-8, TAB), heslo, poskozeny soubor, RAR5, sbirka 260 her (limit 200)
+   C 2250 poskozenych / nahodnych archivu: zadny pad ani zaseknuti; hranicni soubory (ATR bez celeho sektoru,
+     XEX < 6 B, CAR bez hlavicky, prazdny soubor -> preskocit)
+   D skutecne soubory Reneho: PoP_ATR -> DD (183952 B) + SDA/SDB, PoP_SD -> SDA + SDB, Acid800 -> acid800.atr
+   E cizi testovaci RAR (libarchive libarchive/test/*.rar.uu dekodovane, rarfile test/files): 55 archivu,
+     14 celych OK (rar3-solid = skutecny pevny RAR, filtr E8, 20 MB vic bloku ...), zbytek zname "neumim"
+     (31x RAR5, PPMd, heslo, vice dilu, RAR 1.5, poskozene), 0 jinych
+   Totez s kontrolou pameti:
+     g++ -std=c++17 -O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer -I../../app/src/main/cpp/atari \
+         -o test_b349_asan test_b349_archiv.cpp && ./test_b349_asan ...   -> VYSTUP_test_b349_asan.txt
+   Dlouhy fuzz (fuzz_b349.cpp - navod v hlavicce; mutace vzoru - PoP RAR, filtr E8, pevny RAR, ZIP64 ... - pod
+   ASan / UBSan, 3 x 4 min + po opravach 3 x 2,5 min) nasel a B349 opravuje: stara vzdalenost 0 z poskozenych dat cetla
+   za koncem okna (Rar29::kopiruj), prazdny blok filtru = memcpy z nuloveho ukazatele. Pri kontrole kodu navic:
+   kratka "ATR" (jen hlavicka) - cteni bootovaciho sektoru za koncem, pole ZIP64 za koncem rozsireni, pevne
+   kody Inflate bez zamku (static) -> C++11 static. Pak bez chyb (VYSTUP_test_b349_asan.txt, konec).
+
+3) SKUTECNY nap_atari_native.cpp (vlakna jako v telefonu, stuby z ../b291/stub, JAVA_HOME = JDK):
+     g++ -std=c++17 -O2 -pthread -I../b291/stub -I$JAVA_HOME/include -I$JAVA_HOME/include/linux \
+         -I../../app/src/main/cpp/atari -o test_b349_jni test_b349_jni.cpp
+     ./test_b349_jni [/tmp/b349_archivy [PoP_ATR_20211206_final.rar]]   -> VYSTUP_test_b349_jni.txt (19 OK)
+   cpuHash beze zmeny (4A2C6CBA); ZIP (v nem nejdriv strana B, navod, strana A): devArchivNative vrati stranu A,
+   "archiv_seznam" pro ATR / DISK, boot programu z ../b348; devArchivSouborNative(1) + "atr_vymena" = VYMENIT
+   DISKETU BEZ RESTARTU -> program vlastnim SIO pres POKEY cte sektor ze strany B; obycejny soubor pri vymene archiv
+   necha, jinak zapomene; RAR5 -> prazdne pole + "archiv_chyba"; radky B349 v logu; RAR z bodu 1 (PoP DD); Prince
+   of Persia z RAR Reneho primo do D1: a nahrava se vlastnim zavadecem (radek B348 SIO).
+
+4) Regrese: B348 testy na soucasnych zdrojich (jadro Atari se nemenilo):
+     ../b348: test_b348_sio [acid800.atr PoP_DD.atr] 41 OK, test_b348_jni 16 OK   -> VYSTUP_regrese_b348_*.txt
+   Java: javac vsech zdroju proti android-34.jar bez chyb.
+
+5) Pravidlo B343 (napoveda): b311/kontrola_navodu.py 220 nazvu 0 CHYBA (+ "ATR / DISK" v textu), b314/kontrola_
+   navodu_en.py 212 0 CHYBA (stejna stavba, 22 otazek), b343/kontrola_b343.py 3 CHYBA ZAMERNE (N7, A6, V - jako
+   B346-B348) -> VYSTUP_regrese_b311_*, VYSTUP_regrese_b314_*, VYSTUP_regrese_b343_* (skripty prepisuji sve VYSTUP
+   soubory - po regresi "git checkout -- test_overeni/bNNN").
+
+Overi Rene / tester (telefon):
+ 1) PoP_ATR_20211206_final.rar pres XEX / MOBIL (nebo ATR / DISK): bez rozbalovani startuje DD (cela hra).
+    ATR / DISK -> VLOZIT JINOU DISKETU A NABOOTOVAT nabidne SDA / SDB z archivu.
+ 2) PoP_SD_20211024_final.rar: startuje strana A; pri "Insert other disk" ATR / DISK -> VYMENIT DISKETU BEZ
+    RESTARTU -> PoP_SDB (z archivu, nic se nevybira v telefonu), pak FIRE.
+ 3) RAR / ZIP do slozky Arcade\Atari na serveru -> NET HRY ho nabidne (server bere vsechny soubory krome obrazku
+    a textu) a hra se rozbali v appce.
+ 4) Kdyz neco nejde: log - radky "B349 ARCHIV" (co v archivu je, co se spustilo, proc nic).

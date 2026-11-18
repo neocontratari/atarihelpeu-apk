@@ -117,6 +117,9 @@ public final class NativeAtariCoreBridge {
     private static native String  devLoadAtrNative(byte[] atr, String jmeno);
     // B316: cartridge .car do slotu (8000-BFFF, banky pres D500-D5FF) + studeny start
     private static native String  devLoadCarNative(byte[] car, String jmeno);
+    // B349: hra v archivu ZIP / RAR - rozbaleni a vyber v C++ (nap_atari_archiv.h)
+    private static native byte[]  devArchivNative(byte[] data, String jmeno, boolean vymena);
+    private static native byte[]  devArchivSouborNative(int index);
     // B296: herni ovladac / klavesnice telefonu -> joystick 1 + START/SELECT/OPTION
     //  maska: bit0 nahoru, 1 dolu, 2 vlevo, 3 vpravo, 4 FIRE, 5 START, 6 SELECT, 7 OPTION,
     //  8 klavesa MEZERA, 9 klavesa RETURN
@@ -316,6 +319,17 @@ public final class NativeAtariCoreBridge {
         if (car == null) return "CHYBA zadna data";
         try { String r = devLoadCarNative(car, jmeno); return r == null ? "CHYBA nic" : r; }
         catch (Throwable t) { return "CHYBA " + t.getMessage(); }
+    }
+    /** B349: ZIP / RAR -> obsah souboru ke spusteni (jmeno: devCtlSafe("archiv_vybrany")).
+     *  null = neni archiv (pokracovat s daty, jak jsou), prazdne pole = archiv bez hry. */
+    public static byte[] devArchivSafe(byte[] data, String jmeno, boolean vymena) {
+        if (!loaded || data == null) return null;
+        try { return devArchivNative(data, jmeno, vymena); } catch (Throwable t) { return null; }
+    }
+    /** B349: soubor z posledniho archivu (nabidka ATR / DISK). */
+    public static byte[] devArchivSouborSafe(int index) {
+        if (!loaded) return null;
+        try { return devArchivSouborNative(index); } catch (Throwable t) { return null; }
     }
     public static void devEjectTapeSafe() {
         if (!loaded) return;

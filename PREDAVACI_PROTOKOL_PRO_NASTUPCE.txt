@@ -4447,4 +4447,41 @@
      - DALSI KROK: Rene / tester - PoP DD (jedna disketa) pres ATR / DISK; verze SD: strana A, pri "Insert other disk"
        ATR / DISK -> VYMENIT DISKETU BEZ RESTARTU -> strana B, pak FIRE. Kdyz nepujde: log (radky B348 SIO).
 
+   B349: HRY PRO ATARI V ZIP / RAR (18. 11. 2026).
+   Rene: "potrebuju u atari to co u ps1 pokud to bude zabalene v rar v zipu tak at si stim atari poradi - opravdu
+   nehodlam davat 5 souboru ciste ven" (Prince of Persia = RAR s DD + SDA + SDB + readme). Pak 3x "pokracuj".
+     - Cisty C++, zadna knihovna: app/src/main/cpp/atari/nap_archiv.h - ZIP (centralni seznam, ZIP64, metoda 0
+       a 8 = vlastni Inflate podle RFC 1951) a RAR 4.x (hlavicky 0x73 / 0x74 / 0x7B; metoda 0x30 a 0x31-0x35 verze
+       29/36 = RAR 2.9: Huffman BC / LD / DD / LDD / RD s deltou proti stare tabulce, kody 256-270 a 271+, nizke bity
+       vzdalenosti s opakovanim - kod 16, nova tabulka je nuluje jako unrar / 7-Zip / libarchive 2025; filtry VM
+       poznane podle delky + CRC kodu (E8, E8E9, Itanium, Delta, RGB, Audio) a spustene primo v C++; pevny (solid)
+       archiv = retez souboru od zacatku jednim slovnikem, kod "konec souboru + nova tabulka" se docte). Kazdy
+       soubor kontroluje CRC32. Neumi (poctiva hlaska na pristroji): RAR5, blok PPMd (komprese textu u RAR
+       "nejlepsi"), heslo, vice dilu, RAR 1.5.
+     - nap_atari_archiv.h: co z archivu pro Atari - podle OBSAHU (ATR $96 $02, XEX $FF $FF, CAR "CART", XFD ->
+       doplni hlavicku ATR), readme / obrazky / __MACOSX preskoci, ZIP / RAR uvnitr archivu (1 uroven). Sada disket =
+       jmena lisici se 1-2 znaky (SDA / SDB, Disk 1 / 2, Side A / B). Poradi = nabidka: samostatna bootovaci disketa
+       (DD = cela hra) > sada (startuje A / 1) > XEX > CAR > datove diskety; PAL pred NTSC. Pojistka pro "sbirky":
+       max 200 souboru / 48 MB v pameti, soubor nad 16 MB se nerozbaluje; jmena bez ridicich znaku.
+     - nap_atari_native.cpp: devArchivNative (data z XEX/MOBIL, ATR/DISK, NET HRY, stazeni z webu: neni archiv ->
+       null, archiv -> obsah toho, co se spusti; nic -> prazdne pole + hlaska), devArchivSouborNative (nabidka),
+       devCtlNative "archiv" / "archiv_vybrany" / "archiv_chyba" / "archiv_seznam"; log "B349 ARCHIV <jmeno> (ZIP|RAR,
+       rozbaleno za N ms): ... -> SPOUSTIM ...". MainActivity: stara Java AtariExtract (jen ZIP, jen 1. XEX) pryc;
+       NET HRY / web posilaji cely archiv (.rar i v hasGameExtension / MIME); ATR / DISK nabidne diskety posledniho
+       archivu (VYMENIT DISKETU BEZ RESTARTU, VLOZIT JINOU DISKETU A NABOOTOVAT, + JINY SOUBOR Z TELEFONU); archiv
+       vybrany pri vymene s vic disketami -> nabidka; archiv se zapomene, kdyz se mimo vymenu spusti jiny soubor.
+       Server: .rar ve slozce Arcade\Atari uz nabizi (JeHerniSoubor bere vse krome obrazku / textu) - beze zmeny.
+     - Testy test_overeni/b349 (JAK_SPUSTIT.txt): vyrob_archivy.py (ZIP pres zipfile, RAR vlastnim koderem RAR 2.9 -
+       bsdtar je rozbali na puvodni data), test_b349_archiv 42 OK (rozbaleni, vyber, 2250 poskozenych archivu,
+       PoP RAR Reneho, Acid800, 55 cizich testovacich RAR libarchive / rarfile: 14 celych OK, zbytek zname "neumim"),
+       ASan/UBSan + fuzz 3x4 + 3x2,5 min - nasel a opraveno: stara vzdalenost 0 cetla za koncem okna, prazdny blok
+       filtru; pri kontrole kodu: kratka "ATR" (cteni za koncem), pole ZIP64 za koncem rozsireni, pevne kody Inflate
+       (static bez zamku); pevny RAR se rozbaloval od spatneho souboru (retez) - libarchive / rarfile rar3-solid OK. test_b349_jni 19 OK (skutecny native: ZIP strana A/B ->
+       boot -> vymena z archivu -> SIO cte stranu B; Prince of Persia z RAR nabootoval a cte vlastnim zavadecem).
+       B348 testy beze zmeny (41 + 16 OK). build.gradle: versionCode 392 "EMU10-B349-ZIP-RAR-ATARI". Na telefonu ani
+       TV neovereno.
+     - DALSI KROK: Rene / tester - PoP_ATR RAR pres XEX / MOBIL (startuje DD), PoP_SD RAR (strana A, pri "Insert
+       other disk" ATR / DISK -> VYMENIT DISKETU BEZ RESTARTU -> SDB z archivu). Pristi build: RAR5 (novy format
+       WinRAR) a PPMd - overit na libarchive testech (31x RAR5 v test_read_format_rar5_*).
+
 ===============================================================================

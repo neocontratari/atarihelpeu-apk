@@ -1,0 +1,155 @@
+B349 - hry pro Atari v ZIP / RAR: rozbaleni a vyber v C++ (nap_archiv.h, nap_atari_archiv.h)
+
+A) ROZBALENI ZIP / RAR (obsah se porovna s puvodnimi daty z vyrob_archivy.py)
+     nahodna.bin OK, text.txt OK, prazdny.bin OK
+OK     ZIP ulozeny (metoda 0): 3 soubory vcetne prazdneho
+     text_6.txt OK, kratky.txt OK, nahodna.bin OK, ulozene_bloky.bin OK, uroven1.atr OK, uroven9.atr OK, nuly_17MB.bin OK, prazdny.bin OK  (117 ms)
+OK     ZIP deflate: dynamicke / pevne / ulozene bloky, urovne 0 1 6 9, 17 MB nul, prazdny soubor, slozka preskocena
+     hra.atr OK, Hry/druha.xex OK
+OK     ZIP64 (velikosti v rozsireni 0x0001) + jmeno se zpetnym lomitkem 'Hry\druha.xex'
+     hra.xex kontrolni soucet (CRC) nesedi - archiv je poskozeny, hra2.xex OK
+OK     ZIP s poskozenym bajtem: CRC nesedi -> chyba, druhy soubor v poradku
+     NEOTEVRENO: ZIP: chybi seznam souboru (poskozeny nebo nedokonceny ZIP)
+OK     zkraceny ZIP (nedostahovany): chybi seznam souboru
+     tajna.atr soubor je zaheslovany
+OK     ZIP s heslem: soubor je zaheslovany (nerozbaluje se)
+     hra.xex OK, navod.txt OK
+OK     RAR4 ulozeny (metoda 0x30)
+     kody.bin OK  (2 ms)
+OK     RAR 2.9 se vsemi kody: literaly, 258, 259-262, 263-270, 271+, LDD vcetne 16, 4 nove tabulky, vzdalenost > 256 kB (300 kB)
+     nizke.bin OK
+OK     RAR 2.9: kod 16 hned po nove tabulce = nizke bity 0 (jako unrar / 7-Zip, ne 11 z minula)
+     pevny1.bin OK, pevny2.bin OK, pevny3_prazdny.bin OK, pevny4.bin OK
+OK     pevny (solid) RAR: 4 soubory jednim slovnikem (2. konci novou tabulkou, 3. prazdny)
+     na preskacku 4,2,1,3,4: pevny4.bin OK, pevny2.bin OK, pevny1.bin OK, pevny3_prazdny.bin OK, pevny4.bin OK
+OK     pevny RAR na preskacku (retez se rozbali znovu od zacatku)
+     NEOTEVRENO: RAR5 (novy format WinRAR) zatim neumim - zabal hru jako ZIP nebo RAR4
+OK     RAR5: poctive "zatim neumim" (zadny pad)
+     NEOTEVRENO: RAR: archiv je zkraceny (navod.txt)
+OK     zkraceny RAR: chyba, zadny pad
+
+B) CO Z ARCHIVU ATARI SPUSTI A CO NABIDNE K VYMENE (poradi = nabidka ATR / DISK)
+     vyber_pop.rar (RAR): PoP_DD_final.atr[A boot 133136 B], PoP_SDA_final.atr[A boot sada2 92176 B], PoP_SDB_final.atr[A boot sada2 92176 B] -> SPUSTI PoP_DD_final.atr | preskoceno: readme.txt
+OK     Prince of Persia (RAR): startuje DD (cela hra na 1 diskete), SDA + SDB = sada k vymene, readme preskocen
+     vyber_sd_pevny.rar (RAR): PoP_SDA_final.atr[A boot sada1 92176 B], PoP_SDB_final.atr[A boot sada1 92176 B] -> SPUSTI PoP_SDA_final.atr | preskoceno: readme.txt
+OK     pevny RAR, v archivu nejdriv SDB: startuje SDA (strana A), SDB pripravena k vymene
+     vyber_disky.zip (ZIP): Hra Disk 1.atr[A boot sada2 92176 B], Hra Disk 2.atr[A data sada2 92176 B], Hra Disk 3.atr[A data sada2 92176 B] -> SPUSTI Hra Disk 1.atr
+OK     Disk 1 / 2 / 3 (v ZIPu 3, 1, 2): startuje Disk 1, ostatni k vymene
+     vyber_strany.zip (ZIP): Hra (Side A).atr[A boot sada1 92176 B], Hra (Side B).atr[A data sada1 92176 B] -> SPUSTI Hra (Side A).atr
+OK     Side A / Side B: startuje strana A
+     vyber_xex_readme.zip (ZIP): hra.xex[X 268 B] -> SPUSTI hra.xex | preskoceno: navod.txt, obrazek.png
+OK     XEX + navod.txt + obrazek.png: spusti XEX, text a obrazek preskoci
+     vyber_data_a_xex.zip (ZIP): zavadec.xex[X 268 B], data.atr[A data 92176 B] -> SPUSTI zavadec.xex
+OK     datova disketa (bez bootovaciho sektoru) + XEX: spusti XEX, disketa zustane v nabidce
+     vyber_pal_ntsc.zip (ZIP): Hra (PAL).xex[X 268 B], Hra (NTSC).xex[X 268 B] -> SPUSTI Hra (PAL).xex
+OK     PAL a NTSC verze: startuje PAL
+     vyber_vnoreny.zip (ZIP): vnitrni.zip/hra.xex[X 268 B] -> SPUSTI vnitrni.zip/hra.xex | preskoceno: info.txt
+OK     ZIP v ZIPu: hra se najde uvnitr
+     vyber_vnoreny_rar.zip (ZIP): hra.rar/hra.atr[A boot 92176 B] -> SPUSTI hra.rar/hra.atr
+OK     RAR v ZIPu: disketa se najde uvnitr
+     vyber_xfd.zip (ZIP): hra.xfd[A boot 92176 B] -> SPUSTI hra.xfd
+OK     XFD (disketa bez hlavicky): doplni se hlavicka ATR (720 sektoru = $1680 odstavcu)
+     vyber_macosx.zip (ZIP): hra.atr[A boot 92176 B] -> SPUSTI hra.atr
+OK     __MACOSX/._hra.atr a ._hra.atr (smeti z Macu) se ignoruji
+     vyber_jen_readme.zip (ZIP): NIC: v archivu neni hra pro Atari (ATR, XEX, CAR) | preskoceno: readme.txt, obal.jpg
+OK     v archivu jen readme a obrazek: "v archivu neni hra pro Atari"
+     vyber_cartridge.zip (ZIP): hra.car[C 8208 B] -> SPUSTI hra.car | preskoceno: hra.txt
+OK     cartridge CAR v ZIPu
+     vyber_dve_hry.zip (ZIP): Jetboy.atr[A boot 133136 B], Boulder.atr[A boot 92176 B] -> SPUSTI Jetboy.atr
+OK     dve ruzne hry (Boulder / Jetboy): nejsou sada, startuje vetsi, druha je v nabidce
+     vyber_slozky.zip (ZIP): hra.atr[A boot 92176 B] -> SPUSTI hra.atr
+OK     hra ve slozkach Hry/Atari/ (slozky se preskoci)
+     vyber_velky.zip (ZIP): hra.xex[X 268 B] -> SPUSTI hra.xex | preskoceno: obrovsky.bin
+OK     soubor nad 16 MB se ani nerozbali (preskocen), hra ano
+     vyber_neznamy.zip (ZIP): hra.xex[X 268 B] -> SPUSTI hra.xex | preskoceno: hra.bin
+OK     neznamy obsah (hra.bin) se preskoci - rozhoduje obsah, ne pripona
+     vyber_jmena.zip (ZIP): Hra – Řež.xex[X 268 B], tab novy radek.xex[X 268 B] -> SPUSTI Hra – Řež.xex
+OK     jmena: UTF-8 zustane, TAB / konec radku -> mezera (seznam pro Javu se nerozbije)
+     zip_heslo.zip (ZIP): NIC: tajna.atr: soubor je zaheslovany | preskoceno: tajna.atr: soubor je zaheslovany
+OK     jen zaheslovana hra: chyba "zaheslovany" (appka: ARCHIV MA HESLO)
+     zip_heslo_a_hra.zip (ZIP): volna.xex[X 268 B] -> SPUSTI volna.xex | preskoceno: tajna.atr: soubor je zaheslovany
+OK     zaheslovany soubor + volna hra: spusti volnou
+     zip_poskozeny_crc.zip (ZIP): hra2.xex[X 268 B] -> SPUSTI hra2.xex | preskoceno: hra.xex: kontrolni soucet (CRC) nesedi - archiv je poskozeny
+OK     poskozeny soubor (CRC) + dobry: spusti dobry
+     rar5.rar (RAR5): NIC: RAR5 (novy format WinRAR) zatim neumim - zabal hru jako ZIP nebo RAR4
+OK     RAR5: chyba pro hlasku "RAR5 ZATIM NEUMIM"
+     sbirka.zip (ZIP): 200 her pro Atari, preskoceno 60 (posledni: hra259.xex (limit))
+OK     sbirka 260 her v jednom ZIPu: do pameti jen 200 (pojistka), zbytek preskocen s poznamkou (limit)
+
+C) ODOLNOST: poskozene archivy nesmi appku shodit ani zaseknout
+     2250 poskozenych / nahodnych archivu za 298 ms (nejdelsi 2.0 ms): otevreno 220, z toho s hrou 220
+     hranice.zip: xex6.xex[X], tri.xfd[A], sektor.atr[A] | preskoceno 5
+OK     hranicni soubory: ATR bez celeho sektoru, XEX < 6 B, CAR bez hlavicky, prazdny -> preskocit; ATR s 1 sektorem, XEX 6 B, XFD 3 sektory -> ano
+OK     zadny pad ani zaseknuti (prekladem s -fsanitize=address,undefined i bez chyb pameti - JAK_SPUSTIT.txt)
+
+D) SKUTECNE SOUBORY (volitelne, v repozitari nejsou)
+     PoP_ATR_20211206_final.rar (RAR): PoP_DD_20211206_final.atr[A boot 183952 B], PoP_SDA_20211206_final.atr[A boot sada2 92176 B], PoP_SDB_20211206_final.atr[A boot sada2 92176 B] -> SPUSTI PoP_DD_20211206_final.atr | preskoceno: readme.txt
+     rozbaleno a vybrano za 6.0 ms
+OK     Prince of Persia PoP_ATR_20211206_final.rar: startuje DD (183952 B), SDA + SDB k vymene
+     PoP_SD_20211024_final.rar (RAR): PoP_SDA_20211024_final.atr[A boot sada1 92176 B], PoP_SDB_20211024_final.atr[A boot sada1 92176 B] -> SPUSTI PoP_SDA_20211024_final.atr | preskoceno: readme.txt
+     rozbaleno a vybrano za 3.0 ms
+OK     Prince of Persia PoP_SD_20211024_final.rar: startuje SDA, SDB pripravena k vymene (ATR / DISK)
+     acid800-0.1.zip (ZIP): acid800.atr[A boot 27664 B] -> SPUSTI acid800.atr | preskoceno: README.html
+     rozbaleno a vybrano za 0.3 ms
+OK     Acid800 acid800-0.1.zip: spusti acid800.atr, README.html preskoci
+
+E) CIZI TESTOVACI ARCHIVY (volitelne: libarchive, rarfile - jen lokalne)
+     test_read_format_rar.rar                                   3/3 OK
+     test_read_format_rar5_arm.rar                              neotevreno: RAR5 (novy format WinRAR) zatim neumim - zabal hru jako ZIP nebo RAR4
+     test_read_format_rar5_bad_window_sz_in_mltarc_file.rar     neotevreno: RAR5 (novy format WinRAR) zatim neumim - zabal hru jako ZIP nebo RAR4
+     test_read_format_rar5_blake2.rar                           neotevreno: RAR5 (novy format WinRAR) zatim neumim - zabal hru jako ZIP nebo RAR4
+     test_read_format_rar5_block_size_is_too_small.rar          neotevreno: RAR5 (novy format WinRAR) zatim neumim - zabal hru jako ZIP nebo RAR4
+     test_read_format_rar5_compressed.rar                       neotevreno: RAR5 (novy format WinRAR) zatim neumim - zabal hru jako ZIP nebo RAR4
+     test_read_format_rar5_decode_number_out_of_bounds_read.rar neotevreno: RAR5 (novy format WinRAR) zatim neumim - zabal hru jako ZIP nebo RAR4
+     test_read_format_rar5_different_window_size.rar            neotevreno: RAR5 (novy format WinRAR) zatim neumim - zabal hru jako ZIP nebo RAR4
+     test_read_format_rar5_distance_overflow.rar                neotevreno: RAR5 (novy format WinRAR) zatim neumim - zabal hru jako ZIP nebo RAR4
+     test_read_format_rar5_extra_field_version.rar              neotevreno: RAR5 (novy format WinRAR) zatim neumim - zabal hru jako ZIP nebo RAR4
+     test_read_format_rar5_fileattr.rar                         neotevreno: RAR5 (novy format WinRAR) zatim neumim - zabal hru jako ZIP nebo RAR4
+     test_read_format_rar5_hardlink.rar                         neotevreno: RAR5 (novy format WinRAR) zatim neumim - zabal hru jako ZIP nebo RAR4
+     test_read_format_rar5_leftshift1.rar                       neotevreno: RAR5 (novy format WinRAR) zatim neumim - zabal hru jako ZIP nebo RAR4
+     test_read_format_rar5_leftshift2.rar                       neotevreno: RAR5 (novy format WinRAR) zatim neumim - zabal hru jako ZIP nebo RAR4
+     test_read_format_rar5_multiarchive.part01.rar              neotevreno: RAR5 (novy format WinRAR) zatim neumim - zabal hru jako ZIP nebo RAR4
+     test_read_format_rar5_multiple_files.rar                   neotevreno: RAR5 (novy format WinRAR) zatim neumim - zabal hru jako ZIP nebo RAR4
+     test_read_format_rar5_multiple_files_solid.rar             neotevreno: RAR5 (novy format WinRAR) zatim neumim - zabal hru jako ZIP nebo RAR4
+     test_read_format_rar5_nonempty_dir_stream.rar              neotevreno: RAR5 (novy format WinRAR) zatim neumim - zabal hru jako ZIP nebo RAR4
+     test_read_format_rar5_owner.rar                            neotevreno: RAR5 (novy format WinRAR) zatim neumim - zabal hru jako ZIP nebo RAR4
+     test_read_format_rar5_readtables_overflow.rar              neotevreno: RAR5 (novy format WinRAR) zatim neumim - zabal hru jako ZIP nebo RAR4
+     test_read_format_rar5_solid.rar                            neotevreno: RAR5 (novy format WinRAR) zatim neumim - zabal hru jako ZIP nebo RAR4
+     test_read_format_rar5_stored.rar                           neotevreno: RAR5 (novy format WinRAR) zatim neumim - zabal hru jako ZIP nebo RAR4
+     test_read_format_rar5_symlink.rar                          neotevreno: RAR5 (novy format WinRAR) zatim neumim - zabal hru jako ZIP nebo RAR4
+     test_read_format_rar5_truncated_huff.rar                   neotevreno: RAR5 (novy format WinRAR) zatim neumim - zabal hru jako ZIP nebo RAR4
+     test_read_format_rar5_win32.rar                            neotevreno: RAR5 (novy format WinRAR) zatim neumim - zabal hru jako ZIP nebo RAR4
+     test_read_format_rar5_window_buf_and_size_desync.rar       neotevreno: RAR5 (novy format WinRAR) zatim neumim - zabal hru jako ZIP nebo RAR4
+     test_read_format_rar_binary_data.rar                       2/2 OK
+     test_read_format_rar_compress_best.rar                     1/4 OK (rar: blok PPMd (komprese textu) zatim neumim - zabal hru jako ZIP)
+     test_read_format_rar_compress_normal.rar                   4/4 OK
+     test_read_format_rar_encryption_data.rar                   0/2 OK (soubor je zaheslovany)
+     test_read_format_rar_encryption_header.rar                 neotevreno: RAR: zaheslovany archiv (i seznam souboru)
+     test_read_format_rar_encryption_partially.rar              1/2 OK (soubor je zaheslovany)
+     test_read_format_rar_filter.rar                            1/1 OK
+     test_read_format_rar_invalid1.rar                          neotevreno: RAR: archiv je zkraceny (test)
+     test_read_format_rar_multi_lzss_blocks.rar                 1/1 OK
+     test_read_format_rar_multivolume.part0001.rar              neotevreno: RAR na vice dilu (part1, part2 ...) zatim neumim
+     test_read_format_rar_noeof.rar                             1/1 OK
+     test_read_format_rar_ppmd_lzss_conversion.rar              0/1 OK (soubor je moc velky)
+     test_read_format_rar_ppmd_use_after_free.rar               neotevreno: RAR: archiv je zkraceny (??BBBB/unset?gid?d???)
+     test_read_format_rar_ppmd_use_after_free2.rar              neotevreno: RAR: archiv je zkraceny (??BBBB/un&&&&gid?d???)
+     test_read_format_rar_subblock.rar                          1/1 OK
+     test_read_format_rar_symlink_huge.rar                      neotevreno: RAR: archiv je zkraceny (x)
+     test_read_format_rar_unicode.rar                           4/4 OK
+     test_read_format_rar_windows.rar                           3/3 OK
+     rar15-comment.rar                                          1/2 OK (RAR: stary format komprese (verze 15) zatim neumim)
+     rar202-comment-nopsw.rar                                   2/2 OK
+     rar3-comment-plain.rar                                     2/2 OK
+     rar3-old.rar                                               neotevreno: RAR na vice dilu (part1, part2 ...) zatim neumim
+     rar3-solid.rar                                             2/2 OK
+     rar3-subdirs.rar                                           4/4 OK
+     rar3-vols.part1.rar                                        neotevreno: RAR na vice dilu (part1, part2 ...) zatim neumim
+     rar5-solid-qo.rar                                          neotevreno: RAR5 (novy format WinRAR) zatim neumim - zabal hru jako ZIP nebo RAR4
+     rar5-solid.rar                                             neotevreno: RAR5 (novy format WinRAR) zatim neumim - zabal hru jako ZIP nebo RAR4
+     seektest.rar                                               2/2 OK
+     unicode.rar                                                0/2 OK (rar: blok PPMd (komprese textu) zatim neumim - zabal hru jako ZIP)
+     celkem 55 archivu: 14 cele v poradku, 41 znamych "neumim" (RAR5, PPMd, heslo, vice dilu, RAR 1.5, poskozene), 0 jinych
+OK     skutecne RAR 2.9: pevny (rar3-solid), filtr E8 (bsdcat.exe), 20 MB vic bloku, 1 MB nahodnych dat - CRC sedi; zbytek jen zname "neumim"
+
+VYSLEDEK: 42 kontrol, 0 chyb

@@ -1,0 +1,28 @@
+bsdtar 3.7.2 - libarchive 3.7.2 zlib/1.3 liblzma/5.4.5 bz2lib/1.0.8 liblz4/1.9.4 libzstd/1.5.5 
+rar_kody.rar                  1 shodne s puvodnimi daty, 0 jinak
+rar_nizke_po_tabulce.rar      0 shodne s puvodnimi daty, 1 jinak (nizke.bin)  | bsdtar: nizke.bin: File CRC error: Invalid or incomplete multibyte or wide character
+rar_pevny.rar                 1 shodne s puvodnimi daty, 3 jinak (pevny2.bin pevny3_prazdny.bin pevny4.bin)  | bsdtar: bsdtar: RAR solid archive support unavailable.
+rar_ulozeny.rar               2 shodne s puvodnimi daty, 0 jinak
+vyber_pop.rar                 4 shodne s puvodnimi daty, 0 jinak
+vyber_sd_pevny.rar            1 shodne s puvodnimi daty, 2 jinak (PoP_SDA_final.atr readme.txt)  | bsdtar: bsdtar: RAR solid archive support unavailable.
+vyber_cartridge.zip           2 shodne s puvodnimi daty, 0 jinak
+vyber_data_a_xex.zip          2 shodne s puvodnimi daty, 0 jinak
+vyber_disky.zip               3 shodne s puvodnimi daty, 0 jinak
+vyber_dve_hry.zip             2 shodne s puvodnimi daty, 0 jinak
+vyber_jen_readme.zip          2 shodne s puvodnimi daty, 0 jinak
+vyber_macosx.zip              3 shodne s puvodnimi daty, 0 jinak
+vyber_neznamy.zip             2 shodne s puvodnimi daty, 0 jinak
+vyber_pal_ntsc.zip            2 shodne s puvodnimi daty, 0 jinak
+vyber_slozky.zip              1 shodne s puvodnimi daty, 0 jinak
+vyber_strany.zip              2 shodne s puvodnimi daty, 0 jinak
+vyber_velky.zip               2 shodne s puvodnimi daty, 0 jinak
+vyber_vnitrni.zip             1 shodne s puvodnimi daty, 0 jinak
+vyber_vnoreny.zip             2 shodne s puvodnimi daty, 0 jinak
+vyber_vnoreny_rar.zip         1 shodne s puvodnimi daty, 0 jinak
+vyber_xex_readme.zip          3 shodne s puvodnimi daty, 0 jinak
+vyber_xfd.zip                 1 shodne s puvodnimi daty, 0 jinak
+zip64.zip                     2 shodne s puvodnimi daty, 0 jinak
+zip_deflate.zip               8 shodne s puvodnimi daty, 0 jinak
+zip_heslo_a_hra.zip           1 shodne s puvodnimi daty, 0 jinak  | bsdtar: tajna.atr: Incorrect passphrase: Unknown error -1
+zip_poskozeny_crc.zip         1 shodne s puvodnimi daty, 1 jinak (hra.xex)  | bsdtar: hra.xex: ZIP bad CRC: 0x1ca09ef0 should be 0x5c0a0ead: Unknown error -1
+zip_ulozeny.zip               3 shodne s puvodnimi daty, 0 jinak

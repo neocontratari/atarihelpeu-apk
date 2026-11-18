@@ -7964,11 +7964,6 @@ public class MainActivity extends Activity {
         String name;
     }
 
-    private static class AtariExtract {
-        byte[] data;
-        String name;
-    }
-
     private boolean isAtariHelpUrl(String url) {
         if (url == null) return false;
         String u = url.trim().toLowerCase(Locale.US);
@@ -9715,8 +9710,10 @@ public class MainActivity extends Activity {
 
     private void atariCppDiskMenu() {
         final String d1 = NativeAtariCoreBridge.devCtlSafe("d1");
+        final java.util.List<String[]> arch = atariCppArchivSeznam();   // B349: posledni ZIP / RAR
         if (d1 == null || d1.isEmpty()) {
-            atariCppVyberAtr(false);
+            if (!arch.isEmpty()) atariCppArchivMenu(false, arch);
+            else atariCppVyberAtr(false);
             return;
         }
         final String[] polozky = {
@@ -9730,9 +9727,72 @@ public class MainActivity extends Activity {
                     if (w == 0) {
                         NativeAtariCoreBridge.devCtlSafe("disk_eject");
                         appendNativeLog("B298 DISKETA_MENU vysunout " + d1);
+                    } else if (atariCppMaVArchivu(arch, w == 1)) {
+                        atariCppArchivMenu(w == 1, arch);       // B349: diskety z archivu (+ jiny soubor)
                     } else {
                         atariCppVyberAtr(w == 1);
                     }
+                })
+                .setNegativeButton(tx("ZRUŠIT", "CANCEL"), null)
+                .show();
+    }
+
+    // B349: soubory posledniho archivu ZIP / RAR (C++: index, druh A/X/C, sada, aktualni 1/0, jmeno)
+    private java.util.List<String[]> atariCppArchivSeznam() {
+        final java.util.List<String[]> v = new java.util.ArrayList<>();
+        final String s = NativeAtariCoreBridge.devCtlSafe("archiv_seznam");
+        if (s == null || s.isEmpty()) return v;
+        for (String r : s.split("\n")) {
+            final String[] c = r.split("\t", 5);
+            if (c.length == 5) v.add(c);
+        }
+        return v;
+    }
+
+    // B349: je v archivu neco jineho, nez co uz bezi? (u vymeny: jina disketa, nez je v D1:)
+    private boolean atariCppMaVArchivu(java.util.List<String[]> arch, boolean vymena) {
+        final String d1 = vymena ? NativeAtariCoreBridge.devCtlSafe("d1") : null;
+        for (String[] c : arch) {
+            if (vymena ? ("A".equals(c[1]) && !c[4].equals(d1)) : !"1".equals(c[3])) return true;
+        }
+        return false;
+    }
+
+    /** B349: nabidka z posledniho archivu - diskety k vymene bez restartu (vymena), nebo vse,
+     *  co jde spustit (boot); posledni polozka = jiny soubor z telefonu. */
+    private void atariCppArchivMenu(final boolean vymena, final java.util.List<String[]> arch) {
+        final java.util.List<String[]> nabidka = new java.util.ArrayList<>();
+        for (String[] c : arch) if (!vymena || "A".equals(c[1])) nabidka.add(c);
+        final String d1 = vymena ? NativeAtariCoreBridge.devCtlSafe("d1") : null;
+        final String[] polozky = new String[nabidka.size() + 1];
+        for (int i = 0; i < nabidka.size(); i++) {
+            final String[] c = nabidka.get(i);
+            final String druh = "A".equals(c[1]) ? tx("disketa", "disk") : "X".equals(c[1]) ? "XEX" : "cartridge";
+            final boolean ted = vymena ? c[4].equals(d1) : "1".equals(c[3]);
+            polozky[i] = (ted ? "▶ " : "") + c[4] + "  (" + druh + (ted ? (vymena ? tx(" – teď v mechanice", " – in the drive now")
+                    : tx(" – naposledy spuštěná", " – started last")) : "") + ")";
+        }
+        polozky[nabidka.size()] = tx("JINÝ SOUBOR Z TELEFONU…", "ANOTHER FILE FROM THE PHONE…");
+        final String archiv = NativeAtariCoreBridge.devCtlSafe("archiv");
+        new android.app.AlertDialog.Builder(this)
+                .setTitle((vymena ? tx("VYMĚNIT DISKETU BEZ RESTARTU", "SWAP THE DISK WITHOUT RESTART")
+                        : tx("SPUSTIT Z ARCHIVU", "START FROM THE ARCHIVE")) + " – " + archiv)
+                .setItems(polozky, (dlg, w) -> {
+                    if (w >= nabidka.size()) {
+                        appendNativeLog("B349 ARCHIV_MENU jiny soubor z telefonu (" + (vymena ? "vymena" : "boot") + ")");
+                        atariCppVyberAtr(vymena);
+                        return;
+                    }
+                    final int idx;
+                    try { idx = Integer.parseInt(nabidka.get(w)[0]); } catch (NumberFormatException e) { return; }
+                    final byte[] d = NativeAtariCoreBridge.devArchivSouborSafe(idx);
+                    final String jm = NativeAtariCoreBridge.devCtlSafe("archiv_vybrany");
+                    if (d == null || d.length == 0) {
+                        appendNativeLog("B349 ARCHIV_MENU soubor " + idx + " neni k dispozici");
+                        return;
+                    }
+                    atariCppAtrVymena = false;
+                    atariCppSpustProgram(d, jm, vymena ? "ARCHIV_VYMENA" : "ARCHIV");
                 })
                 .setNegativeButton(tx("ZRUŠIT", "CANCEL"), null)
                 .show();
@@ -9743,14 +9803,14 @@ public class MainActivity extends Activity {
         Intent i = new Intent(Intent.ACTION_GET_CONTENT);
         i.addCategory(Intent.CATEGORY_OPENABLE);
         i.setType("*/*");
-        startActivityForResult(Intent.createChooser(i, tx("XEX / CAR / ZIP pro Atari 130XE (C++)", "XEX / CAR / ZIP for the Atari 130XE (C++)")), PICK_ATARI_CPP_XEX);
+        startActivityForResult(Intent.createChooser(i, tx("XEX / CAR / ATR / ZIP / RAR pro Atari 130XE (C++)", "XEX / CAR / ATR / ZIP / RAR for the Atari 130XE (C++)")), PICK_ATARI_CPP_XEX);
     }
 
     // B316: cartridge ve slotu (XEX/MOBIL) - vysunout, nebo vybrat jiny soubor
     private void atariCppCartMenu(final String cart) {
         final String[] polozky = {
                 tx("VYSUNOUT CARTRIDGE - Atari se zapne znovu s BASICem", "REMOVE THE CARTRIDGE - the Atari restarts with BASIC"),
-                tx("VYBRAT JINÝ SOUBOR (XEX / CAR / ATR / ZIP)", "CHOOSE ANOTHER FILE (XEX / CAR / ATR / ZIP)")
+                tx("VYBRAT JINÝ SOUBOR (XEX / CAR / ATR / ZIP / RAR)", "CHOOSE ANOTHER FILE (XEX / CAR / ATR / ZIP / RAR)")
         };
         new android.app.AlertDialog.Builder(this)
                 .setTitle("CARTRIDGE: " + cart)
@@ -9773,19 +9833,49 @@ public class MainActivity extends Activity {
         i.addCategory(Intent.CATEGORY_OPENABLE);
         i.setType("*/*");
         startActivityForResult(Intent.createChooser(i, vymena ? tx("Vyměnit disketu v D1: (ATR, bez restartu)", "Swap the disk in D1: (ATR, no restart)")
-                : tx("ATR disketa (nebo ZIP) pro Atari 130XE (C++)", "ATR disk (or ZIP) for the Atari 130XE (C++)")), PICK_ATARI_CPP_XEX);
+                : tx("ATR disketa (i v ZIP / RAR) pro Atari 130XE (C++)", "ATR disk (also in ZIP / RAR) for the Atari 130XE (C++)")), PICK_ATARI_CPP_XEX);
     }
 
-    /** XEX (i uvnitr ZIP) -> C++ zavadec. ATR zatim neumime - poctive to rekne. */
+    /** XEX / ATR / CAR (i v archivu ZIP / RAR) -> C++ (zavadec XEX, mechanika D1:, slot cartridge). */
     private void atariCppSpustProgram(byte[] data, String name, String odkud) {
         if (data == null || data.length == 0) {
             NativeAtariCoreBridge.devStatusSafe(tx("SOUBOR JE PRAZDNY", "THE FILE IS EMPTY"), 5000);
             appendNativeLog("B291 " + odkud + " prazdna data");
             return;
         }
-        AtariExtract ex = extractAtariPayloadFromMaybeZip(name, data);
-        byte[] d = (ex != null && ex.data != null && ex.data.length > 0) ? ex.data : data;
-        String n = (ex != null && ex.name != null && ex.name.length() > 0) ? ex.name : name;
+        byte[] d = data;
+        String n = name;
+        // B349: archiv ZIP / RAR rozbali a vybere C++ (nap_atari_archiv.h): samostatna disketa >
+        // sada disket (A / B) > XEX > CAR; dalsi diskety z archivu nabidne ATR / DISK k vymene.
+        // Rene: "pokud to bude zabalene v rar v zipu tak at si s tim atari poradi".
+        final boolean zArchivu = "ARCHIV".equals(odkud) || "ARCHIV_VYMENA".equals(odkud);
+        if (!zArchivu) {
+            final boolean vymenaZMenu = atariCppAtrVymena && "XEX_MOBIL".equals(odkud);
+            final byte[] z = NativeAtariCoreBridge.devArchivSafe(data, name, vymenaZMenu);
+            if (z != null) {
+                if (z.length == 0) {
+                    atariCppAtrVymena = false;
+                    appendNativeLog("B349 " + odkud + " " + name + " je archiv, ale neni v nem co spustit: " + NativeAtariCoreBridge.devCtlSafe("archiv_chyba"));
+                    return;
+                }
+                if (vymenaZMenu) {
+                    // B349: vymena diskety a v archivu je vic disket -> at si hrac vybere, kterou vlozit
+                    final java.util.List<String[]> arch = atariCppArchivSeznam();
+                    int disket = 0;
+                    for (String[] c : arch) if ("A".equals(c[1])) disket++;
+                    if (disket > 1) {
+                        atariCppAtrVymena = false;
+                        appendNativeLog("B349 " + odkud + " archiv " + name + " pri vymene diskety: " + disket + " disket -> nabidka");
+                        atariCppArchivMenu(true, arch);
+                        return;
+                    }
+                }
+                d = z;
+                final String v = NativeAtariCoreBridge.devCtlSafe("archiv_vybrany");
+                n = (v == null || v.isEmpty()) ? name : v;
+                appendNativeLog("B349 " + odkud + " archiv " + name + " -> " + n + " (" + z.length + " B)");
+            }
+        }
         final boolean hlavickaCart = d.length >= 4 && d[0] == 'C' && d[1] == 'A' && d[2] == 'R' && d[3] == 'T';
         final boolean priponaCar = n != null && n.toLowerCase(Locale.US).endsWith(".car")
                 && !(d.length >= 2 && (((d[0] & 0xFF) == 0xFF && (d[1] & 0xFF) == 0xFF) || ((d[0] & 0xFF) == 0x96 && (d[1] & 0xFF) == 0x02)));
@@ -9801,7 +9891,8 @@ public class MainActivity extends Activity {
         if (d.length >= 2 && (d[0] & 0xFF) == 0x96 && (d[1] & 0xFF) == 0x02) {
             // B295: ATR = disketa -> mechanika D1: v C++ a studeny start (boot z diskety)
             // B298: z menu ATR/DISK "VYMENIT BEZ RESTARTU" -> jen vymena v D1:
-            final boolean vymena = atariCppAtrVymena && "XEX_MOBIL".equals(odkud);
+            // B349: i disketa z archivu (nabidka ATR / DISK -> VYMENIT DISKETU BEZ RESTARTU)
+            final boolean vymena = (atariCppAtrVymena && "XEX_MOBIL".equals(odkud)) || "ARCHIV_VYMENA".equals(odkud);
             atariCppAtrVymena = false;
             if (vymena) NativeAtariCoreBridge.devCtlSafe("atr_vymena");
             String r = NativeAtariCoreBridge.devLoadAtrSafe(d, n);
@@ -12326,7 +12417,8 @@ public class MainActivity extends Activity {
         int h = v.indexOf('#'); if (h >= 0) v = v.substring(0, h);
         return v.endsWith(".zip") || v.endsWith(".xex") || v.endsWith(".atr")
                 || v.endsWith(".com") || v.endsWith(".exe")
-                || v.endsWith(".car");   // B316: cartridge Atari
+                || v.endsWith(".car")    // B316: cartridge Atari
+                || v.endsWith(".rar");   // B349: hra v RAR (rozbali C++ - nap_atari_archiv.h)
     }
 
 
@@ -13683,6 +13775,7 @@ public class MainActivity extends Activity {
         // MIME bereme jen jako slabou pomucku pro ZIP/octet, ne pro .com domenu.
         String mt = mimetype == null ? "" : mimetype.toLowerCase();
         if (mt.contains("application/zip")) return true;
+        if (mt.contains("application/x-rar") || mt.contains("application/vnd.rar")) return true;   // B349
 
         return false;
     }
@@ -13800,15 +13893,6 @@ public class MainActivity extends Activity {
         return isGoogleDriveUrl(url) || hasPs1RemoteExtension(url) || hasZipExtension(url);
     }
 
-    private boolean hasAtariPayloadExtension(String value) {
-        if (value == null) return false;
-        String v = value.toLowerCase();
-        int q = v.indexOf('?'); if (q >= 0) v = v.substring(0, q);
-        int h = v.indexOf('#'); if (h >= 0) v = v.substring(0, h);
-        return v.endsWith(".xex") || v.endsWith(".atr") || v.endsWith(".com") || v.endsWith(".exe")
-                || v.endsWith(".car");   // B316: cartridge Atari (i uvnitr ZIP)
-    }
-
     private boolean isSegaCollectionContext() {
         try {
             String cur = web == null ? null : web.getUrl();
@@ -13860,45 +13944,8 @@ public class MainActivity extends Activity {
         return null;
     }
 
-    private AtariExtract extractAtariPayloadFromMaybeZip(String name, byte[] data) {
-        if (data == null || data.length == 0) return null;
-        if (hasAtariPayloadExtension(name)) {
-            AtariExtract out = new AtariExtract();
-            out.data = data;
-            out.name = (name == null || name.length() == 0) ? "atari_game.xex" : name;
-            return out;
-        }
-        try {
-            java.util.zip.ZipInputStream zi = new java.util.zip.ZipInputStream(new java.io.ByteArrayInputStream(data));
-            java.util.zip.ZipEntry ze;
-            AtariExtract atrFallback = null;
-            while ((ze = zi.getNextEntry()) != null) {
-                String en = ze.getName() == null ? "" : ze.getName();
-                if (hasAtariPayloadExtension(en)) {
-                    ByteArrayOutputStream ro = new ByteArrayOutputStream();
-                    byte[] rb = new byte[16384];
-                    int rn;
-                    while ((rn = zi.read(rb)) > 0 && ro.size() < 16 * 1024 * 1024) {
-                        ro.write(rb, 0, rn);
-                    }
-                    AtariExtract out = new AtariExtract();
-                    out.data = ro.toByteArray();
-                    int sl = en.lastIndexOf('/');
-                    out.name = sl >= 0 ? en.substring(sl + 1) : en;
-                    if (en.toLowerCase(Locale.US).endsWith(".atr")) {
-                        atrFallback = out;
-                    } else {
-                        zi.close();
-                        return out;
-                    }
-                }
-                zi.closeEntry();
-            }
-            zi.close();
-            if (atrFallback != null) return atrFallback;
-        } catch (Throwable ignored) {}
-        return null;
-    }
+    // B349: extractAtariPayloadFromMaybeZip (ZIP v Jave, jen prvni XEX/CAR, ATR nakonec) smazana -
+    // archivy ZIP i RAR pro Atari rozbaluje a vybira C++ (nap_atari_archiv.h, devArchivNative).
 
     private void openSegaRomBytes(byte[] data, String name, String reason) {
         if (data == null || data.length == 0 || web == null) return;
@@ -15631,14 +15678,10 @@ public class MainActivity extends Activity {
                     ui.post(() -> openSegaRomBytes(sega.data, sega.name, "genericZipInspect"));
                     return;
                 }
-                final AtariExtract atari = extractAtariPayloadFromMaybeZip(name, data);
-                final byte[] atariData = (atari != null && atari.data != null && atari.data.length > 0) ? atari.data : data;
-                final String atariName = (atari != null && atari.name != null && atari.name.length() > 0) ? atari.name : name;
-                if (atari != null && atari.data != null && atari.data.length > 0) {
-                    appendNativeLog("BUILD2SA5AF ZIP_CONTAINS_ATARI name=" + atari.name + " bytes=" + atari.data.length + " -> EMU_130XE");
-                }
+                // B349: ZIP / RAR s hrou pro Atari rozbali a vybere C++ (devArchivNative
+                // v atariCppSpustProgram) - cely archiv, aby sly vymenit i dalsi diskety z nej
                 ui.post(() -> {
-                    queueAtariGameFor130xe(atariName, atariData, "netDownload");
+                    queueAtariGameFor130xe(name, data, "netDownload");
                 });
             } catch (Exception ex) {
                 if (gen != atariNetGen.get()) {   // B298: stary pozadavek - chyba uz nikoho nezajima

@@ -54,6 +54,7 @@
 #include "nap_atari_runtime.h"
 #include "nap_atari_pc_klavesnice.h"   // B302: klavesnice pocitace (prohlizec na TV/PC) -> Atari
 #include "nap_atari_tv_proud.h"         // B303: obraz a zvuk na TV/PC primo z C++ (male zpozdeni)
+#include "nap_atari_archiv.h"            // B349: hry v ZIP / RAR (rozbaleni a vyber disket v C++)
 #include "../nap_ovladac.h"              // B320: herni ovladac (Retroid Pocket 6, gamepad)
 #include <memory>
 #include <string>
@@ -772,6 +773,11 @@ static bool g_needLayout = false, g_needGeometry = false, g_forceFull = false;
 static bool g_formatHlaseno = false;
 // vystupy pro Javu (log, hotovy WAV)
 static std::mutex g_mOut;
+// B349: posledni archiv ZIP / RAR s hrou (devArchivNative, ATR / DISK)
+static std::mutex g_mArchiv;
+static nap::AtariArchiv g_archiv;          // posledni otevreny archiv (jeho diskety a programy)
+static int g_archivAktualni = -1;          // ktery soubor archivu se naposled spustil / vlozil
+static std::string g_archivChyba;          // proc z posledniho archivu nic nebylo
 static std::vector<std::string> g_logOut;
 static std::vector<int16_t> g_wavOut;
 static bool g_wavReady = false;
@@ -1469,6 +1475,9 @@ Java_eu_atarihelp_emu10_NativeAtariCoreBridge_devStartNative(JNIEnv *, jclass, j
              "Persia: ramec prikazu pres POKEY a linku COMMAND, odpovedi A/C/N/E, cteni/zapis/STATUS/FORMAT, 19200 Bd); "
              "OPTION pri bootu z diskety jen 1 s; Acid800 V0.1 38/38 (LXA jako SALLY, asynchronni prijem POKEY "
              "drzi casovace 3+4, hraci ve VBLANK po hires radku, fantomove DMA hracu).");
+      devLog("B349 ARCHIVY: hra v ZIP / RAR (XEX/MOBIL, ATR/DISK, NET HRY) se rozbali v C++ (deflate, RAR 2.9 vcetne "
+             "pevneho a filtru); spusti se samostatna disketa > sada (strana A / Disk 1) > XEX > CAR, ostatni diskety "
+             "z archivu nabidne ATR/DISK (i VYMENIT BEZ RESTARTU); RAR5, PPMd, heslo a vic dilu zatim ne.");
     }
     g_strojBezi = zapnuto;
   }
@@ -1591,6 +1600,26 @@ extern "C" JNIEXPORT jstring JNICALL
 Java_eu_atarihelp_emu10_NativeAtariCoreBridge_devCtlNative(JNIEnv *env, jclass, jstring jcmd) {
   std::string cmd;
   if (jcmd) { const char *c = env->GetStringUTFChars(jcmd, nullptr); if (c) { cmd = c; env->ReleaseStringUTFChars(jcmd, c); } }
+  // B349: archiv (ZIP / RAR) s hrou - jmeno, vybrany soubor, chyba a seznam pro ATR / DISK
+  //   "archiv_seznam": radky "index<TAB>druh (A/X/C)<TAB>sada (-1 = samostatna)<TAB>aktualni (1/0)<TAB>jmeno"
+  if (cmd == "archiv" || cmd == "archiv_vybrany" || cmd == "archiv_chyba" || cmd == "archiv_seznam") {
+    std::string out;
+    {
+      std::lock_guard<std::mutex> a(g_mArchiv);
+      if (cmd == "archiv") out = g_archiv.soubory.empty() ? std::string() : g_archiv.jmeno;
+      else if (cmd == "archiv_vybrany") out = (g_archivAktualni >= 0 && g_archivAktualni < (int)g_archiv.soubory.size()) ? g_archiv.soubory[(size_t)g_archivAktualni].jmeno : std::string();
+      else if (cmd == "archiv_chyba") out = g_archivChyba;
+      else {
+        for (size_t i = 0; i < g_archiv.soubory.size(); i++) {
+          const nap::AtariSoubor &s = g_archiv.soubory[i];
+          out += std::to_string(i) + "\t" + s.druh + "\t" + std::to_string(s.sada) + "\t" + ((int)i == g_archivAktualni ? "1" : "0") + "\t" + s.jmeno + "\n";
+        }
+      }
+    }
+    // jen ASCII (JNI chce platne UTF-8); tabulatory a konce radku zustanou
+    for (char &c : out) { const unsigned char u = (unsigned char)c; if (!(u == '\t' || u == '\n' || (u >= 0x20 && u <= 0x7E))) c = '?'; }
+    return env->NewStringUTF(out.c_str());
+  }
   // B314: "jazyk:en" / "jazyk:cs" - hlasky a napisy appky na pristroji (OPTIONS -> JAZYK)
   if (cmd == "jazyk:en" || cmd == "jazyk:cs") {
     const bool en = cmd == "jazyk:en";
@@ -2290,6 +2319,119 @@ Java_eu_atarihelp_emu10_NativeAtariCoreBridge_devLoadTapeNative(JNIEnv *env, jcl
   }
   pokeRender();
   return env->NewStringUTF(b);
+}
+
+// ---------------------------------------------------------------------
+//  B349: hra zabalena v ZIP / RAR (Rene: "pokud to bude zabalene v rar v zipu
+//  tak at si s tim atari poradi"). Rozbaleni i vyber v C++ (nap_archiv.h,
+//  nap_atari_archiv.h): co spustit (samostatna disketa > sada disket A/B >
+//  XEX > CAR) a ktere diskety z archivu nabidnout v ATR / DISK k vymene.
+// ---------------------------------------------------------------------
+// (stav archivu: g_mArchiv, g_archiv, g_archivAktualni, g_archivChyba - nahore u g_mOut)
+
+// kratka hlaska pro pristroj podle chyby archivu
+static std::string hlaskaArchivu(const std::string &ch) {
+  if (ch.find("RAR5") != std::string::npos) return nap::tx(u8"RAR5 ZATÍM NEUMÍM - ZABAL JAKO ZIP", "RAR5 NOT SUPPORTED YET - USE ZIP");
+  if (ch.find("PPMd") != std::string::npos) return nap::tx(u8"TENHLE RAR (PPMD) NEUMÍM - ZABAL JAKO ZIP", "THIS RAR (PPMD) IS NOT SUPPORTED - USE ZIP");
+  if (ch.find("heslo") != std::string::npos || ch.find("zaheslovan") != std::string::npos) return nap::tx(u8"ARCHIV MÁ HESLO", "THE ARCHIVE HAS A PASSWORD");
+  if (ch.find("vice dilu") != std::string::npos || ch.find("dalsim dilu") != std::string::npos) return nap::tx(u8"ARCHIV NA VÍCE DÍLŮ NEUMÍM", "MULTI-PART ARCHIVES NOT SUPPORTED");
+  if (ch.find("neni hra pro Atari") != std::string::npos) return nap::tx(u8"V ARCHIVU NENÍ HRA PRO ATARI", "NO ATARI GAME IN THE ARCHIVE");
+  return nap::tx(u8"ARCHIV JE POŠKOZENÝ NEBO NEZNÁMÝ", "THE ARCHIVE IS DAMAGED OR UNKNOWN");
+}
+
+static jbyteArray archivPole(JNIEnv *env, const std::vector<uint8_t> &d) {
+  jbyteArray a = env->NewByteArray((jsize)d.size());
+  if (a && !d.empty()) env->SetByteArrayRegion(a, 0, (jsize)d.size(), (const jbyte *)d.data());
+  return a;
+}
+
+/** B349: data z XEX/MOBIL, ATR/DISK nebo NET HRY. Neni to archiv -> null (Java pokracuje s daty,
+ *  jak jsou; mimo vymenu diskety se zapomene predchozi archiv). Archiv -> obsah souboru, ktery
+ *  se ma spustit (jmeno: devCtl "archiv_vybrany"); archiv bez hry -> prazdne pole (duvod:
+ *  devCtl "archiv_chyba", hlaska je uz na pristroji). */
+extern "C" JNIEXPORT jbyteArray JNICALL
+Java_eu_atarihelp_emu10_NativeAtariCoreBridge_devArchivNative(JNIEnv *env, jclass, jbyteArray data, jstring jmeno, jboolean vymena) {
+  if (!data) return nullptr;
+  std::string nm = "archiv";
+  if (jmeno) { const char *c = env->GetStringUTFChars(jmeno, nullptr); if (c) { nm = c; env->ReleaseStringUTFChars(jmeno, c); } }
+  for (auto &ch : nm) if ((unsigned char)ch >= 0x80) ch = '?';
+  jsize n = env->GetArrayLength(data);
+  std::vector<uint8_t> buf((size_t)n);
+  if (n > 0) env->GetByteArrayRegion(data, 0, n, (jbyte *)buf.data());
+  if (!nap::AtariArchiv::jeArchiv(buf.data(), buf.size())) {
+    if (!vymena) {
+      std::lock_guard<std::mutex> a(g_mArchiv);
+      if (!g_archiv.soubory.empty()) devLog("B349 ARCHIV " + g_archiv.jmeno + " zapomenut (spousti se jiny soubor: " + nm + ")");
+      g_archiv = nap::AtariArchiv(); g_archivAktualni = -1;
+    }
+    return nullptr;
+  }
+  const long long t0 = nap_ted_ms();
+  nap::AtariArchiv ar;
+  const bool ok = ar.otevri(buf.data(), buf.size(), nm);
+  const long long ms = nap_ted_ms() - t0;
+  if (!ok) {
+    {
+      std::lock_guard<std::mutex> a(g_mArchiv);
+      g_archivChyba = ar.chyba;
+    }
+    std::string zbytek;
+    for (auto &c : ar.chybyRozbaleni) zbytek += " | " + c;
+    devLog("B349 ARCHIV " + nm + " (" + (ar.typ.empty() ? std::string("?") : ar.typ) + "): NIC KE SPUSTENI - " + ar.chyba + zbytek
+           + (ar.preskoceno.empty() ? std::string() : " | preskoceno: " + std::to_string(ar.preskoceno.size()) + " souboru"));
+    {
+      std::lock_guard<std::mutex> dl(g_mDev);
+      nap::dev::Device &d = devGet();
+      if (!d.power) { d.power = true; d.powerAt = nap_ted_ms(); }
+      d.setStatusMessage(hlaskaArchivu(ar.chyba).c_str(), nap_ted_ms(), 9000);
+    }
+    pokeRender();
+    return env->NewByteArray(0);
+  }
+  // do logu: co v archivu je a co se spusti (u velke sbirky jen zacatek seznamu)
+  std::string co;
+  for (size_t i = 0; i < ar.soubory.size() && i < 24; i++) {
+    const nap::AtariSoubor &s = ar.soubory[i];
+    char b[200];
+    snprintf(b, sizeof(b), "%s%s %s (%zu B%s%s)", i ? ", " : "", s.druh == 'A' ? "ATR" : s.druh == 'X' ? "XEX" : "CAR", s.jmeno.c_str(), s.data.size(),
+             s.druh == 'A' && !s.boot ? ", nebootuje" : "", s.sada >= 0 ? ", sada" : "");
+    co += b;
+  }
+  if (ar.soubory.size() > 24) co += ", ... (celkem " + std::to_string(ar.soubory.size()) + " souboru pro Atari)";
+  std::string pres;
+  size_t presN = 0;
+  for (auto &p : ar.preskoceno) if (presN++ < 12) pres += (pres.empty() ? "" : ", ") + p;
+  for (auto &c : ar.chybyRozbaleni) if (presN++ < 12) pres += (pres.empty() ? "" : ", ") + c;
+  if (presN > 12) pres += ", ... (celkem " + std::to_string(presN) + ")";
+  const nap::AtariSoubor &v = ar.soubory[(size_t)ar.vybrany];
+  devLog("B349 ARCHIV " + nm + " (" + ar.typ + ", rozbaleno za " + std::to_string(ms) + " ms): " + co
+         + (pres.empty() ? std::string() : " | preskoceno: " + pres) + " -> SPOUSTIM " + v.jmeno
+         + (vymena ? " (vymena diskety bez restartu)" : ""));
+  std::vector<uint8_t> vysledek = v.data;
+  {
+    std::lock_guard<std::mutex> a(g_mArchiv);
+    g_archiv = std::move(ar);
+    g_archivAktualni = g_archiv.vybrany;
+    g_archivChyba.clear();
+  }
+  return archivPole(env, vysledek);
+}
+
+/** B349: soubor 'index' z posledniho archivu (nabidka ATR / DISK) - obsah; jmeno pak devCtl "archiv_vybrany". */
+extern "C" JNIEXPORT jbyteArray JNICALL
+Java_eu_atarihelp_emu10_NativeAtariCoreBridge_devArchivSouborNative(JNIEnv *env, jclass, jint index) {
+  std::vector<uint8_t> d;
+  std::string jm, arch;
+  {
+    std::lock_guard<std::mutex> a(g_mArchiv);
+    if (index < 0 || index >= (jint)g_archiv.soubory.size()) return nullptr;
+    d = g_archiv.soubory[(size_t)index].data;
+    jm = g_archiv.soubory[(size_t)index].jmeno;
+    arch = g_archiv.jmeno;
+    g_archivAktualni = index;
+  }
+  devLog("B349 ARCHIV " + arch + ": vybrano " + jm + " (" + std::to_string(d.size()) + " B)");
+  return archivPole(env, d);
 }
 
 /** B295: disketa (ATR) do mechaniky D1: a studeny start (OPTION drzene =

@@ -1,0 +1,2 @@
+rar_kody.rar: 5535 tokenu (eof lit match newtab old rep short), shod nad 256 kB: 1, kod 16 (nizke bity): 87, novych tabulek: 4
+hotovo: 32 archivu v /tmp/b349_archivy

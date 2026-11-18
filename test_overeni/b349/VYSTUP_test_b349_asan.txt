@@ -1,0 +1,58 @@
+test_b349_archiv prelozeny s -fsanitize=address,undefined (stejne argumenty jako VYSTUP_test_b349_archiv.txt):
+  chyb pameti / nedefinovaneho chovani: 0
+OK     ZIP ulozeny (metoda 0): 3 soubory vcetne prazdneho
+OK     ZIP deflate: dynamicke / pevne / ulozene bloky, urovne 0 1 6 9, 17 MB nul, prazdny soubor, slozka preskocena
+OK     ZIP64 (velikosti v rozsireni 0x0001) + jmeno se zpetnym lomitkem 'Hry\druha.xex'
+OK     ZIP s poskozenym bajtem: CRC nesedi -> chyba, druhy soubor v poradku
+OK     zkraceny ZIP (nedostahovany): chybi seznam souboru
+OK     ZIP s heslem: soubor je zaheslovany (nerozbaluje se)
+OK     RAR4 ulozeny (metoda 0x30)
+OK     RAR 2.9 se vsemi kody: literaly, 258, 259-262, 263-270, 271+, LDD vcetne 16, 4 nove tabulky, vzdalenost > 256 kB (300 kB)
+OK     RAR 2.9: kod 16 hned po nove tabulce = nizke bity 0 (jako unrar / 7-Zip, ne 11 z minula)
+OK     pevny (solid) RAR: 4 soubory jednim slovnikem (2. konci novou tabulkou, 3. prazdny)
+OK     pevny RAR na preskacku (retez se rozbali znovu od zacatku)
+OK     RAR5: poctive "zatim neumim" (zadny pad)
+OK     zkraceny RAR: chyba, zadny pad
+OK     Prince of Persia (RAR): startuje DD (cela hra na 1 diskete), SDA + SDB = sada k vymene, readme preskocen
+OK     pevny RAR, v archivu nejdriv SDB: startuje SDA (strana A), SDB pripravena k vymene
+OK     Disk 1 / 2 / 3 (v ZIPu 3, 1, 2): startuje Disk 1, ostatni k vymene
+OK     Side A / Side B: startuje strana A
+OK     XEX + navod.txt + obrazek.png: spusti XEX, text a obrazek preskoci
+OK     datova disketa (bez bootovaciho sektoru) + XEX: spusti XEX, disketa zustane v nabidce
+OK     PAL a NTSC verze: startuje PAL
+OK     ZIP v ZIPu: hra se najde uvnitr
+OK     RAR v ZIPu: disketa se najde uvnitr
+OK     XFD (disketa bez hlavicky): doplni se hlavicka ATR (720 sektoru = $1680 odstavcu)
+OK     __MACOSX/._hra.atr a ._hra.atr (smeti z Macu) se ignoruji
+OK     v archivu jen readme a obrazek: "v archivu neni hra pro Atari"
+OK     cartridge CAR v ZIPu
+OK     dve ruzne hry (Boulder / Jetboy): nejsou sada, startuje vetsi, druha je v nabidce
+OK     hra ve slozkach Hry/Atari/ (slozky se preskoci)
+OK     soubor nad 16 MB se ani nerozbali (preskocen), hra ano
+OK     neznamy obsah (hra.bin) se preskoci - rozhoduje obsah, ne pripona
+OK     jmena: UTF-8 zustane, TAB / konec radku -> mezera (seznam pro Javu se nerozbije)
+OK     jen zaheslovana hra: chyba "zaheslovany" (appka: ARCHIV MA HESLO)
+OK     zaheslovany soubor + volna hra: spusti volnou
+OK     poskozeny soubor (CRC) + dobry: spusti dobry
+OK     RAR5: chyba pro hlasku "RAR5 ZATIM NEUMIM"
+OK     sbirka 260 her v jednom ZIPu: do pameti jen 200 (pojistka), zbytek preskocen s poznamkou (limit)
+     2250 poskozenych / nahodnych archivu za 2856 ms (nejdelsi 22.9 ms): otevreno 220, z toho s hrou 220
+     hranice.zip: xex6.xex[X], tri.xfd[A], sektor.atr[A] | preskoceno 5
+OK     hranicni soubory: ATR bez celeho sektoru, XEX < 6 B, CAR bez hlavicky, prazdny -> preskocit; ATR s 1 sektorem, XEX 6 B, XFD 3 sektory -> ano
+OK     zadny pad ani zaseknuti (prekladem s -fsanitize=address,undefined i bez chyb pameti - JAK_SPUSTIT.txt)
+OK     Prince of Persia PoP_ATR_20211206_final.rar: startuje DD (183952 B), SDA + SDB k vymene
+OK     Prince of Persia PoP_SD_20211024_final.rar: startuje SDA, SDB pripravena k vymene (ATR / DISK)
+OK     Acid800 acid800-0.1.zip: spusti acid800.atr, README.html preskoci
+OK     skutecne RAR 2.9: pevny (rar3-solid), filtr E8 (bsdcat.exe), 20 MB vic bloku, 1 MB nahodnych dat - CRC sedi; zbytek jen zname "neumim"
+VYSLEDEK: 42 kontrol, 0 chyb
+
+fuzz_b349.cpp pod ASan / UBSan (mutace PoP RAR, libarchive filtr E8, rar3-solid, archivy z vyrob_archivy.py, Acid800):
+ 1. kolo (pred opravou kratke ATR / ZIP64 / Inflate static), 3 x 240 s, seminka 1-3:
+   fuzz: 42274 pokusu, 8054 otevreno, nejdelsi 61.8 ms
+   fuzz: 43474 pokusu, 8480 otevreno, nejdelsi 87.6 ms
+   fuzz: 43028 pokusu, 8435 otevreno, nejdelsi 63.2 ms
+ 2. kolo (konecne zdroje B349), 3 x 150 s, seminka 11-13:
+   fuzz: 31025 pokusu, 6376 otevreno, nejdelsi 86.6 ms
+   fuzz: 30936 pokusu, 6304 otevreno, nejdelsi 53.4 ms
+   fuzz: 29964 pokusu, 6170 otevreno, nejdelsi 64.3 ms
+ -> zadna chyba pameti ani nedefinovane chovani (ASan by beh zastavil s vypisem).
