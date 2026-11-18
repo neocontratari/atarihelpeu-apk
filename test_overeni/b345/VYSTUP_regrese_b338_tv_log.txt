@@ -1,0 +1,6 @@
+OK     T1) SEGA na TV: ramecek jen ['segaBottomSave "SAVE"', 'segaBottomLoad "LOAD GAME"', 'btnSegaSettings "⚙"'] - zadna hra (SBIRKA / HRY na sirku neviditelne), LOAD GAME = nacist POZICI
+OK     T2) PS1 na TV: ramecek jen ['btnSettings "⚙"', 'btnMys "MYŠ"', 'psMonitor "MONITOR"'] - LOAD GAME / CD ISO / SAVE GAME na sirku nejsou
+OK     T3) menu konzole (NapPravidla.tvKlik): SEGA ['AHSega.segaSaveState', 'AHSega.segaLoadState'], PS1 ['AHPS1.ps1QuickSave', 'AHPS1.ps1QuickLoad', 'AHPS1.ps1Reset'], chybejici tlacitko -> chybi
+OK     T4) OPTIONS VYKON ZARIZENI: pred ['stVykonAuto'] "AUTO: tohle zařízení je SLABÉ (jen 32 bitu, 4 " -> LOW: nastavVykon(l), ['stVykonLow'] "LOW: vždy (slabý procesor) (pr"; EN "DEVICE PERFORMANCE"
+OK     T5) zadna chyba JavaScriptu
+VYSLEDEK: 5 testu, 0 CHYBA

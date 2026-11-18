@@ -1,0 +1,20 @@
+OK     B1) ps1MaybeStartBios: dokud bezi stahovani, BIOS nestartuje (pojistka PRED ps1BiosStarting = true)
+OK     B2) "BIOS ceka" do logu jen jednou za stahovani (ps1Status() se pta kazdou vterinu)
+OK     B3) priznak stahovani shodi jen posledni stahovani (konec stareho zruseneho nepusti BIOS do noveho)
+OK     B4) hra po stazeni: bootPs1FileOnCurrentThread -> ps1HraDoMonitoru (BIOS soubor + bootGameSafe), plochu stavi stranka pri nacteni
+OK     B5) zruseno -> stahovani hned konci (kontrola pred kazdym zapisem), uklid jen bez novejsiho stahovani
+OK     B6) ZIP rozbalen, ale mezitim zruseno -> hra do knihovny (znacka), nespousti se
+OK     M1) jmeno souboru se zjisti PRED kontrolou mista, kontrola vi, jestli jde o ZIP
+OK     M2) NapPravidla: bez ZIPu velikost + 200 MB, ZIP 2x + 200 MB (stara funkce = ZIP); rozbaleni ZIPu dal podle skutecnych velikosti
+OK     J1) hezke jmeno: katalog N&P podle slozky hry, jinak soubor bez pripony (CUE slozene appkou -> nejvetsi soubor)
+OK     J2) BOOTING nese hezke jmeno (i vyber souboru), stahovani ho nastavi z katalogu; stitek ulozenych pozic beze zmeny
+OK     J3) mosty AHPS1.ps1RemoteJmeno (hezke jmeno) a AHPS1.ps1RemoteAktivni (bezi stahovani?)
+OK     S1) okno STAHUJI HRU v monitoru jen kdyz stahovani opravdu bezi, po stazeni rovnou NAHRAVAM HRU
+OK     S2) pruh pod monitorem jen pro chybu (bez surovych stavu a cesty do cache), stejna chyba jednou na 12 s
+OK     S3) zavreny panel behem nahravani / stahovani plochu jadra neukaze
+OK     S4) nove funkce stranky v ES5 (bez let / const / => / `) - WebView na TV
+OK     T1) en_ps1.js: mrtve texty stareho pruhu pryc, novy text panelu LOAD GAME CZ / EN
+OK     N1) napoveda CZ / EN: obrazovka pri stahovani, BIOS ceka, misto velikost + 200 MB / ZIP 2x (PS1 i TV)
+OK     N2) napoveda CZ a EN maji stejnou stavbu (480 prvku)
+OK     V) verze 388 "EMU10-B345-PS1-STAHOVANI-BEZ-BIOSU"
+VYSLEDEK: 19 kontrol, 0 CHYBA

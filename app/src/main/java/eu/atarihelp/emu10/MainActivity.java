@@ -447,6 +447,23 @@ public class MainActivity extends Activity {
     private void ps1MaybeStartBios() {
         if (ps1BiosRunning || ps1BiosStarting) return;
         if (ps1GameWindowOwnsCore || ps1SessionActive || ps1BootActive) return;
+        // ===== B345: BEHEM STAHOVANI HRY BIOS NESTARTUJE (Rene schvalil) =====
+        // Drive BIOS nabehl, jakmile se otevrela stranka PS1 (pta se ps1Status() kazdou vterinu), a bezel
+        // po cele stahovani i rozbalovani - v monitoru byla nabidka BIOSu misto "stahuji hru" a jadro
+        // emulovalo zbytecne. Hra po stazeni nabehne sama a BIOS k tomu nepotrebuje: bootPs1FileOnCurrentThread ->
+        // ps1HraDoMonitoru (BIOS soubor si zajisti ps1EnsureBios, plochu postavi stranka pres ps1SetScreenRect).
+        // Mezi stahovanim a hrou je vzdy aspon jeden z priznaku (stahovani -> ps1BootActive -> ps1SessionActive),
+        // takze BIOS nevklouzne ani do mezery. Po chybe / zruseni stahovani BIOS nabehne jako drive.
+        if (ps1RemoteDownloadActive) {
+            int g = ps1StahovaniGen;
+            if (ps1BiosCekalGen != g) {
+                ps1BiosCekalGen = g;
+                String j = ps1JmenoHry;
+                appendNativeLog("B345 PS1 BIOS ceka - stahuje se hra" + (j == null || j.isEmpty() ? "" : " \"" + j + "\"")
+                        + ", po stazeni nabehne rovnou hra");
+            }
+            return;
+        }
         ps1BiosStarting = true;
         new Thread(() -> {
             java.io.File pokus = new java.io.File(getFilesDir(), "ps1_bios_pokus");
@@ -488,6 +505,13 @@ public class MainActivity extends Activity {
     }
     private volatile boolean ps1RemoteDownloadActive = false;
     private volatile String ps1RemoteDownloadStatus = "idle";
+    // B345: hezke jmeno hry, ktera se prave stahuje / nahrava - nazev z katalogu serveru N&P, jinak jmeno
+    // souboru bez pripony (NapPravidla.ps1JmenoHry). Stranka PS1 ho ukaze v monitoru (AHPS1.ps1RemoteJmeno).
+    // Stitek ps1CurrentGameLabel (podle nej se jmenuji ulozene pozice) zustava, jak byl.
+    private volatile String ps1JmenoHry = "";
+    // B345: cislo stahovani - konec stareho (zruseneho) stahovani nesmi shodit priznak toho noveho
+    private volatile int ps1StahovaniGen = 0;
+    private volatile int ps1BiosCekalGen = -1;   // "BIOS ceka" jde do logu jen jednou za stahovani
     // B308: kazdy DOKONCENY start PS1 (hra / BIOS, uspech / chyba) - stranka PS1
     // podle toho schova nahravaci okno ve chvili, kdy jadro hru OPRAVDU spustilo
     // (drive pevny odpocet 10 s, nezavisly na skutecnosti). Cislo startu jde
@@ -7122,6 +7146,12 @@ public class MainActivity extends Activity {
         }
         @JavascriptInterface
         public String ps1RemoteStatus() { return ps1RemoteDownloadStatus; }
+        /** B345: hezke jmeno hry, ktera se stahuje / nahrava (okno STAHUJI HRU v monitoru stranky PS1). */
+        @JavascriptInterface
+        public String ps1RemoteJmeno() { String j = ps1JmenoHry; return j == null ? "" : j; }
+        /** B345: bezi opravdu stahovani? Stav "PS1_REMOTE_DOWNLOAD ..." sam nestaci (zustava i po zruseni). */
+        @JavascriptInterface
+        public boolean ps1RemoteAktivni() { return ps1RemoteDownloadActive; }
         @JavascriptInterface
         public String ps1RemoteCachePath() {
             try { return ps1RemoteGamesDir().getAbsolutePath(); }
@@ -14722,8 +14752,37 @@ public class MainActivity extends Activity {
         if (kids != null) for (File k : kids) sum += dirSizeBytes(k);
         return sum;
     }
-    private void ps1EnsureFreeSpace(File dir, long contentLength) throws IOException {
-        ps1OverMisto(dir, NapPravidla.ps1PotrebaMista(contentLength), "stazeni " + formatMb(contentLength));
+    /** B345: ZIP = 2x velikost + 200 MB, hra bez ZIPu = velikost + 200 MB (NapPravidla.ps1PotrebaMista). */
+    private void ps1EnsureFreeSpace(File dir, long contentLength, boolean zip) throws IOException {
+        ps1OverMisto(dir, NapPravidla.ps1PotrebaMista(contentLength, zip),
+                "stazeni " + formatMb(contentLength) + (zip ? " ZIP" : " bez ZIPu"));
+    }
+
+    /** B345: stahovani PS1 hry zruseno (odchod ze stranky PS1, RESET, jina hra) - zadna chyba, jen konec. */
+    static final class Ps1StahovaniZruseno extends IOException {
+        Ps1StahovaniZruseno(String zprava) { super(zprava); }
+    }
+
+    /** B345: nazev hry z katalogu serveru N&P podle slozky hry ("nap_ps1-..."), jinak null. */
+    private String ps1JmenoZKatalogu(String slozka) {
+        if (slozka == null || !slozka.startsWith("nap_")) return null;
+        try { return napNazvyHer().get(slozka); } catch (Throwable t) { return null; }
+    }
+
+    /**
+     * B345: hezke jmeno hry na obrazovku (nahravani v monitoru PS1): nazev z katalogu N&P, jinak jmeno souboru
+     * bez pripony (u CUE slozeneho appkou nejvetsi soubor) - stejne jako v knihovne CD ISO / HRY V TELEVIZI.
+     * Drive stranka ukazovala stitek ulozenych pozic "nap_ps1-0123...__hra.cue".
+     */
+    private String ps1JmenoHryZeSouboru(File hra) {
+        if (hra == null) return "PS1";
+        try {
+            File dir = hra.getParentFile();
+            String nejvetsi = hra.getName().toLowerCase(Locale.US).startsWith("_ps1_synth") ? ps1NejvetsiSoubor(dir) : null;
+            return NapPravidla.ps1JmenoHry(ps1JmenoZKatalogu(dir == null ? null : dir.getName()), hra.getName(), nejvetsi);
+        } catch (Throwable t) {
+            return NapPravidla.ps1JmenoHry(null, hra.getName(), null);
+        }
     }
 
     /**
@@ -14855,12 +14914,15 @@ public class MainActivity extends Activity {
             return;
         }
         final int downloadGen;
+        final int mojeStahovani;   // B345
         synchronized (this) {
             if (ps1RemoteDownloadActive) {
                 ps1RemoteDownloadStatus = "PS1_REMOTE_BUSY";
                 return;
             }
             downloadGen = ++ps1LifecycleGen;
+            mojeStahovani = ++ps1StahovaniGen;
+            ps1JmenoHry = "";
             ps1RemoteDownloadActive = true;
             ps1RemoteDownloadStatus = "PS1_REMOTE_START " + compactUrl(url);
         }
@@ -14873,6 +14935,9 @@ public class MainActivity extends Activity {
                 boolean googleDrive = isGoogleDriveUrl(url);
                 File dir = ps1RemoteCacheDir(url);
                 hraDir = dir;
+                // B345: hezke jmeno na obrazovku - nazev z katalogu N&P hned, jmeno souboru jeste nezname
+                final String katalog = ps1JmenoZKatalogu(dir.getName());
+                if (katalog != null && mojeStahovani == ps1StahovaniGen) ps1JmenoHry = katalog;
                 File cached = ps1ReadCachedBootFile(dir);
                 if (cached != null) {
                     synchronized (MainActivity.this) {
@@ -14881,6 +14946,7 @@ public class MainActivity extends Activity {
                             return;
                         }
                     }
+                    if (mojeStahovani == ps1StahovaniGen) ps1JmenoHry = ps1JmenoHryZeSouboru(cached);   // B345
                     setPs1RemoteStatus("PS1_REMOTE_CACHE_HIT " + cached.getName() + " path=" + cached.getAbsolutePath());
                     bootPs1FileOnCurrentThread(cached, cached.getName(), "remoteCache");
                     return;
@@ -14910,8 +14976,11 @@ public class MainActivity extends Activity {
                 String contentType = c.getContentType();
                 long expectedLen = -1L;
                 try { expectedLen = c.getContentLengthLong(); } catch (Throwable ignored) {}
-                ps1EnsureFreeSpace(dir, expectedLen); // BUILD2SA5AR: srozumitelna hlaska misto ENOSPC v pulce
                 String name = safeFileName(guessDownloadName(downloadUrl, c.getHeaderField("Content-Disposition")));
+                if (mojeStahovani == ps1StahovaniGen) ps1JmenoHry = NapPravidla.ps1JmenoHry(katalog, name, null);   // B345: katalog N&P, jinak soubor bez pripony
+                // B345: ZIP chce 2x velikost + 200 MB (ZIP i rozbalena hra najednou), hra bez ZIPu jen velikost + 200 MB
+                // (drive vzdy 2x - jmeno souboru se zjistovalo az po kontrole mista)
+                ps1EnsureFreeSpace(dir, expectedLen, isPs1ZipName(name)); // BUILD2SA5AR: srozumitelna hlaska misto ENOSPC v pulce
                 if (!isPs1RemoteImageName(name)) {
                     if (googleDrive) {
                         throw new IOException("Google Drive nevratil PS1 soubor. Nastav soubor na 'Kdokoli s odkazem - viewer' a na Drive dej .zip/.bin/.iso/.img/.pbp/.chd, ne .7z. contentType=" + contentType);
@@ -14962,6 +15031,12 @@ public class MainActivity extends Activity {
                 try {
                     int n;
                     while ((n = in.read(buf)) >= 0) {
+                        // B345: zruseno (odchod ze stranky PS1, RESET, jina hra) -> hned konec. Drive se stahovalo
+                        // dal na pozadi az do konce (stovky MB, misto na TV) a teprve pak CANCELLED_AFTER_DOWNLOAD;
+                        // mezitim prepisovalo stav, takze stranka PS1 po navratu ukazovala "stahuji", i kdyz uz
+                        // se hra spustit nemela.
+                        if (downloadGen != ps1LifecycleGen || !ps1RemoteDownloadActive)
+                            throw new Ps1StahovaniZruseno("stahovani zruseno po " + formatMb(total) + " (" + name + ")");
                         if (n == 0) continue;
                         total += n;
                         if (total > PS1_REMOTE_MAX_BYTES) throw new IOException("prekrocen limit " + formatMb(PS1_REMOTE_MAX_BYTES));
@@ -14993,8 +15068,16 @@ public class MainActivity extends Activity {
                     File bootFile = extractPs1RemoteZip(out, dir);
                     try { long zb = out.length(); if (out.delete()) appendNativeLog("BUILD2SA5AR PS1_ZIP_DELETED_AFTER_EXTRACT freed=" + formatMb(zb)); } catch (Throwable ignored) {} // BUILD2SA5AR
                     try { out.delete(); } catch (Throwable ignored) {}
+                    ps1WriteCacheMarker(dir, bootFile);   // B345: hra je cela -> do knihovny, i kdyz se mezitim zrusilo
+                    // B345: zruseno behem rozbalovani (odchod ze stranky PS1) -> hra zustava v CD ISO / HRY V TELEVIZI,
+                    // ale nespousti se. Drive nabehla v jadre i mimo stranku PS1.
+                    synchronized (MainActivity.this) {
+                        if (downloadGen != ps1LifecycleGen || !ps1RemoteDownloadActive) {
+                            appendNativeLog("B345 PS1 rozbaleno, ale mezitim zruseno - hra je v knihovne, nespoustim: " + bootFile.getName());
+                            return;
+                        }
+                    }
                     setPs1RemoteStatus("PS1_REMOTE_READY " + bootFile.getName() + " fromZip=" + name + " path=" + bootFile.getAbsolutePath());
-                    ps1WriteCacheMarker(dir, bootFile);
                     bootPs1FileOnCurrentThread(bootFile, bootFile.getName(), "remoteZipUrl");
                     return;
                 }
@@ -15002,6 +15085,20 @@ public class MainActivity extends Activity {
                 ps1WriteCacheMarker(dir, out);
                 bootPs1FileOnCurrentThread(out, name, "remoteUrl");
             } catch (Throwable t) {
+                // B345: zruseni neni chyba - stav uz nastavil ten, kdo rusil (PS1_REMOTE_CANCELLED ...), tady jen uklid.
+                // Mazat jen kdyz mezitim nezacalo dalsi stahovani (u te same hry by to byla stejna slozka).
+                if (t instanceof Ps1StahovaniZruseno) {
+                    boolean posledni;
+                    synchronized (MainActivity.this) {
+                        posledni = mojeStahovani == ps1StahovaniGen;
+                        if (posledni) {
+                            try { if (part != null && part.exists()) part.delete(); } catch (Throwable ignored) {}
+                            ps1UklidNedokonceneho(hraDir, "stahovani zruseno");
+                        }
+                    }
+                    appendNativeLog("B345 PS1 " + safeMsg(t) + (posledni ? "" : " - uz bezi dalsi stahovani, nic nemazu"));
+                    return;
+                }
                 // BUILD2SA10: instalace BIOSu neni chyba - nesmi se ukazat cerveny banner.
                 if (safeMsg(t) != null && safeMsg(t).startsWith("BIOS NAINSTALOVAN")) {
                     ps1LastBootResult = "PS1_BIOS_INSTALLED " + safeMsg(t);
@@ -15023,7 +15120,9 @@ public class MainActivity extends Activity {
             } finally {
                 try { if (c != null) c.disconnect(); } catch (Throwable ignored) {}
                 synchronized (MainActivity.this) {
-                    ps1RemoteDownloadActive = false;
+                    // B345: priznak shodi jen POSLEDNI stahovani - konec stareho (zruseneho) by jinak pustil
+                    // BIOS do noveho stahovani (ps1MaybeStartBios)
+                    if (mojeStahovani == ps1StahovaniGen) ps1RemoteDownloadActive = false;
                 }
             }
         }, "nap-ps1-remote-download").start();
@@ -15199,7 +15298,10 @@ public class MainActivity extends Activity {
             boolean stillWanted = bootGen == ps1LifecycleGen && ps1BootActive;
             if (stillWanted) {
                 final int cisloStartu = ps1StartuHotovo.get() + 1;
-                setPs1RemoteStatus("PS1_REMOTE_BOOTING #" + cisloStartu + " " + ps1CurrentGameLabel);
+                // B345: na obrazovku hezke jmeno (katalog N&P / soubor bez pripony), ne stitek "nap_ps1-...__hra.cue"
+                String jmeno = ps1JmenoHryZeSouboru(gameFile);
+                ps1JmenoHry = jmeno;
+                setPs1RemoteStatus("PS1_REMOTE_BOOTING #" + cisloStartu + " " + jmeno);
                 String r = ps1HraDoMonitoru(gameFile.getAbsolutePath());
                 boolean ok = r != null && r.startsWith("PS1_HRA_OK");
                 ps1BootActive = false;
@@ -15883,7 +15985,8 @@ public class MainActivity extends Activity {
                     stopPs1Audio(); // BUILD2SA3B: cisty audio restart pri prepnuti PS1 hry
                     ps1LastBootResult = "PS1_BOOTING...";
                     // B308: stranka zapne nahravaci okno sama a schova ho po skutecnem startu
-                    setPs1RemoteStatus("PS1_REMOTE_BOOTING #" + (ps1StartuHotovo.get() + 1) + " " + pickedName);
+                    // B345: na obrazovku jmeno souboru bez pripony
+                    setPs1RemoteStatus("PS1_REMOTE_BOOTING #" + (ps1StartuHotovo.get() + 1) + " " + NapPravidla.ps1JmenoHry(null, pickedName, null));
                     appendNativeLog("BUILD2SA5P PS1_BIOS_AUDIT " + ps1BiosAudit(sysDir));
                     ps1EnsureBios(sysDir); // BUILD2SA7
                     // Drive se tu volalo bootSafe(), ktere hru sice nahralo, ale

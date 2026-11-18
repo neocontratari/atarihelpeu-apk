@@ -1,0 +1,6 @@
+Traceback (most recent call last):
+  File "/home/claude/atarihelpeu-apk/test_overeni/b339/kontrola_b339.py", line 81, in <module>
+    ef = blok(MA, '    private void ps1EnsureFreeSpace(File dir, long contentLength) throws IOException {', '\n    }\n')
+  File "/home/claude/atarihelpeu-apk/test_overeni/b339/kontrola_b339.py", line 36, in blok
+    i = text.index(zac)
+ValueError: substring not found

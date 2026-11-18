@@ -113,7 +113,17 @@ body{display:flex;justify-content:center;align-items:flex-start;}
 .remoteBanner.show{display:block;}
 .remoteBanner .remoteTitle{display:flex;justify-content:space-between;gap:8px;color:#ffe39a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .remoteBanner .remoteDetail{margin-top:4px;color:#dff7ff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.remoteBanner .remotePath{margin-top:3px;color:#9cdfff;font-size:.82em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+/* B345: pruh uz jen pro CHYBU stahovani / spusteni (prubeh stahovani je v monitoru) - text se zalomi, at je cely */
+.remoteBanner.chyba{border-color:rgba(255,120,120,.85);box-shadow:0 0 26px rgba(255,80,80,.22);}
+.remoteBanner.chyba .remoteTitle{color:#ffb0a0;}
+.remoteBanner.chyba .remoteDetail{white-space:normal;}
+.remoteBanner.chyba .remoteBar{display:none;}
+/* B345: stahovani hry v monitoru (BIOS behem stahovani nebezi) */
+#psMonitorLoading .nahrJmeno{font-size:.8em;color:#9cdfff;max-width:92%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+#psMonitorLoading .nahrBar{width:72%;height:8px;border-radius:999px;background:rgba(255,255,255,.16);overflow:hidden;}
+#psMonitorLoading .nahrBar>div{height:100%;border-radius:999px;background:linear-gradient(90deg,#54d8ff,#ffe08b);box-shadow:0 0 12px rgba(116,210,255,.55);}
+#psMonitorLoading .nahrMb{font-size:.72em;color:#dfeaff;}
+#psMonitorLoading .nahrPozn{font-size:.62em;font-weight:700;color:#ffe39a;max-width:90%;}
 .remoteBanner .remoteBar{height:6px;margin-top:7px;border-radius:999px;background:rgba(255,255,255,.16);overflow:hidden;}
 .remoteBanner .remoteFill{height:100%;width:0%;border-radius:999px;background:linear-gradient(90deg,#54d8ff,#ffe08b);box-shadow:0 0 12px rgba(116,210,255,.55);}
 .panel{display:none;position:fixed;inset:0;z-index:80;background:transparent;padding:18px;overflow:auto;color:#dfeaff;}
@@ -389,9 +399,8 @@ body.mysLeveDrzi .mysUkazDrzi{display:block;}
   <button id="btnSave" class="hit" type="button">SAVE GAME</button>
   <input id="fileInput" type="file" accept=".bin,.cue,.iso,.img,.pbp,.chd,.zip,application/zip,application/octet-stream">
   <div id="remoteBanner" class="remoteBanner" aria-live="polite">
-    <div class="remoteTitle"><span id="remoteTitle">PS1 DOWNLOAD</span><span id="remotePercent"></span></div>
-    <div id="remoteDetail" class="remoteDetail">Cekam...</div>
-    <div id="remotePath" class="remotePath"></div>
+    <div class="remoteTitle"><span id="remoteTitle"></span><span id="remotePercent"></span></div>
+    <div id="remoteDetail" class="remoteDetail"></div>
     <div class="remoteBar"><div id="remoteFill" class="remoteFill"></div></div>
   </div>
   <div id="toast" class="toast">PS1 BUILD2RZ</div>
@@ -432,7 +441,7 @@ body.mysLeveDrzi .mysUkazDrzi{display:block;}
     <h2>PS1 — PlayStation 1</h2>
     <!-- B343: texty podle skutecnosti (do B342 Google Drive a AtariHelp.eu - LOAD GAME je od B321 server N&P) -->
     <p><b>CD ISO</b> = tvoje stažené hry: klepnutím hru spustíš, koš ji smaže. Hru z telefonu vybereš přes VYBRAT SOUBOR RUČNĚ V TELEFONU.</p>
-    <p><b>LOAD GAME</b> = hry ze serveru N&amp;P. Poprvé se hra stáhne a rozbalí (volno asi 2× velikost hry + 200 MB), příště se spustí rovnou z telefonu.</p>
+    <p><b>LOAD GAME</b> = hry ze serveru N&amp;P. Poprvé se hra stáhne (volno asi velikost hry + 200 MB, ZIP 2× velikost + 200 MB) a sama se spustí, příště se spustí rovnou z telefonu.</p>
     <p>Formáty: .bin .cue .iso .img .pbp .chd a .zip (.7z appka neumí).</p>
     <p><b>SAVE GAME</b> uloží přesnou pozici. <b>NAČÍST RYCHLOU POZICI</b> (v panelu D-PAD A OVLÁDÁNÍ) ji zase nahraje – přesně tam, kde jsi skončil.</p>
     <p>Úplný návod: hlavní menu → karta HELP → PS1.</p>
@@ -648,7 +657,7 @@ function hideMonitorLoading(){
    AZ appka hlasi, ze jadro hru (BIOS) opravdu nastartovalo - pak se obraz
    ukaze. Chyba = okno zmizi a toast rekne proc. Stejne pro knihovnu (CD/ISO),
    vyber souboru, stazeni z Google Drive i RESET. */
-var NAHR={on:false,od:0,popis:'',jmeno:'',bios:false,n0:0,maxMs:120000};
+var NAHR={on:false,od:0,popis:'',jmeno:'',bios:false,n0:0,maxMs:120000,stahuje:false,stah:null,stahOd:0};
 function nahrStartStav(){   // "pocet dokoncenych startu|vysledek posledniho"
   try{if(window.AHPS1&&window.AHPS1.ps1StartStav){var t=String(window.AHPS1.ps1StartStav()||'');var i=t.indexOf('|');
     return {n:parseInt(t.slice(0,i),10)||0,v:t.slice(i+1)};}}catch(_){}
@@ -657,6 +666,7 @@ function nahrStartStav(){   // "pocet dokoncenych startu|vysledek posledniho"
 function nahravaniStart(popis,bios,jmeno,cekejNa){
   var st=nahrStartStav();
   NAHR.on=true;NAHR.od=Date.now();NAHR.popis=popis||'NAHRÁVÁM HRU…';NAHR.jmeno=jmeno||'';NAHR.bios=!!bios;
+  NAHR.stahuje=false;NAHR.stah=null;   // B345: po stazeni uz nahravani (stejne okno)
   NAHR.maxMs=bios?20000:120000;
   NAHR.n0=(typeof cekejNa==='number')?cekejNa-1:(st?st.n:0);   // konec = start s cislem > n0
   NAHR.bezStavu=!st;
@@ -678,6 +688,17 @@ function nahravaniKresli(){
     mon.appendChild(ov);
   }
   ov.style.display='flex';
+  if(NAHR.stahuje){   // B345: stahovani hry - procenta a MB (velikost neznama / rozbalovani: cas faze)
+    var d=NAHR.stah||{titul:'',pct:-1,mb:'',pozn:''};
+    var sf=Math.max(0,Math.floor((Date.now()-NAHR.stahOd)/1000));
+    ov.innerHTML='<div>'+libEsc(d.titul)+'</div>'
+      +(NAHR.jmeno?'<div class="nahrJmeno">'+libEsc(NAHR.jmeno)+'</div>':'')
+      +'<div style="font-size:1.6em;">'+(d.pct>=0?d.pct+' %':sf+' s')+'</div>'
+      +(d.pct>=0?'<div class="nahrBar"><div style="width:'+d.pct+'%"></div></div>':'')
+      +(d.mb?'<div class="nahrMb">'+libEsc(d.mb)+'</div>':'')
+      +(d.pozn?'<div class="nahrPozn">'+libEsc(d.pozn)+'</div>':'');
+    return;
+  }
   var s=Math.floor((Date.now()-NAHR.od)/1000);
   ov.innerHTML='<div>'+NAHR.popis+'</div>'+(NAHR.jmeno?'<div style="font-size:.8em;color:#9cdfff;max-width:92%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+libEsc(NAHR.jmeno)+'</div>':'')
     +'<div style="font-size:1.6em;">'+s+' s</div>'
@@ -695,21 +716,75 @@ function nahravaniKresli(){
 function jePanelOtevreny(){try{return !!document.querySelector('.panel.open');}catch(_){return false;}}
 function nahravaniKonec(ok,zprava){
   if(!NAHR.on)return;
-  NAHR.on=false;clearInterval(window.__napNahrTik);
+  NAHR.on=false;NAHR.stahuje=false;clearInterval(window.__napNahrTik);
   hideMonitorLoading();
   if(!jePanelOtevreny()){try{if(window.AHPS1&&window.AHPS1.ps1PlochaVisible)window.AHPS1.ps1PlochaVisible(true);}catch(_){}}
   log('NAHRAVANI_KONEC '+(ok?'OK':'CHYBA')+' po '+Math.round((Date.now()-NAHR.od)/100)/10+' s'+(zprava?' - '+zprava:''));
   if(zprava)toast(zprava,ok?2400:7000);
 }
 /* stav z appky (kazdych 450 ms): CD ISO a stazeni z Drive hlasi
-   "PS1_REMOTE_BOOTING #cislo jmeno" - nahravaci okno se zapne samo */
+   "PS1_REMOTE_BOOTING #cislo jmeno" - nahravaci okno se zapne samo.
+   B345: Java posila hezke jmeno (katalog N&P / soubor bez pripony), drive stitek "nap_ps1-...__hra.cue". */
 function nahravaniStav(rs){
   rs=String(rs||'');
   var m=/^PS1_REMOTE_BOOTING #(\d+) ?(.*)$/.exec(rs);
-  if(m&&!NAHR.on&&rs!==NAHR.posledniAuto){
-    NAHR.posledniAuto=rs;
-    nahravaniStart('NAHRÁVÁM HRU…',false,m[2],parseInt(m[1],10));
+  if(m){
+    if((!NAHR.on||NAHR.stahuje)&&rs!==NAHR.posledniAuto){   // B345: i rovnou ze STAHUJI HRU
+      NAHR.posledniAuto=rs;
+      nahravaniStart('NAHRÁVÁM HRU…',false,m[2]||NAHR.jmeno,parseInt(m[1],10));
+    }
+    return;
   }
+  // B345: stahovani - okno uz v monitoru. BIOS behem stahovani nebezi (Java ho nespusti), hra pak nabehne sama.
+  var info=stahovaniAktivni()?stahovaniInfo(rs):null;
+  if(info){
+    if(!NAHR.on||NAHR.stahuje)nahravaniStahuji(info,ps1JmenoStahovane());
+  }else if(NAHR.on&&NAHR.stahuje){
+    // konec bez startu hry (chyba / zruseno) - chybu ukaze pruh pod monitorem; hra mohla nabehnout i mezi dotazy
+    nahravaniKonec(/^PS1_REMOTE_BOOT_OK/.test(rs),'');
+  }
+}
+/* ===== B345: STAHOVANI HRY V MONITORU =====
+   Rene schvalil: behem stahovani hry BIOS nebezi (drive v monitoru nabidka BIOSu, jadro emulovalo zbytecne).
+   Monitor misto toho ukaze STAHUJI HRU, hezke jmeno hry (z katalogu serveru N&P), procenta, MB a ze se hra
+   spusti sama; po stazeni rovnou NAHRAVAM HRU (to same okno). Drive surovy stav v pruhu pod monitorem
+   ("PS1_REMOTE_DOWNLOAD 37% 182.4MB/492.0MB soubor.zip") a cesta do cache. */
+function TX(cs,en){try{if(window.NapJazyk&&NapJazyk.t)return NapJazyk.t(cs,en);}catch(_){}return cs;}
+function jeEn(){try{return !!(window.NapJazyk&&NapJazyk.en&&NapJazyk.en());}catch(_){return false;}}
+function mbText(x){var t=String(x)+' MB';return jeEn()?t:t.replace('.',',');}   /* Java posila "182.4" */
+function ps1JmenoStahovane(){try{if(window.AHPS1&&window.AHPS1.ps1RemoteJmeno)return String(window.AHPS1.ps1RemoteJmeno()||'');}catch(_){}return '';}
+function stahovaniAktivni(){   /* stav "stahuji" zustava i po zruseni - Java vi, jestli stahovani opravdu bezi */
+  try{if(window.AHPS1&&typeof window.AHPS1.ps1RemoteAktivni==='function')return !!window.AHPS1.ps1RemoteAktivni();}catch(_){}
+  return true;   /* starsi appka bez mostu - verit stavu */
+}
+/* stav z Javy -> co ukazat v monitoru; null = nic se nestahuje */
+function stahovaniInfo(st){
+  st=String(st||'');
+  var p=st.indexOf(' path=');if(p>=0)st=st.slice(0,p);
+  var poStazeni=TX('Hra se po stažení spustí sama.','The game starts by itself once it is downloaded.');
+  var m=/^PS1_REMOTE_(?:DOWNLOAD|CUE_FILE) (?:(\d+)% )?([\d.]+)MB(?:\/([\d.]+)MB)?/.exec(st);
+  if(m)return {titul:TX('STAHUJI HRU…','DOWNLOADING THE GAME…'),pct:m[1]?Math.max(0,Math.min(100,parseInt(m[1],10))):-1,
+    mb:m[3]?TX(mbText(m[2])+' z '+mbText(m[3]),mbText(m[2])+' of '+mbText(m[3])):mbText(m[2]),pozn:poStazeni};
+  if(/^PS1_REMOTE_(START|CONNECT)/.test(st))return {titul:TX('PŘIPOJUJI SE K SERVERU…','CONNECTING TO THE SERVER…'),pct:-1,mb:'',pozn:poStazeni};
+  if(/^PS1_REMOTE_(DOWNLOAD|CUE)/.test(st))return {titul:TX('STAHUJI HRU…','DOWNLOADING THE GAME…'),pct:-1,mb:'',pozn:poStazeni};
+  if(/^PS1_REMOTE_ZIP/.test(st))return {titul:TX('ROZBALUJI HRU…','UNPACKING THE GAME…'),pct:-1,mb:'',
+    pozn:TX('Hra se po rozbalení spustí sama.','The game starts by itself once it is unpacked.')};
+  if(/^PS1_REMOTE_(READY|CACHE_HIT)/.test(st))return {titul:TX('SPOUŠTÍM HRU…','STARTING THE GAME…'),pct:-1,mb:'',pozn:''};
+  if(/^PS1_REMOTE_BUSY/.test(st))return {titul:TX('UŽ SE STAHUJE JINÁ HRA…','ANOTHER GAME IS DOWNLOADING…'),pct:-1,mb:'',pozn:poStazeni};
+  return null;
+}
+function nahravaniStahuji(info,jmeno){
+  if(!NAHR.on||!NAHR.stahuje){
+    NAHR.on=true;NAHR.stahuje=true;NAHR.od=Date.now();NAHR.bios=false;NAHR.popis='';NAHR.jmeno='';NAHR.stah=null;
+    try{if(window.AHPS1&&window.AHPS1.ps1PlochaVisible)window.AHPS1.ps1PlochaVisible(false);}catch(_){}
+    clearInterval(window.__napPs1MonitorCountdown);clearInterval(window.__napPs1Countdown);
+    clearInterval(window.__napNahrTik);window.__napNahrTik=setInterval(nahravaniKresli,250);
+    log('B345 STAHOVANI_V_MONITORU '+(jmeno||'(jmeno zatim nezname)'));
+  }
+  if(!NAHR.stah||NAHR.stah.titul!==info.titul)NAHR.stahOd=Date.now();   /* cas bezi pro kazdou fazi zvlast */
+  NAHR.stah=info;
+  if(jmeno)NAHR.jmeno=jmeno;
+  nahravaniKresli();
 }
 /* BUILD2SB22: Rene - "zadny odpocet neni videt kdyz kliknu play v
    cd/iso." Misto jedne staticke hlasky ("muze to trvat...") skutecny
@@ -735,63 +810,29 @@ function compactStatusText(t,max){
   max=max||96;
   return t.length>max?t.slice(0,max-1)+'...':t;
 }
-function remoteProgressValue(st){
-  var m=String(st||'').match(/(\d+)%/);
-  if(m)return Math.max(0,Math.min(100,parseInt(m[1],10)||0));
-  if(/^PS1_REMOTE_CONNECT/.test(st))return 6;
-  if(/^PS1_REMOTE_DOWNLOAD/.test(st))return 18;
-  if(/^PS1_REMOTE_ZIP_READY/.test(st))return 62;
-  if(/^PS1_REMOTE_ZIP_(CUE|PRIMARY|EXTRACT)/.test(st))return 76;
-  if(/^PS1_REMOTE_READY/.test(st))return 92;
-  if(/^PS1_REMOTE_CACHE_HIT/.test(st))return 100;
-  if(/^PS1_REMOTE_BOOT_OK/.test(st))return 100;
-  if(/^PS1_REMOTE_FAIL|^PS1_REMOTE_BOOT_EXCEPTION/.test(st))return 100;
-  return 0;
-}
-function remoteTitleFor(st){
-  if(/^PS1_REMOTE_START/.test(st))return 'PS1: start';
-  if(/^PS1_REMOTE_CONNECT/.test(st))return 'PS1: pripojuji server';   // B343: hry jsou ze serveru N&P (do B342 "Drive")
-  if(/^PS1_REMOTE_DOWNLOAD/.test(st))return 'PS1: stahuji hru';
-  if(/^PS1_REMOTE_ZIP_READY/.test(st))return 'PS1: ZIP stazen';
-  if(/^PS1_REMOTE_ZIP_(CUE|PRIMARY|EXTRACT)/.test(st))return 'PS1: rozbaluji ZIP';
-  if(/^PS1_REMOTE_CACHE_HIT/.test(st))return 'PS1: nacteno z cache';
-  if(/^PS1_REMOTE_READY/.test(st))return 'PS1: pripraveno';
-  if(/^PS1_REMOTE_BOOT_OK/.test(st))return 'PS1: hra spustena';
-  if(/^PS1_REMOTE_BUSY/.test(st))return 'PS1: uz pracuje';
-  if(/^PS1_REMOTE_FAIL|^PS1_REMOTE_BOOT_EXCEPTION/.test(st))return 'PS1: chyba';
-  return 'PS1: stav';
+/* B345: pruh pod monitorem (na sirku nahore) uz jen pro CHYBU stahovani / spusteni - prubeh stahovani je
+   primo v monitoru. Stejna chyba se ukaze jednou na 12 s (drive se pri kazdem dotazu - 450 ms - ukazala znovu
+   a nezmizela, dokud se stav nezmenil). */
+function chybaStahovani(st){
+  st=String(st||'').trim();
+  var m=/^PS1_REMOTE_FAIL (boot )?([\s\S]*)$/.exec(st)||/^PS1_REMOTE_BOOT_(EXCEPTION) ?([\s\S]*)$/.exec(st);
+  if(!m)return null;
+  return {titul:m[1]?TX('HRA SE NESPUSTILA','THE GAME DID NOT START'):TX('HRU SE NEPODAŘILO STÁHNOUT','THE GAME COULD NOT BE DOWNLOADED'),
+          text:String(m[2]||'').replace(/ path=[\s\S]*$/,'').trim()};
 }
 function updateRemoteBanner(st){
-  st=String(st||'').trim();
-  var b=$('remoteBanner'); if(!b)return;
-  if(!st||st==='-'){
-    b.classList.remove('show');
-    return;
-  }
-  if(/^PS1_REMOTE_BOOT_OK/.test(st)){
-    b.classList.remove('show');
-    clearTimeout(window.__napRemoteHideTimer);
-    return;
-  }
-  var path='';
-  var p=st.indexOf(' path=');
-  if(p>=0){path=st.slice(p+6);st=st.slice(0,p);}
-  if(path)window.__napPs1RemoteLastPath=path;
-  else path=window.__napPs1RemoteLastPath||'';
-  var pct=remoteProgressValue(st);
-  var title=remoteTitleFor(st);
-  var active=/^PS1_REMOTE_(START|CONNECT|DOWNLOAD|ZIP|READY|CACHE_HIT|BUSY)/.test(st)||/^PS1_REMOTE_FAIL|^PS1_REMOTE_BOOT_EXCEPTION/.test(st);
-  if(!active){b.classList.remove('show');return;}
-  $('remoteTitle').textContent=title;
-  $('remotePercent').textContent=pct>0?(pct+'%'):'';
-  $('remoteDetail').textContent=compactStatusText(st,110);
-  $('remotePath').textContent=path?('cache: '+compactStatusText(path,92)):'';
-  $('remoteFill').style.width=Math.max(0,Math.min(100,pct))+'%';
-  b.classList.add('show');
+  var b=$('remoteBanner');if(!b)return;
+  var ch=chybaStahovani(st);
+  if(!ch){b.classList.remove('show');window.__napRemoteChyba='';return;}
+  if(String(st)===window.__napRemoteChyba)return;
+  window.__napRemoteChyba=String(st);
+  $('remoteTitle').textContent=ch.titul;
+  $('remotePercent').textContent='';
+  $('remoteDetail').textContent=ch.text;
+  $('remoteFill').style.width='0%';
+  b.classList.add('chyba');b.classList.add('show');
   clearTimeout(window.__napRemoteHideTimer);
-  if(/^PS1_REMOTE_FAIL|^PS1_REMOTE_BOOT_EXCEPTION/.test(st)){
-    window.__napRemoteHideTimer=setTimeout(function(){b.classList.remove('show');},9000);
-  }
+  window.__napRemoteHideTimer=setTimeout(function(){b.classList.remove('show');},12000);
 }
 /* BUILD2SB21: Rene - screenshot ukazal obraz BIOSu "zamotany" do HTML
    panelu, protoze nativni ps1Plocha je NAD WebView (zOrderOnTop) a
@@ -817,7 +858,12 @@ function napTvCastKontrola(){
 }
 setInterval(napTvCastKontrola,1000);
 napTvCastKontrola();
-function napPlochaShow(){try{if(window.AHPS1&&window.AHPS1.ps1PlochaVisible)window.AHPS1.ps1PlochaVisible(true);}catch(_){}try{document.body.classList.remove('panelNebulaOn');}catch(_){}}
+function napPlochaShow(){
+  // B345: behem nahravani / stahovani (okno v monitoru) plochu neukazovat - na vysku je NAD strankou a okno
+  // by zakryla; ukaze ji nahravaniKonec, az hra opravdu nabehne
+  if(!NAHR.on){try{if(window.AHPS1&&window.AHPS1.ps1PlochaVisible)window.AHPS1.ps1PlochaVisible(true);}catch(_){}}
+  try{document.body.classList.remove('panelNebulaOn');}catch(_){}
+}
 function showHelp(){napPlochaHide();var p=$('helpPanel');if(p){p.classList.add('open');p.setAttribute('aria-hidden','false');}var v=$('ps1LogView');if(v){v.value=plnyLog(true);v.scrollTop=v.scrollHeight;}}
 function closeHelp(){napPlochaShow();var p=$('helpPanel');if(p){p.classList.remove('open');p.setAttribute('aria-hidden','true');}}
 function showDpadMenu(){napPlochaHide();var p=$('dpadMenuPanel');if(p){p.classList.add('open');p.setAttribute('aria-hidden','false');}}

@@ -4343,4 +4343,29 @@
        sem NEPSAT - repozitar je verejny). Kdyz se to zopakuje: nejdriv F5 (stara kopie stranky), cookies
        NEMAZAT, pak prihlasit tak, jak ma v poznamce. Buildy na jeho prihlaseni nezavisi (jen stazeni app-debug).
 
+   B345: PS1 - BIOS BEHEM STAHOVANI HRY CEKA, HEZKE JMENO HRY, MISTO U HER MIMO ZIP (18. 11. 2026).
+   Rene schvalil tri body z porady B340: "Schvaluju vsechny tri body Partaku :-)" (BIOS pri stahovani pozastavit se
+   zarukou startu hry, hezke jmeno hry pri nahravani, hra mimo ZIP jen velikost + 200 MB).
+     - BIOS: ps1MaybeStartBios konci, dokud bezi stahovani (ps1RemoteDownloadActive). Drive nabehl s otevrenim
+       stranky PS1 (ps1Status() kazdou vterinu) a bezel po cele stahovani. Hra po stazeni jde do jadra bez BIOSu
+       (bootPs1FileOnCurrentThread -> ps1HraDoMonitoru) - stejne jako hra z cache uz od B308 (log telefonu 16. 11.:
+       BIOS zastaven odchodem do katalogu, hra z cache PS1_HRA_OK bez PS1_BIOS_START). Log "B345 PS1 BIOS ceka".
+     - Zruseni stahovani (odchod ze stranky, RESET, pauza, jina hra) ho hned ukonci (Ps1StahovaniZruseno; drive dojelo
+       na pozadi a prepisovalo stav), nedokoncena hra se smaze, jen kdyz nebezi novejsi stahovani. ZIP rozbaleny po
+       zruseni = hra v knihovne, nespusti se. Priznak stahovani shodi jen posledni stahovani (ps1StahovaniGen).
+     - Misto: jmeno souboru pred kontrolou mista; ZIP 2x velikost + 200 MB, bez ZIPu velikost + 200 MB
+       (NapPravidla.ps1PotrebaMista(delka, zip)). OPTIONS -> ULOZISTE, panel PS1 a napoveda to rikaji.
+     - Jmeno: ps1JmenoHryZeSouboru (katalog N&P podle slozky nap_ps1-..., jinak soubor bez pripony) ve stavu
+       "PS1_REMOTE_BOOTING #n <jmeno>" (drive stitek "nap_ps1-...__hra.cue"); mosty AHPS1.ps1RemoteJmeno,
+       ps1RemoteAktivni. Stitek ulozenych pozic ps1CurrentGameLabel se NEMENI (jmena save souboru).
+     - Stranka PS1: v monitoru STAHUJI HRU (jmeno, %, MB, "Hra se po stažení spustí sama"), ROZBALUJI HRU,
+       SPOUŠTÍM HRU, pak NAHRÁVÁM HRU <jmeno>. Pruh pod monitorem uz jen pro chybu (12 s, ne porad dokola); surovy
+       stav a cesta do cache pryc. Zavreny panel behem nahravani plochu neukaze. CZ / EN (NapJazyk.t).
+     - Napoveda CZ / EN: PS1 (LOAD GAME, Hry a BIOS), Televize. Testy test_overeni/b345 (JAK_SPUSTIT.txt; test B308
+       cesky = regrese_b308_cesky.py - samotny b308 test pada od B314 na anglictine). build.gradle: versionCode 388
+       "EMU10-B345-PS1-STAHOVANI-BEZ-BIOSU". Na telefonu ani TV neovereno.
+     - DALSI KROK: Rene - nova PS1 hra ze serveru N&P na telefonu i TV: STAHUJI HRU + nazev, BIOS se neukaze, hra
+       nabehne sama; ZPET behem stahovani. Uklid (PS1 PRIMA URL / PS1 CACHE CESTA / SMAZAT PS1 CACHE, OPTIONS TV
+       POKUS) porad ceka na Reneho. Pozdeji server: rozbalovani ZIPu na serveru, katalog "zabere X MB / vejde se".
+
 ===============================================================================

@@ -157,9 +157,20 @@ final class NapPravidla {
     /**
      * B339 (puvodne BUILD2SA5AR): kolik volneho mista chce stazeni PS1 hry - stazeny soubor, rozbaleni ZIPu
      * (ZIP se po rozbaleni smaze) a rezerva. Velikost neznama = 1,6 GB.
+     * B345: tohle je pocet pro ZIP (nebo kdyz nevime, co prijde) - hra bez ZIPu: ps1PotrebaMista(delka, false).
      */
     static long ps1PotrebaMista(long delka) {
-        return delka > 0 ? delka * 2 + PS1_REZERVA : 1600L * 1024 * 1024;
+        return ps1PotrebaMista(delka, true);
+    }
+
+    /**
+     * B345 (Rene schvalil): hra, ktera NENI v ZIPu (.chd .pbp .bin .iso .img), se nerozbaluje - chce jen svou
+     * velikost + rezervu 200 MB. ZIP dal 2x velikost + 200 MB (ZIP i rozbalena hra najednou, ZIP se pak smaze).
+     * Velikost neznama = 1,6 GB v obou pripadech.
+     */
+    static long ps1PotrebaMista(long delka, boolean zip) {
+        if (delka <= 0) return 1600L * 1024 * 1024;
+        return (zip ? delka * 2 : delka) + PS1_REZERVA;
     }
 
     /** B339: misto na rozbaleni ZIPu (ZIP uz je na disku): soucet rozbalenych souboru + rezerva. */
@@ -202,13 +213,13 @@ final class NapPravidla {
             s.append(velikost(volno, true)).append(" free of ").append(velikost(celkem, true))
              .append(" · PS1 games on this ").append(tv ? "TV" : "device").append(": ").append(ps1Her);
             if (ps1Her > 0) s.append(" (").append(velikost(ps1Bajtu, true)).append(")");
-            s.append(" · downloading a PS1 game needs about 2× its size + 200 MB free");
+            s.append(" · downloading a PS1 game needs about its size + 200 MB free (a game in a ZIP 2× its size + 200 MB)");   // B345
             if (volno < 1024L * 1024 * 1024) s.append(" · LOW STORAGE – delete a PS1 game you no longer play");
         } else {
             s.append("Volno ").append(velikost(volno, false)).append(" z ").append(velikost(celkem, false))
              .append(" · PS1 hry v ").append(tv ? "televizi" : "zařízení").append(": ").append(ps1Her);
             if (ps1Her > 0) s.append(" (").append(velikost(ps1Bajtu, false)).append(")");
-            s.append(" · stažení PS1 hry chce volno asi 2× její velikost + 200 MB");
+            s.append(" · stažení PS1 hry chce volno asi její velikost + 200 MB (hra v ZIPu 2× velikost + 200 MB)");   // B345
             if (volno < 1024L * 1024 * 1024) s.append(" · MÁLO MÍSTA – smaž PS1 hru, kterou už nehraješ");
         }
         return s.toString();

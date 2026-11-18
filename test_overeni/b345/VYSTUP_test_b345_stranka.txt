@@ -1,0 +1,24 @@
+OK     S1) START: okno v monitoru "PŘIPOJUJI SE K SERVERU… | 0 s | Hra se po stažení spustí sama.", plocha jadra schovana, pruh pod monitorem nic
+OK     S2) CONNECT: jmeno hry z katalogu, zadna cesta do cache: "PŘIPOJUJI SE K SERVERU… | Final Fantasy VII | 1 s | Hra se po stažení spustí sama."
+OK     S3) DOWNLOAD: "STAHUJI HRU… | Final Fantasy VII | 37 % | 182,4 MB z 492,0 MB | Hra se po stažení spustí sama.", pruh v okne 37%, pod monitorem nic
+OK     S4) ZIP: "ROZBALUJI HRU… | Final Fantasy VII | 0 s | Hra se po rozbalení spustí sama."
+OK     S5) READY: "SPOUŠTÍM HRU… | Final Fantasy VII | 0 s"
+OK     S6) BOOTING s hezkym jmenem z Javy -> rovnou NAHRAVAM HRU: "NAHRÁVÁM HRU… | Final Fantasy VII | 0 s"
+OK     S7) hra nabehla: okno pryc, plocha jadra ukazana (jen jednou, az ted): [False, False, True]
+OK     V1) velikost neznama: MB a cas, bez procent a pruhu: "STAHUJI HRU… | Hra | 0 s | 182,4 MB | Hra se po stažení spustí sama."
+OK     C1) chyba: okno pryc, plocha zpet (BIOS), pruh "HRU SE NEPODAŘILO STÁHNOUT | MÁLO MÍSTA: potřeba ~1,2 GB, volno 800 MB – smaž starou PS1 hru: CD ISO → koš"
+OK     C2) na vysku je pruh s chybou POD monitorem (monitor [22, 104, 390, 409], pruh [29, 428, 383, 491])
+OK     C3) po 12 s pruh zmizel a s tim samym stavem se uz neukaze (drive porad dokola)
+OK     Z1) stav "stahuji" zbyl po zruseni (ps1RemoteAktivni = false) -> zadne okno, plocha nedotcena
+OK     P1) panel otevren a zavren behem stahovani -> plocha zustava schovana [False, False], okno STAHUJI dal
+OK     R1) RESET behem stahovani: "RESETUJI (BIOS BEZ CD)…" i kdyz Java jeste hlasi stahovani, po BIOS_OK okno pryc
+OK     B1) hra se nespustila: toast "HRA SE NESPUSTILA: jadro hru nespustilo (PS1_HRA_FAIL jadro)", pruh "HRA SE NESPUSTILA | PS1_HRA_FAIL jadro"
+OK     K1) hra uz v zarizeni: "SPOUŠTÍM HRU… | Crash Bandicoot | 0 s"
+OK     K2) jine stahovani bezi: "UŽ SE STAHUJE JINÁ HRA…"
+OK     E1) EN na sirku: "DOWNLOADING THE GAME… | Final Fantasy VII | 37 % | 182.4 MB of 492.0 MB | The game starts by itself once it is downloaded."
+OK     E2) EN: "UNPACKING THE GAME…", pruh "THE GAME COULD NOT BE DOWNLOADED | LOW STORAGE: needs ~1.5 GB, free 999 MB – delete an old PS1 game: CD ISO → bin"
+OK     E3) EN: v okne ani v pruhu zadna cestina
+OK     H1) CS panel PS1: LOAD GAME "Poprvé se hra stáhne (volno asi velikost hry + 200 MB, ZIP 2× velikost…"
+OK     H1) EN panel PS1: LOAD GAME "The first time a game downloads (needs about its size + 200 MB free, a…"
+OK     J) zadna chyba JavaScriptu
+VYSLEDEK: 23 kontrol, 0 CHYBA

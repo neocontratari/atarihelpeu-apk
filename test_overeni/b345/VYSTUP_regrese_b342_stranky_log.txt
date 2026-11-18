@@ -1,0 +1,23 @@
+OK     SEGA tel_vyska 412x846: tlacitko 42x42 (min. 40) na [360,5], na vysku nahore, ikona lezi, popisek "OBRAZOVKA NA ŠÍŘKU", klik 2x rychle -> ['prepni'], pak dalsi -> 2
+OK     SEGA tel_sirka 846x412: tlacitko 76x24 (min. 23) na [668,4], vlevo vedle kolecka, ikona stoji, popisek "OBRAZOVKA NA VÝŠKU", klik 2x rychle -> ['prepni'], pak dalsi -> 2
+OK     SEGA tv 1280x720: tlacitko 115x43 (min. 42) na [1011,8], vlevo vedle kolecka, ikona stoji, popisek "OBRAZOVKA NA VÝŠKU", klik 2x rychle -> ['prepni'], pak dalsi -> 2
+OK     SEGA tv_pruh 405x720: tlacitko 42x42 (min. 40) na [353,5], na vysku nahore, ikona lezi, popisek "OBRAZOVKA NA ŠÍŘKU", klik 2x rychle -> ['prepni'], pak dalsi -> 2
+OK     SEGA: otoceni za chodu - popisek "OBRAZOVKA NA ŠÍŘKU" -> "OBRAZOVKA NA VÝŠKU", telefon v ikone se postavil
+OK     SEGA: pri uprave rozlozeni tlacitek otoceni schovane (none), po HOTOVO zpet (flex)
+OK     SEGA anglicky: "SCREEN TO LANDSCAPE" / na sirku "SCREEN TO PORTRAIT"
+OK     SEGA bez mostu AHOBRAZ (stranka mimo appku): tlacitko schovane (none)
+OK     PS1 tel_vyska 412x846: tlacitko 43x43 (min. 40) na [294,23], na vysku nahore, ikona lezi, popisek "OBRAZOVKA NA ŠÍŘKU", klik 2x rychle -> ['prepni'], pak dalsi -> 2
+OK     PS1 tel_sirka 846x412: tlacitko 76x28 (min. 27) na [668,6], vlevo vedle kolecka, ikona stoji, popisek "OBRAZOVKA NA VÝŠKU", klik 2x rychle -> ['prepni'], pak dalsi -> 2
+OK     PS1 tv 1280x720: tlacitko 115x50 (min. 49) na [1011,10], vlevo vedle kolecka, ikona stoji, popisek "OBRAZOVKA NA VÝŠKU", klik 2x rychle -> ['prepni'], pak dalsi -> 2
+OK     PS1 tv_pruh 405x720: tlacitko 42x42 (min. 40) na [289,23], na vysku nahore, ikona lezi, popisek "OBRAZOVKA NA ŠÍŘKU", klik 2x rychle -> ['prepni'], pak dalsi -> 2
+OK     PS1: otoceni za chodu - popisek "OBRAZOVKA NA ŠÍŘKU" -> "OBRAZOVKA NA VÝŠKU", telefon v ikone se postavil
+OK     PS1: pri uprave rozlozeni tlacitek otoceni schovane (none), po HOTOVO zpet (flex)
+OK     PS1 anglicky: "SCREEN TO LANDSCAPE" / na sirku "SCREEN TO PORTRAIT"
+OK     PS1 bez mostu AHOBRAZ (stranka mimo appku): tlacitko schovane (none)
+OK     SEGA na sirku: dotyk prstem (dotykovy engine stranky) -> ['prepni']
+OK     O1) OPTIONS telefon: radek OBRAZOVKA hned pod jazykem, ['OBRAZOVKA', 'NA VÝŠKU', 'NA ŠÍŘKU', 'PODLE TELEFONU'], aktivni ['stObrAuto']; NA ŠÍŘKU -> ['nastav:sirka'] (aktivni ['stObrSirka']), PODLE TELEFONU -> ['nastav:auto']
+OK     O2) OPTIONS na TV: jen NA VÝŠKU / NA ŠÍŘKU (AUTO = cela obrazovka -> aktivni ['stObrSirka']), napoveda o pruhu
+OK     O3) OPTIONS anglicky: ['SCREEN', 'PORTRAIT', 'LANDSCAPE', 'AUTO-ROTATE'], napoveda "Main menu: follows the phone (auto-rotat..."
+OK     O4) bez mostu AHOBRAZ (starsi appka / PC): radek OBRAZOVKA schovany
+OK     J) zadna chyba JavaScriptu
+VYSLEDEK: 22 testu, 0 CHYBA

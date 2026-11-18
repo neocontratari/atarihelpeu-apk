@@ -1,0 +1,7 @@
+OK     T1) OPTIONS ÚLOŽIŠTĚ: "Volno 2,1 GB z 4,5 GB · PS1 hry v televi" -> po dalsim otevreni "Volno 1,4 GB z 4,5 GB · PS1 hry v televi"
+OK     T2) EN STORAGE: "2.1 GB free of 4.5 GB · PS1 games on this TV" (veta z Javy, prekladac na ni nesaha)
+OK     T3) bez udaju z Javy: ['Úložiště nejde zjistit', 'Storage cannot be read']
+OK     T4) TV SPUSTIT z Javy: funkce stranky zvenku ['undefined', 'undefined'] (proto Java, ne JavaScript); stav BOOTING -> nahravani "NAHRÁVÁM HRU…nap_ps1-0123456789abcdef__Crash" flex, po startu none
+OK     T5) telefon CD ISO: ['Crash Bandicoot | 650.0 MB | pozice', 'Wipeout XL (Track 01) | 420.0 MB']; ▶ -> AHPS1.ps1LibraryLaunch(nap_ps1-0123456789abcdef) - stejne jako TV
+OK     T6) zadna chyba JavaScriptu
+VYSLEDEK: 6 testu, 0 CHYBA

@@ -1,0 +1,86 @@
+B345 - PS1: BIOS BEHEM STAHOVANI HRY CEKA, HEZKE JMENO HRY, MISTO U HER MIMO ZIP (18. 11. 2026)
+=============================================================================================
+
+Rene schvalil tri body z porady (B340): "Schvaluju vsechny tri body Partaku :-)"
+  1. Pozastavit BIOS PS1 behem stahovani hry tak, aby se hra pak urcite spustila.
+  2. Hezke jmeno hry na obrazovce pri nahravani PS1.
+  3. U her, ktere nejsou v ZIPu, chtit volne misto jen "velikost hry + 200 MB".
+
+CO BYLO (B344, overeno v kodu a v logu telefonu z 16. 11.):
+ - BIOS nabehl, jakmile se otevrela stranka PS1 (stranka se kazdou vterinu pta ps1Status() -> ps1MaybeStartBios),
+   i kdyz se hra teprve stahovala - bezel po cele stahovani i rozbalovani, v monitoru nabidka BIOSu.
+ - Pod monitorem pruh se surovym stavem "PS1_REMOTE_DOWNLOAD 37% 182.4MB/492.0MB soubor.zip" a "cache: /storage/...",
+   okno NAHRAVAM HRU ukazovalo stitek "nap_ps1-0123456789abcdef__Hra.cue" (jmeno pro ulozene pozice).
+ - Misto: kontrola probehla DRIV, nez appka znala jmeno souboru -> vzdy 2x velikost + 200 MB (i u .chd / .bin).
+ - Hra z cache (uz stazena) nabiha BEZ BIOSu uz od B308: v logu telefonu 16. 11. 09:29 - odchod do katalogu
+   zastavil BIOS (PS1_SESSION_STOP), hra z cache nabehla (PS1_HRA_DO_MONITORU ... PS1_HRA_OK) bez PS1_BIOS_START.
+   Stazena hra jde do jadra TOU SAMOU cestou (bootPs1FileOnCurrentThread -> ps1HraDoMonitoru) - BIOS k tomu
+   nepotrebuje (BIOS soubor si zajisti ps1EnsureBios, plochu postavi stranka pres ps1SetScreenRect pri nacteni).
+
+CO JE NOVE:
+1) BIOS: ps1MaybeStartBios konci, dokud bezi stahovani (ps1RemoteDownloadActive). Mezi stahovanim a hrou je vzdy
+   aspon jeden z priznaku (stahovani -> ps1BootActive -> ps1SessionActive), BIOS nevklouzne ani do mezery.
+   Log jednou za stahovani: "B345 PS1 BIOS ceka - stahuje se hra "<jmeno>", po stazeni nabehne rovnou hra".
+   Po chybe / zruseni stahovani BIOS nabehne jako drive.
+2) Zruseni stahovani (odchod ze stranky PS1, RESET, pauza appky, jina hra): stahovani HNED konci (drive dojelo
+   na pozadi az do konce a prepisovalo stav - stranka po navratu ukazovala "stahuji"), nedokoncena hra se smaze
+   (jen kdyz mezitim nezacalo dalsi stahovani - stejna hra = stejna slozka). ZIP rozbaleny az po zruseni = cela
+   hra -> do knihovny, ale nespusti se (drive nabehla v jadre i mimo stranku PS1). Priznak stahovani shodi jen
+   POSLEDNI stahovani (ps1StahovaniGen), jinak by konec stareho pustil BIOS do noveho.
+3) Misto: jmeno souboru se zjisti pred kontrolou mista. ZIP = 2x velikost + 200 MB (ZIP i rozbalena hra
+   najednou), bez ZIPu (.chd .pbp .bin .iso .img) = velikost + 200 MB - NapPravidla.ps1PotrebaMista(delka, zip).
+   Log: "BUILD2SA5AR PS1_SPACE_CHECK need=... usable=... (stazeni 492.0MB ZIP / bez ZIPu)".
+   OPTIONS -> ULOZISTE, panel PS1 (kolecko na vysku) a napoveda to rikaji.
+4) Hezke jmeno: MainActivity.ps1JmenoHryZeSouboru = nazev z katalogu N&P (nap_hry_seznam.json podle slozky
+   nap_ps1-...) / jinak soubor bez pripony (stejne jako knihovna CD ISO / HRY V TELEVIZI). Stav
+   "PS1_REMOTE_BOOTING #n <hezke jmeno>" (i vyber souboru), mosty AHPS1.ps1RemoteJmeno (jmeno stahovane hry) a
+   AHPS1.ps1RemoteAktivni (bezi stahovani?). Stitek ulozenych pozic ps1CurrentGameLabel se NEMENI.
+5) Stranka PS1: v monitoru okno PŘIPOJUJI SE K SERVERU… -> STAHUJI HRU… (jmeno, "37 %", pruh, "182,4 MB z 492,0 MB",
+   "Hra se po stažení spustí sama.") -> ROZBALUJI HRU… -> SPOUŠTÍM HRU… -> NAHRÁVÁM HRU… <jmeno> -> hra. Okno jen
+   kdyz stahovani opravdu bezi (stary stav po zruseni nic neukaze). Pruh pod monitorem (na sirku nahore) uz jen
+   pro CHYBU: "HRU SE NEPODAŘILO STÁHNOUT" / "HRA SE NESPUSTILA" + hlaska bez kodu, 12 s (drive se pri kazdem
+   dotazu ukazal znovu a nezmizel). Zavreny panel behem nahravani plochu jadra neukaze (na vysku by okno zakryla).
+   Anglicky: DOWNLOADING THE GAME… / UNPACKING THE GAME… / "182.4 MB of 492.0 MB" (NapJazyk.t primo ve strance).
+6) Napoveda CZ / EN (stejna stavba): PS1 -> LOAD GAME, Hry a BIOS (obrazovka pri stahovani, BIOS ceka, misto),
+   Televize (misto, nepovedene i prerusene stazeni se samo smaze). en_ps1.js: mrtve texty stareho pruhu pryc.
+7) build.gradle versionCode 388 "EMU10-B345-PS1-STAHOVANI-BEZ-BIOSU".
+
+Spoustet z adresare test_overeni/b345 (PRAC = pracovni slozka, AJ = android-34.jar):
+A) JVM (NapPravidla z appky):
+   javac -encoding UTF-8 --release 17 -d PRAC ../../app/src/main/java/eu/atarihelp/emu10/NapPravidla.java \
+         jvm/eu/atarihelp/emu10/TestB345.java && java -Dstdout.encoding=UTF-8 -cp PRAC eu.atarihelp.emu10.TestB345 \
+         VYSTUP_test_b345_java.txt
+   -> 5 OK: bez ZIPu velikost + 200 MB, ZIP 2x, nezname 1,6 GB; volno 2,4 GB + hra 1,2 GB: drive MALO MISTA, ted
+      bez ZIPu vejde, v ZIPu ne; ULOZISTE CZ / EN; MALO MISTA beze zmeny; hezke jmeno.
+B) python3 test_b345_stranka.py PRAC -> VYSTUP_test_b345_stranka.txt (23 OK, Chromium + falesny AHPS1 se stavy
+   PRESNE jako z MainActivity: cele stahovani CZ, velikost neznama, chyba (pruh POD monitorem, 12 s, uz ne
+   dokola), stary stav po zruseni, panel behem stahovani, RESET behem stahovani, hra se nespustila, CACHE_HIT,
+   BUSY, anglicky na sirku bez cestiny, panel PS1 CZ / EN, zadna chyba JS). Snimky v PRAC.
+C) python3 kontrola_b345.py -> VYSTUP_kontrola_b345.txt (19 OK; na HEAD B344 16 CHYBA - B4, S4, N2 plati uz tam)
+D) ES5 (acorn ecmaVersion 5): VYSTUP_kontrola_es5.txt (emu_ps1, en_ps1.js, napoveda CZ / EN - 6 OK)
+   javac vsech zdroju appky proti android-34.jar: exit 0, 124 trid (+ Ps1StahovaniZruseno).
+E) Napoveda (pravidlo B343): b311/kontrola_navodu.py 221 nazvu 0 CHYBA, b314/kontrola_navodu_en.py 213 nazvu
+   0 CHYBA, b343/kontrola_b343.py 71 kontrol, 3 CHYBA ZAMERNE: N7 (NapPravidla uz neni jen "delka * 2"), A6 (texty
+   stareho pruhu "PS1: pripojuji server" nahradilo okno v monitoru), V (verze).
+F) python3 regrese_b308_cesky.py -> VYSTUP_regrese_b308_ps1_stranka_cesky.txt: test B308 (nahravaci okno) cesky -
+   na B344 0 CHYB, na B345 1 CHYBA ZAMERNE (prubeh stahovani uz neni v pruhu pod monitorem, ale v monitoru).
+   Samotny ../b308/test_b308_ps1_stranka.py pada uz na B344 (7 CHYB - bez AHJAZYK mluvi stranka anglicky).
+G) Regrese -> VYSTUP_regrese_*.txt (*_log.txt = cely vystup testu, ktery svuj VYSTUP nezmenil).
+   Bez chyby: b311 mosty (131 volani mostu, 0 chybi - +2 nove), odkazy (0), test_b311_navod (23), b312 navod (221),
+   b320 stranky (13), b334 TV ovladani (13), b338 TV stranky (5) + JVM (4), b339 stranky (6), b342 stranky (22),
+   b343 napoveda (27), b344 stranky (10).
+   Zamerne zmeny: b339 TestB339 U5 (veta ULOZISTE) a kontrola_b339 (spadne na novem podpisu
+   ps1EnsureFreeSpace(dir, delka, zip)), b342 kontrola N2 (verze), b308 viz F.
+   Stejne jako na HEAD B344 (VYSTUP_regrese_NA_HEAD_B344_*): b308 (7 CHYB - anglicky bez AHJAZYK, na B345 8 = +1
+   zamerne), b309 test_b309_ps1_log (4 CHYB - anglicky bez AHJAZYK), b317 stranka (3 CHYBA - tah mysi +46/+18 proti
+   vypoctu 65/26 a zakladna textu B316), b318 stranka (1 CHYBA - zakladna textu B317), b314 navod (jen 5 - zakladna
+   B313), b314 stranky ps1 (a - zakladna B313; b) anglicky bez cestiny OK, c) JS OK).
+   POZOR: skripty jinych buildu prepisuji sve VYSTUP soubory - po regresi "git checkout -- test_overeni/bNNN".
+
+Overi Rene (telefon i TV "Tv obyvak"):
+ 1) LOAD GAME / HRY ZE SERVERU N&P -> hra, ktera jeste neni stazena: v monitoru STAHUJI HRU, nazev hry jako v
+    katalogu, procenta a MB; BIOS (logo Sony / menu) se NEukaze, po stazeni NAHRAVAM HRU <nazev> a hra nabehne sama.
+    V logu: "B345 PS1 BIOS ceka - stahuje se hra ...", pak "PS1_REMOTE_BOOTING #n <nazev>", "PS1_HRA_OK".
+ 2) Hra uz stazena (podruhe): SPOUSTIM HRU / NAHRAVAM HRU s nazvem, ne "nap_ps1-...".
+ 3) Behem stahovani ZPET (nebo RESET): stahovani skonci hned, po navratu do PS1 nabehne BIOS a nic se nestahuje.
+ 4) Malo mista (TV): hra bez ZIPu chce jen velikost + 200 MB (log PS1_SPACE_CHECK ... bez ZIPu), ZIP 2x.

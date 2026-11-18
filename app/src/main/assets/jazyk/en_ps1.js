@@ -1,13 +1,13 @@
 /* B314: anglicky slovnik - PS1 (emu_ps1/index.html). Spolecne texty Sega + PS1 jsou v
  * en_konzole.js. Obrazek PS1 ma popisky anglicky uz od zacatku. */
 NapJazyk.slovnik({
-  'Cekam...': 'Waiting...',
   // HELP panel
   // B343: texty panelu podle skutecnosti (LOAD GAME = server N&P, ne Google Drive)
   '= tvoje stažené hry: klepnutím hru spustíš, koš ji smaže. Hru z telefonu vybereš přes VYBRAT SOUBOR RUČNĚ V TELEFONU.':
     '= your downloaded games: tap a game to start it, the bin deletes it. Pick a game from the phone with PICK A FILE ON THE PHONE MANUALLY.',
-  '= hry ze serveru N&P. Poprvé se hra stáhne a rozbalí (volno asi 2× velikost hry + 200 MB), příště se spustí rovnou z telefonu.':
-    '= games from the N&P server. The first time a game downloads and unpacks (needs about 2× its size + 200 MB free), next time it starts straight from the phone.',
+  // B345: hra bez ZIPu chce jen velikost + 200 MB, po stazeni se spusti sama
+  '= hry ze serveru N&P. Poprvé se hra stáhne (volno asi velikost hry + 200 MB, ZIP 2× velikost + 200 MB) a sama se spustí, příště se spustí rovnou z telefonu.':
+    '= games from the N&P server. The first time a game downloads (needs about its size + 200 MB free, a ZIP 2× its size + 200 MB) and starts by itself, next time it starts straight from the phone.',
   'Formáty: .bin .cue .iso .img .pbp .chd a .zip (.7z appka neumí).': 'Formats: .bin .cue .iso .img .pbp .chd and .zip (the app cannot do .7z).',
   'uloží přesnou pozici.': 'saves the exact position.',
   '(v panelu D-PAD A OVLÁDÁNÍ) ji zase nahraje – přesně tam, kde jsi skončil.': '(in the D-PAD AND CONTROLS panel) loads it again – exactly where you left off.',
@@ -49,18 +49,7 @@ NapJazyk.slovnik({
   'Spouštím hru': 'Starting the game',
   'velká hra nebo pomalé úložiště - čekám, až jádro hru spustí': 'a big game or slow storage - waiting for the core to start the game',
   'START TRVÁ PŘÍLIŠ DLOUHO - pošli LOG (kolečko → ULOŽIT LOG A ODESLAT)': 'THE START TAKES TOO LONG - send the LOG (gear → SAVE AND SEND THE LOG)',
-  // stazeni z Drive (pruh nahore)
-  'PS1: start': 'PS1: start',
-  'PS1: pripojuji server': 'PS1: connecting to the server',
-  'PS1: stahuji hru': 'PS1: downloading the game',
-  'PS1: ZIP stazen': 'PS1: ZIP downloaded',
-  'PS1: rozbaluji ZIP': 'PS1: unpacking the ZIP',
-  'PS1: nacteno z cache': 'PS1: loaded from the cache',
-  'PS1: pripraveno': 'PS1: ready',
-  'PS1: hra spustena': 'PS1: game started',
-  'PS1: uz pracuje': 'PS1: already working',
-  'PS1: chyba': 'PS1: error',
-  'PS1: stav': 'PS1: state',
+  // B345: stahovani hry - texty okna v monitoru a pruhu chyby jsou primo ve strance (NapJazyk.t)
   // hlasky
   'SAVE STATE ulozen': 'SAVE STATE saved',
   'SAVE STATE nacten': 'SAVE STATE loaded',
