@@ -1,0 +1,16 @@
+OK     Z1) klepnuti na nalezene zarizeni: poKlepnuti(sparovany, ovladac, pripojeny); sparovany ovladac -> znovuParuj (do B343 jen "uz je sparovany - staci ho zapnout" = slepa ulicka)
+OK     Z2) pripojeny = HID profil Androidu nebo vstupni zarizeni (pripojeny ovladac se nikdy nerusi)
+OK     Z3) znovuParuj: prijimac zapnuty, removeBond, kdyz nejde nebo do 8 s nedobehne -> rada NASTAVENI BLUETOOTH
+OK     Z4) removeBond jen reflexi s osetrenim (skryte API, Android 9 pusti; novejsi -> nahradni rada)
+OK     Z5) BOND_NONE u ovladace, kteremu se rusilo sparovani -> za 400 ms createBond (pred obecnym "nepovedlo")
+OK     Z6) "hledani skoncilo" jen u naseho hledani (log TV: Nastaveni Androidu 12x); prijimac zustane pri parovani znovu
+OK     Z7) NapBluetoothTexty: poKlepnuti, faze ZNOVU / ZNOVU_RUCNE, "neozval se" uz neposila do slepe ulicky
+OK     S1) OPTIONS: "spárovaný, klepni = spárovat znovu" jen u ovladace (reproduktor dal "spárovaný")
+OK     N1) napoveda CZ: "Spárovat znovu" v appce, proc se ovladac neozve (vraci se k poslednimu zarizeni)
+OK     N1) napoveda EN: "Pair it again"
+OK     N2) stejna stavba CZ / EN (li, details, dt, bloky, odkazy): [138, 21, 61, 48, 73]
+OK     A1) zadni strana Atari: bez sekce CO TESTOVAT (od B314 prazdna) a jejiho JS / CSS
+OK     A2) bez starych poznamek k buildum B296-B312 (CZ i EN); vysvetleni testu jadra, ZAPSAT a test zustaly
+OK     A3) Java bez zapisKrok, en_atari.js bez prekladu smazanych textu, novy podtitul prelozeny
+OK     V) build.gradle: 387 EMU10-B344-BT-ZNOVU-SPAROVAT
+VYSLEDEK: 15 kontrol, 0 CHYBA

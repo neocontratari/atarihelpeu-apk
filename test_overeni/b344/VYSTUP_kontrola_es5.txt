@@ -1,0 +1,12 @@
+OK     ES5 jazyk/en_atari.js
+OK     ES5 jazyk/en_menu.js
+OK     ES5 spolecne/nap_jazyk.js
+OK     ES5 index.html skript 1
+OK     ES5 index.html skript 2
+OK     ES5 index.html skript 3
+OK     ES5 emu_atari_cpp/index.html skript 1
+OK     ES5 napoveda/index.html skript 1
+OK     ES5 napoveda/index.html skript 2
+OK     ES5 napoveda/en.html skript 1
+OK     ES5 napoveda/en.html skript 2
+VYSLEDEK: 11 kontrol, 0 CHYBA

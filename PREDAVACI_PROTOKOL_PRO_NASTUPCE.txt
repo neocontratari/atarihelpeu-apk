@@ -4320,4 +4320,23 @@
      - DALSI KROK: Rene - projit HELP na telefonu a TV (zapati B343 (386), OPTIONS, WEB TV, otazky), PS1 kolecko na
        vysku, Sega NAVODY; pak fronta z porady B340 (BIOS pri stahovani, jmeno hry, misto mimo ZIP).
 
+   B344: BT OVLADAC - SPAROVAT ZNOVU PRIMO V APPCE + UKLID ZADNI STRANY ATARI (18. 11. 2026).
+   Rene po testu B343: "klidne smaz co se nepouziva", "na TV nechej sirku jako vychozi" (beze zmeny - vychozi je
+   cela obrazovka), "pripojovani bt ovladace je nejake divne". Log TV: "Pro Controller" (klon Switch) sparovany
+   s TV i telefonem se po HOME vraci k poslednimu zarizeni -> "neozval se"; appka radila "spáruj znovu (PŘIPOJIT
+   OVLADAČ)", ale klepnuti na nalezeny ovladac jen napsalo "už je spárovaný – stačí ho zapnout" = slepa ulicka,
+   Rene musel do Nastaveni Androidu (tam se znovu sparoval a hral).
+     - NapBluetooth.sparuj: NapBluetoothTexty.poKlepnuti(sparovany, ovladac, pripojeny). Sparovany nepripojeny
+       ovladac (nasel se v hledani = je v parovani) -> znovuParuj: removeBond reflexi (Android 9 pusti), po
+       BOND_NONE createBond; nejde / 8 s nic -> faze ZNOVU_RUCNE (rada NASTAVENI BLUETOOTH). Pripojeny ovladac
+       a jina zarizeni appka nerusi. "hledani skoncilo" jen u naseho hledani. Prijimac zustane, dokud se
+       paruje znovu (konec() ho zrusi vzdy).
+     - Texty "neozval se" / "ozval se": proc a jak sparovat znovu v appce. OPTIONS: "spárovaný, klepni =
+       spárovat znovu". Napoveda CZ / EN: "Spárovat znovu" / "Pair it again".
+     - Zadni strana Atari: pryc CO TESTOVAT (prazdne od B314, + JS, CSS, most zapisKrok) a poznamky B296-B312.
+     - Testy test_overeni/b344 (JAK_SPUSTIT.txt). build.gradle: versionCode 387 "EMU10-B344-BT-ZNOVU-SPAROVAT".
+     - DALSI KROK: Rene - TV: ovladac do parovani, OPTIONS -> PRIPOJIT OVLADAC -> klepnout na nej (log "paruji
+       znovu", "PRIPOJEN"). Navrhy k dalsimu uklidu (cekaji na Reneho): PS1 panel PS1 PRIMA URL / PS1 CACHE
+       CESTA / SMAZAT PS1 CACHE, OPTIONS TV POKUS. Pak fronta z porady B340.
+
 ===============================================================================

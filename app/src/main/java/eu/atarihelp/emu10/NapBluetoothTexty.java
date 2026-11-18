@@ -33,6 +33,33 @@ final class NapBluetoothTexty {
     // (ozval se, ale nepripojil / neozval se) a co s tim. Hlidac v appce pozna "ozval se, ale za 10 s se
     // nepripojil" i bez klepnuti (zprava + log). Do logu jen zapamatovane ovladace a konec adresy.
     static final String F_PRIPOJUJI = "PRIPOJUJI", F_OZVAL_SE = "OZVAL_SE", F_NEOZVAL = "NEOZVAL";
+
+    // ===== B344: ZNOVU SPAROVAT PRIMO V APPCE (Rene na TV: "pripojovani BT ovladace je nejake divne").
+    // Log TV: zapamatovany "Pro Controller" se po HOME neozval (ovladac se vraci jen k poslednimu zarizeni, se kterym
+    // hral - Rene ho ma sparovany i s telefonem), appka radila "spáruj ho znovu (PŘIPOJIT OVLADAČ)", ale klepnuti na
+    // nalezeny ovladac jen napsalo "už je spárovaný – stačí ho zapnout" = slepa ulicka -> Rene musel do Nastaveni
+    // Androidu. Ted: ovladac, ktery se nasel pri hledani (= je v parovani), je sparovany a jako ovladac nepripojeny ->
+    // appka stare sparovani zrusi (BluetoothDevice.removeBond - skryte API, Android 9 ho aplikacim pusti) a po zruseni
+    // ho spáruje znovu (createBond). Kdyz Android zruseni nedovoli -> rada pres NASTAVENI BLUETOOTH. Jina zarizeni
+    // (reproduktor ...) appka nerusi nikdy.
+    static final String F_ZNOVU = "ZNOVU", F_ZNOVU_RUCNE = "ZNOVU_RUCNE";
+    /** Co udela klepnuti na zarizeni v seznamu hledani. */
+    static final String K_PARUJ = "PARUJ", K_ZNOVU = "ZNOVU", K_PRIPOJENY = "PRIPOJENY", K_SPAROVANY = "SPAROVANY";
+    /** Jak dlouho se ceka na zruseni stareho sparovani (BOND_NONE), nez appka poradi NASTAVENI BLUETOOTH. */
+    static final long LIMIT_ZRUSENI_MS = 8000L;
+    static final int BOND_NONE = 10;   // BluetoothDevice.BOND_NONE
+
+    /** Klepnuti na zarizeni v seznamu: nesparovane -> parovat; pripojene -> nic; sparovany ovladac -> parovat znovu. */
+    static String poKlepnuti(boolean sparovany, boolean ovladac, boolean pripojeny) {
+        if (!sparovany) return K_PARUJ;
+        if (pripojeny) return K_PRIPOJENY;
+        return ovladac ? K_ZNOVU : K_SPAROVANY;
+    }
+
+    /** Stare sparovani zruseno (BOND_NONE) u ovladace, ktery appka paruje znovu -> ted createBond. */
+    static boolean znovuPoZruseni(String cekaAdresa, String adresa, int stav) {
+        return cekaAdresa != null && cekaAdresa.equals(adresa) && stav == BOND_NONE;
+    }
     static final long LIMIT_PRIPOJENI_MS = 30000L, LIMIT_OZVAL_MS = 10000L;
     /** Stav HID (BluetoothProfile.STATE_*): 0 odpojen, 1 pripojuje se, 2 pripojen, 3 odpojuje se; -1 = nevi. */
     static final int HID_NEVI = -1, HID_ODPOJEN = 0, HID_PRIPOJUJE = 1, HID_PRIPOJEN = 2, HID_ODPOJUJE = 3;
@@ -75,6 +102,12 @@ final class NapBluetoothTexty {
         return en ? "🎮 “" + jm + "” responded but didn't connect – turn it off and on again (details: OPTIONS → GAME CONTROLLER)"
                   : "🎮 „" + jm + "“ se ozval, ale nepřipojil se – vypni ho a zapni znovu (víc: OPTIONS → HERNÍ OVLADAČ)";
     }
+
+    /** B344: jak znovu sparovat (ovladac v parovani -> hledani -> klepnuti; appka stare sparovani zrusi sama). */
+    static final String ZNOVU_CS = "dej ho do párování (podrž HOME nebo tlačítko párování / SYNC), klepni na PŘIPOJIT OVLADAČ (BLUETOOTH) "
+            + "a pak na něj v seznamu – appka ho spáruje znovu.";
+    static final String ZNOVU_EN = "put it into pairing mode (hold HOME or the pairing / SYNC button), tap CONNECT CONTROLLER (BLUETOOTH) "
+            + "and then the controller in the list – the app pairs it again.";
 
     /** Jedno nalezene / zapamatovane zarizeni. trida = BluetoothClass.getDeviceClass() (-1 = neznama). */
     static final class Nalez {
@@ -178,16 +211,26 @@ final class NapBluetoothTexty {
                 return en ? "Turn " + (bez ? "the controller" : "“" + jm + "”") + " on (HOME button) – Android connects it by itself. Waiting… (" + zbyva + " s)"
                           : "Zapni ovladač" + (bez ? "" : " „" + jm + "“") + " (tlačítko HOME / domeček) – Android ho připojí sám. Čekám… (" + zbyva + " s)";
             }
-            case F_OZVAL_SE:
+            case F_OZVAL_SE:   // B344: znovu sparovat jde primo v appce (drive slepa ulicka -> Nastaveni Androidu)
                 return en ? "“" + jm + "” responded but didn't connect as a controller. Turn it off and on again. If that doesn't help: "
-                            + "BLUETOOTH SETTINGS → “" + jm + "” → unpair (forget) and pair it again with CONNECT CONTROLLER (BLUETOOTH)."
+                            + ZNOVU_EN
                           : "„" + jm + "“ se ozval, ale jako ovladač se nepřipojil. Vypni ho a zapni znovu. Když to nepomůže: "
-                            + "NASTAVENÍ BLUETOOTH → „" + jm + "“ → zrušit párování (odebrat) a spáruj ho znovu přes PŘIPOJIT OVLADAČ (BLUETOOTH).";
+                            + ZNOVU_CS;
             case F_NEOZVAL:
-                return en ? "“" + jm + "” didn't respond. Is it on and charged? A controller with several modes (Switch / Android / PC) "
-                            + "must be turned on in the same mode as when it was paired. Otherwise pair it again (CONNECT CONTROLLER)."
-                          : "„" + jm + "“ se neozval. Je zapnutý a nabitý? Ovladač s víc režimy (Switch / Android / PC) zapni "
-                            + "ve stejném režimu jako při párování. Jinak ho spáruj znovu (PŘIPOJIT OVLADAČ).";
+                return en ? "“" + jm + "” didn't respond. Is it on and charged? After switching on, a controller returns only to the last "
+                            + "device it played with (e.g. the phone). " + ZNOVU_EN.substring(0, 1).toUpperCase(Locale.ROOT) + ZNOVU_EN.substring(1)
+                            + " A controller with several modes (Switch / Android / PC) must be turned on in the same mode as when it was paired."
+                          : "„" + jm + "“ se neozval. Je zapnutý a nabitý? Ovladač se po zapnutí vrací jen k poslednímu zařízení, se kterým "
+                            + "hrál (třeba k telefonu). " + ZNOVU_CS.substring(0, 1).toUpperCase(Locale.ROOT) + ZNOVU_CS.substring(1)
+                            + " Ovladač s víc režimy (Switch / Android / PC) zapínej ve stejném režimu jako při párování.";
+            case F_ZNOVU:
+                return en ? "“" + jm + "” is paired but not connected – pairing it again (removing the old pairing)… Keep it in pairing mode."
+                          : "„" + jm + "“ je spárovaný, ale nepřipojený – páruji ho znovu (staré spárování ruším)… Nech ho v párování.";
+            case F_ZNOVU_RUCNE:
+                return en ? "Android didn't allow the app to remove the old pairing of “" + jm + "”. In BLUETOOTH SETTINGS remove (forget) it, "
+                            + "then tap CONNECT CONTROLLER (BLUETOOTH) and the controller in the list."
+                          : "Android nedovolil appce zrušit staré spárování „" + jm + "“. V NASTAVENÍ BLUETOOTH ho odeber (zapomenout), "
+                            + "pak klepni na PŘIPOJIT OVLADAČ (BLUETOOTH) a na ovladač v seznamu.";
             case F_NEPOVEDLO:
                 return en ? "Pairing with “" + jm + "” failed. Put the controller into pairing mode again and tap it once more."
                           : "Spárování s „" + jm + "“ se nepovedlo. Dej ovladač znovu do párování a klepni na něj znovu.";

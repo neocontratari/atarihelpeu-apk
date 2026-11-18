@@ -504,7 +504,8 @@ function btTlacitko(d){
   b.type='button';
   b.setAttribute('data-a',d.a||'');   // B341: ramecek TV zustane na tomtez zarizeni (btPrekresli)
   b.className=(d.o?'ovl':'')+(d.p?' ok':'');
-  b.textContent=(d.o?'🎮 ':'')+d.j+(d.p?J(' – připojený ✔',' – connected ✔'):(d.s?J(' – spárovaný',' – paired'):''));
+  // B344: sparovany, ale nepripojeny ovladac - klepnuti ho sparuje znovu (Java zrusi stare sparovani)
+  b.textContent=(d.o?'🎮 ':'')+d.j+(d.p?J(' – připojený ✔',' – connected ✔'):(d.s?(d.o?J(' – spárovaný, klepni = spárovat znovu',' – paired, tap = pair again'):J(' – spárovaný',' – paired')):''));
   b.addEventListener('click',function(e){
     e.preventDefault();e.stopPropagation();
     try{ if(window.AHBT) AHBT.sparuj(d.a); }catch(err){}

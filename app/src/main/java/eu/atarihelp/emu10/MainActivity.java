@@ -5937,16 +5937,6 @@ public class MainActivity extends Activity {
             return s;
         }
 
-        /** Vysledek jednoho kroku testu. Rene klepne, ja to mam v logu. */
-        @JavascriptInterface public String zapisKrok(int cislo, String popis, boolean ok) {
-            try {
-                appendNativeLog("BUILD2SA14 TEST_KROK " + cislo
-                        + " vysledek=" + (ok ? "V_PORADKU" : "SPATNE")
-                        + " co=" + (popis == null ? "" : popis));
-                return "{\"ok\":true}";
-            } catch (Throwable t) { return "{\"ok\":false}"; }
-        }
-
         /** Kde log lezi na disku - presne cesty, i ta pro pripad padu. */
         @JavascriptInterface public String cestyKLogu() {
             String akt = "(nevytvoren)", pred = "(zadny)", vel = "0";

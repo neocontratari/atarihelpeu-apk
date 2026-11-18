@@ -60,6 +60,8 @@ final class NapBluetooth {
     private String pripojujiAdresa = null;
     private long pripojujiOd = 0;
     private boolean vysledekHlasen = false, hlidacZapnut = false;
+    // B344: ovladac, kteremu appka rusi stare sparovani, aby ho sparovala znovu (NapBluetoothTexty.poKlepnuti)
+    private String znovuAdresa = null;
 
     NapBluetooth(Activity a, NapOvladac ovladac, NapAktualizace.Hlaska log) {
         this.a = a;
@@ -100,6 +102,7 @@ final class NapBluetooth {
         boolean byl;
         synchronized (this) { byl = hlidacZapnut; hlidacZapnut = false; }
         if (byl) try { a.unregisterReceiver(hlidac); } catch (Throwable ignored) {}
+        vypniPrijimac();   // B344: zastav() ho nechava, kdyz se zrovna paruje znovu - pri konci appky pryc vzdy
         final BluetoothProfile p = hid;
         hid = null;
         if (p != null) try { final BluetoothAdapter ad = adapter(); if (ad != null) ad.closeProfileProxy(PROFIL_HID, p); } catch (Throwable ignored) {}
@@ -353,7 +356,7 @@ final class NapBluetooth {
         else nastav(NapBluetoothTexty.F_BT_VYPNUTE, "");
     }
 
-    /** Klepnuti na zarizeni v seznamu: sparovat (createBond). */
+    /** Klepnuti na zarizeni v seznamu: sparovat (createBond); B344: sparovany, ale nepripojeny ovladac sparovat znovu. */
     void sparuj(final String adresa) {
         ui.post(() -> {
             try {
@@ -362,26 +365,77 @@ final class NapBluetooth {
                 if (ad.isDiscovering()) ad.cancelDiscovery();
                 final BluetoothDevice d = ad.getRemoteDevice(adresa);
                 String jm;
+                int tr;
                 synchronized (this) {
                     final NapBluetoothTexty.Nalez n = nalezene.get(adresa);
                     jm = n != null && n.jmeno != null ? n.jmeno : "";
+                    tr = n != null ? n.trida : -1;
                 }
                 if (jm.isEmpty()) { try { jm = String.valueOf(d.getName()); } catch (Throwable ignored) { jm = ""; } }
-                synchronized (this) { parujiAdresa = adresa; parujiJmeno = jm; pripojenoHlaseno = false; }
-                if (d.getBondState() == BluetoothDevice.BOND_BONDED) {
+                if (tr < 0) tr = trida(d);
+                synchronized (this) { parujiAdresa = adresa; parujiJmeno = jm; pripojenoHlaseno = false; znovuAdresa = null; }
+                final boolean sparovany = d.getBondState() == BluetoothDevice.BOND_BONDED;
+                final boolean pripojeny = hidStav(d) == NapBluetoothTexty.HID_PRIPOJEN
+                        || (ovladac != null && mezi(ovladac.jmenaPripojenych(), jm));
+                final String co = NapBluetoothTexty.poKlepnuti(sparovany, NapBluetoothTexty.jeOvladac(tr, jm), pripojeny);
+                final String kde = "\"" + jm + "\" (" + NapBluetoothTexty.kratkaAdresa(adresa) + ")";
+                if (NapBluetoothTexty.K_PRIPOJENY.equals(co)) {
+                    synchronized (this) { pripojenoHlaseno = true; }
+                    nastav(NapBluetoothTexty.F_PRIPOJENO, "");
+                    log(kde + " uz je pripojeny jako ovladac - neni co delat");
+                } else if (NapBluetoothTexty.K_SPAROVANY.equals(co)) {
                     nastav(NapBluetoothTexty.F_SPAROVANO, "");
-                    log("\"" + jm + "\" (" + NapBluetoothTexty.kratkaAdresa(adresa) + ") uz je sparovany - staci ho zapnout");
-                    return;
+                    log(kde + " uz je sparovany (neni to ovladac - sparovani appka nerusi)");
+                } else if (NapBluetoothTexty.K_ZNOVU.equals(co)) {
+                    znovuParuj(d, adresa, jm);
+                } else {
+                    paruj(d, adresa, jm, "");
                 }
-                nastav(NapBluetoothTexty.F_PARUJI, "");
-                final boolean ok = d.createBond();
-                log("paruji \"" + jm + "\" (" + NapBluetoothTexty.kratkaAdresa(adresa) + "): createBond = " + ok);
-                if (!ok) nastav(NapBluetoothTexty.F_NEPOVEDLO, "");
             } catch (Throwable t) {
                 nastav(NapBluetoothTexty.F_NEPOVEDLO, "");
                 log("parovani chyba: " + t);
             }
         });
+    }
+
+    private void paruj(BluetoothDevice d, String adresa, String jm, String proc) {
+        nastav(NapBluetoothTexty.F_PARUJI, "");
+        final boolean ok = d.createBond();
+        log("paruji " + proc + "\"" + jm + "\" (" + NapBluetoothTexty.kratkaAdresa(adresa) + "): createBond = " + ok);
+        if (!ok) nastav(NapBluetoothTexty.F_NEPOVEDLO, "");
+    }
+
+    /**
+     * B344: sparovany ovladac, ktery se nasel pri hledani (je v parovani), ale jako ovladac neni pripojeny - typicky
+     * si pamatuje jine zarizeni (telefon) a k tomuhle se po HOME nevrati. Stare sparovani zrusit (removeBond), po
+     * zruseni (BOND_NONE v zmenaParovani) createBond. Kdyz Android zruseni nedovoli -> rada NASTAVENI BLUETOOTH.
+     */
+    private void znovuParuj(BluetoothDevice d, final String adresa, String jm) {
+        zapniPrijimac();   // zprava o zruseni (BOND_NONE) musi prijit, i kdyby hledani uz nebezelo
+        synchronized (this) { znovuAdresa = adresa; }
+        nastav(NapBluetoothTexty.F_ZNOVU, "");
+        final String r = zrusSparovaniSkryte(d);
+        log("\"" + jm + "\" (" + NapBluetoothTexty.kratkaAdresa(adresa) + ") je sparovany, ale jako ovladac nepripojeny a nasel se "
+                + "v parovani -> paruji znovu: rusim stare sparovani (removeBond = " + r + ", Android " + Build.VERSION.RELEASE + ")");
+        if (!"true".equals(r)) { znovuRucne(adresa, "Android zruseni nedovolil"); return; }
+        ui.postDelayed(() -> znovuRucne(adresa, "za " + (NapBluetoothTexty.LIMIT_ZRUSENI_MS / 1000) + " s se nezrusilo"),
+                NapBluetoothTexty.LIMIT_ZRUSENI_MS);
+    }
+
+    /** B344: znovu sparovat nejde (zruseni nedovoleno / nedobehlo) - rada pres NASTAVENI BLUETOOTH. */
+    private void znovuRucne(String adresa, String proc) {
+        synchronized (this) {
+            if (adresa == null || !adresa.equals(znovuAdresa)) return;   // mezitim zruseno a paruje se znovu
+            znovuAdresa = null;
+        }
+        nastav(NapBluetoothTexty.F_ZNOVU_RUCNE, "");
+        log("stare sparovani appka zrusit nemuze (" + proc + ") - rada: NASTAVENI BLUETOOTH -> odebrat, pak znovu PRIPOJIT OVLADAC");
+    }
+
+    /** B344: BluetoothDevice.removeBond - skryte API (Android 9 ho aplikacim pusti, novejsi nemusi). */
+    private static String zrusSparovaniSkryte(BluetoothDevice d) {
+        try { return String.valueOf(d.getClass().getMethod("removeBond").invoke(d)); }
+        catch (Throwable t) { return "nejde (" + t.getClass().getSimpleName() + ")"; }
     }
 
     /** Zavreni OPTIONS / konec appky: prestat hledat a poslouchat (parovani, ktere bezi, dobehne v Androidu). */
@@ -395,7 +449,9 @@ final class NapBluetooth {
             final BluetoothAdapter ad = adapter();
             if (ad != null && ad.isDiscovering()) ad.cancelDiscovery();
         } catch (Throwable ignored) {}
-        vypniPrijimac();
+        boolean znovu;
+        synchronized (this) { znovu = znovuAdresa != null; }
+        if (!znovu) vypniPrijimac();   // B344: znovu parovani bezi - zprava o zruseni (BOND_NONE) jeste musi prijit
         synchronized (this) {
             if (NapBluetoothTexty.F_HLEDAM.equals(faze) || NapBluetoothTexty.F_HOTOVO.equals(faze)) faze = NapBluetoothTexty.F_NIC;
         }
@@ -486,24 +542,40 @@ final class NapBluetooth {
 
     private void hledaniSkoncilo() {
         int vse, ovl;
+        boolean nase;
         synchronized (this) {
             vse = nalezene.size();
             ovl = 0;
             for (NapBluetoothTexty.Nalez n : nalezene.values()) if (n.ovladac()) ovl++;
-            if (NapBluetoothTexty.F_HLEDAM.equals(faze)) faze = NapBluetoothTexty.F_HOTOVO;
+            nase = NapBluetoothTexty.F_HLEDAM.equals(faze);
+            if (nase) faze = NapBluetoothTexty.F_HOTOVO;
         }
-        log("hledani skoncilo: zarizeni " + vse + ", z toho ovladacu " + ovl);
+        // B344: jen konec NASEHO hledani (log TV B343: Nastaveni Androidu hledalo samo a appka psala
+        // "hledani skoncilo" kazdych par sekund, i 3x naraz)
+        if (nase) log("hledani skoncilo: zarizeni " + vse + ", z toho ovladacu " + ovl);
     }
 
     private void zmenaParovani(BluetoothDevice d, int stav, int predtim) {
         if (d == null) return;
         final String adr = d.getAddress();
         String jm;
+        boolean znovu;
         synchronized (this) {
             final NapBluetoothTexty.Nalez n = nalezene.get(adr);
             if (n != null) n.sparovany = stav == BluetoothDevice.BOND_BONDED;
             if (parujiAdresa == null || !parujiAdresa.equals(adr)) return;
             jm = parujiJmeno;
+            znovu = NapBluetoothTexty.znovuPoZruseni(znovuAdresa, adr, stav);
+            if (znovu) znovuAdresa = null;
+        }
+        if (znovu) {   // B344: stare sparovani zruseno -> sparovat znovu (ovladac je porad v parovani)
+            log("stare sparovani \"" + jm + "\" (" + NapBluetoothTexty.kratkaAdresa(adr) + ") zruseno -> paruji znovu");
+            final String j = jm;
+            ui.postDelayed(() -> {
+                try { paruj(d, adr, j, "znovu "); }
+                catch (Throwable t) { nastav(NapBluetoothTexty.F_NEPOVEDLO, ""); log("parovani znovu chyba: " + t); }
+            }, 400);
+            return;
         }
         if (stav == BluetoothDevice.BOND_BONDING) {
             nastav(NapBluetoothTexty.F_PARUJI, "");

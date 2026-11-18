@@ -1,0 +1,57 @@
+B344 - BT OVLADAC: SPAROVAT ZNOVU PRIMO V APPCE + UKLID ZADNI STRANY ATARI (18. 11. 2026)
+====================================================================================
+
+Rene (po testu B343, log TV TCL + telefon S8): "klidne smaz co se nepouziva" (zadni strana Atari - stare poznamky
+k buildum), "na TV nechej sirku jako vychozi" (= beze zmeny, vychozi je cela obrazovka), "mam furt pocit ze to
+pripojovani bt ovladace je nejake divne, ale to muze byt tim ze je to china smejd".
+
+CO UKAZAL LOG TV (B343):
+ - "Pro Controller" (klon ovladace Switch, 057e:2009) je sparovany s TV i s telefonem. Po HOME se vraci jen
+   k poslednimu zarizeni, se kterym hral -> na TV "PRIPOJIT: za 30 s se neozval".
+ - Appka pak radila "spáruj ho znovu (PŘIPOJIT OVLADAČ)", ale klepnuti na nalezeny ovladac jen napsalo "už je
+   spárovaný – stačí ho zapnout" a nic neudelalo = SLEPA ULICKA (moje chyba, ne ovladace). Rene musel do
+   Nastaveni Androidu, tam se ovladac znovu sparoval (SPAROVANO -> PRIPOJEN) a pak hral (Sega, A, START, osy).
+ - Zatimco byl Rene v Nastaveni, appka psala "hledani skoncilo" kazdych par sekund (i 3x naraz) - hledani
+   Nastaveni, ne nase.
+
+CO JE NOVE:
+1) BT: klepnuti na nalezeny ovladac (= je v parovani), ktery je sparovany, ale jako ovladac NEpripojeny ->
+   appka stare sparovani zrusi (BluetoothDevice.removeBond - skryte API pres reflexi, Android 9 ho pusti) a po
+   zruseni (BOND_NONE) ho sparuje znovu (createBond). Kdyz Android zruseni nedovoli nebo do 8 s nedobehne ->
+   rada: NASTAVENI BLUETOOTH -> odebrat -> PRIPOJIT OVLADAC. Pripojeny ovladac a jina zarizeni (reproduktor)
+   appka nerusi nikdy. V seznamu: "🎮 Pro Controller – spárovaný, klepni = spárovat znovu".
+   Texty "neozval se" / "ozval se, ale nepripojil": proc (ovladac se vraci k poslednimu zarizeni, treba telefonu)
+   a jak (parovani -> PRIPOJIT OVLADAC -> na nej), uz ne do Nastaveni Androidu.
+   Log: "B331 BT: ... je sparovany, ale jako ovladac nepripojeny a nasel se v parovani -> paruji znovu: rusim
+   stare sparovani (removeBond = true ...)", "stare sparovani ... zruseno -> paruji znovu", "paruji znovu ...
+   createBond = true", pak "SPAROVANO" a B332 "PRIPOJEN". "hledani skoncilo" jen u naseho hledani.
+2) Napoveda CZ / EN: Herni ovladac -> nova polozka "Spárovat znovu" / "Pair it again", proc se ovladac neozve;
+   OPTIONS -> PRIPOJIT OVLADAC: sparovany nepripojeny ovladac appka sparuje znovu.
+3) Zadni strana Atari (LOG / CHYBA): smazana sekce CO TESTOVAT (od B314 prazdna - kroky jsou ve zprave) i s JS,
+   CSS a Java mostem zapisKrok; smazane stare poznamky k buildum B296-B312 (CZ i EN, ~20 kB textu); zustal log,
+   ZAPSAT poznamku, test jadra a "Jak mi log poslat". Stranka 32 kB -> 12 kB.
+4) build.gradle versionCode 387 "EMU10-B344-BT-ZNOVU-SPAROVAT".
+
+Spoustet z adresare test_overeni/b344 (PRAC = pracovni slozka):
+A) JVM (NapBluetoothTexty z appky):
+   javac -encoding UTF-8 --release 17 -d PRAC ../../app/src/main/java/eu/atarihelp/emu10/NapBluetoothTexty.java \
+         jvm/eu/atarihelp/emu10/TestB344.java && java -Dstdout.encoding=UTF-8 -cp PRAC eu.atarihelp.emu10.TestB344
+   -> VYSTUP_test_b344_java.txt (14 OK: klepnuti -> parovat / nic / znovu / reproduktor nerusit, po BOND_NONE jen
+      ten ovladac, texty CZ / EN bez slepe ulicky)
+B) python3 test_b344_stranky.py PRAC -> VYSTUP_test_b344_stranky.txt (10 OK, Chromium + falesny AHBT: seznam
+   "spárovaný, klepni = spárovat znovu" jen u ovladace CZ / EN, klepnuti -> AHBT.sparuj, zadni strana Atari bez
+   CO TESTOVAT a poznamek, ZAPSAT / ZPET funguji, anglicky bez cestiny, napoveda, zadna chyba JS)
+C) python3 kontrola_b344.py -> VYSTUP_kontrola_b344.txt (15 OK; na HEAD B343 14 CHYBA)
+D) VYSTUP_kontrola_es5.txt (11 skriptu ES5, 0 chyb), VYSTUP_javac_android.txt (exit 0, 123 trid, 35 zdroju)
+E) Regrese -> VYSTUP_regrese_*.txt: b311 napoveda CZ (219 nazvu, 0), odkazy (0), mosty (129 - bez zapisKrok, 0
+   chybi), test_b311_navod (23 OK), b314 napoveda EN (211, 0), b314 menu (10 OK), b314 navod (34, jen 5) - stara
+   zakladna B313), b314 stranky atari (b) EN bez cestiny OK, c) JS OK; a) "texty jako B313" = zamerne smazane
+   poznamky a kroky), b331 stranka (11 OK), b332 stranka (9 OK), b343 kontrola (71, jen verze), b343 napoveda
+   (27 OK), b312 servis (8 CHYBA - stejne na HEAD B343, stara kontrola zamku a kroku B312).
+   JVM: TestB331 D1 (JSON - pada uz od B332, stejne na HEAD), TestB332 B3 a B5 = ZAMERNE zmenene texty
+   "ozval se" (drive NASTAVENI BLUETOOTH -> zrusit parovani, ted spárovat znovu v appce).
+   POZOR: skripty jinych buildu prepisuji sve VYSTUP soubory - po regresi "git checkout -- test_overeni/bNNN".
+
+Overi Rene na TV: ovladac dat do parovani (podrzet HOME / SYNC), OPTIONS -> PRIPOJIT OVLADAC (BLUETOOTH) ->
+klepnout na "Pro Controller – spárovaný, klepni = spárovat znovu" -> ma se pripojit bez Nastaveni Androidu
+(log B331 "paruji znovu", B332 "PRIPOJEN"). Kdyby removeBond nesel -> appka napise radu (NASTAVENI BLUETOOTH).

@@ -1,0 +1,16 @@
+B344 - BT ovladac: SPAROVAT ZNOVU primo v appce (skutecna trida NapBluetoothTexty z appky)
+OK     A1 nesparovany (ovladac i cokoli jineho) -> parovat (createBond)
+OK     A2 sparovany a pripojeny jako ovladac -> nic nerusit (uz hraje)
+OK     A3 log TV B343: "Pro Controller" sparovany, nepripojeny, nasel se v hledani -> SPAROVAT ZNOVU
+OK     A4 sparovany reproduktor (JBL Flip 5, trida 0x414) -> sparovani appka NERUSI
+OK     A5 ovladac poznany jen podle jmena (trida neznama) -> taky znovu
+OK     B1 BOND_NONE (10) u ovladace, kteremu appka sparovani rusila -> parovat znovu
+OK     B2 jine zarizeni / zadne ruseni / jiny stav (11 BONDING, 12 BONDED) -> nic
+OK     B3 limit na zruseni 8 s (pak rada NASTAVENI BLUETOOTH)
+OK     C1 neozval se: proc (vraci se k poslednimu zarizeni, treba telefonu) a jak (parovani -> PŘIPOJIT OVLADAČ -> na nej)
+OK     C2 ozval se, ale nepripojil: vypnout a zapnout, jinak znovu sparovat v appce (ne Nastaveni Androidu)
+OK     C3 faze ZNOVU: "„Pro Controller“ je spárovaný, ale nepřipojený – páruji ho znovu (staré spárování ruším)… Nech ho v párování."
+OK     C4 faze ZNOVU_RUCNE: rada NASTAVENI BLUETOOTH -> odebrat -> PŘIPOJIT OVLADAČ
+OK     C5 anglicky: neozval se (Put it into pairing mode ...), ozval se, ZNOVU, ZNOVU_RUCNE - bez ceskych znaku
+OK     C6 bez jmena: "„ovladač“ je spárovaný, ale nepřipojený – páruji ho znovu (staré spárování ruším)… Nech ho v párování."
+VYSLEDEK: 14 OK, 0 CHYBA

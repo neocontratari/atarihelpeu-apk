@@ -1,0 +1,11 @@
+OK     O1) CS seznam hledani: ['🎮 Pro Controller – spárovaný, klepni = spárovat znovu', 'JBL Flip 5 – spárovaný', '🎮 8BitDo Pro 2 – připojený ✔']
+OK     O2) klepnuti na sparovany ovladac -> AHBT.sparuj (Java ho sparuje znovu), text faze z Javy "TEXT_Z_JAVY paruji znovu"
+OK     O3) zapamatovany nepripojeny ovladac ma dal PRIPOJIT: ['🎮 PŘIPOJIT „Pro Controller“']
+OK     O1) EN seznam hledani: ['🎮 Pro Controller – paired, tap = pair again', 'JBL Flip 5 – paired', '🎮 8BitDo Pro 2 – connected ✔']
+OK     A1) CZ: bez CO TESTOVAT a starych poznamek B296-B312, test jadra a "Jak mi log poslat" zustaly (1270 znaku textu)
+OK     A2) ZAPSAT -> atariPoznamka, ZPET NA ATARI 130XE -> zobrazZarizeni (zapisKrok uz nikdo nevola)
+OK     A3) EN: bez WHAT TO TEST a poznamek, bez cestiny
+OK     N1) CS napoveda: "Spárovat znovu: když nic z toho nepomůže (nebo ovladač přenášíš mezi telefonem a televizí), dej ho do párování, klepni na PŘIPOJIT OVLADAČ (BLUETOOTH)"
+OK     N1) EN napoveda: "Pair it again: if none of that helps (or you move the controller between the phone and the TV), put it into pairing mode, tap CONNECT CONTROLLER (BLUE"
+OK     J) zadna chyba JavaScriptu
+VYSLEDEK: 10 kontrol, 0 CHYBA
