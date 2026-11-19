@@ -858,6 +858,7 @@ static std::set<std::string> g_jmena1088;          // programy (XEX / disketa / 
 static std::vector<uint8_t> g_xexData;             // posledni spusteny XEX - kvuli spusteni znovu s 1088K
 static std::string g_xexJmeno;
 static bool g_xexPosledni = false;                 // posledni start byl XEX (ne POWER, disketa, cartridge, kazeta)
+static unsigned g_strojGen = 0;                    // B353: kolikaty stroj (studeny start = novy program)
 static bool chce1088(const std::string &jm) { return !jm.empty() && g_jmena1088.count(jm) > 0; }
 // co nabootuje studeny start se strojem, jak je (disketa v D1: > cartridge > nic = BASIC)
 static std::string programVeStrojiLocked() {
@@ -880,6 +881,7 @@ static void studenyStartLocked(int consol) {
   delete g_view;  g_view  = nullptr;
   zaloz();                       // novy stroj: pamet = vzor DRAM 130XE po zapnuti
   g_stroj->mem.rezim1088 = g_pamet1088;            // B352
+  g_strojGen++;                                    // B353
   if (g_pamet1088) devLog("B352 PAMET: studeny start s 1088K (64 bank = 1 MB) - program uz jednou hledal vic bank nez 320K");
   g_stroj->cart = std::move(cartridge);
   if (g_stroj->cart.vlozena()) g_stroj->cart.studenyStart();
@@ -989,6 +991,9 @@ static void zalogujKlavesuLocked(int v, bool zPc) {
 
 // B302: jeden snimek klavesnice pocitace (emulacni vlakno, pod g_mStroj, PRED runFrame):
 // akce z webserveru vyzvednout, joystick a konzoli hned, klavesy v tempu pro OS.
+// B353: posledni stisk hrace (pristroj, herni ovladac, PC) - turbo pri nahravani se pak 3 s nezapne
+static std::atomic<long long> g_posledniVstupMs{0};
+static void vstupHraceTed() { g_posledniVstupMs.store(nap_ted_ms()); }
 static void pcKlavesniceSnimekLocked() {
   std::vector<nap::PcAkce> a;
   bool ticho = false;
@@ -1000,6 +1005,7 @@ static void pcKlavesniceSnimekLocked() {
     ticho = g_pcMapa.hlidej(nap_ted_ms(), a);   // prohlizec se odmlcel - vse pustit
   }
   if (ticho) devLog("B302 PC KLAVESNICE: prohlizec se 2,5 s neozval (zavreny, spadla Wi-Fi?) - drzene klavesy, joystick a konzole pusteny");
+  if (!a.empty()) vstupHraceTed();                       // B353: hrac hraje z PC -> zadne turbo
   for (const auto &x : a) {
     if (x.t == nap::PcAkce::JOY) {
       g_joyPc = x.v & 31;
@@ -1088,8 +1094,72 @@ static void restart1088Locked() {
   g_statusMs = 6000;
 }
 
+// =====================================================================
+//  B353: TURBO PRI NAHRAVANI. Rene: "to atr urychli prosim". Hra s vlastnim zavadecem (Prince of
+//  Persia, xBIOS) cte disketu pres POKEY skutecnou rychlosti 1050 (19200 Bd, sektor 256 B = 0,13 s;
+//  level PoP ~70 s), OS cte pres SIO zkratku hned, ale zavadec mezi sektory taky pracuje v realnem case;
+//  Tony VBXE rozbaluje data do bank ~26 s ("PROSZE CZEKAC"). Nic z toho se NEMENI: cely stroj (procesor,
+//  ANTIC, POKEY, casovace, SIO) bezi presne stejne, jen se v periode 20 ms emuluje vic snimku - az
+//  TURBO_MAX, kolik telefon stihne za TURBO_ROZPOCET_NS (pomaly telefon = mensi zrychleni, nic se nerozbije).
+//  KDY: disketa v D1: a program s ni mluvil (SIO pres POKEY i pres OS) v posledni 1 s emulovaneho casu,
+//  nebo zavadec XEX (start OS, segmenty, kratke INIT; INIT dele nez 2 s = program uz bezi / titulka).
+//  NE: hrac neco drzi (joystick, FIRE, klavesa) nebo v poslednich 3 s neco zmackl - hra muze disketu cist
+//  i behem hrani. Zvuk je pri turbu ztlumeny (OpenSL a TV dostavaji ticho v realnem case - fronta neroste),
+//  na displej a TV jde jen posledni snimek davky. Log "B353 TURBO", pod pristrojem "TURBO - NAHRAVAM".
+// =====================================================================
+static const int TURBO_MAX = 8;
+static const long long TURBO_ROZPOCET_NS = 16000000LL;   // z periody 20 ms (zbytek pro kresleni a system)
+static bool g_turboPovoleno = true;                       // (pod g_mStroj)
+static long long g_turboSioPred = -1, g_turboDoSnimku = 0;
+static bool g_turboBezi = false;
+static long long g_turboOdMs = 0, g_turboSnimku = 0, g_turboHlaskaMs = 0;
+static int g_turboDuvod = 0;
+static unsigned g_turboGen = 0;                          // g_strojGen relace (novy stroj = novy program)
+// proc ted smi bezet turbo: 0 = ne, 1 = disketa D1:, 2 = zavadec XEX (pod g_mStroj)
+static int turboDuvodLocked() {
+  if (!g_turboPovoleno || !g_stroj || g_stroj->cpu.jam || !g_strojBezi.load()) return 0;
+  Machine &m = *g_stroj;
+  const long long f = g_snimkuCelkem.load();
+  int duvod = 0;
+  if (m.disk.mounted) {
+    const long long p = m.sio.prikazu + m.sioPrikazu;      // prikazy pro D1: pres POKEY + pres OS (SIO zkratka)
+    if (p != g_turboSioPred) { g_turboDoSnimku = f + 50; g_turboSioPred = p; }
+    if (f < g_turboDoSnimku) duvod = 1;
+  }
+  if (g_xex.aktivni() && !(g_xex.stav == nap::XexLoader::INIT && g_xex.initSnimku > 100)) duvod = 2;
+  if (!duvod) return 0;
+  if ((m.porta & 0x0F) != 0x0F || m.trig[0] == 0 || !(m.skstat & 0x04)) return 0;   // hrac neco drzi
+  if (nap_ted_ms() - g_posledniVstupMs.load() < 3000) return 0;                     // hrac prave hral
+  return duvod;
+}
+// po kazde periode: zacatek / konec turba do logu, hlaska pod pristrojem (pod g_mStroj)
+static void turboKonecLocked(long long ted) {
+  g_turboBezi = false;
+  const double s = (ted - g_turboOdMs) / 1000.0, atari = g_turboSnimku / 50.0;
+  char b[200];
+  snprintf(b, sizeof(b), "B353 TURBO konec: %.1f s, emulovano %.1f s Atari (%.1fx rychleji)", s, atari, s > 0.05 ? atari / s : 0.0);
+  devLog(b);
+}
+static void turboHlidejLocked(int duvod, int snimku) {
+  const long long ted = nap_ted_ms();
+  if (g_turboBezi && (!duvod || duvod != g_turboDuvod || g_strojGen != g_turboGen)) turboKonecLocked(ted);   // konec / jiny program
+  if (duvod) {
+    if (!g_turboBezi) {
+      g_turboBezi = true; g_turboOdMs = ted; g_turboSnimku = 0; g_turboHlaskaMs = 0;
+      g_turboDuvod = duvod; g_turboGen = g_strojGen;
+      const std::string co = duvod == 1 ? "cteni diskety D1: " + g_stroj->disk.name : "zavadec XEX " + g_xex.jmeno;
+      devLog("B353 TURBO start: " + co + " - az " + std::to_string(TURBO_MAX) + " snimku za periodu (kolik telefon stihne), zvuk ztlumeny");
+    }
+    g_turboSnimku += snimku;
+    if (ted - g_turboHlaskaMs > 2500) {
+      g_turboHlaskaMs = ted;
+      g_statusText = nap::tx(u8"TURBO - NAHRÁVÁM RYCHLEJI", "TURBO - LOADING FASTER"); g_statusMs = 3000;
+    }
+  }
+}
+
 static void emuVlaknoMain() {
-  std::vector<float> zvuk(882), pasek(882);
+  std::vector<float> zvuk(882), pasek(882), zvukVen(882);
   std::string statusText; int statusMs = 0;
   long long dalsi = nap_ted_ns();
   devLog("B291 EMULACE_VLAKNO start (50 snimku/s, zvuk OpenSL, vse v C++)");
@@ -1143,6 +1213,7 @@ static void emuVlaknoMain() {
             devLog("B291 POWER VYPNUTO");
             break;
           case nap::dev::Ev::KEY:
+            vstupHraceTed();                                   // B353: hrac hraje -> zadne turbo
             // B292: klavesa drzena, dokud je na ni prst (OS ji pak opakuje)
             if (g_stroj && g_strojBezi) {
               g_stroj->klavesa(e.v, true);
@@ -1185,6 +1256,7 @@ static void emuVlaknoMain() {
             }
             break;
           case nap::dev::Ev::CONSOL: {
+            vstupHraceTed();                                   // B353: hrac hraje -> zadne turbo
             int nove = e.v & 7;
             for (int b = 0; b < 3; b++)
               if (!(nove & (1 << b)) && (g_consolChtene & (1 << b))) g_consolDrzetDo[b] = g_snimkuCelkem.load() + 5;
@@ -1193,6 +1265,7 @@ static void emuVlaknoMain() {
             break;
           }
           case nap::dev::Ev::RESET:
+            vstupHraceTed();                                   // B353: hrac hraje -> zadne turbo
             if (g_stroj && g_strojBezi) {
               g_stroj->reset(); g_stroj->consol = 7;
               g_kazBoot.zrus();          // B298: teply start boot z kazety nedela
@@ -1201,17 +1274,20 @@ static void emuVlaknoMain() {
             }
             break;
           case nap::dev::Ev::BREAK:
+            vstupHraceTed();                                   // B353: hrac hraje -> zadne turbo
             if (g_stroj && g_strojBezi) {
               g_stroj->breakKey();
               zalogujKlavesuLocked(-1, false);
             }
             break;
           case nap::dev::Ev::JOY:
+            vstupHraceTed();                                   // B353: hrac hraje -> zadne turbo
             g_joyDotyk = e.v & 31;
             aplikujJoyLocked();
             if (!g_joyHlasenoDotyk) { g_joyHlasenoDotyk = true; devLog("B296 JOYSTICK 1 dotykem na obrazovce (leva pulka = smer, prava = FIRE)"); }
             break;
           case nap::dev::Ev::PAD: {
+            vstupHraceTed();                                   // B353: hrac hraje -> zadne turbo
             g_joyPad = e.v & 31;
             aplikujJoyLocked();
             const int pc = (e.v >> 5) & 7;
@@ -1270,8 +1346,13 @@ static void emuVlaknoMain() {
     long long ted = nap_ted_ns();
     if (dalsi > ted) std::this_thread::sleep_for(std::chrono::nanoseconds(dalsi - ted));
     else if (ted - dalsi > 200000000LL) dalsi = ted;   // zpozdeni (pozadi): nedohanet naraz
-    // 3) jeden snimek stroje
-    {
+    // 3) jeden snimek stroje; B353: pri nahravani (turbo) az TURBO_MAX snimku v teto periode
+    const long long davkaOd = nap_ted_ns();
+    int vDavce = 0;
+    for (bool pokracovat = true; pokracovat; ) {
+      // mezi snimky turba pustit zamek stroje i ostatnim (JNI z Javy, TV) - mutex neni ferovy
+      if (vDavce > 0) std::this_thread::sleep_for(std::chrono::microseconds(50));
+      pokracovat = false;
       std::lock_guard<std::mutex> l(g_mStroj);
       if (!g_stroj) { g_pamet1088 = false; studenyStartLocked(7); }
       pcKlavesniceSnimekLocked();                                 // B302: klavesnice pocitace (TV/PC)
@@ -1285,7 +1366,7 @@ static void emuVlaknoMain() {
       }
       if (g_stroj->cpu.jam) std::fill(zvuk.begin(), zvuk.end(), 0.f);
       else g_stroj->genAudio(zvuk.data(), 882, 44100.0);
-      nap_atari_audio_push(zvuk.data(), 882);
+      if (vDavce == 0) zvukVen = zvuk;                   // B353: ven jde zvuk 1. snimku periody (pri turbu ticho)
       // B292: CSAVE nahrava linku SIO DATA OUT (signal pro magnetofon), ne
       // reproduktor - presne to, co by zapsal skutecny Atari 410/1010
       g_stroj->genTape(pasek.data(), 882);
@@ -1365,17 +1446,26 @@ static void emuVlaknoMain() {
           }
         }
       }
-      {
-        std::lock_guard<std::mutex> f(g_mFrame);
-        if (g_sdilenySnimek.size() != (size_t)AnticView::FW * AnticView::H)
-          g_sdilenySnimek.assign((size_t)AnticView::FW * AnticView::H, 0xFF000000u);
-        std::memcpy(g_sdilenySnimek.data(), g_view->fb, g_sdilenySnimek.size() * 4);
-      }
-      g_snimekSeq++;
       g_snimkuCelkem++;
-      tvProudSnimek();                                   // B303: prohlizec na TV/PC - novy snimek
+      vDavce++;
+      // B353: dalsi snimek hned (turbo), dokud se nahrava, je cas v rozpoctu periody a nejvys TURBO_MAX
+      const int turbo = turboDuvodLocked();
+      pokracovat = turbo && vDavce < TURBO_MAX && nap_ted_ns() - davkaOd < TURBO_ROZPOCET_NS;
+      if (!pokracovat) {
+        if (vDavce > 1) std::fill(zvukVen.begin(), zvukVen.end(), 0.f);   // turbo: ticho v realnem case
+        nap_atari_audio_push(zvukVen.data(), 882);
+        {
+          std::lock_guard<std::mutex> f(g_mFrame);
+          if (g_sdilenySnimek.size() != (size_t)AnticView::FW * AnticView::H)
+            g_sdilenySnimek.assign((size_t)AnticView::FW * AnticView::H, 0xFF000000u);
+          std::memcpy(g_sdilenySnimek.data(), g_view->fb, g_sdilenySnimek.size() * 4);
+        }
+        g_snimekSeq++;
+        tvProudSnimek();                                 // B303: prohlizec na TV/PC - novy snimek
+        turboHlidejLocked(turbo, vDavce);
+      }
       vyzvednoutVystupyLocked();
-      statusText.swap(g_statusText); statusMs = g_statusMs; g_statusText.clear();
+      if (!g_statusText.empty()) { statusText.swap(g_statusText); statusMs = g_statusMs; g_statusText.clear(); }
     }
     if (!statusText.empty()) {               // mimo g_mStroj (poradi zamku)
       std::lock_guard<std::mutex> dl(g_mDev);
@@ -1554,6 +1644,8 @@ Java_eu_atarihelp_emu10_NativeAtariCoreBridge_devStartNative(JNIEnv *, jclass, j
              "prechody PPMd <-> LZ, unikove prikazy, pevny archiv; heslo, vic dilu a RAR 1.5 / 2.0 zatim ne.");
       devLog("B352 PAMET 1 MB: vychozi 320K (130XE + Compy Shop); program, ktery do rozsirene pameti zapisuje pod vic nez "
              "16 ruznymi PORTB (hleda vic bank), se sam spusti znovu s 1088K (64 bank jako Ultimate 1MB) - Tony VBXE 496 KB.");
+      devLog("B353 TURBO pri nahravani: disketa D1: (SIO pres POKEY i OS v posledni 1 s) nebo zavadec XEX -> az 8 snimku "
+             "za periodu 20 ms (kolik telefon stihne), zvuk ztlumeny; ne, kdyz hrac drzi joystick / klavesu nebo 3 s po stisku.");
     }
     g_strojBezi = zapnuto;
   }

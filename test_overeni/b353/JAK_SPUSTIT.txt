@@ -1,0 +1,36 @@
+B353 - TURBO PRI NAHRAVANI (DISKETA ATR, XEX) - overeni na PC
+===============================================================
+
+Rene (19. 11.): "to atr urychli prosim tak jak si psal" - Prince of Persia z RAR na telefonu (B350 log): do titulky
+~32 s, level ~70 s (~350 sektoru, 5-6 za sekundu). Nase mechanika D1: uz ted necita otaceni disku (ACK 0,85 ms,
+COMPLETE 1,1 ms), ale PoP cte vlastnim zavadecem pres POKEY standardni rychlosti 1050 (19200 Bd, 256 B sektor =
+0,13 s) - to je strop; Tony VBXE si navic ~26 s rozbaluje data do bank ("PROSZE CZEKAC").
+
+TURBO (nap_atari_native.cpp, emulacni vlakno): jadro Atari se NEMENI - procesor, ANTIC, POKEY, casovace a SIO bezi
+presne stejne, jen se v jedne periode 20 ms emuluje vic snimku (az TURBO_MAX = 8, kolik telefon stihne za 16 ms).
+ - kdy: disketa v D1: a program s ni mluvil (SIO pres POKEY i pres OS) v posledni 1 s emulovaneho casu, nebo zavadec
+   XEX (start OS, segmenty, INIT kratsi nez 2 s - delsi INIT = program uz bezi / titulka);
+ - kdy ne: hrac drzi joystick / FIRE / klavesu nebo v poslednich 3 s neco zmackl (hra muze cist disketu i pri hrani);
+ - zvuk ztlumeny (fronta OpenSL a TV dostavaji ticho v realnem case, zpozdeni neroste), na displej a TV jde posledni
+   snimek davky; mezi snimky turba se zamek stroje pousti (JNI z Javy necekaji celou davku);
+ - log "B353 TURBO start: ..." / "B353 TURBO konec: N s, emulovano M s Atari (Kx rychleji)", pod pristrojem
+   "TURBO - NAHRAVAM RYCHLEJI"; napoveda CZ / EN (ATR / DISK).
+
+Spoustet z adresare test_overeni/b353. Hry Reneho (Tony, PoP) v repozitari nejsou.
+
+1) SKUTECNY nap_atari_native.cpp (stuby z ../b291/stub, JAVA_HOME = JDK; disketa s programem z ../b348 = vlastni SIO
+   pres POKEY jako xBIOS):
+     g++ -std=c++17 -O2 -pthread -I../b291/stub -I$JAVA_HOME/include -I$JAVA_HOME/include/linux \
+         -I../../app/src/main/cpp/atari -o test_b353_jni test_b353_jni.cpp
+     ./test_b353_jni [TONY_ZAMEK_VBXE_DEV31_PARTIAL.xex [PoP_ATR_20211206_final.rar]]   -> VYSTUP_test_b353_jni.txt (11 OK)
+   31 sektoru bez turba (50 snimku / s) a s turbem (na PC ~5x) - data stejna a spravna; zvuk jen v realnem case;
+   drzeny joystick = bez turba; po nahrani zase 50 snimku / s; Tony 26 s Atari za ~5 s; PoP z RAR do titulky
+   (145 sektoru) ~5 s misto ~32 s. Telefon zvladne mene nez PC - zrychleni rekne radek "B353 TURBO konec" v logu.
+
+2) Regrese (skutecny nativni kod s turbem): ../b348 test_b348_jni 16 OK, ../b349 test_b349_jni 19 OK,
+   ../b350 test_b350_jni 13 OK, ../b352 test_b352_jni 12 OK              -> VYSTUP_regrese_b34x / b35x_jni.txt
+   Pravidlo B343 (napoveda): b311 220 nazvu 0 CHYBA, b314 212 0 CHYBA, b343 3 CHYBA ZAMERNE (N7, A6, V)
+
+Overi Rene (telefon): PoP z NET HRY - nahravani pred titulkou a po START (level) rychlejsi, pod pristrojem "TURBO -
+NAHRAVAM RYCHLEJI", zvuk pri nahravani ticho, hra pak normalni rychlosti. Tony: "PROSZE CZEKAC" rychleji. Log:
+radky "B353 TURBO".

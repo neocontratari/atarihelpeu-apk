@@ -4580,4 +4580,31 @@
        nabidnuto Renemu, NEDELANO (samotest na PC: cely stroj 6,8-8,1x realny cas).
      - DALSI KROK: Rene - Tony na telefonu (log "B352 PAMET"); rozhodnuti o turbu pri nahravani.
 
+   B353: TURBO PRI NAHRAVANI (DISKETA ATR, XEX) PRO ATARI (19. 11. 2026).
+   Rene: "to atr urychli prosim tak jak si psal" (+ dva BT ovladace: "necham to na tobe" - dalsi build).
+     - PROC POMALE: SIO zkratka (OS $E459) cte sektor hned; hra s vlastnim zavadecem (PoP, xBIOS) ale mluvi s D1: pres
+       POKEY skutecnou rychlosti 1050 (19200 Bd, 256 B sektor 0,13 s - B348, bez otaceni disku). PoP v telefonu B350:
+       do titulky ~32 s, level ~70 s. Tony VBXE (B352) rozbaluje 444 segmentu ~26 s.
+     - nap_atari_native.cpp, emuVlaknoMain krok 3: davka snimku - po kazdem snimku turboDuvodLocked(): disketa v D1: a
+       prikaz SIO (sio.prikazu + sioPrikazu) v poslednich 50 emulovanych snimcich, nebo g_xex.aktivni() a INIT nebezi
+       dele nez 100 snimku; NE pri drzenem joysticku / FIRE / klavese (porta, trig[0], SKSTAT bit 2) a 3 s po vstupu
+       hrace (vstupHraceTed: udalosti KEY / CONSOL / RESET / BREAK / JOY / PAD, klavesnice PC). Dalsi snimek hned, dokud
+       vDavce < TURBO_MAX (8) a davka < TURBO_ROZPOCET_NS (16 ms z 20) - pomaly telefon = mensi zrychleni. Jadro beze
+       zmeny (zadna zmena casovani pro program). Zvuk: genAudio kazdy snimek, ven jen 1 blok za periodu - pri turbu
+       ticho (OpenSL i TV v realnem case). Obraz (g_sdilenySnimek, g_snimekSeq, tvProudSnimek) jen posledni snimek
+       davky. g_snimkuCelkem dal po emulovanych snimcich (OPTION pri bootu, B348 log). Mezi snimky turba sleep 50 us
+       (std::mutex neni ferovy - JNI z Javy by jinak cekaly celou davku). statusText v davce se uz neprepise prazdnym.
+       turboHlidejLocked: "B353 TURBO start: cteni diskety D1: X / zavadec XEX Y", "B353 TURBO konec: N s, emulovano
+       M s Atari (Kx)"; nova relace pri novem stroji (g_strojGen ze studenyStartLocked) nebo jinem duvodu. Pod
+       pristrojem "TURBO - NAHRAVAM RYCHLEJI" (obnova po 2,5 s). Startovni radek "B353 TURBO pri nahravani ...".
+     - Napoveda CZ / EN (ATR / DISK): TURBO az 8x, zvuk ztlumeny, joystick / klavesa = zase normalne. Kontroly 220 / 212 /
+       3 zamerne. build.gradle: versionCode 396 "EMU10-B353-TURBO-ATARI".
+     - Testy test_overeni/b353: test_b353_jni 11 OK (skutecny nativni kod, disketa s programem z ../b348 - 31 sektoru
+       pres POKEY bez turba 2,3 s / 50 snimku za s, s turbem ~0,5 s, data stejna; zvuk jen realny cas; drzeny joystick =
+       bez turba; po nahrani 50 snimku / s; Tony 26 s Atari za ~5 s; PoP z RAR do titulky 145 sektoru ~5 s). Regrese JNI
+       b348 16, b349 19, b350 13, b352 12. Na PC ~5x, telefon mene (cely stroj na PC 7-8x realneho casu) - zmeri log.
+       Na telefonu neovereno.
+     - DALSI KROK: Rene - PoP a Tony na telefonu (radky "B353 TURBO konec ... Kx"). Pak B354: dva BT ovladace (hrac 2:
+       Atari PORTA horni 4 bity + TRIG1, Sega player_id 1, PS1 port 2; prirazeni hracu podle prvniho stisku).
+
 ===============================================================================
