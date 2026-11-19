@@ -1,0 +1,15 @@
+== B323 jadro Atari: zavadec XEX jako po DOSu, pamet 320K Compy Shop
+OK     T1 16 oddelenych bank po 16 kB (PORTB bity 2-3 a 6-7), kazda drzi svuj obsah
+OK     T2 banky 130XE ($E3/$E7/$EB/$EF) lezi v ext[0..64 kB] presne jako v B322 (vypis pameti, test xe130)
+OK     T3 bit 4 = CPU, bit 5 = ANTIC jako na 130XE (ANTIC vidi banku, CPU zakladni pamet)
+OK     T4 self-test ROM ($5000, PORTB bit 7 = 0) ma dal prednost pred bankou (jako v B322)
+OK     T5 po zavedeni XEX: BOOT? bit 0 = 1 a DOSINI = RTS v OS ROM ($C017) jako po DOSu
+OK     T6 program se vratil do parkovaci smycky (teply start nic nerozbil)
+OK     T7 program si da do DOSINI svuj start a skoci na teply start -> OS ho zavola (jako Air Strike)
+OK     H1 Air Strike: obal nastavi DOSINI $3C20, teply start ho zavola, hra bezi (ne parkovaci smycka $0100)
+OK     H2 Air Strike: po START + START se hraje (obraz se meni: krajina, letadlo)
+OK     H3 Sonic: test pameti projde, nahraje se vsech 59 segmentu (21 x INIT, 10 bank 320K)
+OK     H4 Sonic: zadne NOT ENOUGH EXTENDED MEMORY, hra bezi
+OK     H5 Sonic: po FIRE / START se hraje (obraz se meni)
+
+VYSLEDEK: 12 OK, 0 CHYBA

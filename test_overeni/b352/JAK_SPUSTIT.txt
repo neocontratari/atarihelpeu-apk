@@ -1,0 +1,61 @@
+B352 - ROZSIRENA PAMET 1 MB (1088K) PRO ATARI, SAMA PRO HRU, KTERA HLEDA VIC - overeni na PC
+==============================================================================================
+
+Rene (19. 11.): "nasel jsem dalsi hru ktera nejde, mame asi furt malo pameti ve VBXE" (TONY_ZAMEK_VBXE_DEV31_PARTIAL.xex,
+jeho soubor - v repozitari NENI) + log z telefonu (B350).
+
+PRICINA (rozbor XEX v jadru appky na PC): VBXE hra nasla (jinak by psala "BRAK VBXE"). Jeji INIT $1833 vola test
+pameti $1A66: 32 hodnot PORTB z tabulky $1BBB (bity 2-3 a 5-7, $83 ... $6F), do kazde banky na $4000 zapise cislo
+a spocita, kolik ruznych bank pocitac ma - chce aspon 27 ($1B) = 432 kB + 64 kB = "496 KB". Nase rozsirena pamet
+320K (B323, Compy Shop: banka = bity 2-3 a 6-7, bit 5 = jen ANTIC) ma 16 bank -> "BRAK RAM - WYMAGANE 496 KB + VBXE"
+a smycka $1AEB. Pamet VBXE (512 kB) staci - hra do ni dava jen ~48 bank po 4 kB pres MEMAC A.
+
+OPRAVA:
+ - nap_atari_machine.h: AtariMem ma 64 bank (1 MB). Vychozi rezim zustava 320K beze zmeny (banky 130XE, ANTIC bit 5,
+   self-test ROM) - samotest memHash B0649DC5 stejny. Novy rezim 1088K (jako Ultimate 1MB / Rambo 1088K): banka =
+   PORTB bity 1-3 a 5-7, procesor i ANTIC bit 4 (bit 5 je cislo banky, oddeleny pristup ANTIC 130XE tu neni),
+   self-test ROM ani BASIC se s rozsirenou pameti neprekryvaji (bity 7 a 1 jsou cislo banky - jako atari800 1088K;
+   s BASICem pri bitu 1 = 0 prisel Sonic A8 v 1088K o level). V rezimu 320K stroj pocita, pod kolika
+   ruznymi PORTB (bity 1-3, 5-7) program zapisuje do okna $4000-$7FFF; vic nez 16 = hleda vic bank, nez 320K ma.
+ - nap_atari_native.cpp: takovy program appka spusti znovu od zacatku s 1088K (XEX ze zapamatovanych dat, disketa /
+   cartridge zustava ve stroji) a jmeno si pamatuje - pristi start je rovnou s 1088K. Log "B352 PAMET ...", pod
+   pristrojem "HRA CHCE VIC PAMETI - SPOUSTIM JI S 1 MB". Program pro 130XE (4 banky) ani 320K (16) se nezmeni.
+
+Spoustet z adresare test_overeni/b352. Hry Reneho (Tony, Sonic, Air Strike, Wonderboy, PoP ...) v repozitari nejsou.
+
+1) Testovaci programy (vlastni kod 6502 - test pameti jako v Tonym, tabulky Tony 32 / 130XE 4 / Compy 16 hodnot,
+   jako XEX a bootovaci ATR):
+     python3 vyrob_b352.py > test_b352_program.h
+
+2) Jadro (cisty C++):
+     g++ -std=c++17 -O2 -I../../app/src/main/cpp/atari -o test_b352_jadro test_b352_jadro.cpp
+     ./test_b352_jadro [TONY_ZAMEK_VBXE_DEV31_PARTIAL.xex]           -> VYSTUP_test_b352_jadro.txt (18 OK)
+   T1 320K beze zmeny (memHash, banky 130XE, ANTIC bit 5), T2 1088K (64 bank, $5000 v bankach, ANTIC = CPU, self-test,
+   BASIC),
+   T3 pozna hledani bank (17. ruzna hodnota), T4 XEX: Tony -> znovu s 1088K -> 32 bank, 130XE 4 a Compy 16 bez
+   restartu, T5 totez z bootovaci diskety, T6 Tony: v 320K "BRAK RAM", s 1088K 444 segmentu a titulka ve VBXE.
+
+3) SKUTECNY nap_atari_native.cpp (stuby z ../b291/stub, JAVA_HOME = JDK):
+     g++ -std=c++17 -O2 -pthread -I../b291/stub -I$JAVA_HOME/include -I$JAVA_HOME/include/linux \
+         -I../../app/src/main/cpp/atari -o test_b352_jni test_b352_jni.cpp
+     ./test_b352_jni [TONY_ZAMEK_VBXE_DEV31_PARTIAL.xex]              -> VYSTUP_test_b352_jni.txt (12 OK)
+   samotest cpuHash / memHash beze zmeny; XEX s testem Tony -> restart s 1088K (log), LOG/CHYBA ukaze 1088K; stejny
+   XEX znovu = rovnou 1088K; XEX pro 130XE zustava 320K; disketa -> restart s 1088K, disketa zustava v D1:;
+   Tony: restart, 444 segmentu, VBXE XDL.
+
+4) Regrese - stejne hry ve STAREM (B351) a NOVEM jadru, 2000 snimku (40 s) se vstupy, otisky obrazu ANTIC/GTIA i celeho
+   obrazu s VBXE (regrese_b352.cpp = ../b323/regrese_her.cpp + otisk fb + -DAPPKA_B352 = spusteni znovu jako appka):
+     git worktree add /tmp/b351 3b0edef
+     g++ -O2 -std=c++17 -I/tmp/b351/app/src/main/cpp/atari regrese_b352.cpp -o regrese_stare
+     g++ -O2 -std=c++17 -I../../app/src/main/cpp/atari regrese_b352.cpp -o regrese_nove
+     g++ -O2 -std=c++17 -DAPPKA_B352 -I../../app/src/main/cpp/atari regrese_b352.cpp -o regrese_appka
+     ./regrese_stare HRA 2000 > a.txt; ./regrese_nove HRA 2000 > b.txt; ./regrese_appka HRA 2000 > c.txt
+                                                                      -> VYSTUP_regrese_her.txt
+   18 programu ve 320K shodnych; s restartem jen Sonic (od snimku 200 shodny) a Tony (ted se nahraje a bezi).
+   Starsi testy na zdrojich B352: ../b323 test_b323_jadro 12 OK, ../b348 test_b348_sio 41 OK (Acid800 38/38, PoP DD)
+   a test_b348_jni 16 OK, ../b349 test_b349_jni 19 OK, ../b350 test_b350_jni 13 OK   -> VYSTUP_regrese_b3*.txt
+   Pravidlo B343 (napoveda): b311 220 nazvu 0 CHYBA, b314 212 0 CHYBA, b343 3 CHYBA ZAMERNE (N7, A6, V)
+                                                       -> VYSTUP_regrese_b311_*, VYSTUP_regrese_b314_*, VYSTUP_regrese_b343_*
+
+Overi Rene / tester (telefon): Tony z NET HRY nebo XEX/MOBIL - po ~2 s se sam spusti znovu ("HRA CHCE VIC PAMETI -
+SPOUSTIM JI S 1 MB"), "PROSZE CZEKAC" do 100 %, titulka TONY - MONTEZUMA'S GOLD, START = hra. Log: radky "B352 PAMET".

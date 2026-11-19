@@ -86,7 +86,9 @@ inline uint32_t memHash(long long *outReads) {
   auto setPortB = [&](int v) { m.piaWrite(3, 0x00); m.piaWrite(1, 0xFF); m.piaWrite(3, 0x04); m.piaWrite(1, (uint8_t)v); };
   // zapis vzoru do vsech 16 bank pres okno $4000-$7FFF (CPU vidi banku, kdyz bit 4 = 0);
   // B323: banky 0-3 = 130XE (bity 6-7 = 1), 4-15 = 320K Compy Shop (bity 6-7)
-  for (int b = 0; b < AtariMem::EXT_BANK; b++) {
+  // B352: vychozi rezim zustava 320K (1088K zapina appka jen pro program, ktery hleda vic bank) -
+  // otisk se proto pocita dal v 320K a nemeni se (B0649DC5)
+  for (int b = 0; b < AtariMem::EXT_BANK_320; b++) {
     setPortB(0x23 | ((b & 3) << 2) | ((~b & 0x0C) << 4));   // OS zap., BASIC vyp., CPU banka b, ANTIC hlavni
     for (int o = 0; o < 16384; o++) m.memWrite((uint16_t)(0x4000 + o), (uint8_t)((b * 16384 + o) * 13 + 29));
   }

@@ -1,0 +1,42 @@
+B352 - rozsirena pamet 1088K (64 bank) v jadru Atari, sama pro program, ktery hleda vic bank nez 320K
+
+T1) VYCHOZI 320K BEZE ZMENY
+     memHash B0649DC5 (16252928 cteni)
+OK     samotest memHash B0649DC5 = NativeAtariCoreBridge.OCEKAVANY_MEM_HASH (B323) - 320K se nezmenila
+OK     novy stroj = 320K (16 bank), 1088K jen kdyz ho appka zapne
+OK     320K: banky 130XE $E3-$EF = ext[0-3], ANTIC bit 5 oddelene od procesoru (jako 130XE)
+
+T2) 1088K
+OK     64 ruznych bank (PORTB bity 1-3 a 5-7, bit 4 = 0)
+OK     do vsech 64 bank se zapise a precte zpet (i $5000-$57FF v bankach s bitem 7 = 0 - self-test ROM tam neni)
+OK     banky 130XE $E3 / $E7 / $EB / $EF = 0-3 (stejne misto jako v 320K)
+OK     bit 5 = cislo banky; ANTIC vidi stejnou pamet jako procesor (bit 4), oddeleny pristup 130XE neni
+OK     self-test ROM $5000: bez rozsirene pameti je videt (bit 7 = 0), s rozsirenou (bit 4 = 0) je tam banka
+OK     BASIC: bez rozsirene pameti ho bit 1 = 0 zapne, s rozsirenou je bit 1 cislo banky a BASIC vypnuty (Sonic A8 jinak bez levelu)
+
+T3) POZNA PROGRAM, KTERY HLEDA VIC BANK NEZ 320K
+     130XE: 4 ruzne PORTB, + Compy 16 bank: 16, + $83: 17 -> chce1088 1
+OK     130XE (4) ani Compy 320K (16 ruznych PORTB) nic, 17. ruzna hodnota = program hleda vic bank
+OK     v 1088K uz se nic nehlida
+
+T4) TESTY PAMETI JAKO XEX (zavadec appky, spusteni znovu jako appka)
+     Tony (32 hodnot PORTB, bity 2-3 a 5-7)  : bank 32, hotovo $A5, restartu 1 (snimek 88, ruznych PORTB 32), 1088K 1
+OK     Tony (32 hodnot PORTB, bity 2-3 a 5-7): spusten znovu s 1088K, napocita 32 bank
+     130XE (4 banky)                         : bank  4, hotovo $A5, restartu 0 (snimek -1, ruznych PORTB 0), 1088K 0
+OK     130XE (4 banky): zustava 320K, napocita 4
+     320K Compy Shop (16 bank)               : bank 16, hotovo $A5, restartu 0 (snimek -1, ruznych PORTB 0), 1088K 0
+OK     320K Compy Shop (16 bank): zustava 320K, napocita 16
+
+T5) TEST PAMETI Z BOOTOVACI DISKETY (D1:, SIO)
+     disketa: bank 32, hotovo $A5, restartu 1 (snimek 88), 1088K 1, nacteno sektoru 2
+OK     disketa s testem Tony: boot, spusteni znovu s 1088K (disketa zustava v D1:), 32 bank
+
+T6) SKUTECNA HRA: TONY_ZAMEK_VBXE_DEV31_PARTIAL.xex
+     jen 320K (jako B351): PC=$1AEB, $1250: ' BRAK RAM - WYMAGANE 496 KB + VBXE'
+OK     320K: hra hlasi "BRAK RAM - WYMAGANE 496 KB + VBXE" a stoji ($1AEB)
+     appka: restartu 1 (snimek 88, ruznych PORTB 32), 1088K 1, PC=$1042, zavadec: B291 XEX test.xex nahrano: 444 segmentu, 446853 bajtu, 175 x INIT -> start $1000 (RUNAD)
+     VBXE: XDL ZAP, blitru 2, MEMAC A $88/$00
+OK     s 1088K: hra se spusti znovu, nahraje vsech 444 segmentu (27 bank rozsirene pameti + VRAM VBXE) a spusti se ($1000)
+OK     titulni obrazovka hry ve VBXE (XDL zapnuto), zadna hlaska BRAK RAM
+
+VYSLEDEK: 18 kontrol, 0 chyb

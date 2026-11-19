@@ -25,7 +25,8 @@ public final class NativeAtariCoreBridge {
     public static final String OCEKAVANY_CPU_HASH = "4A2C6CBA";
     // (pamet: B292 az B322 "D3949DC5" = 130XE se 4 bankami. B323: rozsirena pamet
     // 320K Compy Shop - 16 bank, PORTB bity 6-7 navic; banky 130XE beze zmeny.
-    // Cislo z test_overeni/b323/memhash.cpp na x86_64.)
+    // Cislo z test_overeni/b323/memhash.cpp na x86_64. B352: 1088K (64 bank) zapina
+    // appka jen pro program, ktery hleda vic bank - samotest dal meri vychozi 320K.)
     public static final String OCEKAVANY_MEM_HASH = "B0649DC5";
     public static final long   OCEKAVANO_INSTRUKCI = 51200L;
     public static final long   OCEKAVANO_CTENI     = 16252928L;

@@ -95,15 +95,37 @@ struct AtariMem {
   // (bity 6-7 = 1, tak je nastavuje OS i bezne programy) lezi na zacatku ext[] presne jako drive,
   // takze program pro 130XE se nezmeni. Navic banky 4-15 pro hry, ktere chteji 320K (Sonic A8:
   // "NOT ENOUGH EXTENDED MEMORY - REQUIRES 320K RAMBO OR LARGER").
-  static const int EXT_BANK = 16;
+  // B352: rezim 1088K (64 bank = 1 MB, jako Ultimate 1MB / Rambo 1088K): banka = PORTB bity 1-3 a 5-7,
+  // procesor i ANTIC bit 4 (bit 5 je cislo banky - oddeleny pristup ANTIC jako na 130XE tu neni), self-test
+  // ROM se s rozsirenou pameti neprekryva (jinak by v polovine bank chybely 2 kB) a BASIC taky ne (bit 1 je
+  // cislo banky, ne vypinac BASICu - atari800: "BASIC is disabled ... accessing extended 576K or 1088K memory").
+  // Vychozi zustava 320K (130XE beze zmeny); 1088K zapne appka sama, kdyz program zapisuje do okna pod vic
+  // nez 16 ruznymi PORTB (= hleda vic bank, nez 320K ma - Tony VBXE: "BRAK RAM - WYMAGANE 496 KB + VBXE")
+  // - pak ho spusti znovu od zacatku (nap_atari_native.cpp restart1088Locked).
+  static const int EXT_BANK = 64;
+  static const int EXT_BANK_320 = 16;
   uint8_t ext[EXT_BANK * 16384];
   const uint8_t *os = nullptr;        // 16 kB OS ROM
   const uint8_t *bas = nullptr;       // 8 kB BASIC ROM
   Pia pia;
+  bool rezim1088 = false;             // B352: nastavuje appka po zalozeni stroje (studeny start)
+  uint64_t pbZapsano = 0;             // B352: ktere PORTB (bity 1-3, 5-7) uz zapsaly do okna $4000-$7FFF (320K)
+  int pbRuznych = 0;
+  bool chce1088 = false;              // B352: program hleda vic nez 16 bank -> appka ho spusti znovu s 1088K
   AtariMem() { std::memset(ram, 0, sizeof ram); std::memset(ext, 0, sizeof ext); }
   inline int portB() const { return (pia.orB | (~pia.ddrB)) & 0xFF; }
   // cislo banky rozsirene pameti pro PORTB (0-3 = banky 130XE, 4-15 = 320K Compy Shop)
   static inline int bankaExt(int pb) { return ((pb >> 2) & 3) | (((~pb) >> 4) & 0x0C); }
+  // B352: 1088K - bity 2-3 jako 130XE, bity 1 a 5-7 obracene (banky 130XE $E3/$E7/$EB/$EF = 0-3 jako v 320K)
+  static inline int banka1088(int pb) { return ((pb >> 2) & 3) | (((~pb) << 1) & 0x04) | (((~pb) >> 2) & 0x38); }
+  inline int bankaCpu(int pb) const { return rezim1088 ? banka1088(pb) : bankaExt(pb); }
+  int bankAktivnich() const { return rezim1088 ? EXT_BANK : EXT_BANK_320; }
+  inline void evidujBanku(int pb) {
+    const uint64_t b = 1ull << (((pb >> 1) & 7) | ((pb >> 2) & 0x38));
+    if (pbZapsano & b) return;
+    pbZapsano |= b;
+    if (++pbRuznych > EXT_BANK_320) chce1088 = true;
+  }
 };
 
 // ---------------------------------------------------------------------
@@ -300,6 +322,7 @@ public:
     cyc = 0; x = 0; line = 0; frame = 0;
     dram130xe(mem.ram, sizeof mem.ram);
     dram130xe(mem.ext, sizeof mem.ext);
+    mem.pbZapsano = 0; mem.pbRuznych = 0; mem.chce1088 = false;   // B352 (rezim1088 nastavuje appka)
     mem.pia = Pia();
     // ANTIC
     dmactlReg = 0; chactl = 0; dlist = 0; hscrol = 0; vscrol = 0; pmbase = 0; chbase = 0; chbaseReg = 0;
@@ -1418,17 +1441,22 @@ public:
         if (cart.bountyBob() && !antic && a < 0xA000) cart.bbPristup(a);   // Bounty Bob: banka podle adresy
         if (cart.okno[(a >> 12) - 8] != Cartridge::NIC) return cart.cti(a);
       }
-      if (a >= 0xA000 && !(pb & 2) && mem.bas) return mem.bas[a - 0xA000];
+      // B352: v 1088K je bit 1 cislo banky - s rozsirenou pameti (bit 4 = 0) je BASIC vypnuty (jako atari800 1088K)
+      if (a >= 0xA000 && !(pb & 2) && mem.bas && !(mem.rezim1088 && !(pb & 0x10))) return mem.bas[a - 0xA000];
     }
     // self-test ROM ($5000-$57FF, PORTB bit 7 = 0, jen se zapnutou OS ROM):
     // MMU dekoduje adresu bez ohledu na to, kdo je na sbernici - vidi ji
     // procesor i ANTIC a ma prednost pred rozsirenou pameti
-    else if (a >= 0x5000 && a < 0x5800 && !(pb & 0x80) && (pb & 1) && mem.os) return mem.os[a - 0x5000 + 0x1000];
+    // (B352: v 1088K je bit 7 cislo banky - s rozsirenou pameti self-test neni)
+    else if (a >= 0x5000 && a < 0x5800 && !(pb & 0x80) && (pb & 1) && mem.os && !(mem.rezim1088 && !(pb & 0x10))) return mem.os[a - 0x5000 + 0x1000];
     if (vbx.mapAny) {
       const int32_t o = (antic ? vbx.mapAntic : vbx.mapCpu)[a >> 12];
       if (o >= 0) return vbx.vram[(uint32_t)(o + (a & 0x0FFF)) & Vbxe::MASK];
     }
-    if (a >= 0x4000 && a < 0x8000 && !(pb & (antic ? 0x20 : 0x10))) return mem.ext[AtariMem::bankaExt(pb) * 0x4000 + (a - 0x4000)];
+    if (a >= 0x4000 && a < 0x8000) {
+      if (mem.rezim1088) { if (!(pb & 0x10)) return mem.ext[AtariMem::banka1088(pb) * 0x4000 + (a - 0x4000)]; }   // B352: ANTIC = procesor
+      else if (!(pb & (antic ? 0x20 : 0x10))) return mem.ext[AtariMem::bankaExt(pb) * 0x4000 + (a - 0x4000)];
+    }
     return mem.ram[a];
   }
   inline uint8_t anticRead(uint16_t a) {
@@ -1444,14 +1472,18 @@ public:
     else if (a >= 0x8000) {
       // B316: cartridge = ROM, zapis se ztrati (Bounty Bob: zapis na $8FF6-$9FF9 prepne banku)
       if (cart.okno[(a >> 12) - 8] != Cartridge::NIC) { if (cart.bountyBob() && a < 0xA000) cart.bbPristup(a); return; }
-      if (a >= 0xA000 && !(pb & 2) && mem.bas) return;
+      if (a >= 0xA000 && !(pb & 2) && mem.bas && !(mem.rezim1088 && !(pb & 0x10))) return;
     }
-    else if (a >= 0x5000 && a < 0x5800 && !(pb & 0x80) && (pb & 1)) return;
+    else if (a >= 0x5000 && a < 0x5800 && !(pb & 0x80) && (pb & 1) && !(mem.rezim1088 && !(pb & 0x10))) return;
     if (vbx.mapAny) {
       const int32_t o = vbx.mapCpu[a >> 12];
       if (o >= 0) { vbx.vram[(uint32_t)(o + (a & 0x0FFF)) & Vbxe::MASK] = v; return; }
     }
-    if (a >= 0x4000 && a < 0x8000 && !(pb & 0x10)) { mem.ext[AtariMem::bankaExt(pb) * 0x4000 + (a - 0x4000)] = v; return; }
+    if (a >= 0x4000 && a < 0x8000 && !(pb & 0x10)) {
+      if (mem.rezim1088) { mem.ext[AtariMem::banka1088(pb) * 0x4000 + (a - 0x4000)] = v; return; }
+      mem.evidujBanku(pb);                       // B352: hleda program vic bank, nez 320K ma?
+      mem.ext[AtariMem::bankaExt(pb) * 0x4000 + (a - 0x4000)] = v; return;
+    }
     mem.ram[a] = v;
   }
 

@@ -20,6 +20,7 @@
 #include <ctime>
 #include <cmath>
 #include <map>
+#include <set>
 #include <vector>
 #include <string>
 #include <atomic>           // B287: nativni OpenSL zvuk (kruhovy buffer)
@@ -849,6 +850,22 @@ static void pokeRender() {
 // Studeny start - smazat a postavit cely stroj znovu (jako bootNative).
 // POZOR: volat jen pod g_mStroj.
 static bool g_shiftZamek = false;                  // SHIFT zamceny na pristroji (pod g_mStroj)
+// B352: rozsirena pamet 1088K (64 bank = 1 MB jako Ultimate 1MB). Vychozi je 320K (130XE + Compy Shop, B323);
+// program, ktery zapisuje do okna $4000-$7FFF pod vic nez 16 ruznymi PORTB (= hleda vic bank, nez 320K ma),
+// appka spusti znovu od zacatku s 1088K a jeho jmeno si pamatuje, dalsi start uz je rovnou s 1088K (pod g_mStroj).
+static bool g_pamet1088 = false;                   // dalsi studeny start zalozi stroj s 1088K
+static std::set<std::string> g_jmena1088;          // programy (XEX / disketa / cartridge / kazeta), ktere 1088K chtely
+static std::vector<uint8_t> g_xexData;             // posledni spusteny XEX - kvuli spusteni znovu s 1088K
+static std::string g_xexJmeno;
+static bool g_xexPosledni = false;                 // posledni start byl XEX (ne POWER, disketa, cartridge, kazeta)
+static bool chce1088(const std::string &jm) { return !jm.empty() && g_jmena1088.count(jm) > 0; }
+// co nabootuje studeny start se strojem, jak je (disketa v D1: > cartridge > nic = BASIC)
+static std::string programVeStrojiLocked() {
+  if (!g_stroj) return "";
+  if (g_stroj->disk.mounted) return g_stroj->disk.name;
+  if (g_stroj->cart.vlozena()) return g_stroj->cart.jmeno;
+  return "";
+}
 static std::string g_statusText;                   // B295: zprava pod pristroj z emulacniho vlakna (pod g_mStroj)
 static int g_statusMs = 0;
 static void studenyStartLocked(int consol) {
@@ -862,6 +879,8 @@ static void studenyStartLocked(int consol) {
   delete g_stroj; g_stroj = nullptr;
   delete g_view;  g_view  = nullptr;
   zaloz();                       // novy stroj: pamet = vzor DRAM 130XE po zapnuti
+  g_stroj->mem.rezim1088 = g_pamet1088;            // B352
+  if (g_pamet1088) devLog("B352 PAMET: studeny start s 1088K (64 bank = 1 MB) - program uz jednou hledal vic bank nez 320K");
   g_stroj->cart = std::move(cartridge);
   if (g_stroj->cart.vlozena()) g_stroj->cart.studenyStart();
   g_stroj->reset();
@@ -1022,6 +1041,53 @@ static void vyzvednoutVystupyLocked() {
   }
 }
 
+// B352: program zapisuje do okna rozsirene pameti pod vic nez 16 ruznymi PORTB = hleda vic bank, nez 320K ma
+// (Tony VBXE: test pameti "BRAK RAM - WYMAGANE 496 KB + VBXE" chce 27 bank). Spustit ho znovu od zacatku
+// s 1088K - XEX znovu ze zapamatovanych dat, disketa / cartridge zustava ve stroji (studeny start jako POWER).
+static void restart1088Locked() {
+  Machine &m = *g_stroj;
+  m.mem.chce1088 = false;
+  const int ruznych = m.mem.pbRuznych;
+  std::string co, jm;
+  if (g_xexPosledni && !g_xexData.empty()) { co = "XEX"; jm = g_xexJmeno; }
+  else if (m.disk.mounted) { co = "disketa"; jm = m.disk.name; }
+  else if (m.cart.vlozena()) { co = "cartridge"; jm = m.cart.jmeno; }
+  char b[400];
+  if (co.empty()) {
+    // BASIC / kazeta: neni z ceho spustit znovu - 1088K hned za behu (a pri dalsim zapnuti)
+    m.mem.rezim1088 = true; g_pamet1088 = true;
+    snprintf(b, sizeof(b), "B352 PAMET: program hleda vic bank nez 320K (zapsal do okna $4000-$7FFF pod %d ruznymi PORTB) - "
+             "neni z ceho ho spustit znovu (BASIC / kazeta), 1088K zapnuto hned za behu", ruznych);
+    devLog(b);
+    return;
+  }
+  g_jmena1088.insert(jm);
+  g_pamet1088 = true;
+  snprintf(b, sizeof(b), "B352 PAMET: %s %s hleda vic bank nez 320K (zapsal do okna $4000-$7FFF pod %d ruznymi PORTB, 320K ma 16 bank) "
+           "- spoustim znovu od zacatku s 1088K (64 bank = 1 MB jako Ultimate 1MB)", co.c_str(), jm.c_str(), ruznych);
+  devLog(b);
+  if (co == "XEX") {
+    g_xex.priprav(g_xexData.data(), g_xexData.size(), g_xexJmeno);
+    studenyStartLocked(3);                       // jako devLoadXexNative: OPTION drzene = BASIC vypnuty
+    if (g_stroj->disk.mounted) g_stroj->disk = nap::AtrDisk();   // jinak by OS bootoval disketu misto XEX
+    g_stroj->sioRychlyTimeout = true;
+  } else if (co == "disketa") {
+    g_xex.zrus();
+    studenyStartLocked(3);                       // jako devLoadAtrNative: OPTION 1 s, bootuje D1:
+    g_stroj->sioRychlyTimeout = false;
+    g_consolChtene = 7;
+    g_consolDrzetDo[2] = g_snimkuCelkem.load() + B348_OPTION_PRI_BOOTU;
+    g_consolDrzetDo[0] = g_consolDrzetDo[1] = 0;
+  } else {
+    g_xex.zrus();
+    studenyStartLocked(7);                       // cartridge ve slotu zustava
+    g_stroj->sioRychlyTimeout = true;
+  }
+  g_strojBezi = true;
+  g_statusText = nap::tx(u8"HRA CHCE VÍC PAMĚTI - SPOUŠTÍM JI S 1 MB", "THE GAME WANTS MORE MEMORY - RESTARTING WITH 1 MB");
+  g_statusMs = 6000;
+}
+
 static void emuVlaknoMain() {
   std::vector<float> zvuk(882), pasek(882);
   std::string statusText; int statusMs = 0;
@@ -1042,6 +1108,7 @@ static void emuVlaknoMain() {
             // plati i pri zapnuti - jako na skutecnem 130XE (START = boot
             // z kazety, OPTION = bez BASICu). Drive se pri zapnuti pustily.
             const int drzene = (g_consolChtene & ~(g_padConsol | g_pcConsol)) & 7;   // prst na pristroji, herni ovladac nebo F1/F3/F4 na PC
+            g_xexPosledni = false; g_pamet1088 = chce1088(programVeStrojiLocked());   // B352
             studenyStartLocked(drzene);
             if (g_stroj) g_stroj->sioRychlyTimeout = false;
             g_strojBezi = true; g_atariRing.clear();
@@ -1206,7 +1273,7 @@ static void emuVlaknoMain() {
     // 3) jeden snimek stroje
     {
       std::lock_guard<std::mutex> l(g_mStroj);
-      if (!g_stroj) studenyStartLocked(7);
+      if (!g_stroj) { g_pamet1088 = false; studenyStartLocked(7); }
       pcKlavesniceSnimekLocked();                                 // B302: klavesnice pocitace (TV/PC)
       if (!g_xex.aktivni()) g_stroj->consol = consolEfektivni();   // pri zavadeni XEX drzi OPTION zavadec
       if (g_kazBoot.aktivni()) g_stroj->consol = nap::KazetaBoot::konzole(g_stroj->consol);   // B298: boot z kazety
@@ -1225,6 +1292,7 @@ static void emuVlaknoMain() {
       for (float &v : pasek) v *= 0.8f;
       g_rec.snimek(*g_stroj, pasek.data(), 882);
       g_xex.poSnimku(*g_stroj);
+      if (g_stroj->mem.chce1088 && !g_stroj->mem.rezim1088) restart1088Locked();   // B352
       if (g_kazBoot.poSnimku(*g_stroj)) { g_statusText = nap::tx(u8"NAHRÁVÁ SE Z KAZETY...", "LOADING FROM TAPE..."); g_statusMs = 15000; }
       g_psani.poSnimku(*g_stroj);
       if (!g_psani.status.empty()) { g_statusText = g_psani.status; g_statusMs = g_psani.statusMs; g_psani.status.clear(); }
@@ -1435,15 +1503,17 @@ Java_eu_atarihelp_emu10_NativeAtariCoreBridge_devStartNative(JNIEnv *, jclass, j
     }
     if (studeny || !g_stroj) {
       g_xex.zrus();
+      g_xexPosledni = false; g_pamet1088 = chce1088(programVeStrojiLocked());   // B352
       studenyStartLocked(7);
       devLog(studeny ? "B291 HELP otevren - pristroj ZAPNUT, studeny start Atari"
                      : "B291 HELP - stroj neexistoval, studeny start");
       // B293: co presne se emuluje - at je to v logu cerne na bilem
-      char b[400];
+      char b[700];
       const unsigned osSum = (unsigned)NAP_OS_ROM[0] | ((unsigned)NAP_OS_ROM[1] << 8);
       snprintf(b, sizeof(b),
                "B293 JADRO = ATARI 130XE PAL: RAM 64 kB + rozsirena 16x16 kB (B323: 320K Compy Shop - PORTB bity 2-3 a 6-7, "
-               "banky 130XE beze zmeny; procesor bit 4, ANTIC bit 5), "
+               "banky 130XE beze zmeny; procesor bit 4, ANTIC bit 5; B352: program, ktery hleda vic nez 16 bank, se sam spusti "
+               "znovu s 1088K = 64 bank jako Ultimate 1MB - PORTB bity 1-3 a 5-7), "
                "OS XL/XE rev.%u (soucet $%04X), BASIC rev.C vestaveny, self-test ROM $5000, TRIG3 = RD5 cartridge (prazdny slot = 0), "
                "RESET = reset CPU+ANTIC+PIA/MMU, plovouci datova sbernice, ANTIC/GTIA PAL 312 radku, POKEY 1,773 MHz",
                (unsigned)NAP_OS_ROM[0x3FF7], osSum);
@@ -1482,6 +1552,8 @@ Java_eu_atarihelp_emu10_NativeAtariCoreBridge_devStartNative(JNIEnv *, jclass, j
              "pevny archiv (i s prazdnym souborem uprostred), odkazy se preskoci.");
       devLog("B351 PPMd (RAR 4 \"nejlepsi\" = komprese textu): model PPMd var.H + rozsahovy dekoder RAR v C++, "
              "prechody PPMd <-> LZ, unikove prikazy, pevny archiv; heslo, vic dilu a RAR 1.5 / 2.0 zatim ne.");
+      devLog("B352 PAMET 1 MB: vychozi 320K (130XE + Compy Shop); program, ktery do rozsirene pameti zapisuje pod vic nez "
+             "16 ruznymi PORTB (hleda vic bank), se sam spusti znovu s 1088K (64 bank jako Ultimate 1MB) - Tony VBXE 496 KB.");
     }
     g_strojBezi = zapnuto;
   }
@@ -1676,6 +1748,7 @@ Java_eu_atarihelp_emu10_NativeAtariCoreBridge_devCtlNative(JNIEnv *env, jclass, 
       if (cmd == "cart_eject" && g_stroj) {
         g_xex.zrus();
         g_stroj->cart.vyjmout();                   // do logu jeden radek nize ("vysunuta")
+        g_xexPosledni = false; g_pamet1088 = chce1088(programVeStrojiLocked());   // B352
         studenyStartLocked(7);
         g_stroj->sioRychlyTimeout = false;
         g_strojBezi = true;
@@ -1712,6 +1785,7 @@ Java_eu_atarihelp_emu10_NativeAtariCoreBridge_devCtlNative(JNIEnv *env, jclass, 
         g_stroj->disk = nap::AtrDisk();
         g_xex.zrus();
         vyjmoutCartridgeLocked("vysunout disketu = zapnout s BASICem");
+        g_xexPosledni = false; g_pamet1088 = false;   // B352: BASIC = 320K
         studenyStartLocked(7);                 // jako vysunout disketu a vypnout/zapnout: BASIC
         g_stroj->sioRychlyTimeout = false;
         g_strojBezi = true;
@@ -1907,6 +1981,7 @@ Java_eu_atarihelp_emu10_NativeAtariCoreBridge_devProgramNative(JNIEnv *env, jcla
       g_xex.zrus();
       if (g_stroj->disk.mounted) { odpojena = true; g_stroj->disk = nap::AtrDisk(); }
       vyjmoutCartridgeLocked("TXT program do ATARI BASICu");
+      g_xexPosledni = false; g_pamet1088 = false;  // B352: BASIC = 320K
       studenyStartLocked(7);                       // ATARI BASIC
       g_stroj->sioRychlyTimeout = true;            // D1: je prazdna - OS nema na co cekat
       g_strojBezi = true;
@@ -1951,10 +2026,10 @@ Java_eu_atarihelp_emu10_NativeAtariCoreBridge_devDiagNative(JNIEnv *env, jclass)
     const int pb = m.mem.portB();
     char b[900];
     snprintf(b, sizeof(b), "B299 PAMET STAV: PC=$%04X A=$%02X X=$%02X Y=$%02X S=$%02X P=$%02X%s, PORTB=$%02X (ROM OS %s, BASIC %s, "
-             "rozsirena pamet pro CPU %s banka %d), NMIEN=$%02X, DLIST=$%04X, SAVMSC=$%04X, DDEVIC=$%02X, D1: %s, rychly timeout SIO %s, "
+             "rozsirena pamet pro CPU %s banka %d%s), NMIEN=$%02X, DLIST=$%04X, SAVMSC=$%04X, DDEVIC=$%02X, D1: %s, rychly timeout SIO %s, "
              "XEX stav %d, psani TXT stav %d, snimek %lld, cartridge %s",
              m.cpu.pc, m.cpu.a, m.cpu.x, m.cpu.y, m.cpu.s, m.cpu.p, m.cpu.jam ? " JAM" : "", pb, (pb & 1) ? "zap" : "VYP",
-             (pb & 2) ? "vyp" : "ZAP", (pb & 0x10) ? "vyp" : "ZAP", nap::AtariMem::bankaExt(pb), m.nmien, w(0x230), w(0x58), r[0x300],
+             (pb & 2) ? "vyp" : "ZAP", (pb & 0x10) ? "vyp" : "ZAP", m.mem.bankaCpu(pb), m.mem.rezim1088 ? " z 64 (1088K)" : " z 16 (320K)", m.nmien, w(0x230), w(0x58), r[0x300],
              m.disk.mounted ? m.disk.name.c_str() : "prazdna", m.sioRychlyTimeout ? "ANO" : "ne", (int)g_xex.stav, (int)g_psani.stav,
              (long long)m.frame, cartPopis(m).c_str());
     out += b; out += "\n";
@@ -2218,6 +2293,7 @@ Java_eu_atarihelp_emu10_NativeAtariCoreBridge_devLoadXexNative(JNIEnv *env, jcla
     ok = g_xex.priprav(buf.data(), buf.size(), nm);
     if (ok) {
       vyjmoutCartridgeLocked("spousti se XEX");
+      g_xexData = buf; g_xexJmeno = nm; g_xexPosledni = true; g_pamet1088 = chce1088(nm);   // B352
       studenyStartLocked(3);                 // OPTION drzene = BASIC vypnuty
       // B295: disketa z mechaniky ven - jinak by OS nabootoval ji misto XEX
       if (g_stroj->disk.mounted) { devLog("B295 DISKETA vyjmuta z D1: (spousti se XEX)"); g_stroj->disk = nap::AtrDisk(); }
@@ -2287,6 +2363,7 @@ Java_eu_atarihelp_emu10_NativeAtariCoreBridge_devLoadTapeNative(JNIEnv *env, jcl
       g_xex.zrus();
       vyjmoutCartridgeLocked("bootuje kazeta");
       if (g_stroj->disk.mounted) { odpojenaDisketa = true; g_stroj->disk = nap::AtrDisk(); }
+      g_xexPosledni = false; g_pamet1088 = chce1088(nm);   // B352
       studenyStartLocked(nap::KazetaBoot::konzole(7));
       g_stroj->sioRychlyTimeout = false;
       g_kazBoot.start(*g_stroj);
@@ -2490,6 +2567,7 @@ Java_eu_atarihelp_emu10_NativeAtariCoreBridge_devLoadAtrNative(JNIEnv *env, jcla
     std::lock_guard<std::mutex> l(g_mStroj);
     g_xex.zrus();
     vyjmoutCartridgeLocked("bootuje disketa ATR");
+    g_xexPosledni = false; g_pamet1088 = chce1088(nm);   // B352
     studenyStartLocked(3);
     g_stroj->disk = std::move(d);
     g_stroj->sioRychlyTimeout = false;
@@ -2579,6 +2657,7 @@ Java_eu_atarihelp_emu10_NativeAtariCoreBridge_devLoadCarNative(JNIEnv *env, jcla
     g_kazBoot.zrus();
     if (g_stroj->disk.mounted) { odpojena = true; g_stroj->disk = nap::AtrDisk(); }
     g_stroj->cart = std::move(c);
+    g_xexPosledni = false; g_pamet1088 = chce1088(nm);   // B352
     studenyStartLocked(7);                   // zapnout s cartridge (OPTION netreba - cartridge prekryje BASIC)
     g_stroj->sioRychlyTimeout = true;        // D1: je prazdna - OS nema na co cekat
     g_strojBezi = true;

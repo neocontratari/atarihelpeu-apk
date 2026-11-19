@@ -1,0 +1,30 @@
+B352 - regrese her: stare jadro (B351, 3b0edef) vs nove (B352) ve vychozim 320K a nove + spusteni znovu s 1088K jako appka
+(-DAPPKA_B352), 2000 snimku (40 s), stejny scenar vstupu (START 600, FIRE 900 a 1300, joystick vpravo 1000-1100, vlevo
+1150-1250), otisk kazdych 100 snimku = CRC32 barev ANTIC/GTIA / celeho obrazu vcetne VBXE (regrese_b352.cpp). Hry Reneho
+(Air Strike, Ghostbusters, KITT, PoP DD, Sonic, Tony, Wonderboy) v repu nejsou.
+
+Air_Strike.xex                                 320K: STEJNE appka: STEJNE  
+Donkey Kong Junior (Title Version).xex         320K: STEJNE appka: STEJNE  
+Ghostbusters.xex                               320K: STEJNE appka: STEJNE  
+KITT.xex                                       320K: STEJNE appka: STEJNE  
+PoP_DD_20211206_final.atr                      320K: STEJNE appka: STEJNE  
+Popeye (VBXE, PAL Version)(2).xex              320K: STEJNE appka: STEJNE  
+Postcard_Atari_Rocky.xex                       320K: STEJNE appka: STEJNE  
+SONIC_A8_AI.xex                                320K: STEJNE appka: JINE   RESTART1088 snimek 88 otisku jinak: 1 z 20
+TONY_ZAMEK_VBXE_DEV31_PARTIAL.xex              320K: STEJNE appka: JINE   RESTART1088 snimek 88 otisku jinak: 20 z 20
+The Activision Decathlon.xex                   320K: STEJNE appka: STEJNE  
+The_Activision_Decathlon.xex                   320K: STEJNE appka: STEJNE  
+Wonderboy_VBXE.car                             320K: STEJNE appka: STEJNE  
+commando230810.xex                             320K: STEJNE appka: STEJNE  
+mission.xex                                    320K: STEJNE appka: STEJNE  
+nightdriver_vbxe.xex                           320K: STEJNE appka: STEJNE  
+rrumble.xex                                    320K: STEJNE appka: STEJNE  
+turbo_basic_xl.xex                             320K: STEJNE appka: STEJNE  
+wolf3d(1).atr                                  320K: STEJNE appka: STEJNE  
+
+VYSLEDEK: ve 320K vsech 18 programu shodnych se starym jadrem (i obraz VBXE: Popeye, Night Driver, Wonderboy).
+Spusteni znovu s 1088K jen u dvou programu, ktere hledaji vic bank nez 320K:
+ - SONIC_A8_AI (zkousi 64 hodnot PORTB): od snimku 200 obraz SHODNY s 320K (jiny jen otisk snimku 100 - znovu startuje).
+   Prvni verze 1088K nechavala BASIC pri bitu 1 = 0 -> Sonic bez levelu (pozadi chybelo); opraveno, viz protokol B352.
+ - TONY_ZAMEK_VBXE_DEV31_PARTIAL: ve 320K stoji na "BRAK RAM - WYMAGANE 496 KB + VBXE" (PC $1AEB), s 1088K:
+   KONEC PC=$104E PORTB=$FE jam=0 xex=5 | B291 XEX TONY_ZAMEK_VBXE_DEV31_PARTIAL.xex nahrano: 444 segmentu, 446853 bajtu, 175 x INIT -> start $1000 (RUNAD)

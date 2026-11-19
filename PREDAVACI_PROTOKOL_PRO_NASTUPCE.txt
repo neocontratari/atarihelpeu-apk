@@ -4541,4 +4541,43 @@
      - DALSI KROK: Rene / tester - hra v RAR ze stareho WinRARu s volbou "nejlepsi". Zbyva: heslo (zamerne ne),
        archiv na vice dilu, RAR 1.5 / 2.0 (DOS, 90. leta).
 
+   B352: ROZSIRENA PAMET 1 MB (1088K) PRO ATARI - SAMA PRO HRU, KTERA HLEDA VIC (19. 11. 2026).
+   Rene (log z telefonu, B350): PoP z RAR na telefonu jede (B349 overeno), "nacitani je krapet dlouhe" a "nasel jsem dalsi
+   hru ktera nejde, mame asi furt malo pameti ve VBXE" (TONY_ZAMEK_VBXE_DEV31_PARTIAL.xex, jeho soubor, v repu NENI).
+     - ROZBOR (jadro na PC): VBXE hra nasla. INIT $1833 -> test pameti $1A66: 32 hodnot PORTB z tabulky $1BBB (bity 2-3 a
+       5-7), do kazde banky na $4000 cislo, pak spocita ruzne banky - chce aspon 27 ($1B) = "WYMAGANE 496 KB". 320K (B323,
+       Compy Shop: banka = bity 2-3 a 6-7, bit 5 jen ANTIC) da 16 -> "BRAK RAM - WYMAGANE 496 KB + VBXE", smycka $1AEB.
+       Neni to pamet VBXE (512 kB staci, hra do ni dava ~48 bank po 4 kB pres MEMAC A $88), ale rozsirena RAM.
+     - nap_atari_machine.h: AtariMem 64 bank (1 MB), EXT_BANK_320 = 16. Vychozi rezim 320K BEZE ZMENY (memHash B0649DC5,
+       regrese 18 programu shodna). Rezim 1088K (mem.rezim1088, jako Ultimate 1MB / atari800 "1088"): banka = PORTB bity 1-3
+       a 5-7 (banka1088: banky 130XE $E3-$EF = 0-3), procesor i ANTIC bit 4 (oddeleny pristup ANTIC 130XE neni), s rozsirenou
+       pameti (bit 4 = 0) NENI self-test ROM ani BASIC (bity 7 a 1 jsou cislo banky - atari800 "BASIC is disabled ...
+       accessing extended 576K or 1088K memory"). POZOR: prvni verze BASIC nechala -> Sonic A8 v 1088K bez levelu (vybral si
+       banky $01 / $03 ... - pri bitu 1 = 0 by byl v $A000-$BFFF BASIC misto RAM, hra tam ma mj. display list $B400);
+       nalezeno regresi "appka" (otisky obrazu), po oprave je obraz Sonica od snimku 200 shodny s 320K.
+       Detekce: v 320K mem.evidujBanku(PORTB) pri zapisu do okna $4000-$7FFF - bitova mapa 64 kombinaci bitu 1-3 a 5-7,
+       vic nez 16 ruznych = mem.chce1088 (program hleda vic bank, nez 320K ma).
+     - nap_atari_native.cpp: restart1088Locked po snimku - XEX znovu ze zapamatovanych dat (g_xexData, devLoadXexNative),
+       disketa v D1: / cartridge zustava (studeny start jako devLoadAtr / POWER), BASIC / kazeta: 1088K hned za behu.
+       g_jmena1088 = programy, ktere 1088K chtely - pristi start (XEX / ATR / CAR / kazeta / POWER s tou disketou) rovnou
+       s 1088K, jinak vychozi 320K (BASIC, TXT, vysunuti diskety). Log "B352 PAMET ...", pod pristrojem "HRA CHCE VIC
+       PAMETI - SPOUSTIM JI S 1 MB". B293 JADRO: buffer 400 -> 700 (radek byl useknuty u "POKEY 1,"), text o 1088K;
+       LOG/CHYBA (B299 PAMET): banka "z 16 (320K)" / "z 64 (1088K)", CRC rozsirene pameti jen aktivnich bank.
+     - Samotest (OCEKAVANY_CPU_HASH 4A2C6CBA, OCEKAVANY_MEM_HASH B0649DC5) beze zmeny - memHash dal meri 320K
+       (nap_atari_selftest.h: smycka pres EXT_BANK_320). Napoveda CZ / EN: "hra, ktera hleda jeste vic, se sama spusti
+       znovu s 1 MB jako s Ultimate 1MB".
+     - Testy test_overeni/b352 (JAK_SPUSTIT.txt): vyrob_b352.py (vlastni kod 6502: test pameti jako v Tonym, 130XE, Compy;
+       XEX i bootovaci ATR), test_b352_jadro 18 OK (320K beze zmeny, 1088K, detekce, XEX / ATR s restartem, Tony: v 320K
+       BRAK RAM, s 1088K 444 segmentu a titulka ve VBXE), test_b352_jni 12 OK (skutecny nap_atari_native.cpp: restart,
+       zapamatovani, 130XE bez restartu, disketa, Tony), regrese_b352.cpp (B351 vs B352 vs B352+restart jako appka,
+       otisky ANTIC/GTIA i celeho obrazu s VBXE - B323 harness VBXE nevidel): 18 programu ve 320K shodne; restart jen
+       Sonic A8 a Tony - Sonic od snimku 200 obraz SHODNY s 320K. Hrani Tonyho na PC (START -> level, Tony chodi,
+       skore). Starsi testy: b323 jadro 12, b348 SIO 41 (Acid800 38/38) + JNI 16, b349 JNI 19, b350 JNI 13. Napoveda
+       220 / 212 / 3 zamerne. build.gradle: versionCode 395 "EMU10-B352-1MB-ATARI". Na telefonu neovereno.
+     - NACITANI PoP: SIO D1: uz ted bez otaceni / hledani (ACK 0,85 ms, COMPLETE 1,1 ms, data 19200 Bd) - 256 B sektor =
+       ~0,134 s, PoP cte vlastnim zavadecem jen standardni rychlosti ('?' / vysokou rychlost nezkousi) -> ~5-6 sektoru / s
+       je strop 19200 Bd. Rychleji jen "turbo" (emulace nekolikrat rychleji nez realny cas behem cteni diskety) -
+       nabidnuto Renemu, NEDELANO (samotest na PC: cely stroj 6,8-8,1x realny cas).
+     - DALSI KROK: Rene - Tony na telefonu (log "B352 PAMET"); rozhodnuti o turbu pri nahravani.
+
 ===============================================================================
