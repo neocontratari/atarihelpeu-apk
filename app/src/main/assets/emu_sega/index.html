@@ -773,6 +773,7 @@ function jsLog(t){
   pushLog(t);
   try{if(window.AHSega&&window.AHSega.segaLog)window.AHSega.segaLog(t);}catch(_){}
 }
+window.jsLog=window.jsLog||jsLog;   // B356: i pro spolecne/nap_obrazovka.js (zahozene klepnuti po otoceni do logu)
 /* BUILD2SB36: presne stejny mechanismus jako u PS1 (viz CO_JE_V_B221 az
    B226/B234.md) - segaPlocha je nativni SurfaceView, zadne CSS v panelu
    ji nemuze schovat. Na rozdil od PS1 vsak Sega nema zOrderOnTop rezim -

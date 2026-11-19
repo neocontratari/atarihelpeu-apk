@@ -373,9 +373,13 @@ public final class NapStahovaniSeSouhlasem {
     static String duvod(String v, String mistni, boolean en) {
         if (v == null || v.isEmpty() || v.startsWith("OK")) return "";
         final String s = v.toLowerCase(java.util.Locale.US);
+        // B356: od B356 se pri EACCES uklada do slozky appky - sem se dostane, jen kdyz nejde ani ta. Drive veta
+        // "povol Uloziste" i na Androidu 11+, kde povoleni nic neresi (Xiaomi brachy, Android 16).
         if (s.contains("slozka-nejde") || s.contains("eacces") || s.contains("filenotfound") || s.contains("zapis-nejde"))
-            return en ? "the app may not save files (storage permission) - allow it: Settings -> Apps -> AtariHelp -> Permissions -> Storage"
-                      : "appka nesm\u00ed ukl\u00e1dat soubory (povolen\u00ed \u00dalo\u017ei\u0161t\u011b) \u2013 povol ho: Nastaven\u00ed -> Aplikace -> AtariHelp -> Opr\u00e1vn\u011bn\u00ed -> \u00dalo\u017ei\u0161t\u011b";
+            return en ? "the file could not be saved - neither to Download/AtariHelp nor to the app folder (check free space;"
+                        + " on Android 10 and older allow Storage: Settings -> Apps -> AtariHelp -> Permissions)"
+                      : "soubor nejde ulo\u017eit \u2013 ani do Download/AtariHelp, ani do slo\u017eky appky (zkontroluj voln\u00e9 m\u00edsto;"
+                        + " na Androidu 10 a star\u0161\u00edm povol \u00dalo\u017ei\u0161t\u011b: Nastaven\u00ed -> Aplikace -> AtariHelp -> Opr\u00e1vn\u011bn\u00ed)";
         if (mistni != null && (s.contains("ssl") || s.contains("cert")))
             return en ? "on this Wi-Fi atarihelp.eu leads to a LOCAL server (" + mistni + "), not the real website"
                       : "na t\u00e9to Wi-Fi vede atarihelp.eu na M\u00cdSTN\u00cd server (" + mistni + "), ne na skute\u010dn\u00fd web";
@@ -402,11 +406,14 @@ public final class NapStahovaniSeSouhlasem {
         final String ds = sonicOk ? "" : duvod(polozka(z, "sonic").split("\\+NP:")[0], mistni, en);
         final String db = biosOk ? "" : duvod(polozka(z, "bios").split("\\+NP:")[0], mistni, en);
         final boolean np = z.contains("N&P");
+        final boolean appka = z.contains(",appka");   // B356: cast do slozky appky (Download/AtariHelp zapis nepustil)
         if (en) {   // B314
             v.append(sonicOk ? "\u2713 Sonic the Hedgehog - saved\n" : "\u2717 Sonic the Hedgehog - not downloaded" + (ds.isEmpty() ? "" : ": " + ds) + "\n");
             v.append(biosOk  ? "\u2713 BIOS for PlayStation - saved\n" : "\u2717 BIOS for PlayStation - not downloaded" + (db.isEmpty() ? "" : ": " + db) + "\n");
             if (np) v.append("\n(from the N&P server - atarihelp.eu did not work)\n");
             v.append("\nFolder: ").append(slozka).append("\n");
+            if (appka) v.append("\nDownload/AtariHelp did not accept the file (it is left there from an earlier installation of the app),"
+                    + " so it was saved to the app folder (Android/data/.../files/AtariHelp). The app finds it there by itself.\n");
             if (!sonicOk || !biosOk) {
                 v.append("\nWhat did not download can be tried again in");
                 v.append(" OPTIONS -> DOWNLOAD GAMES AND BIOS.");
@@ -420,6 +427,8 @@ public final class NapStahovaniSeSouhlasem {
                          : "\u2717 BIOS pro PlayStation - nestazen" + (db.isEmpty() ? "" : ": " + db) + "\n");
         if (np) v.append("\n(ze serveru N&P - atarihelp.eu neslo)\n");
         v.append("\nSlozka: ").append(slozka).append("\n");
+        if (appka) v.append("\nDo Download/AtariHelp zapsat neslo (soubor tam zustal po drivejsi instalaci appky),"
+                + " proto je ve slozce aplikace (Android/data/.../files/AtariHelp). Appka si ho tam najde sama.\n");
         if (!sonicOk || !biosOk) {
             v.append("\nCo se nestahlo, jde zkusit znovu v nabidce");
             v.append(" OPTIONS -> STAHNOUT HRY A BIOS.");
@@ -501,21 +510,84 @@ public final class NapStahovaniSeSouhlasem {
      */
     static String ulozSoubor(Context c, byte[] data, String jmeno, File kam, String popis, String pripony) {
         try {
-            if (!kam.isDirectory() && !kam.mkdirs()) return popis + "=slozka-nejde";
             final boolean zip = data.length > 4 && data[0] == 'P' && data[1] == 'K' && data[2] == 3 && data[3] == 4;
             if (zip) return ulozZeZipu(c, data, kam, popis, pripony);
             String jm = new File(jmeno == null ? "" : jmeno).getName();
             String male = jm.toLowerCase(java.util.Locale.US);
             if (jm.isEmpty() || jm.startsWith(".") || !maPriponu(male, pripony)) return popis + "=jiny-soubor";
             if ("bios".equals(popis) && data.length != 524288) return popis + "=jiny-soubor";
-            File ven = new File(kam, jm);
-            FileOutputStream fo = new FileOutputStream(ven);
-            try { fo.write(data); } finally { fo.close(); }
+            File ven = zapis(data, kam, jm);   // B356: kdyz do Download nejde, slozka appky
             zapamatujPolozku(c, popis, ven);
-            return popis + "=OK(1)";
+            return popis + "=OK(1" + (vNahradni(ven, kam) ? ",appka" : "") + ")";
         } catch (Throwable t) {
             return popis + "=" + jmenoChyby(t);
         }
+    }
+
+    // ------------------------------------------------------------------
+    //  B356: Xiaomi brachy (Android 16, 19. 11.): "Sonic ... nestazen: appka nesmi ukladat soubory (povoleni
+    //  Uloziste)" a totez u BIOSu - chyba EACCES. Android 11+ nedovoli prepsat soubor v Download/AtariHelp,
+    //  ktery tam zustal po DRIVEJSI instalaci appky (po odinstalaci a nove instalaci je "cizi"), a povoleni
+    //  Uloziste od Androidu 11 nic neresi - hlaska radila spatne. Ted: kdyz do Download/AtariHelp zapsat nejde,
+    //  soubor se ulozi do slozky appky (Android/data/<appka>/files/AtariHelp - bez povoleni, vzdy zapisovatelna)
+    //  a appka si zapamatuje, kde je. Sonic i BIOS se hledaji v obou slozkach (dalsiKoren, i Android 10+).
+    // ------------------------------------------------------------------
+
+    /** Zapise 'data' do kam/jm; nejde-li to (EACCES, slozka nejde vytvorit ...), do nahradni slozky (slozka appky). */
+    static File zapis(byte[] data, File kam, String jm) throws java.io.IOException {
+        java.io.IOException prvni;
+        try {
+            return zapisDo(data, kam, jm);
+        } catch (java.io.IOException e) {
+            prvni = e;
+        }
+        final File nahrada = nahradniSlozka(kam);
+        if (nahrada == null) throw prvni;
+        try {
+            final File f = zapisDo(data, nahrada, jm);
+            loguj("B356 ULOZISTE: " + jm + " do " + kam + " zapsat nejde (" + jmenoChyby(prvni)
+                    + " - soubor tam asi zustal po drivejsi instalaci appky) -> ulozeno do slozky appky " + f.getAbsolutePath());
+            return f;
+        } catch (java.io.IOException e2) {
+            loguj("B356 ULOZISTE: " + jm + " nejde ulozit ani do " + kam + " (" + jmenoChyby(prvni) + "), ani do " + nahrada
+                    + " (" + jmenoChyby(e2) + ")");
+            throw prvni;
+        }
+    }
+
+    private static File zapisDo(byte[] data, File kam, String jm) throws java.io.IOException {
+        if (!kam.isDirectory() && !kam.mkdirs()) throw new java.io.IOException("slozka-nejde " + kam);
+        final File ven = new File(kam, jm);
+        FileOutputStream fo = new FileOutputStream(ven);
+        try { fo.write(data); } finally { fo.close(); }
+        return ven;
+    }
+
+    /**
+     * Stejna podslozka ve slozce appky (dalsiKoren): ".../Download/AtariHelp/emu/sega" -> "<dalsiKoren>/emu/sega".
+     * null = neni kam (zadna slozka appky, nebo uz 'kam' ve slozce appky je).
+     */
+    static File nahradniSlozka(File kam) {
+        final File d = dalsiKoren;
+        if (d == null || kam == null) return null;
+        final String p = kam.getAbsolutePath().replace('\\', '/');
+        final String dp = d.getAbsolutePath().replace('\\', '/');
+        if (p.equals(dp) || p.startsWith(dp + "/")) return null;   // uz je ve slozce appky
+        final int i = p.lastIndexOf("/AtariHelp");
+        String pod = "";
+        if (i >= 0) {
+            pod = p.substring(i + "/AtariHelp".length());
+            if (!pod.isEmpty() && !pod.startsWith("/")) pod = "/" + kam.getName();   // "AtariHelpX" - jen jmeno
+        } else {
+            pod = "/" + kam.getName();
+        }
+        while (pod.startsWith("/")) pod = pod.substring(1);
+        return pod.isEmpty() ? d : new File(d, pod);
+    }
+
+    /** Je 'ven' v nahradni slozce (ne tam, kam mel jit)? */
+    static boolean vNahradni(File ven, File kam) {
+        return ven != null && kam != null && !kam.equals(ven.getParentFile());
     }
 
     private static boolean maPriponu(String male, String pripony) {
@@ -532,6 +604,7 @@ public final class NapStahovaniSeSouhlasem {
     /** B337: jmeno chyby do zpravy - u zapisu bez povoleni i EACCES (FileNotFoundException nic nerika). */
     static String jmenoChyby(Throwable t) {
         String m = t.getMessage();
+        if (m != null && m.startsWith("slozka-nejde")) return "slozka-nejde";   // B356: zapisDo - slozka nejde vytvorit
         return t.getClass().getSimpleName() + (m != null && m.contains("EACCES") ? "(EACCES)" : "");
     }
 
@@ -607,7 +680,8 @@ public final class NapStahovaniSeSouhlasem {
                                      final String hezkyNazev, final Prubeh prubeh) {
         HttpURLConnection c = null;
         try {
-            if (!kam.isDirectory() && !kam.mkdirs()) return popis + "=slozka-nejde";
+            // B356: slozka v Download nejde vytvorit -> nevadi, kdyz je nahradni (slozka appky; zapis ji pouzije sam)
+            if (!kam.isDirectory() && !kam.mkdirs() && nahradniSlozka(kam) == null) return popis + "=slozka-nejde";
             c = (HttpURLConnection) new URL(url).openConnection();
             // B337: HTTPS jako u her z atarihelp.eu - chybejici mezilehly certifikat se dohleda (B298),
             // cizi certifikat (na Wi-Fi vede atarihelp.eu na mistni server) se pozna a hlasi (B299)
@@ -663,9 +737,9 @@ public final class NapStahovaniSeSouhlasem {
      */
     static String ulozZeZipu(Context c, byte[] zip, File kam, String popis, String pripony) {
         try {
-            if (!kam.isDirectory() && !kam.mkdirs()) return popis + "=slozka-nejde";
             byte[] buf = new byte[32768];
             int ulozeno = 0;
+            boolean nahradni = false;   // B356: aspon jeden soubor do slozky appky
             ZipInputStream zi = new ZipInputStream(new java.io.ByteArrayInputStream(zip));
             try {
                 ZipEntry e;
@@ -675,12 +749,15 @@ public final class NapStahovaniSeSouhlasem {
                     if (jm.isEmpty() || jm.startsWith(".")) continue;
                     String male = jm.toLowerCase(java.util.Locale.US);
                     if (!maPriponu(male, pripony)) continue;
-                    File ven = new File(kam, jm);
-                    FileOutputStream fo = new FileOutputStream(ven);
-                    try {
-                        int m;
-                        while ((m = zi.read(buf)) > 0) fo.write(buf, 0, m);
-                    } finally { fo.close(); }
+                    // B356: obsah do pameti (Sonic 0,5 MB, BIOS 0,5 MB), pak zapis s nahradni slozkou (EACCES)
+                    ByteArrayOutputStream bo = new ByteArrayOutputStream();
+                    int m;
+                    while ((m = zi.read(buf)) > 0) {
+                        bo.write(buf, 0, m);
+                        if (bo.size() > 24 * 1024 * 1024) throw new java.io.IOException("soubor v ZIPu je moc velky: " + jm);
+                    }
+                    File ven = zapis(bo.toByteArray(), kam, jm);
+                    if (vNahradni(ven, kam)) nahradni = true;
                     ulozeno++;
                     // BUILD2SB47: Rene - "neustale stahuje dva soubory pri
                     // spusteni apky i kdyz jsou v mobilu." Prislusna cesta
@@ -697,7 +774,7 @@ public final class NapStahovaniSeSouhlasem {
             } finally { try { zi.close(); } catch (Throwable ignored) {} }
 
             if (ulozeno == 0) return popis + "=nic-v-zipu";
-            return popis + "=OK(" + ulozeno + ")";
+            return popis + "=OK(" + ulozeno + (nahradni ? ",appka" : "") + ")";
         } catch (Throwable t) {
             return popis + "=" + jmenoChyby(t);
         }

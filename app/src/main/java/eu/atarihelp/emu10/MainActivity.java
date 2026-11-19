@@ -487,6 +487,16 @@ public class MainActivity extends Activity {
     }
     private volatile boolean ps1RemoteDownloadActive = false;
     private volatile String ps1RemoteDownloadStatus = "idle";
+    // B356: spojeni, ze ktereho se prave stahuje PS1 hra (NapStahovaniHry). Zruseni stahovani (odchod ze stranky
+    // PS1, jina hra) ho hned zavre - drive zrusene stahovani viselo v read() az do timeoutu (Rene, FF8 19. 11.).
+    private final java.util.concurrent.atomic.AtomicReference<HttpURLConnection> ps1AktivniSpojeni =
+            new java.util.concurrent.atomic.AtomicReference<>();
+    private void ps1ZavriStahovani(String proc) {
+        final HttpURLConnection c = ps1AktivniSpojeni.getAndSet(null);
+        if (c == null) return;
+        new Thread(() -> { try { c.disconnect(); } catch (Throwable ignored) {} }, "nap-ps1-zrus").start();
+        appendNativeLog("B356 PS1 stahovani zruseno (" + proc + ") - spojeni se serverem zavreno hned");
+    }
     // B345: hezke jmeno hry, ktera se prave stahuje / nahrava - nazev z katalogu serveru N&P, jinak jmeno
     // souboru bez pripony (NapPravidla.ps1JmenoHry). Stranka PS1 ho ukaze v monitoru (AHPS1.ps1RemoteJmeno).
     // Stitek ps1CurrentGameLabel (podle nej se jmenuji ulozene pozice) zustava, jak byl.
@@ -6200,7 +6210,9 @@ public class MainActivity extends Activity {
         // nikdo neodklepl / odmitl) - do Download se nezapise nic (Sonic, BIOS, pametova karta, hry).
         // Pak slozka appky na externim ulozisti: bez povoleni, prezije aktualizace (ne odinstalaci).
         // Android 10+ a telefon s povolenim beze zmeny.
-        if (Build.VERSION.SDK_INT <= 28 && !napUlozistePovoleno()) {
+        // B356: i Android 10 (API 29) - tam se do Download pise jen s povolenim a starym ulozistem
+        // (requestLegacyExternalStorage); povoleni bylo v manifestu jen do API 28, takze Android 10 nezapsal nic.
+        if (Build.VERSION.SDK_INT <= 29 && !napUlozistePovoleno()) {
             File alt = napSlozkaAppky();
             if (alt != null) {
                 if (!napSlozkaAppkyHlasena) {
@@ -6216,9 +6228,9 @@ public class MainActivity extends Activity {
 
     private boolean napSlozkaAppkyHlasena = false;
 
-    /** B337: Android 9 a starsi - ma appka povoleni zapisovat do Download (WRITE_EXTERNAL_STORAGE)? */
+    /** B337: Android 9 a starsi - ma appka povoleni zapisovat do Download (WRITE_EXTERNAL_STORAGE)? B356: i Android 10. */
     private boolean napUlozistePovoleno() {
-        if (Build.VERSION.SDK_INT < 23 || Build.VERSION.SDK_INT > 28) return true;
+        if (Build.VERSION.SDK_INT < 23 || Build.VERSION.SDK_INT > 29) return true;
         try {
             return checkSelfPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED;
         } catch (Throwable t) {
@@ -6288,14 +6300,18 @@ public class MainActivity extends Activity {
     private void napDiagnostikaUloziste() {
         try {
             NapStahovaniSeSouhlasem.log = this::appendNativeLog;
-            if (Build.VERSION.SDK_INT <= 28) NapStahovaniSeSouhlasem.dalsiKoren = napSlozkaAppky();
+            // B356: slozka appky jako druha (nahradni) slozka na VSECH Androidech - Android 11+ nepusti zapis do souboru
+            // v Download/AtariHelp, ktery tam zustal po drivejsi instalaci appky (EACCES, Xiaomi brachy) -> Sonic, BIOS
+            // se pak ulozi sem a hledaji se v obou slozkach. Drive jen Android 9 a starsi.
+            NapStahovaniSeSouhlasem.dalsiKoren = napSlozkaAppky();
             final File dl = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), "AtariHelp");
             final File koren = getPublicAtariHelpDownloadsDir();
             appendNativeLog("B337 ULOZISTE pri startu: Android " + Build.VERSION.RELEASE + " (API " + Build.VERSION.SDK_INT + ")"
-                    + ", povoleni zapisu " + (Build.VERSION.SDK_INT > 28 ? "netreba" : (napUlozistePovoleno() ? "ANO" : "NE"))
-                    + ", Download/AtariHelp " + (dl.isDirectory() ? (dl.canWrite() ? "zapis jde" : "zapis NEJDE") : "neexistuje")
+                    + ", povoleni zapisu " + (Build.VERSION.SDK_INT > 29 ? "netreba" : (napUlozistePovoleno() ? "ANO" : "NE"))
+                    + ", Download/AtariHelp " + (dl.isDirectory() ? (napZapisJde(dl) ? "zapis jde" : "zapis NEJDE") : "neexistuje")
                     + " | soubory appky: " + koren.getAbsolutePath()
-                    + " | " + NapStahovaniSeSouhlasem.stav(this, koren));
+                    + " | " + NapStahovaniSeSouhlasem.stav(this, koren)
+                    + " | B356 nahradni slozka: " + (NapStahovaniSeSouhlasem.dalsiKoren == null ? "zadna" : NapStahovaniSeSouhlasem.dalsiKoren.getAbsolutePath()));
             // B339: kolik je mista (Rene: "nevim jakou ma kapacitu disk v tv") - mimo hlavni vlakno (slozky her)
             new Thread(() -> {
                 try {
@@ -6310,6 +6326,38 @@ public class MainActivity extends Activity {
             }, "nap-uloziste").start();
         } catch (Throwable t) {
             appendNativeLog("B337 ULOZISTE_CHYBA " + safeMsg(t));
+        }
+    }
+
+    /**
+     * B356: jde do slozky OPRAVDU zapsat? Skutecny zapis souboru s jedinecnym jmenem (canWrite() na Androidu 10+
+     * rika "ano" i tam, kde zapis skonci EACCES; stara zkouska od drivejsi instalace by zase rikala "ne").
+     */
+    private boolean napZapisJde(File dir) {
+        File p = null;
+        try {
+            if (dir == null || (!dir.isDirectory() && !dir.mkdirs())) return false;
+            p = new File(dir, ".nap_zapis_" + Long.toHexString(System.nanoTime()));
+            FileOutputStream o = new FileOutputStream(p);
+            try { o.write(1); } finally { o.close(); }
+            return true;
+        } catch (Throwable t) {
+            return false;
+        } finally {
+            try { if (p != null && p.exists()) p.delete(); } catch (Throwable ignored) {}
+        }
+    }
+
+    private volatile boolean napKartaHlasena = false;
+
+    /** B356: jde do existujiciho souboru zapsat? Otevreni pro pripis (nic se nezapise, obsah zustane). */
+    private boolean napSouborZapsatJde(File f) {
+        try {
+            FileOutputStream o = new FileOutputStream(f, true);
+            o.close();
+            return true;
+        } catch (Throwable t) {
+            return false;
         }
     }
 
@@ -6339,6 +6387,27 @@ public class MainActivity extends Activity {
     private File getPublicMemoryCardDir() {
         File dir = new File(getPublicAtariHelpDownloadsDir(), "PS1_pametova_karta");
         if (!dir.exists()) dir.mkdirs();
+        // B356: karta od drivejsi instalace appky - Android 11+ ji po preinstalaci nepusti (EACCES): jadro by kartu
+        // nenacetlo ani neulozilo a hra by tise prisla o ulozeni. Pak karta ve slozce appky (s hlaskou v logu).
+        try {
+            final File karta = new File(dir, "memory_card_1.srm");
+            final boolean jde = karta.exists() ? napSouborZapsatJde(karta) : napZapisJde(dir);
+            if (!jde) {
+                final File appka = napSlozkaAppky();
+                if (appka != null) {
+                    final File d2 = new File(appka, "PS1_pametova_karta");
+                    if (!d2.equals(dir) && (d2.isDirectory() || d2.mkdirs())) {
+                        if (!napKartaHlasena) {
+                            napKartaHlasena = true;
+                            appendNativeLog("B356 PAMETOVA KARTA: " + karta.getAbsolutePath() + " zapsat nejde (asi zustala po drivejsi"
+                                    + " instalaci appky) - karta ve slozce appky " + d2.getAbsolutePath()
+                                    + " (hry ulozene na stare karte appka neprecte)");
+                        }
+                        return d2;
+                    }
+                }
+            }
+        } catch (Throwable ignored) {}
         // Jednorazove presunuti: pokud uz z drivejsiho testovani (B215-B224)
         // existuje karta ve stare, appce-privatni ceste a v nove verejne
         // jeste zadna neni, zkopirovat ji sem - at Rene neprijde o
@@ -7164,6 +7233,13 @@ public class MainActivity extends Activity {
         @JavascriptInterface
         public String ps1QuickSave() {
             try {
+                // B356: bezi jen BIOS (zadna hra) -> NEUKLADAT. Stitek pozice je porad posledni hry, takze BIOS
+                // prepsal jeji rychlou pozici (Rene, FF8 19. 11. 21:33:22: SAVE GAME hned po otoceni obrazovky,
+                // hra uz nebezela - "PS1 POZICE ULOZENA ... Final_Fantasy_VIII ... slot0.state" z menu BIOSu).
+                if (ps1BiosRunning) {
+                    appendNativeLog("B356 PS1 SAVE GAME bez hry (bezi jen BIOS) - neukladam, rychla pozice " + ps1CurrentGameLabel + " zustava");
+                    return "PS1_STATE_BEZ_HRY";
+                }
                 File f = ps1StateFile();
                 String r = NativePs1CoreBridge.saveStateSafe(f.getAbsolutePath());
                 return r;
@@ -7174,6 +7250,11 @@ public class MainActivity extends Activity {
         @JavascriptInterface
         public String ps1QuickLoad() {
             try {
+                // B356: bezi jen BIOS - pozice posledni hry by nabehla bez jejiho disku (nesmysl). Nejdriv hru.
+                if (ps1BiosRunning) {
+                    appendNativeLog("B356 PS1 nacist pozici bez hry (bezi jen BIOS) - nenacitam");
+                    return "PS1_STATE_BEZ_HRY";
+                }
                 File f = ps1StateFile();
                 if (!f.exists()) return "PS1_STATE_LOAD_FAIL missing_file path=" + f.getAbsolutePath();
                 String r = NativePs1CoreBridge.loadStateSafe(f.getAbsolutePath());
@@ -7643,6 +7724,33 @@ public class MainActivity extends Activity {
                     try (FileOutputStream t0 = new FileOutputStream(akt, true)) {
                         t0.write("".getBytes("UTF-8"));
                         zapisFunguje = true;
+                    } catch (Throwable ignored) {}
+                }
+                // B356: slozka zapisovatelna, ale PS1_LOG.txt ne - Android 11+ po preinstalaci appky (soubor od drivejsi
+                // instalace je "cizi", EACCES; Xiaomi brachy). Drive: log se neukladal vubec. Ted slozka appky.
+                if (!zapisFunguje) {
+                    try {
+                        File alt = getExternalFilesDir(null);
+                        if (alt != null && !alt.equals(dl)) {
+                            if (!alt.exists()) alt.mkdirs();
+                            File akt2 = new File(alt, "PS1_LOG.txt");
+                            if (akt2.exists()) {
+                                File pred2 = new File(alt, "PS1_LOG_predchozi.txt");
+                                if (pred2.exists()) pred2.delete();
+                                akt2.renameTo(pred2);
+                            }
+                            try (FileOutputStream t1 = new FileOutputStream(akt2, true)) {
+                                t1.write("".getBytes("UTF-8"));
+                                zapisFunguje = true;
+                            } catch (Throwable ignored) {}
+                            if (zapisFunguje) {
+                                appendNativeLog("B356 LOG: do " + akt.getAbsolutePath() + " zapsat nejde (soubor asi zustal po drivejsi"
+                                        + " instalaci appky) - log jde do slozky appky " + akt2.getAbsolutePath());
+                                dl = alt;
+                                akt = akt2;
+                                napTvWebLogFileDownloads = akt2;
+                            }
+                        }
                     } catch (Throwable ignored) {}
                 }
                 napTvWebLogSlozka = dl.getAbsolutePath();
@@ -10169,6 +10277,7 @@ public class MainActivity extends Activity {
         ps1LifecycleGen++;
         ps1RemoteDownloadActive = false;
         if (hadRemoteDownload) ps1RemoteDownloadStatus = "PS1_REMOTE_CANCELLED reason=" + reason;
+        if (hadRemoteDownload) ps1ZavriStahovani(reason);   // B356: cteni skonci hned, ne az po timeoutu
         ps1BootActive = false;
         ps1SessionActive = false;
         // BUILD2SB30: Rene - "nacteny bios bez cd, dalsi [reset] udelal
@@ -12878,6 +12987,7 @@ public class MainActivity extends Activity {
     /** Klavesy herniho ovladace - driv nez WebView. B334: + dalkovy ovladac TV. */
     @Override
     public boolean dispatchKeyEvent(KeyEvent e) {
+        if (e != null && e.getKeyCode() == KeyEvent.KEYCODE_BACK && e.getAction() == KeyEvent.ACTION_UP) napZpetOdkud(e);   // B356
         try {
             if (ovladac != null && ovladac.zOvladace(e) && ovladacKlavesa(e)) return true;
         } catch (Throwable t) { ovladacChyba(t); }
@@ -12885,6 +12995,99 @@ public class MainActivity extends Activity {
             if (napDalkovyKlavesa(e)) return true;
         } catch (Throwable t) { ovladacChyba(t); }
         return super.dispatchKeyEvent(e);
+    }
+
+    /**
+     * B356: ODKUD PRISLO ZPET. Rene, FF8 19. 11. 21:32:54 - hra skoncila pres ZPET (backPressedBeforeGoBack) 10 s po
+     * poslednim stisku na ovladaci; z logu neslo poznat, jestli to byl telefon (lista / gesto), nebo herni ovladac
+     * (Android z jeho nevyrizeneho tlacitka B / Y udela ZPET - "fallback").
+     */
+    private void napZpetOdkud(KeyEvent e) {
+        try {
+            final android.view.InputDevice d = e.getDevice();
+            final String jm = d == null ? "?" : d.getName();
+            final boolean fallback = (e.getFlags() & KeyEvent.FLAG_FALLBACK) != 0;
+            final boolean virtualni = d == null || d.isVirtual();
+            appendNativeLog("B356 ZPET: tlacitko ZPET z " + (fallback ? "herniho ovladace \"" + jm + "\" (Android z jeho tlacitka udelal ZPET)"
+                    : virtualni ? "telefonu (lista / gesto)" : "zarizeni \"" + jm + "\"") + " | stranka " + compactUrl(napAktualniUrl));
+        } catch (Throwable ignored) {}
+    }
+
+    // ===================================================================
+    //  B356: PADY DO LOGU (NapPad) - Java, WebView, konec predchoziho behu
+    // ===================================================================
+    private static volatile boolean napHlidacPaduZapnut = false;
+    private volatile String napVerzeKratce = "?";
+
+    private File napBehZnacka() { return new File(getFilesDir(), "nap_beh.txt"); }
+    private File napPadSoubor() { return new File(getFilesDir(), "nap_posledni_pad.txt"); }
+
+    /** Znacka behu: bezi (v popredi) / pauza / konec - pri dalsim startu "bezi" = skoncila nahle. */
+    private void napZapisBeh(String stav) {
+        try { NapPad.zapisHned(napBehZnacka(), stav + "|" + nowStamp() + "|" + napVerzeKratce, false); } catch (Throwable ignored) {}
+    }
+
+    /** Pri startu: jak skoncil predchozi beh (pad Javy, nahly konec, duvod od Androidu 11+), pak hlidac padu Javy. */
+    private void napHlidaniPadu() {
+        try {
+            final File pad = napPadSoubor();
+            if (pad.isFile()) {
+                final String t = new String(napCtiSoubor(pad, 64 * 1024), "UTF-8").trim();
+                if (!t.isEmpty()) appendNativeLog("B356 PREDCHOZI BEH SPADL (zapsano pri padu):\n" + t);
+                pad.delete();
+            }
+            final File z = napBehZnacka();
+            if (z.isFile()) {
+                final String v = NapPad.predchoziBeh(new String(napCtiSoubor(z, 4096), "UTF-8"));
+                if (v != null) appendNativeLog(v);
+            }
+            if (Build.VERSION.SDK_INT >= 30) napDuvodKonceOdAndroidu();
+        } catch (Throwable t) {
+            appendNativeLog("B356 PREDCHOZI BEH: nejde zjistit (" + safeMsg(t) + ")");
+        }
+        napZapisBeh("bezi");
+        if (napHlidacPaduZapnut) return;
+        napHlidacPaduZapnut = true;
+        final Thread.UncaughtExceptionHandler puvodni = Thread.getDefaultUncaughtExceptionHandler();
+        final File padSoubor = napPadSoubor();
+        Thread.setDefaultUncaughtExceptionHandler((vlakno, chyba) -> {
+            try {
+                final String t = nowStamp() + "  " + NapPad.popisPadu(vlakno == null ? "?" : vlakno.getName(), chyba, 14) + "\n";
+                NapPad.zapisHned(napTvWebLogFileDownloads, t, true);
+                NapPad.zapisHned(napTvWebLogFile, t, true);
+                NapPad.zapisHned(padSoubor, t, false);
+            } catch (Throwable ignored) {}
+            if (puvodni != null) puvodni.uncaughtException(vlakno, chyba);
+        });
+        appendNativeLog("B356 HLIDANI PADU: Java (nezachycena vyjimka), WebView, konec behu"
+                + (Build.VERSION.SDK_INT >= 30 ? " + duvod od Androidu" : " (duvod od Androidu az od Androidu 11)"));
+    }
+
+    /** Android 11+: proc skoncily posledni behy appky (pad, malo pameti, ANR, uzivatel ...) - kazdy jen jednou. */
+    @android.annotation.TargetApi(30)
+    private void napDuvodKonceOdAndroidu() {
+        try {
+            final android.app.ActivityManager am = (android.app.ActivityManager) getSystemService(ACTIVITY_SERVICE);
+            if (am == null) return;
+            final java.util.List<android.app.ApplicationExitInfo> l = am.getHistoricalProcessExitReasons(null, 0, 3);
+            if (l == null || l.isEmpty()) return;
+            final android.content.SharedPreferences sp = getSharedPreferences("nap_pady", MODE_PRIVATE);
+            final long hlaseno = sp.getLong("posledni_konec", 0L);
+            long nejnovejsi = hlaseno;
+            for (android.app.ApplicationExitInfo i : l) {   // nejnovejsi prvni
+                if (i.getTimestamp() <= hlaseno) break;
+                nejnovejsi = Math.max(nejnovejsi, i.getTimestamp());
+                final int r = i.getReason();
+                final String kdy = new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.US).format(new java.util.Date(i.getTimestamp()));
+                appendNativeLog("B356 KONEC BEHU APPKY (Android): " + kdy + " - " + NapPad.duvodKonce(r)
+                        + (i.getDescription() != null ? " | " + i.getDescription() : "")
+                        + " | dulezitost " + i.getImportance() + " | pamet PSS " + (i.getPss() / 1024) + " MB, RSS " + (i.getRss() / 1024) + " MB"
+                        + (NapPad.dulezityKonec(r) ? "  <<<" : ""));
+            }
+            if (nejnovejsi > hlaseno) sp.edit().putLong("posledni_konec", nejnovejsi).apply();
+        } catch (Throwable t) {
+            appendNativeLog("B356 KONEC BEHU APPKY: Android neodpovedel (" + safeMsg(t) + ")");
+        }
     }
 
     // ===================================================================
@@ -13452,6 +13655,7 @@ public class MainActivity extends Activity {
             android.content.pm.PackageInfo pi =
                 getPackageManager().getPackageInfo(getPackageName(), 0);
             appendNativeLog("VERZE APKY = " + pi.versionName + " (code " + pi.versionCode + ")");
+            napVerzeKratce = pi.versionName + " (" + pi.versionCode + ")";   // B356: do znacky behu
             // B313: postup hrace hned pri startu - Rene po nove instalaci videl odemcenou Segu
             // i PS1: Android appce po instalaci vratil nastaveni ze zalohy v Google uctu
             // (Auto Backup). Od B313 je zaloha vypnuta (AndroidManifest allowBackup=false).
@@ -13462,6 +13666,7 @@ public class MainActivity extends Activity {
         } catch (Throwable t) {
             appendNativeLog("VERZE APKY = nezjistena: " + safeMsg(t));
         }
+        napHlidaniPadu();   // B356: jak skoncil predchozi beh + hlidac padu Javy (hned po zalozeni logu)
         // B327: prvni start po aktualizaci -> "Nainstalovana nova verze" (B329: okno az nad menu a do OK -
         // napOznamVerzi; Android 10+ appku sam neotevre, at clovek vi, ze aktualizace prosla); do Androidu 9 ji otevrel NapPoAktualizaci
         // (B328: co prijimac udelal, jde do logu - "PO AKTUALIZACI ... prijimac: ...")
@@ -13552,6 +13757,25 @@ public class MainActivity extends Activity {
             }
         });
         web.setWebViewClient(new WebViewClient() {
+            /**
+             * B356: vykreslovani stranek (WebView) spadlo nebo ho Android zavrel (malo pameti). Appka, ktera to neresi,
+             * skonci (Android 8+) - drive bez jedineho radku v logu. Ted radek HNED na disk; chovani zustava.
+             */
+            @Override
+            public boolean onRenderProcessGone(WebView view, android.webkit.RenderProcessGoneDetail detail) {
+                try {
+                    final boolean spadlo = detail != null && detail.didCrash();
+                    int priorita = -1;
+                    try { if (detail != null) priorita = detail.rendererPriorityAtExit(); } catch (Throwable ignored) {}
+                    final String t = nowStamp() + "  B356 PAD WEBVIEW: vykreslovani stranek " + (spadlo ? "SPADLO" : "zavrel Android (asi malo pameti)")
+                            + ", priorita " + priorita + ", stranka " + compactUrl(napAktualniUrl) + " - appka konci\n";
+                    NapPad.zapisHned(napTvWebLogFileDownloads, t, true);
+                    NapPad.zapisHned(napTvWebLogFile, t, true);
+                    NapPad.zapisHned(napPadSoubor(), t, false);
+                } catch (Throwable ignored) {}
+                return false;
+            }
+
             @Override
             public void onPageStarted(WebView v, String url, Bitmap favicon) {
                 super.onPageStarted(v, url, favicon);
@@ -14241,7 +14465,9 @@ public class MainActivity extends Activity {
         File probe = null;
         try {
             if (!dir.exists() && !dir.mkdirs()) return false;
-            probe = new File(dir, ".nap_ps1_write_test");
+            // B356: jedinecne jmeno - stara zkouska od drivejsi instalace (Android 11+ "cizi" soubor) by jinak
+            // hlasila "zapis nejde", i kdyz do slozky zapsat jde
+            probe = new File(dir, ".nap_zapis_" + Long.toHexString(System.nanoTime()));
             FileOutputStream out = new FileOutputStream(probe);
             try { out.write(1); } finally { out.close(); }
             return probe.exists();
@@ -14309,8 +14535,22 @@ public class MainActivity extends Activity {
 
     private File ps1RemoteCacheDir(String url) throws IOException {
         File root = ps1RemoteGamesDir();
-        File dir = new File(root, ps1RemoteCacheKey(url));
+        String key = ps1RemoteCacheKey(url);
+        File dir = new File(root, key);
         if (!dir.exists() && !dir.mkdirs()) throw new IOException("nejde vytvorit PS1 cache: " + dir.getAbsolutePath());
+        // B356: slozka hry z drivejsi instalace appky - Android 11+ ji po preinstalaci bere jako cizi a zapis
+        // do ni nejde (EACCES, Xiaomi brachy 19. 11. u Sonica a BIOSu). Hotova hra ze slozky appky ma prednost,
+        // jinak se hra stahne do slozky appky.
+        File druha = new File(ps1PrivateRemoteGamesDir(), key);
+        if (!druha.equals(dir)) {
+            if (druha.isDirectory() && ps1ReadCachedBootFile(druha) != null && ps1ReadCachedBootFile(dir) == null) return druha;
+            if (!canUsePs1CacheDir(dir)) {
+                if (!druha.isDirectory() && !druha.mkdirs()) throw new IOException("nejde vytvorit PS1 slozka: " + druha.getAbsolutePath());
+                appendNativeLog("B356 ULOZISTE: do slozky hry " + dir.getAbsolutePath() + " zapsat nejde (asi od drivejsi instalace appky)"
+                        + " - hra jde do slozky appky " + druha.getAbsolutePath());
+                return druha;
+            }
+        }
         return dir;
     }
 
@@ -14425,9 +14665,12 @@ public class MainActivity extends Activity {
                 for (File dir : kids) {
                     if (dir == null || !dir.isDirectory()) continue;
                     String key = dir.getName();
-                    if (!seenKeys.add(key)) continue; // stejna hra v public i private - jen jednou
+                    if (seenKeys.contains(key)) continue; // stejna hra v public i private - jen jednou
                     File boot = ps1ReadCachedBootFile(dir);
                     if (boot == null) continue; // rozdelane/nekompletni stazeni - do knihovny nepatri
+                    // B356: klic az u HOTOVE hry - slozka od drivejsi instalace (bez citelne znacky) jinak
+                    // schovala tutez hru stazenou znovu do slozky appky
+                    seenKeys.add(key);
                     if (nazvy == null && key.startsWith("nap_")) nazvy = napNazvyHer();
                     String nejvetsi = boot.getName().toLowerCase(Locale.US).startsWith("_ps1_synth") ? ps1NejvetsiSoubor(dir) : null;
                     String nazev = NapPravidla.ps1JmenoHry(nazvy == null ? null : nazvy.get(key), boot.getName(), nejvetsi);
@@ -14517,17 +14760,21 @@ public class MainActivity extends Activity {
         // mista, kde appka drzi hry. Porovnava se proto skutecna
         // (kanonicka) cesta, ne jen retezec.
         File[] roots = new File[] { new File(getPublicAtariHelpDownloadsDir(), "PS1"), ps1PrivateRemoteGamesDir() };
+        File prvni = null;
         for (File root : roots) {
             if (root == null) continue;
             try {
                 File rootCanon = root.getCanonicalFile();
                 File dir = new File(root, safeKey).getCanonicalFile();
                 if (dir.exists() && dir.isDirectory() && rootCanon.equals(dir.getParentFile())) {
-                    return dir;
+                    // B356: prednost ma slozka s HOTOVOU hrou (slozka od drivejsi instalace appky muze byt
+                    // prazdna / necitelna a hra je znovu stazena ve slozce appky)
+                    if (ps1ReadCachedBootFile(dir) != null) return dir;
+                    if (prvni == null) prvni = dir;
                 }
             } catch (Throwable ignored) {}
         }
-        return null;
+        return prvni;
     }
     private String ps1LibraryDeleteByKey(String key, boolean wipeSaveToo) {
         File dir = ps1LibraryDirByKey(key);
@@ -14888,57 +15135,55 @@ public class MainActivity extends Activity {
         return String.format(Locale.US, "%.1fMB", bytes / 1048576.0);
     }
 
-    private File downloadPs1RemoteCompanionFile(String fileUrl, String safeName, File dir) throws IOException {
+    /**
+     * Soubor vedle .cue (stopa .bin). B356: zruseni (odchod ze stranky) a navazani jako u hlavniho souboru
+     * (NapStahovaniHry), kontrola mista (drive jen za .cue - "need=200MB" u 700 MB .bin), vlastni .part.
+     */
+    private File downloadPs1RemoteCompanionFile(final String fileUrl, final String safeName, File dir,
+                                                final int downloadGen, final int mojeStahovani) throws IOException {
         HttpURLConnection c = null;
         File part = null;
         try {
-            c = (HttpURLConnection) new URL(fileUrl).openConnection();
-            c.setInstanceFollowRedirects(true);
-            configureGameHttpConnection(c, fileUrl);
-            try { c.setConnectTimeout(22000); } catch (Throwable ignored) {}
-            try { c.setReadTimeout(70000); } catch (Throwable ignored) {}
-            try { c.setRequestProperty("User-Agent", ATARIHELP_BROWSER_UA); } catch (Throwable ignored) {}
-            try { c.setRequestProperty("Accept", "application/octet-stream,*/*"); } catch (Throwable ignored) {}
-            c.connect();
+            c = ps1OtevriSpojeni(fileUrl, 0L, null);
             int code = c.getResponseCode();
-            if (code < 200 || code >= 400) throw new IOException("HTTP " + code + " " + c.getResponseMessage());
+            if (code < 200 || code >= 400) {
+                // B356: srozumitelne - server N&P ten soubor nema (jmeno v .cue jine nez na serveru)
+                if (code == 404 && NapStahovaniHry.jeHraNaServeru(fileUrl))
+                    throw new IOException("soubor " + safeName + " z .cue na serveru N&P neni (HTTP 404) - na serveru musi byt vedle .cue se stejnym jmenem");
+                throw new IOException("HTTP " + code + " " + c.getResponseMessage());
+            }
             long expected = contentLengthLong(c);
             if (expected > PS1_REMOTE_MAX_BYTES) throw new IOException("soubor je moc velky: " + formatMb(expected));
+            ps1EnsureFreeSpace(dir, expected, false);   // B356
             File out = new File(dir, safeName);
-            part = new File(dir, safeName + ".part");
-            try { if (part.exists()) part.delete(); } catch (Throwable ignored) {}
+            part = new File(dir, safeName + ".d" + mojeStahovani + ".part");
             try { if (out.exists()) out.delete(); } catch (Throwable ignored) {}
-            InputStream in = c.getInputStream();
-            FileOutputStream fos = new FileOutputStream(part);
-            byte[] buf = new byte[65536];
-            long total = 0L;
-            long lastStatusAt = 0L;
-            try {
-                int n;
-                while ((n = in.read(buf)) >= 0) {
-                    if (n == 0) continue;
-                    total += n;
-                    if (total > PS1_REMOTE_MAX_BYTES) throw new IOException("prekrocen limit " + formatMb(PS1_REMOTE_MAX_BYTES));
-                    fos.write(buf, 0, n);
-                    long now = System.currentTimeMillis();
-                    if (now - lastStatusAt > 1200L) {
-                        lastStatusAt = now;
-                        String progress = expected > 0
-                                ? (Math.min(99L, (total * 100L) / expected) + "% " + formatMb(total) + "/" + formatMb(expected))
-                                : formatMb(total);
-                        ps1RemoteDownloadStatus = "PS1_REMOTE_CUE_FILE " + progress + " " + safeName;
-                    }
-                }
-            } finally {
-                try { fos.close(); } catch (Throwable ignored) {}
-                try { in.close(); } catch (Throwable ignored) {}
-            }
+            final long[] lastStatusAt = { 0L };
+            NapStahovaniHry.Vysledek vs = NapStahovaniHry.stahni(c, part, expected,
+                    (od, shoda) -> ps1OtevriSpojeni(fileUrl, od, shoda),
+                    () -> downloadGen != ps1LifecycleGen || !ps1RemoteDownloadActive,
+                    (mam, celkem) -> {
+                        long now = System.currentTimeMillis();
+                        if (now - lastStatusAt[0] > 1200L) {
+                            lastStatusAt[0] = now;
+                            String progress = celkem > 0
+                                    ? (Math.min(99L, (mam * 100L) / celkem) + "% " + formatMb(mam) + "/" + formatMb(celkem))
+                                    : formatMb(mam);
+                            ps1RemoteDownloadStatus = "PS1_REMOTE_CUE_FILE " + progress + " " + safeName;
+                        }
+                    },
+                    this::appendNativeLog, ps1AktivniSpojeni, 5, PS1_REMOTE_MAX_BYTES, safeName);
+            final long total = vs.bajtu;
             if (total <= 0L) throw new IOException("stazeny soubor je prazdny: " + safeName);
+            if (downloadGen != ps1LifecycleGen || !ps1RemoteDownloadActive)
+                throw new Ps1StahovaniZruseno("stahovani zruseno na konci (" + safeName + ")");
             if (!part.renameTo(out)) throw new IOException("nejde prejmenovat .part na " + out.getName());
-            appendNativeLog("BUILD2SA5AK PS1_REMOTE_CUE_FILE_READY name=" + safeName + " bytes=" + total);
+            appendNativeLog("BUILD2SA5AK PS1_REMOTE_CUE_FILE_READY name=" + safeName + " bytes=" + total
+                    + (vs.navazani > 0 ? " (B356: navazano " + vs.navazani + "x)" : ""));
             return out;
         } finally {
             try { if (c != null) c.disconnect(); } catch (Throwable ignored) {}
+            if (c != null) ps1AktivniSpojeni.compareAndSet(c, null);
             try { if (part != null && part.exists()) part.delete(); } catch (Throwable ignored) {}
         }
     }
@@ -15179,16 +15424,7 @@ public class MainActivity extends Activity {
                 // uzivatel si sam smaze, co uz nechce (viz ps1LibraryDelete
                 // a novy panel PAMĚŤOVÁ KARTA v JS).
                 setPs1RemoteStatus("PS1_REMOTE_CONNECT " + compactUrl(url) + (googleDrive ? " via=google_drive" : "") + " path=" + dir.getAbsolutePath());
-                c = (HttpURLConnection) new URL(downloadUrl).openConnection();
-                c.setInstanceFollowRedirects(true);
-                configureGameHttpConnection(c, downloadUrl);
-                try { c.setConnectTimeout(22000); } catch (Throwable ignored) {}
-                try { c.setReadTimeout(70000); } catch (Throwable ignored) {}
-                if (napServer == null || !napServer.jeNasUrl(downloadUrl)) {   // B321: server N&P ma User-Agent appky
-                    try { c.setRequestProperty("User-Agent", ATARIHELP_BROWSER_UA); } catch (Throwable ignored) {}
-                }
-                try { c.setRequestProperty("Accept", "application/octet-stream,application/x-cd-image,application/x-chd,*/*"); } catch (Throwable ignored) {}
-                c.connect();
+                c = ps1OtevriSpojeni(downloadUrl, 0L, null);   // B356: spolecne s navazanim (NapStahovaniHry)
                 int code = c.getResponseCode();
                 if (code < 200 || code >= 400) throw napChybaStahovani(c, downloadUrl, code);   // B321
                 String contentType = c.getContentType();
@@ -15217,10 +15453,18 @@ public class MainActivity extends Activity {
                     java.util.List<String> refs = ps1CueReferencedFiles(cueBytes);
                     if (refs == null || refs.isEmpty()) throw new IOException("CUE neobsahuje FILE radky pro .bin/.img/.iso");
                     setPs1RemoteStatus("PS1_REMOTE_CUE " + name + " files=" + refs.size());
+                    // B356: server N&P dava soubory jen podle id (/api/v1/hra?id=) - .bin vedle .cue ma vlastni id
+                    // (spocitane jako server). Drive appka skladala adresu ".../api/v1/<jmeno.bin>" -> HTTP 404
+                    // (Rene, FF8 .cue 19. 11.). Jine servery (odkaz na web) dal relativne k .cue.
+                    final boolean cueZeServeru = napServer != null && napServer.jeNasUrl(downloadUrl)
+                            && NapStahovaniHry.jeHraNaServeru(downloadUrl);
                     for (String ref : refs) {
                         String safeRef = safeFileName(ref);
-                        String refUrl = ps1ResolveRelativeUrl(downloadUrl, ref);
-                        downloadPs1RemoteCompanionFile(refUrl, safeRef, dir);
+                        String refUrl = cueZeServeru ? NapStahovaniHry.adresaNaServeru(downloadUrl, "ps1", ref) : null;
+                        if (refUrl == null) refUrl = ps1ResolveRelativeUrl(downloadUrl, ref);
+                        if (cueZeServeru) appendNativeLog("B356 PS1 .cue " + name + ": soubor \"" + NapStahovaniHry.jmenoZCue(ref)
+                                + "\" = na serveru N&P " + NapStahovaniHry.idNaServeru("ps1", NapStahovaniHry.jmenoZCue(ref)));
+                        downloadPs1RemoteCompanionFile(refUrl, safeRef, dir, downloadGen, mojeStahovani);
                     }
                     File cueOut = new File(dir, name);
                     String cueText = ps1CueWithSafeLocalNames(cueBytes, refs);
@@ -15237,42 +15481,39 @@ public class MainActivity extends Activity {
                     return;
                 }
                 File out = new File(dir, name);
-                part = new File(dir, name + ".part");
-                try { if (part.exists()) part.delete(); } catch (Throwable ignored) {}
+                // B356: kazde stahovani VLASTNI .part (cislo stahovani) - dve stahovani te same hry se uz nepotkaji
+                // (Rene, FF8 19. 11.: zrusene stahovani po timeoutu smazalo .part noveho). Stare .part ze zrusenych
+                // / spadlych stahovani teto hry pryc (zrusene stahovani je od B356 zavrene hned).
+                part = new File(dir, name + ".d" + mojeStahovani + ".part");
+                ps1SmazStareCasti(dir, part);
                 try { if (out.exists()) out.delete(); } catch (Throwable ignored) {}
 
-                InputStream in = c.getInputStream();
-                FileOutputStream fos = new FileOutputStream(part);
-                byte[] buf = new byte[65536];
-                long total = 0L;
-                long lastStatusAt = 0L;
-                try {
-                    int n;
-                    while ((n = in.read(buf)) >= 0) {
-                        // B345: zruseno (odchod ze stranky PS1, RESET, jina hra) -> hned konec. Drive se stahovalo
-                        // dal na pozadi az do konce (stovky MB, misto na TV) a teprve pak CANCELLED_AFTER_DOWNLOAD;
-                        // mezitim prepisovalo stav, takze stranka PS1 po navratu ukazovala "stahuji", i kdyz uz
-                        // se hra spustit nemela.
-                        if (downloadGen != ps1LifecycleGen || !ps1RemoteDownloadActive)
-                            throw new Ps1StahovaniZruseno("stahovani zruseno po " + formatMb(total) + " (" + name + ")");
-                        if (n == 0) continue;
-                        total += n;
-                        if (total > PS1_REMOTE_MAX_BYTES) throw new IOException("prekrocen limit " + formatMb(PS1_REMOTE_MAX_BYTES));
-                        fos.write(buf, 0, n);
-                        long now = System.currentTimeMillis();
-                        if (now - lastStatusAt > 1200L) {
-                            lastStatusAt = now;
-                            String progress = expected > 0
-                                    ? (Math.min(99L, (total * 100L) / expected) + "% " + formatMb(total) + "/" + formatMb(expected))
-                                    : formatMb(total);
-                            ps1RemoteDownloadStatus = "PS1_REMOTE_DOWNLOAD " + progress + " " + name;
-                        }
-                    }
-                } finally {
-                    try { fos.close(); } catch (Throwable ignored) {}
-                    try { in.close(); } catch (Throwable ignored) {}
-                }
+                final long[] lastStatusAt = { 0L };
+                // B345: zruseno (odchod ze stranky PS1, RESET, jina hra) -> hned konec. B356: zamrzle spojeni se
+                // navaze od mista, kde skoncilo (server N&P umi Range), zruseni zavre spojeni hned.
+                NapStahovaniHry.Vysledek vs = NapStahovaniHry.stahni(c, part, expected,
+                        (od, shoda) -> ps1OtevriSpojeni(downloadUrl, od, shoda),
+                        () -> downloadGen != ps1LifecycleGen || !ps1RemoteDownloadActive,
+                        (mam, celkem) -> {
+                            long now = System.currentTimeMillis();
+                            if (now - lastStatusAt[0] > 1200L) {
+                                lastStatusAt[0] = now;
+                                String progress = celkem > 0
+                                        ? (Math.min(99L, (mam * 100L) / celkem) + "% " + formatMb(mam) + "/" + formatMb(celkem))
+                                        : formatMb(mam);
+                                ps1RemoteDownloadStatus = "PS1_REMOTE_DOWNLOAD " + progress + " " + name;
+                            }
+                        },
+                        this::appendNativeLog, ps1AktivniSpojeni, 5, PS1_REMOTE_MAX_BYTES, name);
+                final long total = vs.bajtu;
+                if (vs.navazani > 0 || vs.odZacatku > 0)
+                    appendNativeLog("B356 PS1 stazeno " + name + " " + formatMb(total) + " - navazano " + vs.navazani + "x"
+                            + (vs.odZacatku > 0 ? ", znovu od zacatku " + vs.odZacatku + "x" : ""));
                 if (total <= 0L) throw new IOException("stazeny soubor je prazdny");
+                synchronized (MainActivity.this) {   // B356: zruseno az na konci -> nic neprejmenovavat
+                    if (downloadGen != ps1LifecycleGen || !ps1RemoteDownloadActive)
+                        throw new Ps1StahovaniZruseno("stahovani zruseno na konci (" + name + ")");
+                }
                 if (!part.renameTo(out)) throw new IOException("nejde prejmenovat .part na " + out.getName());
 
                 synchronized (MainActivity.this) {
@@ -15305,16 +15546,22 @@ public class MainActivity extends Activity {
             } catch (Throwable t) {
                 // B345: zruseni neni chyba - stav uz nastavil ten, kdo rusil (PS1_REMOTE_CANCELLED ...), tady jen uklid.
                 // Mazat jen kdyz mezitim nezacalo dalsi stahovani (u te same hry by to byla stejna slozka).
-                if (t instanceof Ps1StahovaniZruseno) {
+                // B356: a STEJNE tak stahovani, ktere skoncilo chybou (timeout ...) AZ PO zruseni / po startu noveho:
+                // drive bralo chybu jako svou, hlasilo PS1_REMOTE_FAIL a smazalo .part noveho stahovani (FF8 21:03:14).
+                boolean prekonane;
+                synchronized (MainActivity.this) {
+                    prekonane = !NapStahovaniHry.jeAktualni(downloadGen, ps1LifecycleGen, mojeStahovani, ps1StahovaniGen, ps1RemoteDownloadActive);
+                }
+                if (t instanceof Ps1StahovaniZruseno || t instanceof NapStahovaniHry.Zruseno || prekonane) {
                     boolean posledni;
                     synchronized (MainActivity.this) {
                         posledni = mojeStahovani == ps1StahovaniGen;
-                        if (posledni) {
-                            try { if (part != null && part.exists()) part.delete(); } catch (Throwable ignored) {}
-                            ps1UklidNedokonceneho(hraDir, "stahovani zruseno");
-                        }
+                        try { if (part != null && part.exists()) part.delete(); } catch (Throwable ignored) {}   // jen VLASTNI .part
+                        if (posledni) ps1UklidNedokonceneho(hraDir, "stahovani zruseno");
                     }
-                    appendNativeLog("B345 PS1 " + safeMsg(t) + (posledni ? "" : " - uz bezi dalsi stahovani, nic nemazu"));
+                    appendNativeLog("B345 PS1 " + safeMsg(t) + (t instanceof Ps1StahovaniZruseno || t instanceof NapStahovaniHry.Zruseno
+                            ? "" : " (B356: chyba az po zruseni - nic nehlasim)")
+                            + (posledni ? "" : " - uz bezi dalsi stahovani, jeho soubory nemazu"));
                     return;
                 }
                 // BUILD2SA10: instalace BIOSu neni chyba - nesmi se ukazat cerveny banner.
@@ -15337,6 +15584,7 @@ public class MainActivity extends Activity {
                 }
             } finally {
                 try { if (c != null) c.disconnect(); } catch (Throwable ignored) {}
+                if (c != null) ps1AktivniSpojeni.compareAndSet(c, null);   // B356
                 synchronized (MainActivity.this) {
                     // B345: priznak shodi jen POSLEDNI stahovani - konec stareho (zruseneho) by jinak pustil
                     // BIOS do noveho stahovani (ps1MaybeStartBios)
@@ -15344,6 +15592,48 @@ public class MainActivity extends Activity {
                 }
             }
         }, "nap-ps1-remote-download").start();
+    }
+
+    /**
+     * B356: spojeni na PS1 hru (prvni i navazani). Server N&P: podpis telefonu, User-Agent appky a read timeout 20 s
+     * (zamrzle spojeni se pak navaze od mista, kde skoncilo - drive 70 s cekani a konec). Jine servery jako drive
+     * (User-Agent prohlizece, 70 s). od > 0 = Range od bajtu 'od', If-Range = shoda (ETag) - zmeneny soubor prijde cely.
+     * Spojeni je hned v ps1AktivniSpojeni - zruseni stahovani ho zavre i behem pripojovani.
+     */
+    private HttpURLConnection ps1OtevriSpojeni(String url, long od, String shoda) throws IOException {
+        final boolean nas = napServer != null && napServer.jeNasUrl(url);
+        HttpURLConnection c = (HttpURLConnection) new URL(url).openConnection();
+        ps1AktivniSpojeni.set(c);
+        c.setInstanceFollowRedirects(true);
+        configureGameHttpConnection(c, url);
+        try { c.setConnectTimeout(22000); } catch (Throwable ignored) {}
+        try { c.setReadTimeout(nas ? 20000 : 70000); } catch (Throwable ignored) {}
+        if (!nas) {   // B321: server N&P ma User-Agent appky
+            try { c.setRequestProperty("User-Agent", ATARIHELP_BROWSER_UA); } catch (Throwable ignored) {}
+        }
+        try { c.setRequestProperty("Accept", "application/octet-stream,application/x-cd-image,application/x-chd,*/*"); } catch (Throwable ignored) {}
+        if (od > 0L) {
+            c.setRequestProperty("Range", "bytes=" + od + "-");
+            if (shoda != null) c.setRequestProperty("If-Range", shoda);
+        }
+        c.connect();
+        return c;
+    }
+
+    /** B356: stare .part (zrusena / spadla stahovani) ve slozce hry pryc - krome 'nech' (prave zacina). */
+    private void ps1SmazStareCasti(File dir, File nech) {
+        try {
+            File[] kids = dir == null ? null : dir.listFiles();
+            if (kids == null) return;
+            long b = 0L;
+            int n = 0;
+            for (File k : kids) {
+                if (k == null || !k.isFile() || !k.getName().endsWith(".part") || k.equals(nech)) continue;
+                long l = k.length();
+                if (k.delete()) { b += l; n++; }
+            }
+            if (n > 0) appendNativeLog("B356 PS1 stare casti stahovani smazany: " + n + " (" + formatMb(b) + ") ve " + dir.getName());
+        } catch (Throwable ignored) {}
     }
 
     // BUILD2SA7: BIOS AUTO-ADOPT. Audit ukazal sysdirFiles=[prazdna] => jadro jelo
@@ -15370,8 +15660,12 @@ public class MainActivity extends Activity {
                 for (File k : kids) {
                     String n = k.getName().toLowerCase(Locale.US);
                     if (k.isFile() && n.startsWith("scph") && n.endsWith(".bin") && k.length() == 524288) {
-                        ps1CopyFile(k, new File(sysDir, n)); adopted++;
+                        // B356: BIOS od drivejsi instalace appky (Android 11+ "cizi" soubor) nejde precist (EACCES) -
+                        // drive to ukoncilo celé hledani a BIOS ze slozky appky se uz nenasel. Ted dalsi soubor.
+                        try { ps1CopyFile(k, new File(sysDir, n)); adopted++; }
+                        catch (Throwable t) { appendNativeLog("B356 PS1 BIOS " + k.getAbsolutePath() + " nejde precist (" + safeMsg(t) + ") - zkousim dalsi"); }
                     } else if (k.isFile() && n.endsWith(".zip") && n.contains("bios") && k.length() < 8L * 1024 * 1024) {
+                      try {   // B356: necitelny ZIP (od drivejsi instalace) - dalsi soubor, ne konec hledani
                         java.util.zip.ZipFile z = new java.util.zip.ZipFile(k);
                         try {
                             java.util.Enumeration<? extends java.util.zip.ZipEntry> en2 = z.entries();
@@ -15388,6 +15682,9 @@ public class MainActivity extends Activity {
                                 }
                             }
                         } finally { try { z.close(); } catch (Throwable ignored) {} }
+                      } catch (Throwable t) {
+                        appendNativeLog("B356 PS1 BIOS ZIP " + k.getAbsolutePath() + " nejde precist (" + safeMsg(t) + ") - zkousim dalsi");
+                      }
                     }
                 }
             }
@@ -16413,6 +16710,7 @@ public class MainActivity extends Activity {
     @Override
     protected void onPause() {
         zapisOdchod("PAUZA");
+        napZapisBeh("pauza");   // B356
         super.onPause();
         napViditelna = false;
         ui.removeCallbacks(napPlatbaTik);   // B322: hlidani platby jen kdyz je appka videt
@@ -16448,6 +16746,7 @@ public class MainActivity extends Activity {
     protected void onDestroy() {
         if (napJenDuplikat) { super.onDestroy(); return; }   // B341: druha appka z ikony - nic nezastavovat
         zapisOdchod("ZRUSENA");
+        napZapisBeh("konec");   // B356
         try { if (ovladac != null) ovladac.stop(); } catch (Throwable ignored) {}   // B320
         try { if (bt != null) bt.zastav(); } catch (Throwable ignored) {}           // B331
         try { if (bt != null) bt.konec(); } catch (Throwable ignored) {}            // B332: hlidac a HID profil
@@ -16469,6 +16768,7 @@ public class MainActivity extends Activity {
     protected void onResume() {
         super.onResume();
         napViditelna = true;   // B322
+        napZapisBeh("bezi");   // B356
         if (napDruhaAppkaZavrena > 0) {   // B341
             appendNativeLog("B341 JEDNA APPKA: ikona chtela spustit druhou appku nad bezici (" + napDruhaAppkaZavrena
                     + "x, po aktualizaci appku otevrel jiny intent) - druha zavrena, bezi tahle");

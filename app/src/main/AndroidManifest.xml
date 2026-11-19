@@ -3,7 +3,9 @@
 
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" />
-    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="28" />
+    <!-- B356: do API 29 - Android 10 pise do Download jen s timto povolenim (requestLegacyExternalStorage nize);
+         drive maxSdkVersion 28 = Android 10 nezapsal do Download/AtariHelp nic -->
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="29" />
     <uses-permission android:name="android.permission.READ_MEDIA_AUDIO" />
     <!-- B303: Wi-Fi v rezimu nizke latence behem prenosu na TV / PC (WifiLock potrebuje WAKE_LOCK;
          bezne opravneni, uzivatel nic nepotvrzuje) -->

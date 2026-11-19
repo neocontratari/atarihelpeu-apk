@@ -1,0 +1,58 @@
+B356 - ULOZISTE ANDROID 10+ (EACCES), STAHOVANI PS1 HER, RYCHLA POZICE PS1, PADY DO LOGU - overeni na PC
+==========================================================================================================
+
+Rene (19. 11.): "za 1 xaomi hlasi chybu u brachy - a finall fantasy ma asi taky problemy" - snimek z Xiaomi brachy
+(Android 16: Sonic a BIOS "nestazen ... EACCES", hlaska "povol Uloziste"), logy z S8 (FF8 ze ZIPu 21:01-21:03,
+FF8 .cue / .bin a Crash Bandicoot 2 21:22-21:49).
+
+CO SE NASLO (podrobne v PREDAVACI_PROTOKOL, B356)
+ 1) Android 11+ nepusti zapis do souboru v Download/AtariHelp, ktery tam zustal po drivejsi instalaci appky (EACCES);
+    Android 10 nemel povoleni zapisu vubec (manifest do API 28). -> zapis do slozky appky, kdyz Download nejde.
+ 2) FF8 ZIP: zrusene stahovani viselo v read(), po 70 s timeout -> PS1_REMOTE_FAIL a smazalo .part noveho stahovani.
+    -> vlastni .part, prekonane stahovani nic nehlasi ani nemaze, zruseni zavre spojeni, zamrznuti -> navazani (Range).
+ 3) FF8 .cue: .bin se hledal na ".../api/v1/<jmeno>" -> 404. -> id souboru jako server (SHA-1, overeno na id z logu).
+ 4) SAVE GAME po otoceni obrazovky ulozil menu BIOSu do rychle pozice FF8. -> bez hry se neuklada, klid po otoceni.
+ 5) Pad v logu neni; slepa mista (Java, WebView, konec procesu) -> NapPad, radky "B356 PAD", "PREDCHOZI BEH",
+    "KONEC BEHU APPKY (Android)", "B356 ZPET".
+
+Spoustet z korene repozitare (JAVA_HOME = JDK 17+, ANDROID_JAR = android.jar API 34, node 18+).
+
+1) javac cele appky s hlavickami JNI:
+     javac --release 17 -proc:none -encoding UTF-8 -cp $ANDROID_JAR -d OUT -h HLAVICKY app/src/main/java/eu/atarihelp/emu10/*.java
+     -> VYSTUP_javac_android.txt (37 zdroju, 134 trid, 0 chyb)
+     cd test_overeni/b320 && python3 kontrola_jni.py HLAVICKY -> VYSTUP_kontrola_jni.txt (114 native metod, 0 CHYB)
+     (skript pise do ../b320/VYSTUP_kontrola_jni.txt - zkopirovat sem a v b320 vratit: git checkout --)
+
+2) JVM (jvm/), tridy appky z kroku 1 v OUT:
+     javac --release 17 -encoding UTF-8 -cp OUT:$ANDROID_JAR -d T test_overeni/b356/jvm/*.java
+     java -Dstdout.encoding=UTF-8 -cp T:OUT:$ANDROID_JAR eu.atarihelp.emu10.TestB356Stahovani -> jvm/VYSTUP_TestB356Stahovani.txt (20 OK)
+       NapStahovaniHry na mistnim HTTP serveru (com.sun.net.httpserver) jako server N&P: Accept-Ranges, ETag, If-Range,
+       206 + Content-Range. id FF8 z logu (.zip / .cue / .bin), adresa .bin vedle .cue, casova osa FF8 (prekonane
+       stahovani), normalne 3 MB, zamrznuti po 1 MB -> navazani (Range bytes=1048576-, If-Range "v1"), utnuti spojeni,
+       zmena souboru na serveru -> 200 a od zacatku, server bez Range -> chyba bez dalsiho dotazu, max navazani,
+       zruseni -> Zruseno bez navazani (pozn.: JDK disconnect() z jineho vlakna ceka na read timeout - Android OkHttp
+       zavre socket hned; to v JVM overit nejde), dva .part te same hry.
+       Trva asi minutu (server "zamrza" 8 s).
+     java ... eu.atarihelp.emu10.TestB356Uloziste  -> jvm/VYSTUP_TestB356Uloziste.txt (14 OK)
+       skutecny NapStahovaniSeSouhlasem: "cizi" soubor = adresar stejneho jmena (test bezi jako root - prava souboru by
+       nic nezastavila); BIOS a Sonic ze ZIPu do slozky appky, maBios / najdiSegaRom je najdou, okno po stazeni,
+       hlaska, kdyz nejde ani slozka appky (EACCES i slozka nejde vytvorit).
+     java ... eu.atarihelp.emu10.TestB356Pad       -> jvm/VYSTUP_TestB356Pad.txt (10 OK)
+       NapPad: duvody konce (konstanty ApplicationExitInfo overene javap na android.jar 34), radek padu Javy, znacka behu,
+       okamzity zapis.
+
+3) JS: node test_overeni/b356/test_b356_otoceni.js app/src/main/assets/spolecne/nap_obrazovka.js
+     -> VYSTUP_test_b356_otoceni.txt (10 OK) - skutecny nap_obrazovka.js ve vm: casova osa 21:33:21-22 (SAVE GAME 2x po
+     otoceni zahozen), za 1,3 s zase funguje, resize bez zmeny orientace neni otoceni, tlacitko otoceni se nezahazuje.
+     Syntaxe vlozenych skriptu emu_ps1/index.html a emu_sega/index.html: vm.Script (0 chyb).
+
+4) Napoveda (pravidlo B343) -> VYSTUP_regrese_*.txt:
+     b311 kontrola_navodu.py 221 nazvu 0 CHYBA, b314 kontrola_navodu_en.py 213 0 CHYBA,
+     b343 kontrola_b343.py 4 CHYBA ZAMERNE: N7, A6, V jako drive a N9 (B356: "Na Androidu 10 a starsim" misto 9).
+
+Overi telefon:
+ - bracha (Xiaomi, Android 16): OPTIONS -> STAHNOUT HRY A BIOS -> okno "Stazeno" s vetou o slozce aplikace; Sega Sonic,
+   PS1 BIOS; log: "B356 ULOZISTE ...", "B337 ULOZISTE pri startu ... B356 nahradni slozka".
+ - Rene (S8): FF8 ze ZIPu (i kdyz odejde a spusti znovu), FF8 z .cue ("B356 PS1 .cue ... = na serveru N&P ps1-..."),
+   zaseknuti -> "B356 STAHOVANI ... navazuji od"; SAVE GAME v menu BIOSu -> hlaska, nic se neulozi; po otoceni SAVE
+   GAME pod prstem nic. Kdyz appka zmizi: log z minula ("B356 PAD ...", "PREDCHOZI BEH SKONCIL NAHLE").

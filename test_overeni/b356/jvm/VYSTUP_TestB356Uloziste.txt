@@ -1,0 +1,22 @@
+== 1) nahradni slozka = stejna podslozka ve slozce appky
+OK    Download/AtariHelp/emu/sega -> slozka appky/emu/sega
+OK    Download/AtariHelp/PS1_BIOS -> slozka appky/PS1_BIOS
+OK    uz ve slozce appky -> zadna dalsi nahrada
+== 2) normalne (zapis jde) - beze zmeny, do Download
+OK    bios=OK(1) -> Download/AtariHelp/PS1_BIOS/scph1001.bin
+== 3) BIOS (scph5501.bin) v Download "cizi" -> slozka appky
+OK    bios=OK(1,appka) -> /storage/emulated/0/Android/data/eu.atarihelp.emu10.test/files/AtariHelp/PS1_BIOS/scph5501.bin
+OK    log: B356 ULOZISTE: scph5501.bin do <TMP>/storage/emulated/0/Download/AtariHelp/PS1_BIOS zapsat nejde (FileNotFoundException - soubor tam asi zustal po drivejsi instalaci appky) -> ulozeno do slozky appky <TMP>/storage/emulated/0/Android/data/eu.atarihelp.emu10.test/files/AtariHelp/PS1_BIOS/scph5501.bin
+OK    maBios(Download/AtariHelp) najde BIOS ve slozce appky (dalsiKoren)
+== 4) Sonic ze ZIPu (atarihelp.eu) v Download "cizi" -> slozka appky
+OK    sonic=OK(1,appka) (readme.txt preskocen)
+OK    najdiSegaRom(Download/AtariHelp) najde Sonica ve slozce appky
+== 5) okno po stazeni: vysvetleni, kde soubory jsou
+OK    CZ: ✓ Sonic the Hedgehog - ulozen ✓ BIOS pro PlayStation - ulozen  Slozka: Download/AtariHelp  Do Download/AtariHelp zapsat neslo (soubor tam zustal po drivejsi instalaci appky), proto je ve slozce aplikace (Android/data/.../files/AtariHelp). Appka si ho tam najde sama. 
+OK    EN: vysvetleni je
+== 6) nejde ani Download, ani slozka appky -> spravna hlaska (ne 'povol Uloziste' na Androidu 11+)
+OK    bios=FileNotFoundException -> ✗ BIOS pro PlayStation - nestazen: soubor nejde uložit – ani do Download/AtariHelp, ani do složky appky (zkontroluj volné místo; na Androidu 10 a starším povol Úložiště: Nastavení -> Aplikace -> AtariHelp -> Oprávnění)
+OK    stara veta 'appka nesmi ukladat ... povol ho' uz neni
+OK    slozka nejde vytvorit ani nahradni -> bios=slozka-nejde (veta jako u EACCES)
+
+VYSLEDEK: 14 OK, 0 CHYB

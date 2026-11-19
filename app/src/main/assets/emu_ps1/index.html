@@ -1389,6 +1389,7 @@ function jsLog(t){
   log(t);
   try{if(window.AHPS1&&window.AHPS1.ps1Log)window.AHPS1.ps1Log(t);}catch(e){}
 }
+window.jsLog=window.jsLog||jsLog;   // B356: i pro spolecne/nap_obrazovka.js (zahozene klepnuti po otoceni do logu)
 /* ===== BUILD2SB1: uzivatelske rozlozeni tlacitek (drag & drop) =====
    Kazde .hit tlacitko (vcetne D-padu a akcnich tlacitek) jde v editacnim
    rezimu chytit a presunout kamkoli na plochu. Pozice se ukladaji zvlast
@@ -1742,11 +1743,25 @@ function tvWebCastStart(){
     log('TV_WEB_CAST_ERROR '+(e&&e.message));
   }
 }
+/* B356: Rene, FF8 19. 11. 21:33:22 - SAVE GAME 2x za 50 ms hned po otoceni obrazovky, hra uz nebezela (jen BIOS)
+   a BIOS prepsal rychlou pozici FF8. Ted: Java bez hry neuklada ani nenacita (PS1_STATE_BEZ_HRY), druhy stisk
+   do 1,5 s se nebere a klepnuti hned po otoceni obrazovky zahodi spolecne/nap_obrazovka.js. */
+var PS1_SAVE_POSLEDNI=0;
+function ps1BezHryToast(nacist){
+  toast(nacist?TX('Neběží žádná hra (jen BIOS) – pozici není kam nahrát. Spusť hru a pak načti pozici.',
+                  'No game is running (BIOS only) – there is nothing to load the position into. Start the game first.')
+              :TX('Neběží žádná hra (jen BIOS) – nic se neuložilo. Uložená pozice poslední hry zůstala.',
+                  'No game is running (BIOS only) – nothing was saved. The last game\'s saved position is kept.'),4600);
+}
 function ps1QuickSave(){
+  var ted=Date.now();
+  if(ted-PS1_SAVE_POSLEDNI<1500){jsLog('B356 SAVE GAME znovu do 1,5 s - druhy stisk ignoruji');return;}
+  PS1_SAVE_POSLEDNI=ted;
   try{
     if(window.AHPS1&&window.AHPS1.ps1QuickSave){
       var r=String(window.AHPS1.ps1QuickSave());
-      toast(r.indexOf('PS1_STATE_SAVE_OK')===0?'SAVE STATE ulozen':r,3600);
+      if(r.indexOf('PS1_STATE_BEZ_HRY')===0) ps1BezHryToast(false);
+      else toast(r.indexOf('PS1_STATE_SAVE_OK')===0?'SAVE STATE ulozen':r,3600);
       jsLog(r);
     } else toast('SAVE STATE: AHPS1 most chybi',2400);
   }catch(e){toast('SAVE STATE chyba: '+(e&&e.message),3200);}
@@ -1756,7 +1771,8 @@ function ps1QuickLoad(){
   try{
     if(window.AHPS1&&window.AHPS1.ps1QuickLoad){
       var r=String(window.AHPS1.ps1QuickLoad());
-      toast(r.indexOf('PS1_STATE_LOAD_OK')===0?'SAVE STATE nacten':r,3600);
+      if(r.indexOf('PS1_STATE_BEZ_HRY')===0) ps1BezHryToast(true);
+      else toast(r.indexOf('PS1_STATE_LOAD_OK')===0?'SAVE STATE nacten':r,3600);
       jsLog(r);
     } else toast('LOAD STATE: AHPS1 most chybi',2400);
   }catch(e){toast('LOAD STATE chyba: '+(e&&e.message),3200);}
@@ -1812,6 +1828,9 @@ $('memCardClose').addEventListener('click',function(e){e.preventDefault();closeM
 $('memCardRefresh').addEventListener('click',function(e){e.preventDefault();memCardStatusRefresh();},true);
 $('btnLoad').addEventListener('click',function(e){e.preventDefault();openPs1GooglePage();},true);
 $('btnSave').addEventListener('click',function(e){e.preventDefault();ps1QuickSave();},true);
+/* B356: Rene, FF8 19. 11. 21:27:05 - hra skoncila a stranka sla do hlavniho menu bez jedineho radku v logu
+   (odkaz BACK na obrazku konzole). Ted je v logu, ze to byl dotyk na BACK. */
+$('btnBack').addEventListener('click',function(){jsLog('B356 ZPET: dotyk na BACK (obrazek konzole) -> hlavni menu');},true);
 bindDpad($('dpad'));
 bindHold($('btnTriangle'),'TRIANGLE');
 bindHold($('btnCircle'),'CIRCLE');

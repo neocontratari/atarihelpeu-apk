@@ -4699,4 +4699,62 @@
        log "B355 OVLADAC TLACITKA". Pak ONLINE HRANI pres jeho engine (Rene: "chci hrat hry on line pomoci meho enginu")
        - hrac 2 z B354 je pripraveny vstup pro vzdaleneho hrace.
 
+   B356: ULOZISTE ANDROID 10+ (EACCES), STAHOVANI PS1 HER (SOUBEH, ZASEKNUTI, .cue ZE SERVERU), RYCHLA POZICE PS1,
+   PADY DO LOGU (19. 11. 2026). Rene: "za 1 xaomi hlasi chybu u brachy - a finall fantasy ma asi taky problemy".
+     - XIAOMI BRACHY (Android 16, B354): Sonic i BIOS "nestazen ... FileNotFoundException(EACCES)" a hlaska "povol
+       Uloziste". PRICINA: Android 11+ nepusti zapis do souboru v Download/AtariHelp, ktery tam zustal po DRIVEJSI
+       instalaci appky (po odinstalaci a nove instalaci je pro MediaProvider "cizi"); povoleni Uloziste od API 30 nic
+       neresi. Android 10 (API 29) nezapsal do Download nic: WRITE_EXTERNAL_STORAGE bylo v manifestu jen do API 28.
+       OPRAVA: NapStahovaniSeSouhlasem.zapis() - nejde-li do Download/AtariHelp, stejna podslozka ve slozce appky
+       (getExternalFilesDir/AtariHelp = dalsiKoren, ted na VSECH Androidech; Sonic a BIOS se hledaji v obou), vysledek
+       "OK(1,appka)" + veta v okne "Stazeno"; log "B356 ULOZISTE ...". Hlaska EACCES ted jen kdyz nejde ani slozka appky.
+       Totez: PS1_LOG.txt (log do slozky appky, kdyz soubor nejde), pametova karta PS1 (getPublicMemoryCardDir: karta
+       nejde zapsat -> karta ve slozce appky), slozka PS1 hry (ps1RemoteCacheDir: zkouska zapisu -> ps1_games appky;
+       knihovna i ps1LibraryDirByKey berou slozku s HOTOVOU hrou), ps1EnsureBios (necitelny BIOS / ZIP uz neukonci
+       hledani). Zkouska zapisu ma jedinecne jmeno (napZapisJde, canUsePs1CacheDir). Manifest WRITE maxSdkVersion 29,
+       napUlozistePovoleno / getPublicAtariHelpDownloadsDir i pro API 29 (bez povoleni slozka appky).
+       Brachuv log nemam - jen snimek; overi jeho telefon (radky "B356 ULOZISTE", "B337 ULOZISTE pri startu").
+     - FF8 ZE ZIPU (S8, 21:01-21:03): Rene hru spustil, po 34 s odesel do seznamu her a spustil znovu. Prvni stahovani
+       se po ~6 s zaseklo (70 s bez dat), zruseni (odchod ze stranky) cekalo v read(); 21:03:14 jeho timeout - bral ho
+       jako svou chybu: PS1_REMOTE_FAIL a smazal .part, do ktereho uz psalo druhe stahovani (stejne jmeno) -> 21:03:19
+       "nejde prejmenovat .part". OPRAVA (NapStahovaniHry, cista trida): vlastni .part kazdeho stahovani (".d<cislo>.part",
+       stare .part se pri startu smazou), chyba stahovani, ktere uz neni aktualni (jeAktualni: generace, cislo, priznak),
+       nic nehlasi a maze jen svoje; zruseni (stopPs1SessionHard -> ps1ZavriStahovani) zavre spojeni (Android OkHttp
+       disconnect() zavre socket hned - v JVM s JDK to overit nejde, JDK ceka na timeout); zamrzle / spadle spojeni se
+       NAVAZE (Range + If-Range s ETag; server N&P to umi, navazani nepocita do limitu) az 5x, read timeout serveru N&P
+       20 s (drive 70 s), zmeneny soubor (200 misto 206) = znovu od zacatku. Log "B356 STAHOVANI ... navazuji od".
+       PRICINU zaseknuti na serveru z logu appky nevidim (server posila v jednom vlakne na spojeni; bezi i vlakno hashu).
+     - FF8 .cue (21:23): appka skladala adresu .bin relativne k ".../api/v1/hra?id=..." -> ".../api/v1/<jmeno>" = 404.
+       Server dava soubory jen podle id. OPRAVA: NapStahovaniHry.idNaServeru = system + "-" + 16 hex SHA-1("system/" +
+       jmeno malymi) - vzorec ze serveru (Katalog), overeno na trech id FF8 z logu (.zip, .cue, .bin). Soubor vedle .cue:
+       zruseni, navazani, kontrola mista (drive jen za .cue), srozumitelne 404.
+     - RYCHLA POZICE FF8 PREPSANA: 21:32:54 ZPET (backPressedBeforeGoBack), PS1 znovu = BIOS (stitek pozice zustal FF8),
+       21:33:21 otoceni NA VYSKU tlacitkem, 21:33:22 SAVE GAME 2x (tlacitko otoceni na sirku je fyzicky tam, kde je na
+       vysku SAVE GAME) -> BIOS ulozen do "...Final_Fantasy_VIII...slot0.state". OPRAVA: ps1QuickSave / ps1QuickLoad
+       pri ps1BiosRunning nic (PS1_STATE_BEZ_HRY, hlaska na strance), SAVE GAME podruhe do 1,5 s se nebere,
+       spolecne/nap_obrazovka.js zahodi klik 1,2 s po otoceni (tlacitko i resize se zmenou orientace) - PS1 i Sega.
+       Ulozeni hry na pametove karte (in-game) to nezasahlo.
+     - "CRASH": pad emulatoru v logu NENI - FF8 (5,5 min) a Crash Bandicoot 2 (15 min) 60 snimku/s do konce logu
+       21:49:09, zadne NAP_CRASH. Konce her: 21:27:05 odkaz BACK na obrazku konzole (onPageStarted, zadny radek -> ted
+       "B356 ZPET: dotyk na BACK"), 21:32:54 ZPET. Oba logy konci bez APLIKACE_PAUZA - bud kopie logu za behu, nebo
+       konec procesu, ktery se do logu nedostal. NOVE (NapPad): nezachycena vyjimka Javy -> "B356 PAD JAVA" hned na disk
+       (+ nap_posledni_pad.txt, pri dalsim startu do logu), onRenderProcessGone -> "B356 PAD WEBVIEW" (chovani beze
+       zmeny - appka konci), znacka behu nap_beh.txt (bezi / pauza / konec -> "PREDCHOZI BEH SKONCIL NAHLE"), Android
+       11+ ApplicationExitInfo ("B356 KONEC BEHU APPKY (Android): ... <<<"), ZPET z ceho ("telefonu" / "herniho ovladace
+       ... (Android z jeho tlacitka udelal ZPET)" - FLAG_FALLBACK).
+     - Napoveda CZ / EN (SAVE GAME bez hry, klid po otoceni, navazani a .cue ze serveru, Android 10, slozka appky, log
+       po padu). Kontroly 221 / 213 / b343 4 CHYBA zamerne: N7, A6, V jako drive + N9 (veta "Na Androidu 9 a starsim
+       bez povoleni" je ted "Na Androidu 10 a starsim" - B356 zamerne). build.gradle: versionCode 399
+       "EMU10-B356-ULOZISTE-STAHOVANI".
+     - Testy test_overeni/b356: JVM TestB356Stahovani 20 (mistni HTTP server jako server N&P: id FF8, casova osa FF8,
+       zamrznuti po 1 MB -> navazani Range/If-Range, utnuti, zmena souboru -> od zacatku, server bez Range -> chyba,
+       max navazani, zruseni -> Zruseno bez navazani, dva .part), TestB356Uloziste 14 (skutecny NapStahovaniSeSouhlasem:
+       BIOS / Sonic ze ZIPu do slozky appky, najde je, okno, hlaska kdyz nejde nic), TestB356Pad 10, JS
+       test_b356_otoceni.js 10 (skutecny nap_obrazovka.js), javac cele appky 0 chyb (134 trid), JNI 114 0 CHYB.
+       Na telefonu neovereno.
+     - DALSI KROK: bracha - B356 na Xiaomi: STAHNOUT HRY A BIOS (okno ma napsat "ulozen" a "ve slozce aplikace"), Sega
+       Sonic a PS1; poslat log. Rene - FF8 znovu ze ZIPu i z .cue; kdyz appka zmizi, log z minula (radky "B356 PAD" /
+       "PREDCHOZI BEH" / "KONEC BEHU APPKY"). Na serveru jsou u FF8 tri polozky (.zip, .cue, .bin) - staci jedna.
+       Pak ONLINE HRANI pres engine.
+
 ===============================================================================

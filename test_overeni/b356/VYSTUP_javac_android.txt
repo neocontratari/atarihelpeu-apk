@@ -1,0 +1,4 @@
+B356 - javac cele appky proti android.jar API 34 (zdroje app/src/main/java, javac 21 --release 17 -proc:none -encoding UTF-8 -h HLAVICKY)
+zdroju: 37, trid: 134, chyb prekladu: 0
+hlavicky JNI (javac -h) -> ../b320/kontrola_jni.py HLAVICKY -> VYSTUP_kontrola_jni.txt (114 native metod, 0 CHYB)
+VYSLEDEK: javac OK, 0 chyb

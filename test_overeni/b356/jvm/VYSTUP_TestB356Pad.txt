@@ -1,0 +1,16 @@
+== 1) duvod konce od Androidu 11+ (ApplicationExitInfo.REASON_*)
+OK    4 Java, 5 C++, 6 ANR, 3 pamet, 10 uzivatel
+OK    <<< jen pady / zabiti, ne aktualizace a uzivatel
+OK    neznamy kod: neznamy duvod (99)
+== 2) pad Javy - radek do logu
+OK    B356 PAD JAVA ve vlakne "nap-ps1-remote-download": java.lang.IllegalStateException: test padu
+OK    5 radku zasobniku + pricina s 1 radkem
+== 3) znacka behu -> veta o predchozim behu
+OK    bezi = skoncila nahle (v popredi)
+OK    pauza / konec / nic = normalne, zadna veta
+== 4) okamzity zapis (pripsat / prepsat)
+OK    pripsat
+OK    prepsat
+OK    neplatna cesta / null -> zadna vyjimka
+
+VYSLEDEK: 10 OK, 0 CHYB

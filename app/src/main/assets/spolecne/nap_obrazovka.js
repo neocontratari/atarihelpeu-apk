@@ -56,11 +56,39 @@
     }
   }
 
+  function ted() { return Date.now ? Date.now() : new Date().getTime(); }
+
+  // B356: KLEPNUTI HNED PO OTOCENI SE ZAHODI. Prst, ktery otacel, lezi po otoceni na jinem tlacitku stranky
+  // (Rene, PS1 19. 11.: 21:33:21 otoceni NA VYSKU -> 21:33:22 SAVE GAME 2x - tlacitko otoceni na sirku je
+  // fyzicky tam, kde je na vysku SAVE GAME - a menu BIOSu prepsalo rychlou pozici Final Fantasy VIII).
+  // 1,2 s po otoceni (tlacitko i otoceni telefonu) se klik (tlacitka a odkazy stranky) nebere. Dotykove
+  // ovladani (touchstart / touchend) beze zmeny - hra se ovlada dal.
+  var OTOCENI_KLID_MS = 1200;
+  var otoceno = 0;
+  var sirkaPred = null;
+  function oznacOtoceni() { otoceno = ted(); }
+  function hlidejKlik(e) {
+    if (!otoceno || ted() - otoceno > OTOCENI_KLID_MS) return;
+    var t = e && e.target;
+    while (t && t !== D) {                        // tlacitko otoceni samo: dvojity klik resi prepni()
+      if (t.getAttribute && t.getAttribute('data-nap-otoc') !== null) return;
+      t = t.parentNode;
+    }
+    try { e.preventDefault(); e.stopPropagation(); if (e.stopImmediatePropagation) e.stopImmediatePropagation(); } catch (er) {}
+    try { if (typeof W.jsLog === 'function') W.jsLog('B356 klepnuti ' + (ted() - otoceno) + ' ms po otoceni obrazovky zahozeno'); } catch (er2) {}
+  }
+  function zmenaVelikosti() {
+    var s = naSirku();
+    if (sirkaPred !== null && s !== sirkaPred) oznacOtoceni();
+    sirkaPred = s;
+  }
+
   function prepni(e) {
     if (e) { try { e.preventDefault(); e.stopPropagation(); } catch (er) {} }
-    var ted = Date.now ? Date.now() : new Date().getTime();
-    if (ted - nedavno < 700) return;            // dvojity klik / klik + dotyk = jedno otoceni
-    nedavno = ted;
+    var t0 = ted();
+    if (t0 - nedavno < 700) return;            // dvojity klik / klik + dotyk = jedno otoceni
+    nedavno = t0;
+    oznacOtoceni();                            // B356
     try {
       if (W.AHOBRAZ && W.AHOBRAZ.prepni) { W.AHOBRAZ.prepni(); return; }
     } catch (er2) {}
@@ -82,11 +110,14 @@
     obnov();
   }
 
-  W.addEventListener('resize', obnov);
-  W.addEventListener('orientationchange', function () { setTimeout(obnov, 120); });
+  W.addEventListener('click', hlidejKlik, true);   // B356: zachyt na okne = drive nez tlacitka stranky
+  sirkaPred = naSirku();
+  W.addEventListener('resize', function () { zmenaVelikosti(); obnov(); });
+  W.addEventListener('orientationchange', function () { oznacOtoceni(); setTimeout(obnov, 120); });
   if (D.readyState === 'loading') D.addEventListener('DOMContentLoaded', najdi);
   else najdi();
   try { if (W.NapJazyk && W.NapJazyk.priZmene) W.NapJazyk.priZmene(obnov); } catch (e) {}
 
-  W.NapObrazovka = { prepni: prepni, obnov: obnov, popis: popis, najdi: najdi };
+  W.NapObrazovka = { prepni: prepni, obnov: obnov, popis: popis, najdi: najdi,
+    oznacOtoceni: oznacOtoceni, klidPoOtoceni: function () { return otoceno > 0 && ted() - otoceno <= OTOCENI_KLID_MS; } };
 })(window, document);

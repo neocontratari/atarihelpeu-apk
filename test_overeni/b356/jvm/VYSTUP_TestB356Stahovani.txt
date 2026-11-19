@@ -1,0 +1,32 @@
+== 1) id souboru na serveru N&P (vzorec serveru) na skutecnych id z logu 19. 11.
+OK    FF8 .bin = ps1-016db3d9f2d626d3 (log 21:23:43)
+OK    FF8 .cue = ps1-e64716b450ceca9d (log 21:23:24)
+OK    FF8 .zip = ps1-568ee09c19141a3b (log 21:01:58)
+OK    velka pismena jako server (ToLowerInvariant)
+OK    .bin vedle .cue -> http://192.0.2.10:8080/api/v1/hra?id=ps1-016db3d9f2d626d3 (drive .../api/v1/<jmeno> = 404)
+OK    jmeno z radku FILE bez cesty (obe lomitka)
+OK    cizi server (odkaz z webu) -> null = relativne jako drive
+== 2) prekonane stahovani - casova osa FF8 21:01-21:03
+OK    21:03:14 timeout stahovani #1 po startu #2 -> prekonane: nehlasi FAIL, nemaze slozku ani .part #2
+OK    zrusene (odchod ze stranky) a zadne dalsi -> prekonane (uklid jen svych souboru)
+OK    #2 aktualni -> chybu hlasi a uklizi
+== 3) normalni stazeni 3 MB
+OK    cele, bez navazani, obsah sedi (3145728)
+== 4) spojeni zamrzne po 1 MB (FF8 21:02:05) -> navaze od 1 MB
+OK    hotovo po 1 navazani za 2043 ms, obsah sedi
+OK    druhy dotaz: Range bytes=1048576- a If-Range = ETag ([-, bytes=1048576- if "v1"])
+OK    log: B356 STAHOVANI hra.zip: spojeni zamrzlo (server nic neposila) - navazuji od 1.0MB (pokus 1 z 5)
+== 5) server spojeni utne po 1 MB -> navaze
+OK    hotovo po utnuti log [B356 STAHOVANI hra.zip: spojeni zamrzlo (server nic neposila) - navazuji od 1.0MB (pokus 1 z 5)]
+== 6) soubor se na serveru mezitim zmenil (If-Range nesedi) -> 200 a znovu od zacatku
+OK    novy soubor cely, ne slepenec stareho a noveho
+== 7) server bez Range (cizi web) -> zamrznuti = chyba jako drive
+OK    SocketTimeoutException, zadny dalsi dotaz (java.net.SocketTimeoutException: Read timed out)
+== 8) zamrza porad -> po maxNavazani (2) konec
+OK    3 dotazy (1 + 2 navazani), pak chyba (java.net.SocketTimeoutException: Read timed out, dotazu 3)
+== 9) zruseni behem zamrznuti (odchod ze stranky PS1) -> Zruseno, zadne navazani, zadna chyba
+OK    Zruseno za 2008 ms, dotazu 1 (bez navazani): eu.atarihelp.emu10.NapStahovaniHry$Zruseno: stahovani zruseno po 1.0MB (hra.zip)
+== 10) dve stahovani te same hry, kazde vlastni .part (FF8: druhe prislo o .part)
+OK    druhe stahovani ma svuj .part cely i po uklidu prvniho
+
+VYSLEDEK: 20 OK, 0 CHYB
