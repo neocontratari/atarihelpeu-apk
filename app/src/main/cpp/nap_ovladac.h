@@ -193,66 +193,337 @@ inline void pustVse(Stav &s) {
   s.lx = s.ly = s.rx = s.ry = s.l2 = s.r2 = 0.f;
 }
 
+// =====================================================================
+//  B355: MAPA TLACITEK - co ktere tlacitko ovladace dela, si hrac nastavi
+//  u kazdeho emulatoru (Rene: "musi byt v nastaveni u kazdeho emu co ktere
+//  tlacitko ma delat podle bt d-padu").
+//
+//  Radky mapy = tlacitka podle MISTA (A spodni, B prave, X leve, Y horni,
+//  L1 R1 L2 R2 L3 R3, START, SELECT, MODE = HOME). Smer (krizek, leva packa)
+//  zustava smerem; tlacitka C / Z (ovladace ve stylu Segy) maji pevne
+//  chovani. Java (NapOvladacMapa) posila retezec "A=FIRE;B=FIRE;X=K33;..."
+//  - co chybi nebo co jadro nezna, zustane vychozi. Katalog (radky, cile,
+//  jmena CZ / EN, vychozi mapa) dava Jave taky tenhle soubor - jedno misto.
+//
+//  Cil MENU = v appce otevrit TLACITKA OVLADACE (resi Java, jadro nic).
+//  B355 log Reneho: HOME (a tlacitko snimku Pro Controlleru = MODE) byl v
+//  Atari OPTION - v Prince of Persia otevrel menu hry. Ted HOME = MENU.
+// =====================================================================
+enum : int { J_ATARI = 0, J_SEGA = 1, J_PS1 = 2, J_POCET = 3 };
+enum : int { R_A = 0, R_B, R_X, R_Y, R_L1, R_R1, R_L2, R_R2, R_L3, R_R3, R_START, R_SELECT, R_MODE, R_POCET };
+static const uint32_t R_BIT[R_POCET] = {T_A, T_B, T_X, T_Y, T_L1, T_R1, T_L2, T_R2, T_L3, T_R3, T_START, T_SELECT, T_MODE};
+static const char *const R_TOKEN[R_POCET] = {"A", "B", "X", "Y", "L1", "R1", "L2", "R2", "L3", "R3", "START", "SELECT", "MODE"};
+static const char *const R_CZ[R_POCET] = {
+    u8"A · spodní (✕ PlayStation, B Nintendo)", u8"B · pravé (○ PlayStation, A Nintendo)",
+    u8"X · levé (□ PlayStation, Y Nintendo)", u8"Y · horní (△ PlayStation, X Nintendo)",
+    u8"L1 (L)", u8"R1 (R)", u8"L2 (ZL, levá spoušť)", u8"R2 (ZR, pravá spoušť)",
+    u8"L3 (stisk levé páčky)", u8"R3 (stisk pravé páčky)", u8"START (+, OPTIONS)", u8"SELECT (−, SHARE)",
+    u8"HOME (PS, Xbox)"};
+static const char *const R_EN[R_POCET] = {
+    u8"A · bottom (✕ PlayStation, B Nintendo)", u8"B · right (○ PlayStation, A Nintendo)",
+    u8"X · left (□ PlayStation, Y Nintendo)", u8"Y · top (△ PlayStation, X Nintendo)",
+    u8"L1 (L)", u8"R1 (R)", u8"L2 (ZL, left trigger)", u8"R2 (ZR, right trigger)",
+    u8"L3 (left stick press)", u8"R3 (right stick press)", u8"START (+, OPTIONS)", u8"SELECT (−, SHARE)",
+    u8"HOME (PS, Xbox)"};
+
+static constexpr uint16_t CIL_NIC = 0;
+static constexpr uint16_t CIL_MENU = 0x7FFF;
+// Atari: 1-9 funkce, 0x100 + KBCODE (scankod 0-63, +$40 SHIFT, +$80 CONTROL) = klavesa drzena jako prstem
+enum : uint16_t { A_FIRE = 1, A_NAHORU, A_DOLU, A_VLEVO, A_VPRAVO, A_START, A_SELECT, A_OPTION, A_BREAK, A_KLAVESA = 0x100 };
+// Sega: 1 + bit vystupu segaMapuj (0 NAHORU 1 DOLU 2 VLEVO 3 VPRAVO 4 A 5 B 6 C 7 START 8 X 9 Y 10 Z 11 MODE)
+enum : uint16_t { S_NAHORU = 1, S_DOLU, S_VLEVO, S_VPRAVO, S_A, S_B, S_C, S_START, S_X, S_Y, S_Z, S_MODE, S_POSLEDNI = S_MODE };
+// PS1: 1 + id RetroPadu (viz ps1Mapuj)
+enum : uint16_t { P_KRIZEK = 1, P_CTVEREC, P_SELECT, P_START, P_NAHORU, P_DOLU, P_VLEVO, P_VPRAVO, P_KOLECKO, P_TROJUHELNIK,
+                  P_L1, P_R1, P_L2, P_R2, P_L3, P_R3, P_POSLEDNI = P_R3 };
+
+struct CilInfo { uint16_t cil; const char *token; const char *cz; const char *en; };
+static const CilInfo CILE_ATARI[] = {
+    {CIL_NIC, "0", u8"nic", u8"nothing"}, {CIL_MENU, "MENU", u8"MENU – tlačítka ovladače", u8"MENU – controller buttons"},
+    {A_FIRE, "FIRE", u8"FIRE", u8"FIRE"},
+    {A_NAHORU, "NAHORU", u8"joystick nahoru", u8"joystick up"}, {A_DOLU, "DOLU", u8"joystick dolů", u8"joystick down"},
+    {A_VLEVO, "VLEVO", u8"joystick vlevo", u8"joystick left"}, {A_VPRAVO, "VPRAVO", u8"joystick vpravo", u8"joystick right"},
+    {A_START, "START", u8"START", u8"START"}, {A_SELECT, "SELECT", u8"SELECT", u8"SELECT"}, {A_OPTION, "OPTION", u8"OPTION", u8"OPTION"},
+    {A_KLAVESA + 17, "K17", u8"HELP", u8"HELP"}, {A_BREAK, "BREAK", u8"BREAK", u8"BREAK"},
+};
+// klavesy Atari pro mapu (scankody jako nap_atari_device.h KEYS)
+struct KlavesaInfo { uint8_t scan; const char *cz; const char *en; };
+static const KlavesaInfo ATARI_KLAVESY[] = {
+    {33, "MEZERA", "SPACE"}, {12, "RETURN", "RETURN"}, {28, "ESC", "ESC"}, {44, "TAB", "TAB"}, {52, "DELETE", "DELETE"},
+    {60, "CAPS", "CAPS"}, {39, "INVERSE", "INVERSE"},
+    {63, "A", "A"}, {21, "B", "B"}, {18, "C", "C"}, {58, "D", "D"}, {42, "E", "E"}, {56, "F", "F"}, {61, "G", "G"},
+    {57, "H", "H"}, {13, "I", "I"}, {1, "J", "J"}, {5, "K", "K"}, {0, "L", "L"}, {37, "M", "M"}, {35, "N", "N"},
+    {8, "O", "O"}, {10, "P", "P"}, {47, "Q", "Q"}, {40, "R", "R"}, {62, "S", "S"}, {45, "T", "T"}, {11, "U", "U"},
+    {16, "V", "V"}, {46, "W", "W"}, {22, "X", "X"}, {43, "Y", "Y"}, {23, "Z", "Z"},
+    {50, "0", "0"}, {31, "1", "1"}, {30, "2", "2"}, {26, "3", "3"}, {24, "4", "4"}, {29, "5", "5"}, {27, "6", "6"},
+    {51, "7", "7"}, {53, "8", "8"}, {48, "9", "9"},
+    {14, "-", "-"}, {15, "=", "="}, {6, "+", "+"}, {7, "*", "*"}, {2, ";", ";"}, {32, ",", ","}, {34, ".", "."},
+    {38, "/", "/"}, {54, "<", "<"}, {55, ">", ">"},
+};
+static const CilInfo CILE_SEGA[] = {
+    {CIL_NIC, "0", u8"nic", u8"nothing"}, {CIL_MENU, "MENU", u8"MENU – tlačítka ovladače", u8"MENU – controller buttons"},
+    {S_A, "A", u8"A", u8"A"}, {S_B, "B", u8"B", u8"B"}, {S_C, "C", u8"C", u8"C"}, {S_START, "START", u8"START", u8"START"},
+    {S_X, "X", u8"X (ovladač se 6 tlačítky)", u8"X (6-button pad)"}, {S_Y, "Y", u8"Y (ovladač se 6 tlačítky)", u8"Y (6-button pad)"},
+    {S_Z, "Z", u8"Z (ovladač se 6 tlačítky)", u8"Z (6-button pad)"}, {S_MODE, "MODE", u8"MODE (ovladač se 6 tlačítky)", u8"MODE (6-button pad)"},
+    {S_NAHORU, "NAHORU", u8"směr nahoru", u8"up"}, {S_DOLU, "DOLU", u8"směr dolů", u8"down"},
+    {S_VLEVO, "VLEVO", u8"směr vlevo", u8"left"}, {S_VPRAVO, "VPRAVO", u8"směr vpravo", u8"right"},
+};
+static const CilInfo CILE_PS1[] = {
+    {CIL_NIC, "0", u8"nic", u8"nothing"}, {CIL_MENU, "MENU", u8"MENU – tlačítka ovladače", u8"MENU – controller buttons"},
+    {P_KRIZEK, "KRIZEK", u8"✕ křížek", u8"✕ cross"}, {P_KOLECKO, "KOLECKO", u8"○ kolečko", u8"○ circle"},
+    {P_CTVEREC, "CTVEREC", u8"□ čtverec", u8"□ square"}, {P_TROJUHELNIK, "TROJUHELNIK", u8"△ trojúhelník", u8"△ triangle"},
+    {P_L1, "L1", u8"L1", u8"L1"}, {P_R1, "R1", u8"R1", u8"R1"}, {P_L2, "L2", u8"L2", u8"L2"}, {P_R2, "R2", u8"R2", u8"R2"},
+    {P_L3, "L3", u8"L3", u8"L3"}, {P_R3, "R3", u8"R3", u8"R3"}, {P_START, "START", u8"START", u8"START"},
+    {P_SELECT, "SELECT", u8"SELECT", u8"SELECT"},
+    {P_NAHORU, "NAHORU", u8"směr nahoru", u8"up"}, {P_DOLU, "DOLU", u8"směr dolů", u8"down"},
+    {P_VLEVO, "VLEVO", u8"směr vlevo", u8"left"}, {P_VPRAVO, "VPRAVO", u8"směr vpravo", u8"right"},
+};
+
+struct Mapa {
+  int jadro = J_ATARI;
+  uint16_t cil[R_POCET] = {0};
+};
+
+inline Mapa vychoziMapa(int jadro) {
+  // Atari: A B L1 R1 = FIRE, X = MEZERA, Y = RETURN, L2 R2 = OPTION, START, SELECT, HOME = MENU (drive OPTION)
+  static const uint16_t ATARI[R_POCET] = {A_FIRE, A_FIRE, A_KLAVESA + 33, A_KLAVESA + 12, A_FIRE, A_FIRE, A_OPTION, A_OPTION,
+                                          CIL_NIC, CIL_NIC, A_START, A_SELECT, CIL_MENU};
+  // Sega: leve = A, spodni = B, prave = C (A B C v rade zleva), L1 = A, R1 = C, START jako drive;
+  // nove ovladac se 6 tlacitky: horni = Y, L2 = X, R2 = Z (bojovky); HOME = MENU
+  static const uint16_t SEGA[R_POCET] = {S_B, S_C, S_A, S_Y, S_A, S_C, S_X, S_Z, CIL_NIC, CIL_NIC, S_START, CIL_NIC, CIL_MENU};
+  // PS1: stejne misto jako na ovladaci PlayStation; HOME = MENU (drive SELECT - SELECT ma svoje tlacitko)
+  static const uint16_t PS1[R_POCET] = {P_KRIZEK, P_KOLECKO, P_CTVEREC, P_TROJUHELNIK, P_L1, P_R1, P_L2, P_R2, P_L3, P_R3,
+                                        P_START, P_SELECT, CIL_MENU};
+  Mapa m;
+  m.jadro = (jadro == J_SEGA || jadro == J_PS1) ? jadro : J_ATARI;
+  const uint16_t *v = m.jadro == J_SEGA ? SEGA : m.jadro == J_PS1 ? PS1 : ATARI;
+  for (int i = 0; i < R_POCET; i++) m.cil[i] = v[i];
+  return m;
+}
+
+inline const CilInfo *cileJadra(int jadro, int &n) {
+  if (jadro == J_SEGA) { n = (int)(sizeof(CILE_SEGA) / sizeof(CILE_SEGA[0])); return CILE_SEGA; }
+  if (jadro == J_PS1) { n = (int)(sizeof(CILE_PS1) / sizeof(CILE_PS1[0])); return CILE_PS1; }
+  n = (int)(sizeof(CILE_ATARI) / sizeof(CILE_ATARI[0]));
+  return CILE_ATARI;
+}
+inline const KlavesaInfo *atariKlavesa(int scan) {
+  for (const KlavesaInfo &k : ATARI_KLAVESY) if (k.scan == scan) return &k;
+  return nullptr;
+}
+
+// token cile ("FIRE", "K33", "MENU" ...) -> cil; -1 = jadro token nezna
+inline int cilZTokenu(int jadro, const std::string &tok) {
+  if (tok.empty()) return -1;
+  int n = 0;
+  const CilInfo *c = cileJadra(jadro, n);
+  for (int i = 0; i < n; i++) if (tok == c[i].token) return c[i].cil;
+  if (jadro == J_ATARI && tok.size() >= 2 && tok.size() <= 4 && tok[0] == 'K') {
+    int v = 0;
+    for (size_t i = 1; i < tok.size(); i++) {
+      if (tok[i] < '0' || tok[i] > '9') return -1;
+      v = v * 10 + (tok[i] - '0');
+    }
+    return v <= 255 ? (int)(A_KLAVESA + v) : -1;
+  }
+  return -1;
+}
+inline std::string tokenCile(int jadro, uint16_t cil) {
+  int n = 0;
+  const CilInfo *c = cileJadra(jadro, n);
+  for (int i = 0; i < n; i++) if (c[i].cil == cil) return c[i].token;
+  if (jadro == J_ATARI && cil >= A_KLAVESA && cil <= A_KLAVESA + 255) return "K" + std::to_string(cil - A_KLAVESA);
+  return "0";
+}
+// jmeno cile pro hrace (UTF-8) nebo do logu (en=false, log=true: bez diakritiky)
+inline std::string jmenoCile(int jadro, uint16_t cil, bool en, bool log = false) {
+  if (log) {
+    if (cil == CIL_NIC) return "nic";
+    if (cil == CIL_MENU) return "MENU (tlacitka ovladace)";
+    if (jadro == J_ATARI) {
+      static const char *L[] = {"nic", "FIRE", "joystick nahoru", "joystick dolu", "joystick vlevo", "joystick vpravo",
+                                "START", "SELECT", "OPTION", "BREAK"};
+      if (cil <= A_BREAK) return L[cil];
+      if (cil == A_KLAVESA + 17) return "HELP";
+      if (cil >= A_KLAVESA && cil <= A_KLAVESA + 255) {
+        const KlavesaInfo *k = atariKlavesa(cil - A_KLAVESA);
+        return std::string("klavesa ") + (k ? k->cz : ("kod " + std::to_string(cil - A_KLAVESA)).c_str());
+      }
+      return "?";
+    }
+    return tokenCile(jadro, cil);
+  }
+  int n = 0;
+  const CilInfo *c = cileJadra(jadro, n);
+  for (int i = 0; i < n; i++) if (c[i].cil == cil) return en ? c[i].en : c[i].cz;
+  if (jadro == J_ATARI && cil >= A_KLAVESA && cil <= A_KLAVESA + 255) {
+    const KlavesaInfo *k = atariKlavesa(cil - A_KLAVESA);
+    const std::string jm = k ? (en ? k->en : k->cz) : std::to_string(cil - A_KLAVESA);
+    return (en ? u8"key " : u8"klávesa ") + jm;
+  }
+  return "?";
+}
+
+// "A=FIRE;B=FIRE;X=K33;..." -> mapa (co chybi nebo je neznamo, zustane vychozi; nezname = pocet spatnych dvojic)
+inline Mapa mapaZRetezce(int jadro, const std::string &s, int *nezname = nullptr) {
+  Mapa m = vychoziMapa(jadro);
+  int spatne = 0;
+  size_t i = 0;
+  while (i < s.size()) {
+    size_t j = i;
+    while (j < s.size() && s[j] != ';' && s[j] != ',' && s[j] != ' ' && s[j] != '\n' && s[j] != '\t') j++;
+    if (j > i) {
+      const std::string dvojice = s.substr(i, j - i);
+      const size_t r = dvojice.find('=');
+      bool ok = false;
+      if (r != std::string::npos && r > 0) {
+        const std::string radek = dvojice.substr(0, r), tok = dvojice.substr(r + 1);
+        for (int k = 0; k < R_POCET; k++) {
+          if (radek != R_TOKEN[k]) continue;
+          const int c = cilZTokenu(m.jadro, tok);
+          if (c >= 0) { m.cil[k] = (uint16_t)c; ok = true; }
+          break;
+        }
+      }
+      if (!ok) spatne++;
+    }
+    i = j + 1;
+  }
+  if (nezname) *nezname = spatne;
+  return m;
+}
+inline std::string mapaNaRetezec(const Mapa &m) {
+  std::string s;
+  for (int i = 0; i < R_POCET; i++) {
+    if (i) s += ';';
+    s += R_TOKEN[i];
+    s += '=';
+    s += tokenCile(m.jadro, m.cil[i]);
+  }
+  return s;
+}
+// do logu: "A(spodni)=FIRE, X(leve)=klavesa MEZERA, ..."
+inline std::string mapaPopis(const Mapa &m) {
+  static const char *J[R_POCET] = {"A(spodni)", "B(prave)", "X(leve)", "Y(horni)", "L1", "R1", "L2", "R2", "L3", "R3",
+                                   "START", "SELECT", "HOME"};
+  std::string s;
+  for (int i = 0; i < R_POCET; i++) {
+    if (i) s += ", ";
+    s += J[i];
+    s += '=';
+    s += jmenoCile(m.jadro, m.cil[i], false, true);
+  }
+  return s;
+}
+inline bool stejnaMapa(const Mapa &a, const Mapa &b) {
+  if (a.jadro != b.jadro) return false;
+  for (int i = 0; i < R_POCET; i++) if (a.cil[i] != b.cil[i]) return false;
+  return true;
+}
+// katalog pro Javu (dialog TLACITKA OVLADACE): radky "R\ttoken\tjmeno", cile "C\ttoken\tjmeno", "D\tvychozi mapa"
+inline std::string katalog(int jadro, bool en) {
+  std::string s;
+  for (int i = 0; i < R_POCET; i++) { s += "R\t"; s += R_TOKEN[i]; s += '\t'; s += en ? R_EN[i] : R_CZ[i]; s += '\n'; }
+  int n = 0;
+  const CilInfo *c = cileJadra(jadro, n);
+  for (int i = 0; i < n; i++) { s += "C\t"; s += c[i].token; s += '\t'; s += en ? c[i].en : c[i].cz; s += '\n'; }
+  if (jadro == J_ATARI) {
+    for (const KlavesaInfo &k : ATARI_KLAVESY) {
+      s += "C\tK" + std::to_string(k.scan) + '\t' + (en ? u8"key " : u8"klávesa ") + (en ? k.en : k.cz) + '\n';
+    }
+  }
+  s += "D\t" + mapaNaRetezec(vychoziMapa(jadro)) + '\n';
+  return s;
+}
+
 // ---------------------------------------------------------------------
 //  PS1: RetroPad (libretro) - stejna cisla jako dotyk (MainActivity.ps1ButtonId)
 //  0 B=KRIZEK 1 Y=CTVEREC 2 SELECT 3 START 4-7 smer 8 A=KOLECKO 9 X=TROJUHELNIK
-//  10 L1 11 R1 12 L2 13 R2 14 L3 15 R3
+//  10 L1 11 R1 12 L2 13 R2 14 L3 15 R3. B355: tlacitka podle mapy (C = KRIZEK, Z = KOLECKO pevne)
 // ---------------------------------------------------------------------
-inline uint32_t ps1Bity(uint32_t t) {
+inline uint32_t ps1Mapuj(uint32_t t, const Mapa &m) {
   uint32_t r = 0;
-  if (t & (T_A | T_C)) r |= 1u << 0;        // spodni = KRIZEK
-  if (t & T_X) r |= 1u << 1;                // leve = CTVEREC
-  if (t & (T_SELECT | T_MODE)) r |= 1u << 2;
-  if (t & T_START) r |= 1u << 3;
   if (t & T_NAHORU) r |= 1u << 4;
   if (t & T_DOLU) r |= 1u << 5;
   if (t & T_VLEVO) r |= 1u << 6;
   if (t & T_VPRAVO) r |= 1u << 7;
-  if (t & (T_B | T_Z)) r |= 1u << 8;        // prave = KOLECKO
-  if (t & T_Y) r |= 1u << 9;                // horni = TROJUHELNIK
-  if (t & T_L1) r |= 1u << 10;
-  if (t & T_R1) r |= 1u << 11;
-  if (t & T_L2) r |= 1u << 12;
-  if (t & T_R2) r |= 1u << 13;
-  if (t & T_L3) r |= 1u << 14;
-  if (t & T_R3) r |= 1u << 15;
+  if (t & T_C) r |= 1u << 0;
+  if (t & T_Z) r |= 1u << 8;
+  for (int i = 0; i < R_POCET; i++)
+    if ((t & R_BIT[i]) && m.cil[i] >= P_KRIZEK && m.cil[i] <= P_POSLEDNI) r |= 1u << (m.cil[i] - 1);
   return r;
+}
+inline uint32_t ps1Bity(uint32_t t) {
+  static const Mapa V = vychoziMapa(J_PS1);
+  return ps1Mapuj(t, V);
 }
 
 // ---------------------------------------------------------------------
 //  Sega Mega Drive (nap_sega_native_proof.cpp g_input[0..7]):
-//  0 NAHORU 1 DOLU 2 VLEVO 3 VPRAVO 4 A 5 B 6 C 7 START
+//  0 NAHORU 1 DOLU 2 VLEVO 3 VPRAVO 4 A 5 B 6 C 7 START; B355: 8 X 9 Y 10 Z 11 MODE
+//  (clownmdemu se pta i na ovladac se 6 tlacitky). C = C, Z = Z pevne.
 // ---------------------------------------------------------------------
-inline uint32_t segaBity(uint32_t t) {
+inline uint32_t segaMapuj(uint32_t t, const Mapa &m) {
   uint32_t r = 0;
   if (t & T_NAHORU) r |= 1u << 0;
   if (t & T_DOLU) r |= 1u << 1;
   if (t & T_VLEVO) r |= 1u << 2;
   if (t & T_VPRAVO) r |= 1u << 3;
-  if (t & (T_X | T_L1)) r |= 1u << 4;      // leve (a L1) = A
-  if (t & T_A) r |= 1u << 5;               // spodni = B
-  if (t & (T_B | T_C | T_R1)) r |= 1u << 6;   // prave (a R1, tlacitko C) = C
-  if (t & T_START) r |= 1u << 7;
+  if (t & T_C) r |= 1u << 6;
+  if (t & T_Z) r |= 1u << 10;
+  for (int i = 0; i < R_POCET; i++)
+    if ((t & R_BIT[i]) && m.cil[i] >= S_NAHORU && m.cil[i] <= S_POSLEDNI) r |= 1u << (m.cil[i] - 1);
   return r;
+}
+inline uint32_t segaBity(uint32_t t) {
+  static const Mapa V = vychoziMapa(J_SEGA);
+  return segaMapuj(t, V);
 }
 
 // ---------------------------------------------------------------------
-//  Atari 130XE (NativeAtariCoreBridge.devPad, B296): bit0 nahoru 1 dolu 2 vlevo
-//  3 vpravo 4 FIRE 5 START 6 SELECT 7 OPTION 8 klavesa MEZERA 9 klavesa RETURN
+//  Atari 130XE: udalost PAD (nap_atari_native.cpp). bit0 nahoru 1 dolu 2 vlevo 3 vpravo 4 FIRE
+//  5 START 6 SELECT 7 OPTION; B355: bity 8-16 klavesa (KBCODE + 1, 0 = zadna - drzi se jako prstem),
+//  bit 17 BREAK. Drzi-li se vic tlacitek s klavesou, plati naposled stisknute (posledni = radek R_*).
 // ---------------------------------------------------------------------
-inline uint32_t atariBity(uint32_t t) {
+enum : uint32_t { AP_KLAVESA_POSUN = 8, AP_KLAVESA_MASKA = 0x1FFu << 8, AP_BREAK = 1u << 17 };
+inline uint32_t atariMapuj(uint32_t t, const Mapa &m, int posledni = -1) {
   uint32_t r = 0;
   if (t & T_NAHORU) r |= 1u << 0;
   if (t & T_DOLU) r |= 1u << 1;
   if (t & T_VLEVO) r |= 1u << 2;
   if (t & T_VPRAVO) r |= 1u << 3;
-  if (t & (T_A | T_B | T_L1 | T_R1 | T_C)) r |= 1u << 4;     // FIRE
-  if (t & T_START) r |= 1u << 5;
-  if (t & T_SELECT) r |= 1u << 6;
-  if (t & (T_MODE | T_L2 | T_R2)) r |= 1u << 7;              // OPTION
-  if (t & T_X) r |= 1u << 8;                                 // MEZERA (Wolfenstein: dvere)
-  if (t & T_Y) r |= 1u << 9;                                 // RETURN
+  if (t & T_C) r |= 1u << 4;                                  // C = FIRE (pevne)
+  int klavesa = -1;
+  for (int i = 0; i < R_POCET; i++) {
+    if (!(t & R_BIT[i])) continue;
+    const uint16_t c = m.cil[i];
+    if (c >= A_KLAVESA && c <= A_KLAVESA + 255) {
+      if (klavesa < 0 || i == posledni) klavesa = c - A_KLAVESA;
+      continue;
+    }
+    switch (c) {
+      case A_FIRE: r |= 1u << 4; break;
+      case A_NAHORU: r |= 1u << 0; break;
+      case A_DOLU: r |= 1u << 1; break;
+      case A_VLEVO: r |= 1u << 2; break;
+      case A_VPRAVO: r |= 1u << 3; break;
+      case A_START: r |= 1u << 5; break;
+      case A_SELECT: r |= 1u << 6; break;
+      case A_OPTION: r |= 1u << 7; break;
+      case A_BREAK: r |= AP_BREAK; break;
+      default: break;                                         // nic, MENU
+    }
+  }
+  if (klavesa >= 0) r |= (uint32_t)(klavesa + 1) << AP_KLAVESA_POSUN;
   return r;
+}
+inline uint32_t atariBity(uint32_t t) {
+  static const Mapa V = vychoziMapa(J_ATARI);
+  return atariMapuj(t, V);
+}
+// radek mapy (R_*) pro jedno logicke tlacitko; -1 = smer / C / Z
+inline int radekTlacitka(uint32_t t) {
+  for (int i = 0; i < R_POCET; i++) if (t == R_BIT[i]) return i;
+  return -1;
 }
 
 // jmena logickych tlacitek (log)

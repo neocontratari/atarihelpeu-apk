@@ -466,6 +466,8 @@ body.mysLeveDrzi .mysUkazDrzi{display:block;}
     <h2>D-PAD A OVLÁDÁNÍ</h2>
     <button id="btnEditLayout" type="button">UPRAVIT ROZLOŽENÍ TLAČÍTEK</button>
     <button id="btnCtrlSettings" type="button">OVLÁDÁNÍ: CITLIVOST A VZHLED</button>
+    <!-- B355: co ktere tlacitko herniho ovladace dela (dialog appky, jako HOME na ovladaci) -->
+    <button id="btnTlacitka" type="button">TLAČÍTKA HERNÍHO OVLADAČE</button>
     <button id="btnMirror" type="button">PROHODIT D-PAD A AKCE (LEVÁK)</button>
     <!-- B317: mys PlayStation (Dune 2000 ...) - kam je zapojena, rychlost, napoveda gest -->
     <button id="btnMysNastaveni" type="button">MYŠ PLAYSTATION (DUNE 2000 …)</button>
@@ -1854,6 +1856,8 @@ $('layoutEditReset').addEventListener('click',function(e){e.preventDefault();lay
 $('layoutModeToggle').addEventListener('click',function(e){e.preventDefault();toggleLayoutGroupMode();},true);
 layoutLoad();
 $('btnCtrlSettings').addEventListener('click',function(e){e.preventDefault();closeHelp();closeDpadMenu();showCtrl();},true);
+// B355: TLACITKA HERNIHO OVLADACE - dialog appky (AHOVL.tlacitka)
+$('btnTlacitka').addEventListener('click',function(e){e.preventDefault();closeHelp();closeDpadMenu();try{if(window.AHOVL)AHOVL.tlacitka('ps1');}catch(err){}},true);
 $('btnMirror').addEventListener('click',function(e){e.preventDefault();jsLog('LAYOUT_MIRROR_TAP zaregistrovan klik');layoutMirrorHorizontal();},true);
 $('ctrlClose').addEventListener('click',function(e){e.preventDefault();closeCtrl();},true);
 $('ctrlReset').addEventListener('click',function(e){e.preventDefault();ctrlReset();},true);

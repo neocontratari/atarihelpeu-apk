@@ -226,6 +226,8 @@ public final class NativePs1CoreBridge {
     // B354: hrac 0 = port 1, hrac 1 = port 2 (druhy herni ovladac; jen s vypnutou mysi)
     private static native int ps1OvladacKlavesaHrac(int hrac, int keyCode, boolean dolu);
     private static native void ps1OvladacOsyHrac(int hrac, float[] osy, int maska);
+    // B355: mapa tlacitek ovladace ("A=KRIZEK;B=KOLECKO;..."; "" = vychozi) - vraci mapu tak, jak ji jadro pouziva
+    private static native String ps1OvladacMapa(String mapa);
 
     public static int ovladacKlavesaSafe(int keyCode, boolean dolu) {
         if (!loaded) return 0;
@@ -247,5 +249,10 @@ public final class NativePs1CoreBridge {
     public static void ovladacOsySafe(int hrac, float[] osy, int maska) {
         if (!loaded) return;
         try { ps1OvladacOsyHrac(hrac, osy, maska); } catch (Throwable ignored) {}
+    }
+    /** B355: mapa tlacitek ovladace pro PS1; vraci mapu tak, jak ji jadro pouziva ("" = knihovna chybi). */
+    public static String ovladacMapaSafe(String mapa) {
+        if (!loaded) return "";
+        try { final String r = ps1OvladacMapa(mapa == null ? "" : mapa); return r == null ? "" : r; } catch (Throwable t) { return ""; }
     }
 }

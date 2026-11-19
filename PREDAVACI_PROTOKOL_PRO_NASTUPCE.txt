@@ -4646,5 +4646,57 @@
        nebo vendor+product+jmena misto deviceId.
      - DALSI KROK: Rene - dva ovladace na telefonu (Atari hra pro 2 hrace, Sega, PS1 bez mysi), log "B354 OVLADAC";
        zaroven B352 (Tony) a B353 (turbo PoP / Tony).
+     - VYSLEDEK NA TELEFONU (log 19. 11. 18:14, S8): Sega se dvema ovladaci OK ("hral jsem se synem"), Pro Controller =
+       hrac 1, Wireless Controller (PlayStation) = hrac 2. B352 Tony s 1 MB bezi (444 segmentu, VBXE). B353 turbo
+       na telefonu 2,7-3,0x (Tony 9 s misto 24 s). Atari: chyby ovladace -> B355.
+
+   B355: TLACITKA OVLADACE - CO KTERE TLACITKO DELA, ZVLAST ATARI / SEGA / PS1; CHYBY Z LOGU (19. 11. 2026).
+   Rene: "v atari jsou asi chyby na ovladaci ... atari je potreba nakonfigurovat", "ty musis podle logu najit sam kde
+   je chyba", "musi byt v nastaveni u kazdeho emu co ktere tlacitko ma delat podle bt d-padu".
+     - CHYBA 1 (z logu): HOME (MODE) - a na Pro Controlleru tlacitko snimku (Android 9 ho posila jako THUMBL, B329 ho
+       podle mista prelozi na MODE) - byl v Atari OPTION (B296/B320 atariBity). Prince of Persia: OPTION = menu hry
+       (readme: "Esc/OPTION: option menu"); log 18:23:59 snimek, 18:25:11 HOME, 18:25:17 RETURN z PC = zavreni menu.
+       Ted HOME = MENU (Java otevre TLACITKA OVLADACE, jadro nic). ZL / ZR (L2 / R2) zustavaji OPTION.
+     - CHYBA 2 (moje z B353): atariZarizeniVypni posila devPadSafe(0) + devOvladacPustSafe -> udalosti PAD ve fronte
+       g_evQ (stop / start ji nemaze), prvni snimek dalsi hry je zpracoval -> vstupHraceTed() -> turbo 3 s nic. Ted se
+       do vstupu hrace pocita jen SKUTECNA zmena (PAD: smer, konzole, klavesa, BREAK; JOY: smer dotykem).
+     - CHYBA 3 (diagnostika): B320 logoval jen prvnich 10 udalosti v Atari, B329 prvni stisk tlacitka za cely beh appky.
+       Ted NapOvladac.klavesa(e, kod, kam, t, co): prvni stisk kazdeho tlacitka v KAZDEM emulatoru (MAX 120) i s tim,
+       co udelal ("B329 OVLADAC tlacitko X (kod 99) z "Pro Controller" -> podle mista Y -> Atari 130XE: klavesa RETURN").
+     - nap_ovladac.h: Mapa (13 radku R_A .. R_MODE podle mista; cil uint16 podle jadra), vychoziMapa, mapaZRetezce
+       ("A=FIRE;B=FIRE;X=K33;..." - oddelovac ; , mezera; nezname dvojice zustanou vychozi a spocitaji se),
+       mapaNaRetezec, mapaPopis (log), katalog (R / C / D radky pro Javu, CZ / EN), atariMapuj / segaMapuj / ps1Mapuj
+       (atariBity / segaBity / ps1Bity = vychozi mapa). Cile: Atari 1-9 funkce + 0x100 + KBCODE (klavesa, scankody jako
+       nap_atari_device.h KEYS, overeno testem), Sega 1 + bit (8-11 = X Y Z MODE), PS1 1 + id RetroPadu, CIL_MENU 0x7FFF.
+       C / Z pevne (Atari C FIRE; Sega C, Z = Z; PS1 C krizek, Z kolecko). Vychozi = do B354 krome HOME = MENU vsude
+       (PS1 drive SELECT) a Sega 6 tlacitek: horni = Y, L2 = X, R2 = Z (bojovky 1 na 1; 3tlacitkove hry je nevidi).
+     - Atari (nap_atari_native.cpp): PAD hrace 1 bity 0-7 jako drive, 8-16 klavesa (KBCODE + 1, drzena; zmena =
+       klavesa(kod) / klavesaPustena), 17 BREAK (hrana -> breakKey); PAD_HRAC2 = bit 30 (drive 0x10000 - kolize
+       s klavesou). Drzi-li hrac vic tlacitek s klavesou, plati naposled stisknute (g_ovl_posledni, i spoust L2 / R2).
+       Klavesy a BREAK jen hrac 1. devPadNative bere jen bity 0-7. JNI devOvladacMapaNative (vraci normalizovanou mapu,
+       log "B355 OVLADAC TLACITKA Atari: ..." jen pri zmene), devOvladacKatalogNative(jadro, en) - katalog VSECH jader
+       (knihovna Atari je nactena vzdy; Sega bez knihovny spadne - viz B320 C2).
+     - Sega: g_ovl_mapa pod g_ovl_m, segaMapuj v JNI; nap_real_input_requested odpovida i na X Y Z MODE (oba hraci,
+       dotyk je nema); JNI ovladacMapa. PS1: g_ovl_vystup[13] atomicke hotove bity na radek (vlakno emulace bez zamku),
+       ps1_mapuj; JNI ps1OvladacMapa (denik "OVLADAC TLACITKA (B355): ...").
+     - Java NapOvladacMapa (cista): RADKY, radekKlavesy (kod podle mista), Katalog.z, rozloz / sloz, nastavRadek (cela
+       mapa; shodna s vychozi = ""), verze, doLogu. MainActivity: ovlMapaNacti (ovladacStart, SharedPreferences
+       "nap_ovladac_mapa"), ovlMapaPosli(jadro) pred kazdou klavesou / osami (jen kdyz se zmenila verze; Sega jen v Seze),
+       MENU v ovladacKlavesa (radek s cilem MENU -> ui.post ovlTlacitkaDialog, do jadra nic), ovlTlacitkaDialog (13
+       tlacitek, OnKeyListener: herni tlacitko -> rovnou vyber jeho radku, spotrebuje i pusteni - B by jinak bylo ZPET;
+       krizek / OK dalkoveho = pohyb), VYCHOZI, HOTOVO; ovladacPustVse pri otevreni. Vstupy: OPTIONS -> HERNI OVLADAC ->
+       ATARI / SEGA / PS1 (AHOVL.tlacitka), kolecko Atari (D-PAD A OVLADANI, polozka 3), Sega a PS1 (D-PAD A OVLADANI ->
+       TLACITKA HERNIHO OVLADACE), HOME ve hre.
+     - Napoveda CZ / EN (Herni ovladac a Retroid Pocket 6 + Atari / Sega / PS1 HOME), slovniky. Kontroly 221 / 213 /
+       3 zamerne. build.gradle: versionCode 398 "EMU10-B355-TLACITKA-OVLADACE".
+     - Testy test_overeni/b355: mapa 13, Atari 11 (skutecny nativni kod: HOME, P / HELP / posledni, joystick nahoru,
+       OPTION, BREAK pres OS SSFLAG / CRSINH, hrac 2, turbo bez falesneho vstupu, katalog), Sega 4 (dotaz clownmdemu vc.
+       X Y Z MODE), PS1 7 (skutecne PCSX + mys_test.exe), JVM TestB355Mapa 6 (parser na skutecnem katalogu C++) a
+       TestB355Most 4 (-Xcheck:jni), JNI 114 metod 0 chyb, javac cele appky. Regrese b320 20 (C2 / D1 / E1 upraveny
+       zamerne) / 14 / 5, b348 16, b352 12, b353 11, b354 12 / 4 / 8 / 9 / 6. Na telefonu neovereno.
+     - POZOR: MENU funguje na tlacitkach (udalost klavesy); analogova spoust bez klavesy (Xbox) MENU neotevre.
+     - DALSI KROK: Rene - HOME ve hre, PoP bez menu, vlastni tlacitka (Atari / Sega 6 tlacitek / PS1), turbo od zacatku;
+       log "B355 OVLADAC TLACITKA". Pak ONLINE HRANI pres jeho engine (Rene: "chci hrat hry on line pomoci meho enginu")
+       - hrac 2 z B354 je pripraveny vstup pro vzdaleneho hrace.
 
 ===============================================================================

@@ -345,7 +345,7 @@ final class NapOvladac implements InputManager.InputDeviceListener {
     private static final String[] KLAVESY_JMENA = {"A", "B", "X", "Y", "L1", "R1", "L2", "R2", "L3", "R3", "START", "SELECT", "MODE", "DPAD", "BACK", "C", "Z"};
     private static final int I_TLACITKO_C = 15;     // index BUTTON_C v KLAVESY_LOG (B329: stara tabulka Pro Controlleru)
     /** B329: nejvic ruznych tlacitek jednoho ovladace do logu (kazde poprve) */
-    private static final int MAX_TLACITEK_LOG = 40;
+    private static final int MAX_TLACITEK_LOG = 120;   // B355: kazde tlacitko v kazdem emulatoru zvlast
     private static final int[] OSY_VSE = {
             MotionEvent.AXIS_X, MotionEvent.AXIS_Y, MotionEvent.AXIS_Z, MotionEvent.AXIS_RX, MotionEvent.AXIS_RY,
             MotionEvent.AXIS_RZ, MotionEvent.AXIS_HAT_X, MotionEvent.AXIS_HAT_Y, MotionEvent.AXIS_LTRIGGER,
@@ -604,7 +604,11 @@ final class NapOvladac implements InputManager.InputDeviceListener {
      * z C++, 0 = nic). B329: kazde tlacitko kazdeho ovladace POPRVE do logu, s kodem Androidu a prekladem
      * (do B328 jen prvnich 12 stisku vubec - Reneho hledani START uz v logu nebylo).
      */
-    void klavesa(KeyEvent e, int kod, String kam, int t) {
+    void klavesa(KeyEvent e, int kod, String kam, int t) { klavesa(e, kod, kam, t, ""); }
+
+    /** B355: co = co tlacitko v tom emulatoru dela podle TLACITKA OVLADACE ("klavesa MEZERA", "MENU ..."). Prvni
+     *  stisk se loguje v KAZDEM emulatoru zvlast (do B354 jen jednou za beh appky - v Atari po Seze nic). */
+    void klavesa(KeyEvent e, int kod, String kam, int t, String co) {
         final boolean dolu = e.getAction() == KeyEvent.ACTION_DOWN;
         Zarizeni z = zarizeniUdalosti(e.getDeviceId());
         if (dolu && e.getRepeatCount() == 0) {
@@ -612,12 +616,12 @@ final class NapOvladac implements InputManager.InputDeviceListener {
             boolean poprve;
             synchronized (this) {
                 java.util.HashSet<Integer> h = z != null ? z.hlaseno : hlasenoBezZarizeni;
-                poprve = h.size() < MAX_TLACITEK_LOG && h.add(puvodni);
+                poprve = h.size() < MAX_TLACITEK_LOG && h.add(String.valueOf(kam).hashCode() * 1031 + puvodni);
             }
             if (poprve)
                 log("B329 OVLADAC tlacitko " + jmenoKlavesy(puvodni) + " (kod " + puvodni + ") z \"" + (z != null ? z.jmeno : "?") + "\""
                         + (kod != puvodni ? " -> podle mista " + jmenoKlavesy(kod) : "")
-                        + " -> " + kam + (t == 0 ? ": nic (jde dal Androidu)" : ""));
+                        + " -> " + kam + (t == 0 ? ": nic (jde dal Androidu)" : (co != null && !co.isEmpty() ? ": " + co : "")));
             if (t != 0) ovladacHraje(z);
         }
     }

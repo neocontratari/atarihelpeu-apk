@@ -198,8 +198,9 @@ int main(int argc, char **argv) {
     }
     over(dotyk.size() >= 14 && shod == n,
          "C1) PS1: fyzicka tlacitka = stejna cisla RetroPad jako dotyk na strance (ps1ButtonId ze zdrojaku, " + t((long long)dotyk.size()) + " jmen): " + t(shod) + " z " + t(n) + chyby);
-    over(ps1Bity(T_L3) == (1u << 14) && ps1Bity(T_R3) == (1u << 15) && ps1Bity(T_MODE) == (1u << 2) && ps1Bity(T_C) == 1u && ps1Bity(T_Z) == (1u << 8),
-         "C2) PS1: L3 / R3 (stisk packy) = 14 / 15, MODE = SELECT, C = KRIZEK, Z = KOLECKO (ovladace ve stylu Segy)");
+    // B355: HOME (MODE) = MENU (v appce TLACITKA OVLADACE, jadro nic) - do B354 SELECT; SELECT ma svoje tlacitko
+    over(ps1Bity(T_L3) == (1u << 14) && ps1Bity(T_R3) == (1u << 15) && ps1Bity(T_MODE) == 0 && ps1Bity(T_C) == 1u && ps1Bity(T_Z) == (1u << 8),
+         "C2) PS1: L3 / R3 (stisk packy) = 14 / 15, MODE = nic (B355: MENU), C = KRIZEK, Z = KOLECKO (ovladace ve stylu Segy)");
     // mapovani do B319 (git 0f80608): stejne klavesy -> co hra dostala tehdy a ted
     struct S { int kod; int b319; const char *j; };
     const S STARE[] = {{K_BUTTON_A, 0, "A"}, {K_BUTTON_B, 1, "B"}, {K_BUTTON_X, 2, "X"}, {K_BUTTON_Y, 3, "Y"}, {K_BUTTON_SELECT, 8, "SELECT"},
@@ -227,8 +228,9 @@ int main(int argc, char **argv) {
                         src.find("case CLOWNMDEMU_BUTTON_UP: return nap_vstup(0)") != std::string::npos;
     over(poradi && segaBity(T_X) == (1u << 4) && segaBity(T_A) == (1u << 5) && segaBity(T_B) == (1u << 6) && segaBity(T_START) == (1u << 7) &&
              segaBity(T_L1) == (1u << 4) && segaBity(T_R1) == (1u << 6) && segaBity(T_C) == (1u << 6) &&
-             segaBity(T_NAHORU | T_VPRAVO) == ((1u << 0) | (1u << 3)) && segaBity(T_Y) == 0 && segaBity(T_SELECT) == 0,
-         "D1) Sega: leve = A, spodni = B, prave = C (A B C v rade zleva jako Genesis Plus GX), L1 = A, R1 = C, START; bity = g_input jadra Segy (cteno ze zdrojaku)");
+             segaBity(T_NAHORU | T_VPRAVO) == ((1u << 0) | (1u << 3)) && segaBity(T_Y) == (1u << 9) && segaBity(T_SELECT) == 0,
+         "D1) Sega: leve = A, spodni = B, prave = C (A B C v rade zleva jako Genesis Plus GX), L1 = A, R1 = C, START; bity = g_input jadra Segy (cteno ze zdrojaku); "
+         "B355: horni = Y ovladace se 6 tlacitky (bit 9)");
   }
 
   // ================= E) Atari =================
@@ -237,8 +239,10 @@ int main(int argc, char **argv) {
     struct A { int kod; uint32_t bit; const char *j; };
     const A STARE[] = {{K_DPAD_UP, 1, "nahoru"}, {K_DPAD_DOWN, 2, "dolu"}, {K_DPAD_LEFT, 4, "vlevo"}, {K_DPAD_RIGHT, 8, "vpravo"},
                        {K_DPAD_CENTER, 16, "stred"}, {K_BUTTON_A, 16, "A"}, {K_BUTTON_B, 16, "B"}, {K_BUTTON_L1, 16, "L1"}, {K_BUTTON_R1, 16, "R1"},
-                       {K_BUTTON_START, 32, "START"}, {K_BUTTON_SELECT, 64, "SELECT"}, {K_BUTTON_MODE, 128, "MODE"}, {K_BUTTON_L2, 128, "L2"},
-                       {K_BUTTON_R2, 128, "R2"}, {K_BUTTON_X, 256, "X"}, {K_BUTTON_Y, 512, "Y"}};
+                       {K_BUTTON_START, 32, "START"}, {K_BUTTON_SELECT, 64, "SELECT"}, {K_BUTTON_L2, 128, "L2"}, {K_BUTTON_R2, 128, "R2"},
+                       // B355: HOME (MODE) = MENU (do B354 OPTION - v Prince of Persia otevrel menu hry); klavesa ovladace
+                       // je ted kod (KBCODE + 1 v bitech 8-16): X = MEZERA 33, Y = RETURN 12
+                       {K_BUTTON_MODE, 0, "MODE"}, {K_BUTTON_X, (33u + 1) << 8, "X"}, {K_BUTTON_Y, (12u + 1) << 8, "Y"}};
     int shod = 0, n = 0;
     std::string chyby;
     for (const A &a : STARE) {
@@ -247,7 +251,8 @@ int main(int argc, char **argv) {
       else chyby += std::string(" ") + a.j;
     }
     over(shod == n && atariBity(T_C) == 16 && atariBity(T_L3 | T_R3) == 0,
-         "E1) Atari 130XE: " + t(shod) + " z " + t(n) + " tlacitek stejne jako Java do B319 (FIRE A/B/L1/R1, START, SELECT, OPTION MODE/L2/R2, X = MEZERA, Y = RETURN)" + chyby);
+         "E1) Atari 130XE: " + t(shod) + " z " + t(n) + " tlacitek stejne jako Java do B319 (FIRE A/B/L1/R1, START, SELECT, OPTION L2/R2, X = MEZERA, Y = RETURN; "
+         "B355: HOME = MENU, klavesa jako kod)" + chyby);
   }
 
   // ================= F) mys PlayStation packou =================

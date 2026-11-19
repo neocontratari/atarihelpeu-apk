@@ -48,11 +48,13 @@ static bool g_input[8] = {false,false,false,false,false,false,false,false};
 // 4 A, 5 B, 6 C, 7 START) - jadro dostane dotyk NEBO ovladac (nap_vstup).
 static std::mutex g_ovl_m;
 static nap::ovladac::Stav g_ovl_stav;              // pod g_ovl_m (vlakno UI Javy)
-static std::atomic<uint32_t> g_ovl_bity{0};        // bity 0-7 jako g_input
+static std::atomic<uint32_t> g_ovl_bity{0};        // bity 0-7 jako g_input, B355: 8-11 X Y Z MODE
 // B354: druhy herni ovladac = ovladac 2 Segy (hrac 2, player_id 1); dotyk hraje jen za hrace 1
 static nap::ovladac::Stav g_ovl_stav2;             // pod g_ovl_m
 static std::atomic<uint32_t> g_ovl_bity2{0};
 static std::atomic<int> g_ovl_udalosti{0};
+// B355: mapa tlacitek (TLACITKA OVLADACE v appce, pod g_ovl_m); bity 8-11 = X Y Z MODE ovladace se 6 tlacitky
+static nap::ovladac::Mapa g_ovl_mapa = nap::ovladac::vychoziMapa(nap::ovladac::J_SEGA);
 static inline bool nap_vstup(int i) {
     return g_input[i] || ((g_ovl_bity.load(std::memory_order_relaxed) >> i) & 1u);
 }
@@ -764,6 +766,10 @@ static cc_bool nap_real_input_requested(void *user_data, cc_u8f player_id, Clown
             case CLOWNMDEMU_BUTTON_B: i = 5; break;
             case CLOWNMDEMU_BUTTON_C: i = 6; break;
             case CLOWNMDEMU_BUTTON_START: i = 7; break;
+            case CLOWNMDEMU_BUTTON_X: i = 8; break;      // B355: ovladac se 6 tlacitky
+            case CLOWNMDEMU_BUTTON_Y: i = 9; break;
+            case CLOWNMDEMU_BUTTON_Z: i = 10; break;
+            case CLOWNMDEMU_BUTTON_MODE: i = 11; break;
             default: break;
         }
         return (i >= 0 && ((b2 >> i) & 1u)) ? cc_true : cc_false;
@@ -779,6 +785,11 @@ static cc_bool nap_real_input_requested(void *user_data, cc_u8f player_id, Clown
         case CLOWNMDEMU_BUTTON_B: return nap_vstup(5) ? cc_true : cc_false;
         case CLOWNMDEMU_BUTTON_C: return nap_vstup(6) ? cc_true : cc_false;
         case CLOWNMDEMU_BUTTON_START: return nap_vstup(7) ? cc_true : cc_false;
+        // B355: X Y Z MODE ovladace se 6 tlacitky - jen herni ovladac (dotyk je nema)
+        case CLOWNMDEMU_BUTTON_X: return ((g_ovl_bity.load(std::memory_order_relaxed) >> 8) & 1u) ? cc_true : cc_false;
+        case CLOWNMDEMU_BUTTON_Y: return ((g_ovl_bity.load(std::memory_order_relaxed) >> 9) & 1u) ? cc_true : cc_false;
+        case CLOWNMDEMU_BUTTON_Z: return ((g_ovl_bity.load(std::memory_order_relaxed) >> 10) & 1u) ? cc_true : cc_false;
+        case CLOWNMDEMU_BUTTON_MODE: return ((g_ovl_bity.load(std::memory_order_relaxed) >> 11) & 1u) ? cc_true : cc_false;
         default: return cc_false;
     }
 }
@@ -1715,15 +1726,15 @@ Java_eu_atarihelp_emu10_NativeSegaCoreBridge_ovladacKlavesaHrac(JNIEnv*, jclass,
     std::lock_guard<std::mutex> l(g_ovl_m);
     if (hrac == 1) {                            // B354: hrac 2
         const uint32_t t2 = nap::ovladac::klavesa(g_ovl_stav2, keyCode, dolu == JNI_TRUE);
-        if (t2) g_ovl_bity2.store(nap::ovladac::segaBity(g_ovl_stav2.vse()), std::memory_order_relaxed);
+        if (t2) g_ovl_bity2.store(nap::ovladac::segaMapuj(g_ovl_stav2.vse(), g_ovl_mapa), std::memory_order_relaxed);
         return (jint)t2;
     }
     const uint32_t t = nap::ovladac::klavesa(g_ovl_stav, keyCode, dolu == JNI_TRUE);
     if (t) {
-        g_ovl_bity.store(nap::ovladac::segaBity(g_ovl_stav.vse()), std::memory_order_relaxed);
+        g_ovl_bity.store(nap::ovladac::segaMapuj(g_ovl_stav.vse(), g_ovl_mapa), std::memory_order_relaxed);
         if (g_ovl_udalosti.fetch_add(1, std::memory_order_relaxed) < 10)
-            NAPLOG("B320 OVLADAC klavesa %d %s -> %s -> Sega bity 0x%02x", (int)keyCode, dolu ? "dolu" : "nahoru",
-                   nap::ovladac::jmena(t).c_str(), (unsigned)nap::ovladac::segaBity(t));
+            NAPLOG("B320 OVLADAC klavesa %d %s -> %s -> Sega bity 0x%03x", (int)keyCode, dolu ? "dolu" : "nahoru",
+                   nap::ovladac::jmena(t).c_str(), (unsigned)nap::ovladac::segaMapuj(t, g_ovl_mapa));
     }
     return (jint)t;
 }
@@ -1742,11 +1753,11 @@ Java_eu_atarihelp_emu10_NativeSegaCoreBridge_ovladacOsyHrac(JNIEnv* env, jclass,
     std::lock_guard<std::mutex> l(g_ovl_m);
     if (hrac == 1) {
         nap::ovladac::osy(g_ovl_stav2, o, maska);
-        g_ovl_bity2.store(nap::ovladac::segaBity(g_ovl_stav2.vse()), std::memory_order_relaxed);
+        g_ovl_bity2.store(nap::ovladac::segaMapuj(g_ovl_stav2.vse(), g_ovl_mapa), std::memory_order_relaxed);
         return;
     }
     nap::ovladac::osy(g_ovl_stav, o, maska);
-    g_ovl_bity.store(nap::ovladac::segaBity(g_ovl_stav.vse()), std::memory_order_relaxed);
+    g_ovl_bity.store(nap::ovladac::segaMapuj(g_ovl_stav.vse(), g_ovl_mapa), std::memory_order_relaxed);
 }
 extern "C" JNIEXPORT void JNICALL
 Java_eu_atarihelp_emu10_NativeSegaCoreBridge_ovladacOsy(JNIEnv* env, jclass c, jfloatArray josy, jint maska) {
@@ -1760,6 +1771,25 @@ Java_eu_atarihelp_emu10_NativeSegaCoreBridge_ovladacPust(JNIEnv*, jclass) {
     g_ovl_bity.store(0, std::memory_order_relaxed);
     nap::ovladac::pustVse(g_ovl_stav2);
     g_ovl_bity2.store(0, std::memory_order_relaxed);
+}
+/** B355: mapa tlacitek z Javy (NapOvladacMapa, "A=B;B=C;X=A;..."; "" = vychozi). Vraci mapu tak, jak ji
+ *  jadro pouziva (nezname dvojice zustanou vychozi) - Java ji da do logu. */
+extern "C" JNIEXPORT jstring JNICALL
+Java_eu_atarihelp_emu10_NativeSegaCoreBridge_ovladacMapa(JNIEnv* env, jclass, jstring jmapa) {
+    std::string s;
+    if (jmapa) {
+        const char* c = env->GetStringUTFChars(jmapa, nullptr);
+        if (c) { s.assign(c, strnlen(c, 4096)); env->ReleaseStringUTFChars(jmapa, c); }
+    }
+    std::string norm;
+    {
+        std::lock_guard<std::mutex> l(g_ovl_m);
+        g_ovl_mapa = nap::ovladac::mapaZRetezce(nap::ovladac::J_SEGA, s);
+        g_ovl_bity.store(nap::ovladac::segaMapuj(g_ovl_stav.vse(), g_ovl_mapa), std::memory_order_relaxed);
+        g_ovl_bity2.store(nap::ovladac::segaMapuj(g_ovl_stav2.vse(), g_ovl_mapa), std::memory_order_relaxed);
+        norm = nap::ovladac::mapaNaRetezec(g_ovl_mapa);
+    }
+    return env->NewStringUTF(norm.c_str());
 }
 
 extern "C" JNIEXPORT void JNICALL

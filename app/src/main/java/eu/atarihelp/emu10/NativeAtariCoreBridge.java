@@ -137,6 +137,10 @@ public final class NativeAtariCoreBridge {
     private static native int     devOvladacKlavesaHracNative(int hrac, int keyCode, boolean dolu);
     private static native void    devOvladacOsyHracNative(int hrac, float[] osy, int maska);
     private static native void    devOvladacPustNative();
+    // B355: TLACITKA OVLADACE - mapa tlacitek ("A=FIRE;B=FIRE;X=K33;..."; "" = vychozi) a katalog pro dialog
+    // (radky, cile, vychozi mapa pro jadro 0 Atari / 1 Sega / 2 PS1 - nap_ovladac.h je jedine misto)
+    private static native String  devOvladacMapaNative(String mapa);
+    private static native String  devOvladacKatalogNative(int jadro, boolean en);
     // B299: program z TXT souboru (rezim 0 = ATARI BASIC, 1 = Turbo-BASIC XL - ten zavede Java
     //  pred tim pres devLoadXexNative); diagnostika pameti a cela RAM pro LOG/CHYBA
     private static native String  devProgramNative(byte[] data, String jmeno, int rezim);
@@ -373,6 +377,16 @@ public final class NativeAtariCoreBridge {
     public static void devOvladacPustSafe() {
         if (!loaded) return;
         try { devOvladacPustNative(); } catch (Throwable ignored) {}
+    }
+    /** B355: mapa tlacitek ovladace pro Atari; vraci mapu tak, jak ji jadro pouziva ("" = knihovna chybi). */
+    public static String devOvladacMapaSafe(String mapa) {
+        if (!loaded) return "";
+        try { final String r = devOvladacMapaNative(mapa == null ? "" : mapa); return r == null ? "" : r; } catch (Throwable t) { return ""; }
+    }
+    /** B355: katalog TLACITKA OVLADACE pro jadro 0 Atari / 1 Sega / 2 PS1 ("" = knihovna chybi). */
+    public static String devOvladacKatalogSafe(int jadro, boolean en) {
+        if (!loaded) return "";
+        try { final String r = devOvladacKatalogNative(jadro, en); return r == null ? "" : r; } catch (Throwable t) { return ""; }
     }
 
     /** B299: TXT soubor -> program v ATARI BASICu (rezim 0) nebo Turbo-BASICu XL (rezim 1). */

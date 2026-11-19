@@ -1,0 +1,105 @@
+BUILD2SK99 GLES_INIT_ENTER
+BUILD2SK98 GLES_INIT egl version=1.5
+BUILD2SK98 GLES_INIT_OK pbuffer=1024x768 initial=320x240
+[1] Starting PCSX-ReARMed r26-nap-sa1 (cc 13.3.0 64bit pic ssse3 gpu=BUILTIN_GPU)
+
+2026-11-19 20:32:05.819  PS1 JADRO: Starting PCSX-ReARMed r26-nap-sa1 (cc 13.3.0 64bit pic ssse3 gpu=BUILTIN_GPU)
+[1] build time: Nov 13 2026 15:33:45
+
+2026-11-19 20:32:05.819  PS1 JADRO: build time: Nov 13 2026 15:33:45
+[1] 2 cpu core(s) detected
+
+2026-11-19 20:32:05.819  PS1 JADRO: 2 cpu core(s) detected
+[1] No BIOS files found.
+
+2026-11-19 20:32:05.820  PS1 JADRO: No BIOS files found.
+[1] Using PIXEL_FORMAT 2
+
+2026-11-19 20:32:05.820  PS1 JADRO: Using PIXEL_FORMAT 2
+[1] plugin: /builtin_gpu
+
+2026-11-19 20:32:05.820  PS1 JADRO: plugin: /builtin_gpu
+[1] plugin: /builtin_spu
+
+2026-11-19 20:32:05.820  PS1 JADRO: plugin: /builtin_spu
+[1] Plugins loaded.
+
+2026-11-19 20:32:05.820  PS1 JADRO: Plugins loaded.
+[1] Loaded CD Image: PRAC/mys_test.exe (688 bytes).
+
+2026-11-19 20:32:05.820  PS1 JADRO: Loaded CD Image: PRAC/mys_test.exe (688 bytes).
+[1] Track 01 DATA  - Start 00:02:00, Length 00:00:00
+
+2026-11-19 20:32:05.820  PS1 JADRO: Track 01 DATA  - Start 00:02:00, Length 00:00:00
+[1] End 00:02:00 (sector 150)
+
+2026-11-19 20:32:05.820  PS1 JADRO: End 00:02:00 (sector 150)
+[1] memcard 1 is libretro-managed
+
+2026-11-19 20:32:05.820  PS1 JADRO: memcard 1 is libretro-managed
+[1] memcard 2 is libretro-managed
+
+2026-11-19 20:32:05.820  PS1 JADRO: memcard 2 is libretro-managed
+[1] HLE BIOS initialized.
+
+2026-11-19 20:32:05.821  PS1 JADRO: HLE BIOS initialized.
+[1] note: running with HLE BIOS, expect compatibility problems
+
+2026-11-19 20:32:05.822  PS1 JADRO: note: running with HLE BIOS, expect compatibility problems
+[1] ----------------------------------------------------------
+
+2026-11-19 20:32:05.822  PS1 JADRO: ----------------------------------------------------------
+2026-11-19 20:32:05.822  PS1 PAMETOVA KARTA nova (soubor zatim neni): PRAC/karta_b354/memory_card_1.srm, 131072 B prazdna
+2026-11-19 20:32:05.822  PS1 MYS: hra mys_test.exe - vypnuta, ovladac v portu 1 (zapne se tlacitkem MYS na sirku)
+CESTA_A BOOT_OK gpuGles=ANO fps=60.00 zvukJadra=44100 Hz vystup=44100 Hz
+B354 - dva herni ovladace = dva hraci na PS1 (SKUTECNE jadro PCSX-ReARMed z appky, BIOS HLE, hra mys_test.exe)
+OK      jadro nastartovalo hru mys_test.exe (ps1EglBoot = 1)
+BUILD2SB70 PS1_VIDEO_ZMENA w=256 h=240 pitch=512 ocekavanyPitch=512 fmt=2 bpp=2 shoda_pitch=ANO
+BUILD2SK118 PS1_PIXFMT_CHECK fmt=2 (0=0RGB1555 1=XRGB8888_ocekavano 2=RGB565)
+BUILD2SK118 PS1_PIXFMT_CHECK fmt=2 (0=0RGB1555 1=XRGB8888_ocekavano 2=RGB565)
+BUILD2SK118 PS1_PIXFMT_CHECK fmt=2 (0=0RGB1555 1=XRGB8888_ocekavano 2=RGB565)
+BUILD2SK118 PS1_PIXFMT_CHECK fmt=2 (0=0RGB1555 1=XRGB8888_ocekavano 2=RGB565)
+BUILD2SK118 PS1_PIXFMT_CHECK fmt=2 (0=0RGB1555 1=XRGB8888_ocekavano 2=RGB565)
+BUILD2SK118 PS1_PIXFMT_CHECK fmt=2 (0=0RGB1555 1=XRGB8888_ocekavano 2=RGB565)
+BUILD2SK118 PS1_PIXFMT_CHECK fmt=2 (0=0RGB1555 1=XRGB8888_ocekavano 2=RGB565)
+BUILD2SK118 PS1_PIXFMT_CHECK fmt=2 (0=0RGB1555 1=XRGB8888_ocekavano 2=RGB565)
+BUILD2SK118 PS1_PIXFMT_CHECK fmt=2 (0=0RGB1555 1=XRGB8888_ocekavano 2=RGB565)
+BUILD2SK118 PS1_PIXFMT_CHECK fmt=2 (0=0RGB1555 1=XRGB8888_ocekavano 2=RGB565)
+BUILD2SK118 PS1_PIXFMT_CHECK fmt=2 (0=0RGB1555 1=XRGB8888_ocekavano 2=RGB565)
+BUILD2SK118 PS1_PIXFMT_CHECK fmt=2 (0=0RGB1555 1=XRGB8888_ocekavano 2=RGB565)
+BUILD2SK118 PS1_PIXFMT_CHECK fmt=2 (0=0RGB1555 1=XRGB8888_ocekavano 2=RGB565)
+BUILD2SK118 PS1_PIXFMT_CHECK fmt=2 (0=0RGB1555 1=XRGB8888_ocekavano 2=RGB565)
+BUILD2SK118 PS1_PIXFMT_CHECK fmt=2 (0=0RGB1555 1=XRGB8888_ocekavano 2=RGB565)
+BUILD2SK118 PS1_PIXFMT_CHECK fmt=2 (0=0RGB1555 1=XRGB8888_ocekavano 2=RGB565)
+BUILD2SK118 PS1_PIXFMT_CHECK fmt=2 (0=0RGB1555 1=XRGB8888_ocekavano 2=RGB565)
+BUILD2SK118 PS1_PIXFMT_CHECK fmt=2 (0=0RGB1555 1=XRGB8888_ocekavano 2=RGB565)
+BUILD2SK118 PS1_PIXFMT_CHECK fmt=2 (0=0RGB1555 1=XRGB8888_ocekavano 2=RGB565)
+BUILD2SK118 PS1_PIXFMT_CHECK fmt=2 (0=0RGB1555 1=XRGB8888_ocekavano 2=RGB565)
+OK      mys vypnuta: v portu 1 i 2 standardni ovladac (ID 41), hra cte oba porty, nic stisknuto
+2026-11-19 20:32:07.325  PS1 OVLADAC 2 (hrac 2): prvni stisk -> PS1 port 2
+OK      1) hrac 2: 12 z 12 tlacitek = spravne tlacitko PlayStation v PORTU 2, port 1 nic
+2026-11-19 20:32:08.527  PS1 OVLADAC: klavesa 108 dolu -> START -> PS1 START
+2026-11-19 20:32:08.577  PS1 OVLADAC: klavesa 108 nahoru -> START -> PS1 START
+oba: port 1 START+KRIZEK, port 2 VLEVO+KOLECKO | hrac 1 pustil: port 1 nic, port 2 VLEVO+KOLECKO
+OK      2) oba naraz: hrac 1 (ovladac + dotyk) v portu 1, hrac 2 v portu 2; pusteni hrace 1 nepusti hrace 2
+OK      3) hrac 2: leva packa = VPRAVO (port 1 nic), krizek HAT = DOLU+VLEVO, analogova spoust = L2, pusteno nic
+2026-11-19 20:32:08.877  PS1 MYS: mys v portu 1, ovladac v portu 2 (citlivost 100 %)
+[1] port: 1  device: mouse
+
+2026-11-19 20:32:08.892  PS1 JADRO: port: 1  device: mouse
+2026-11-19 20:32:08.894  PS1 MYS: jadro - port 1 = mys PlayStation, port 2 = ovladac
+2026-11-19 20:32:09.545  PS1 OVLADAC: klavesa 100 dolu -> Y(horni) -> PS1 TROJUHELNIK
+2026-11-19 20:32:09.595  PS1 OVLADAC: klavesa 100 nahoru -> Y(horni) -> PS1 TROJUHELNIK
+mys v portu 1 (2|100|33|mys_test.exe, cekani 35 snimku): port 2 = TROJUHELNIK
+OK      4) mys v portu 1 + ovladac v portu 2: port 2 = ovladac hrace 1 (TROJUHELNIK), hrac 2 nic (port 2 neni volny)
+2026-11-19 20:32:09.646  PS1 MYS: vypnuta, ovladac v portu 1 (citlivost 100 %)
+[1] port: 1  device: standard
+
+2026-11-19 20:32:09.659  PS1 JADRO: port: 1  device: standard
+2026-11-19 20:32:09.662  PS1 MYS: jadro - port 1 = ovladac, port 2 = ovladac
+2026-11-19 20:32:10.313  PS1 OVLADAC: klavesa 96 dolu -> A(spodni) -> PS1 KRIZEK
+OK      5) ovladac odpojen uprostred stisku obou hracu (port 1 KRIZEK, port 2 DOLU+CTVEREC) -> ps1OvladacPust: nic nedrzi
+DENIK: OVLADAC 2 (hrac 2): prvni stisk -> PS1 port 2
+OK      denik PS1: "OVLADAC 2 (hrac 2): prvni stisk -> PS1 port 2"
+CESTA_A EGL_STOP
+VYSLEDEK: 8 OK, 0 CHYBA

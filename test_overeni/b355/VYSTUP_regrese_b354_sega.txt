@@ -1,0 +1,10 @@
+B354 - dva herni ovladace = dva hraci na Seze (nap_sega_native_proof.cpp z appky, dotaz jadra clownmdemu)
+OK     1) hrac 2: 9 z 9 tlacitek = spravne tlacitko ovladace 2 Segy (A B C START, krizek); hrac 1 nic
+B320 OVLADAC klavesa 108 dolu -> START -> Sega bity 0x080
+B320 OVLADAC klavesa 108 nahoru -> START -> Sega bity 0x080
+oba: hrac 1 A+START, hrac 2 B | hrac 1 pustil START: A / B
+OK     2) oba naraz: hrac 1 START (ovladac) + A (dotyk), hrac 2 B; pusteni hrace 1 nepusti hrace 2; dotyk jen hrac 1
+OK     3a) hrac 2: leva packa = VPRAVO (hrac 1 nic), krizek HAT = DOLU+VLEVO, pusteno nic
+B320 OVLADAC klavesa 99 dolu -> X(leve) -> Sega bity 0x010
+OK     3b) ovladac odpojen uprostred stisku obou hracu (hrac 1 A, hrac 2 NAHORU+C) -> ovladacPust: nic nedrzi
+VYSLEDEK: 4 OK, 0 CHYBA

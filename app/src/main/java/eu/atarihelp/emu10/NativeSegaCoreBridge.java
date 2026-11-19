@@ -89,6 +89,8 @@ public final class NativeSegaCoreBridge {
     // B354: hrac 0 = ovladac 1, hrac 1 = ovladac 2 Segy (druhy herni ovladac)
     private static native int ovladacKlavesaHrac(int hrac, int keyCode, boolean dolu);
     private static native void ovladacOsyHrac(int hrac, float[] osy, int maska);
+    // B355: mapa tlacitek ovladace ("A=B;B=C;X=A;..."; "" = vychozi) - vraci mapu tak, jak ji jadro pouziva
+    private static native String ovladacMapa(String mapa);
 
     public static int ovladacKlavesaSafe(int keyCode, boolean dolu) {
         try { return ovladacKlavesa(keyCode, dolu); } catch (Throwable t) { return 0; }
@@ -105,5 +107,9 @@ public final class NativeSegaCoreBridge {
     }
     public static void ovladacOsySafe(int hrac, float[] osy, int maska) {
         try { ovladacOsyHrac(hrac, osy, maska); } catch (Throwable ignored) {}
+    }
+    /** B355: mapa tlacitek ovladace pro Segu; vraci mapu tak, jak ji jadro pouziva ("" = chyba). */
+    public static String ovladacMapaSafe(String mapa) {
+        try { final String r = ovladacMapa(mapa == null ? "" : mapa); return r == null ? "" : r; } catch (Throwable t) { return ""; }
     }
 }

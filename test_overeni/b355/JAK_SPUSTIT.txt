@@ -1,0 +1,87 @@
+B355 - TLACITKA OVLADACE (CO KTERE TLACITKO DELA, ZVLAST ATARI / SEGA / PS1) + CHYBY Z LOGU RENEHO - overeni na PC
+===================================================================================================================
+
+Rene (19. 11., log B354): "v atari jsou asi chyby na ovladaci ... atari je potreba nakonfigurovat", pak "ty musis podle
+logu najit sam kde je chyba" a "musi byt v nastaveni u kazdeho emu co ktere tlacitko ma delat podle bt d-padu".
+
+CHYBY Z LOGU (Pro Controller = hrac 1, ovladac PlayStation = hrac 2; Tony VBXE, Prince of Persia)
+ 1) HOME (a tlacitko snimku Pro Controlleru, ktere appka podle mista bere jako MODE) a ZL / ZR byly v Atari OPTION.
+    PoP: "Esc/OPTION: option menu" (readme hry). Log: 18:23:59 snimek, 18:25:11 HOME -> menu hry, 18:25:17 RETURN
+    z klavesnice PC (= "exit option menu"). Ted HOME = MENU (otevre TLACITKA OVLADACE), ZL / ZR zustavaji OPTION.
+ 2) B353 turbo cekalo na zacatku kazde hry 3 s: pri odchodu ze hry Java posle "pust vse" (devPad 0, devOvladacPust),
+    udalosti zustaly ve fronte a prvni snimek dalsi hry je bral jako vstup hrace. Ted se do vstupu pocita jen
+    SKUTECNA zmena (PAD, JOY).
+ 3) Log ukazal jen prvnich 10 stisku v Atari (B320) a B329 jen prvni stisk tlacitka za cely beh appky (v Atari po
+    Seze nic). Ted B329 loguje prvni stisk kazdeho tlacitka v KAZDEM emulatoru a s tim, co udelal:
+    "B329 OVLADAC tlacitko ... -> Atari 130XE: klavesa RETURN".
+
+CO DELA B355
+ - nap_ovladac.h: mapa tlacitek pro kazde jadro. Radky = tlacitka podle MISTA (A spodni, B prave, X leve, Y horni,
+   L1 R1 L2 R2 L3 R3, START, SELECT, MODE = HOME), smer zustava smerem, C / Z pevne. Cile:
+     Atari: nic, MENU, FIRE, joystick nahoru / dolu / vlevo / vpravo, START, SELECT, OPTION, HELP, BREAK a kterakoli
+            klavesa (MEZERA, RETURN, ESC, TAB, DELETE, CAPS, INVERSE, A-Z, 0-9, - = + * ; , . / < >) - 65 cilu
+     Sega:  nic, MENU, A, B, C, START, X, Y, Z, MODE (ovladac se 6 tlacitky - clownmdemu se pta i na ne), smer
+     PS1:   nic, MENU, krizek, kolecko, ctverec, trojuhelnik, L1-R3, START, SELECT, smer
+   Vychozi = chovani do B354 krome: HOME = MENU vsude (Atari drive OPTION, PS1 drive SELECT); Sega navic 6 tlacitek:
+   horni = Y, L2 = X, R2 = Z, tlacitko Z = Z. Katalog (radky, cile, jmena CZ / EN, vychozi mapa) dava Jave knihovna
+   Atari (devOvladacKatalogNative) - nic neni opsane dvakrat.
+ - Atari: udalost PAD hrace 1 ma v bitech 8-16 klavesu (KBCODE + 1) a bit 17 BREAK; hrac 2 ma priznak bit 30 (drive
+   bit 16). Drzi-li hrac vic klaves, plati naposled stisknuta. Klavesy a BREAK jen hrac 1 (klavesnice je jedna).
+ - JNI: devOvladacMapaNative, devOvladacKatalogNative (Atari), ovladacMapa (Sega), ps1OvladacMapa (PS1) - vraci mapu
+   tak, jak ji jadro pouziva; log "B355 OVLADAC TLACITKA ...", PS1 denik.
+ - Java NapOvladacMapa (cista trida): mapa jako text "A=FIRE;B=FIRE;X=K33;..." ("" = vychozi), SharedPreferences
+   "nap_ovladac_mapa"; jadro dostane mapu pred dalsim stiskem (verze). MainActivity: dialog TLACITKA OVLADACE (stisk
+   tlacitka na ovladaci = rovnou vyber pro jeho radek, krizek a OK dalkoveho = pohyb, VYCHOZI, HOTOVO); otevira se
+   z OPTIONS -> HERNI OVLADAC -> ATARI / SEGA / PS1, z kolecka (Atari na sirku, Sega, PS1 -> TLACITKA HERNIHO
+   OVLADACE) a ve hre tlacitkem s cilem MENU (vychozi HOME).
+ - Napoveda CZ / EN, slovniky en_konzole.js a en_menu.js.
+
+Spoustet z adresare test_overeni/b355 (JAVA_HOME = JDK, ANDROID_JAR = android.jar API 34, PRAC jako ../b320/vse.sh).
+
+1) Mapa (ciste C++):
+     g++ -std=c++17 -O1 -Wall -Wextra -I../../app/src/main/cpp -o test_b355_mapa test_b355_mapa.cpp
+     ./test_b355_mapa KATALOGY                      -> VYSTUP_test_b355_mapa.txt (13 OK; zapise KATALOGY/katalog_*.txt)
+   vychozi mapy = do B354 krome zamernych zmen, text tam a zpet, Atari klavesy / BREAK / posledni, katalog,
+   scankody = klavesnice pristroje (nap_atari_device.h) a standardni KBCODE.
+
+2) Atari - SKUTECNY nap_atari_native.cpp (stuby z ../b291/stub):
+     g++ -std=c++17 -O2 -pthread -I../b291/stub -I$JAVA_HOME/include -I$JAVA_HOME/include/linux \
+         -I../../app/src/main/cpp/atari -o test_b355_atari test_b355_atari.cpp
+     ./test_b355_atari                              -> VYSTUP_test_b355_atari.txt (11 kontrol, 0 chyb)
+   HOME uz neni OPTION; vlastni mapa: P, HELP (posledni plati), joystick nahoru, OPTION, BREAK (OS vynuluje SSFLAG
+   a CRSINH); hrac 2; "pust vse" bez zmeny neni vstup hrace (turbo); katalog; "" = vychozi.
+
+3) Sega - SKUTECNY nap_sega_native_proof.cpp + clownmdemu ($SEGA a PRAC/clown jako ../b320/vse.sh):
+     g++ -std=c++17 -O2 -pthread -Wno-unused-function $SEGA -o test_b355_sega test_b355_sega.cpp PRAC/clown/*.o \
+         -l:libEGL.so.1 -l:libGLESv2.so.2
+     ./test_b355_sega                               -> VYSTUP_test_b355_sega.txt (4 OK)
+
+4) PS1 - SKUTECNE jadro PCSX-ReARMed + "hra" mys_test.exe ($PS1 a PRAC/jadro jako ../b320/vse.sh):
+     g++ -std=c++17 -O1 -g -pthread $PS1 -o test_b355_ps1 test_b355_ps1.cpp PRAC/jadro/*.o \
+         -l:libEGL.so.1 -l:libGLESv2.so.2 -lz -ldl
+     EGL_PLATFORM=surfaceless ./test_b355_ps1 PRAC PRAC/mys_test.exe -> VYSTUP_test_b355_ps1.txt (7 OK)
+
+5) JVM (jvm/):
+     javac --release 17 -encoding UTF-8 -cp $ANDROID_JAR -d OUT NapOvladac.java NapDalkovy.java NapOvladacMapa.java \
+         NativePs1CoreBridge.java NativeSegaCoreBridge.java NativeAtariCoreBridge.java jvm/TestB355Mapa.java jvm/TestB355Most.java
+     java -Dstdout.encoding=UTF-8 -cp OUT:$ANDROID_JAR eu.atarihelp.emu10.TestB355Mapa KATALOGY  -> jvm/VYSTUP_TestB355Mapa.txt (6 OK)
+       (parser Javy na SKUTECNYCH katalozich z kroku 1)
+     libnapps1core.so z ../b308/ps1_harness.cpp (jako ../b320/vse.sh krok 7), pak
+     EGL_PLATFORM=surfaceless java -Xcheck:jni -Djava.library.path=LIB -cp OUT:$ANDROID_JAR \
+         eu.atarihelp.emu10.TestB355Most PRAC                                    -> jvm/VYSTUP_TestB355Most.txt (4 OK)
+     (radek "terminate called" na konci = vlakno zvukove karty v nahrade OpenSL testu B308, ne appka)
+
+6) javac cele appky s hlavickami JNI (-h HLAVICKY) -> VYSTUP_javac_android.txt (0 chyb);
+   python3 ../b320/kontrola_jni.py HLAVICKY -> VYSTUP_kontrola_jni.txt (114 native metod, 0 CHYB)
+   (skript pise do ../b320/VYSTUP_kontrola_jni.txt - zkopirovat sem a v b320 vratit: git checkout --)
+
+7) Regrese (skutecny kod B355) -> VYSTUP_regrese_*.txt:
+   ../b320 test_b320_ovladac 20 (B355 upravil zamerne C2 PS1 HOME, D1 Sega horni = Y, E1 Atari HOME a klavesa jako
+   kod), test_b320_atari_ovladac 14, test_b320_sega_ovladac 5; ../b348 test_b348_jni 16; ../b352 test_b352_jni 12
+   (s Tony); ../b353 test_b353_jni 11 (s Tony a PoP); ../b354 Atari 12, Sega 4, PS1 8, TestB354Hraci 9, TestB354Most 6.
+   Pravidlo B343 (napoveda): b311 221 nazvu 0 CHYBA, b314 213 0 CHYBA, b343 3 CHYBA ZAMERNE (N7, A6, V).
+   Hry Reneho (Tony, PoP) v repozitari nejsou.
+
+Overi Rene (telefon): HOME na ovladaci ve hre otevre TLACITKA OVLADACE; v Prince of Persia uz HOME neotevre menu hry;
+zmena tlacitka (napr. Atari Y = klavesa P = pauza v PoP) plati hned; Sega se 6 tlacitky (bojovka 1 na 1); turbo
+u Tonyho / PoP hned od zacatku. Log: radky "B355 OVLADAC TLACITKA" a "B329 OVLADAC tlacitko ... -> ...: co dela".

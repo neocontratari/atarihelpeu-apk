@@ -1,0 +1,24 @@
+B320 - herni ovladac (Retroid Pocket 6, gamepad): nap_ovladac.h + packa jako mys PS1 (nap_ps1_mys.h)
+
+OK     A1) 24 klaves ovladace -> logicka tlacitka podle mista (A spodni, B prave, X leve, Y horni), uhlopricky krizku; ZPET, Enter, hlasitost, BUTTON_1..16 nejsou tlacitka hry
+OK     A2) drzeni a pusteni: A+B drzeno 0x3, A pusteno -> 0x2, ZPET vraci 0 (Java ji pusti dal), uhlopricka dolu i nahoru zpet
+OK     A3) pustVse (ovladac odpojen / odchod ze hry): nic nedrzi
+OK     B1) krizek jako osy HAT: -1 vlevo, (1,1) vpravo+dolu, Y -1 nahoru (Android: zaporne = nahoru), 0 nic; bez HAT v masce nic
+OK     B2) leva packa jako smer s hysterezi: 0,45 nic, 0,55 vpravo, zpet na 0,40 porad vpravo (zadne cukani), 0,30 nic; sikmo (-0,6,-0,6) vlevo+nahoru, (-0,36,-0,2) jen vlevo
+OK     B3) mrtva zona 0,20: (0,15, 0,1) = 0 (packa v klidu nedriftuje), plna vychylka 1, 0,6 -> 0.50, -0,21 -> -0.01 (plynule od okraje zony)
+OK     B4) analogove spouste L2 / R2: 0,49 nic, 0,5 drzi, pusteni pod 0,35 (R2 0,34 pusteno, L2 0,36 drzi); bez spousti v masce nic
+OK     B5) NaN z ovladace (rozbita osa) = nic
+OK     B6) vse(): klavesy + spouste + smer leve packy 0x10084, bez leve packy 0x84
+OK     C1) PS1: fyzicka tlacitka = stejna cisla RetroPad jako dotyk na strance (ps1ButtonId ze zdrojaku, 18 jmen): 14 z 14
+OK     C2) PS1: L3 / R3 (stisk packy) = 14 / 15, MODE = nic (B355: MENU), C = KRIZEK, Z = KOLECKO (ovladace ve stylu Segy)
+OK     C3) oprava proti B319 (mapovani v Jave, git 0f80608): B: CTVEREC -> KOLECKO; X: SELECT -> CTVEREC; Y: START -> TROJUHELNIK; SELECT: KOLECKO -> SELECT; START: TROJUHELNIK -> START; A, L1, R2 jako drive
+OK     D1) Sega: leve = A, spodni = B, prave = C (A B C v rade zleva jako Genesis Plus GX), L1 = A, R1 = C, START; bity = g_input jadra Segy (cteno ze zdrojaku); B355: horni = Y ovladace se 6 tlacitky (bit 9)
+OK     E1) Atari 130XE: 16 z 16 tlacitek stejne jako Java do B319 (FIRE A/B/L1/R1, START, SELECT, OPTION L2/R2, X = MEZERA, Y = RETURN; B355: HOME = MENU, klavesa jako kod)
+OK     F1) prava packa naplno: 6 bodu mysi za snimek -> 360 bodu za 60 snimku (1 s, ~1 sirka obrazu), po pusteni dojede jen 3
+OK     F2) sikmo napul (0,5, -0,5): krivka na druhou -> 127 / -127 bodu (vypocet 127.28)
+OK     F3) citlivost 400 %: packa jen 2x rychleji (odmocnina - packa nelita): 354 bodu za 30 snimku
+OK     F4) leva packa: mys samotna v portu 1 (Dune 2000) jede leva (vic vychylena) 228 bodu; s ovladacem v portu 2 leva mys nehybe (0), jen prava 32
+OK     F5) mys vypnuta: packa mys nehybe (jde jako ovladac)
+OK     F6) mys v portu 1: spodni (KRIZEK) = leve tlacitko mysi (20 snimku), krizek vpravo = kurzor 40 bodu; mys + ovladac v portu 2: KRIZEK jde ovladaci v portu 2, ne mysi
+
+VYSLEDEK: 20 OK, 0 CHYBA

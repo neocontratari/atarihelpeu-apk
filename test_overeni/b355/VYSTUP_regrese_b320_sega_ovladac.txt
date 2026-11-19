@@ -1,0 +1,17 @@
+B320 OVLADAC klavesa 99 dolu -> X(leve) -> Sega bity 0x010
+B320 OVLADAC klavesa 99 nahoru -> X(leve) -> Sega bity 0x010
+B320 OVLADAC klavesa 96 dolu -> A(spodni) -> Sega bity 0x020
+B320 OVLADAC klavesa 96 nahoru -> A(spodni) -> Sega bity 0x020
+B320 OVLADAC klavesa 97 dolu -> B(prave) -> Sega bity 0x040
+B320 OVLADAC klavesa 97 nahoru -> B(prave) -> Sega bity 0x040
+B320 OVLADAC klavesa 102 dolu -> L1 -> Sega bity 0x010
+B320 OVLADAC klavesa 102 nahoru -> L1 -> Sega bity 0x010
+B320 OVLADAC klavesa 103 dolu -> R1 -> Sega bity 0x040
+B320 OVLADAC klavesa 103 nahoru -> R1 -> Sega bity 0x040
+B320 - herni ovladac na Seze (nap_sega_native_proof.cpp z appky, dotaz jadra clownmdemu na tlacitka)
+OK     1) 13 z 13 tlacitek ovladace = spravne tlacitko Segy (leve A, spodni B, prave C, L1 A, R1 C, START, krizek); hrac 2 nic; pusteni
+OK     1b) Y a SELECT na Seze nic (Mega Drive je nema); ZPET neni tlacitko ovladace
+OK     2) leva packa -0,9 = VLEVO, -0,4 porad (hystereze); krizek HAT = NAHORU+VPRAVO; prava packa a spouste nic; pusteno nic
+OK     3) dotyk na strance (START) + ovladac (B) soucasne: B+START; pusteni jednoho nepusti druhe
+OK     4) drzeno DOLU+VPRAVO+A: ovladac odpojen (ovladacPust) = nic; drzene C pri konci Segy (shutdown) = nic
+VYSLEDEK: 5 OK, 0 CHYBA

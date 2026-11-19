@@ -1,0 +1,8 @@
+B354 - mosty pro hrace 2 v JVM (-Xcheck:jni): NativePs1CoreBridge se skutecnym nap_ps1_native.cpp, Atari bez knihovny
+OK     A1) knihovna napps1core nactena skutecnou tridou NativePs1CoreBridge
+OK     A2) podpisy: int ps1OvladacKlavesaHrac(int, int, boolean), void ps1OvladacOsyHrac(int, float[], int) - private static native
+OK     A3) bootGameSafe -> PS1_HRA_OK
+OK     A4) za behu hry: hrac 2 A -> 1 (T_A), B -> 2 (T_B); hrac 1 A -> 1; stara metoda -> 1; ZPET -> 0; osy hrace 2 (i kratke pole a null) a ovladacPustSafe bez chyby JNI
+OK     A5) denik PS1: "OVLADAC 2 (hrac 2): prvni stisk -> PS1 port 2"
+OK     B1) most Atari bez knihovny: devOvladac*Safe(hrac 2, ...) vraci 0 a nespadne
+VYSLEDEK: 6 OK, 0 CHYBA

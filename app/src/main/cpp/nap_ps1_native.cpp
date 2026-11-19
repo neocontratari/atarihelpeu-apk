@@ -1065,6 +1065,23 @@ static std::mutex g_ovl_m;
 static nap::ovladac::Stav g_ovl_stav;                   // pod g_ovl_m (vlakno UI Javy)
 static std::atomic<uint32_t> g_ovl_logicke{0};          // logicka tlacitka vcetne smeru z leve packy
 static std::atomic<uint32_t> g_ovl_bez_packy{0};        // ... bez smeru z leve packy (ta pak ridi mys)
+// B355: mapa tlacitek (TLACITKA OVLADACE v appce). Pro kazdy radek mapy (R_*) hotove bity RetroPadu - vlakno
+// emulace je cte bez zamku; mapu nastavuje Java (ps1OvladacMapa) pod g_ovl_m
+static std::atomic<uint32_t> g_ovl_vystup[nap::ovladac::R_POCET];
+static nap::ovladac::Mapa g_ovl_mapa = nap::ovladac::vychoziMapa(nap::ovladac::J_PS1);   // pod g_ovl_m
+static void ps1_mapa_zverejni(const nap::ovladac::Mapa &m) {
+  for (int i = 0; i < nap::ovladac::R_POCET; i++)
+    g_ovl_vystup[i].store(nap::ovladac::ps1Mapuj(nap::ovladac::R_BIT[i], m), std::memory_order_relaxed);
+}
+[[maybe_unused]] static const bool g_ovl_vystupHotovo = [] { ps1_mapa_zverejni(nap::ovladac::vychoziMapa(nap::ovladac::J_PS1)); return true; }();
+// logicka tlacitka -> bity RetroPadu: smer, C (= KRIZEK), Z (= KOLECKO) pevne, ostatni podle mapy
+static uint32_t ps1_mapuj(uint32_t t) {
+  static const nap::ovladac::Mapa PRAZDNA = [] { nap::ovladac::Mapa m; m.jadro = nap::ovladac::J_PS1; return m; }();
+  uint32_t r = nap::ovladac::ps1Mapuj(t, PRAZDNA);
+  for (int i = 0; i < nap::ovladac::R_POCET; i++)
+    if (t & nap::ovladac::R_BIT[i]) r |= g_ovl_vystup[i].load(std::memory_order_relaxed);
+  return r;
+}
 static std::atomic<uint32_t> g_ovl_snimek{0};           // PS1 bity pro tenhle krok (pocita vlakno emulace)
 static std::atomic<int> g_ovl_udalosti{0}, g_ovl_v_okne{0};
 // B354: druhy herni ovladac = hrac 2 v portu 2 (jen s vypnutou mysi - jinak port 2 patri mysi / ovladaci 1)
@@ -1093,11 +1110,11 @@ static void ps1_ovladac_pust(void) {
 // (s mysi samotnou v portu 1 leva packa neni smer - ridi kurzor analogove)
 static uint32_t ps1_ovladac_pro_snimek(void) {
   const bool mysSama = g_mys.rezim() == nap::Ps1Mys::PORT1;
-  const uint32_t b = nap::ovladac::ps1Bity(mysSama ? g_ovl_bez_packy.load(std::memory_order_relaxed)
-                                                   : g_ovl_logicke.load(std::memory_order_relaxed));
+  const uint32_t b = ps1_mapuj(mysSama ? g_ovl_bez_packy.load(std::memory_order_relaxed)
+                                     : g_ovl_logicke.load(std::memory_order_relaxed));
   g_ovl_snimek.store(b, std::memory_order_relaxed);
   // B354: hrac 2 jen s vypnutou mysi (port 2 je pak ovladac); jinak nic
-  g_ovl_snimek2.store(g_mys.rezim() == nap::Ps1Mys::VYP ? nap::ovladac::ps1Bity(g_ovl_logicke2.load(std::memory_order_relaxed)) : 0u,
+  g_ovl_snimek2.store(g_mys.rezim() == nap::Ps1Mys::VYP ? ps1_mapuj(g_ovl_logicke2.load(std::memory_order_relaxed)) : 0u,
                       std::memory_order_relaxed);
   return b;
 }
@@ -1423,7 +1440,7 @@ Java_eu_atarihelp_emu10_NativePs1CoreBridge_ps1OvladacKlavesaHrac(JNIEnv *, jcla
     const int n = g_ovl_udalosti.fetch_add(1, std::memory_order_relaxed);
     if (n < 10)
       ps1_denik("OVLADAC: klavesa %d %s -> %s -> PS1 %s", (int)keyCode, dolu ? "dolu" : "nahoru",
-                nap::ovladac::jmena(t).c_str(), ps1_tlacitka_text(nap::ovladac::ps1Bity(t)).c_str());
+                nap::ovladac::jmena(t).c_str(), ps1_tlacitka_text(ps1_mapuj(t)).c_str());
     else if (n == 10) ps1_denik("OVLADAC: dalsi stisky jen v radcich TLACITKA a v souctu ZDRAVI");
   }
   return (jint)t;
@@ -1458,6 +1475,29 @@ Java_eu_atarihelp_emu10_NativePs1CoreBridge_ps1OvladacOsy(JNIEnv *env, jclass c,
 extern "C" JNIEXPORT void JNICALL
 Java_eu_atarihelp_emu10_NativePs1CoreBridge_ps1OvladacPust(JNIEnv *, jclass) {
   ps1_ovladac_pust();
+}
+/** B355: mapa tlacitek z Javy (NapOvladacMapa, "A=KRIZEK;B=KOLECKO;..."; "" = vychozi). Vraci mapu tak, jak ji
+ *  jadro pouziva (nezname dvojice zustanou vychozi); zmena do deniku. */
+extern "C" JNIEXPORT jstring JNICALL
+Java_eu_atarihelp_emu10_NativePs1CoreBridge_ps1OvladacMapa(JNIEnv *env, jclass, jstring jmapa) {
+  std::string s;
+  if (jmapa) {
+    const char *c = env->GetStringUTFChars(jmapa, nullptr);
+    if (c) { s.assign(c, strnlen(c, 4096)); env->ReleaseStringUTFChars(jmapa, c); }
+  }
+  std::string norm, popis;
+  bool zmena;
+  {
+    std::lock_guard<std::mutex> l(g_ovl_m);
+    const nap::ovladac::Mapa m = nap::ovladac::mapaZRetezce(nap::ovladac::J_PS1, s);
+    zmena = !nap::ovladac::stejnaMapa(m, g_ovl_mapa);
+    g_ovl_mapa = m;
+    ps1_mapa_zverejni(m);
+    norm = nap::ovladac::mapaNaRetezec(m);
+    popis = nap::ovladac::mapaPopis(m);
+  }
+  if (zmena) ps1_denik("OVLADAC TLACITKA (B355): %s", popis.c_str());
+  return env->NewStringUTF(norm.c_str());
 }
 
 /** B308: klavesa z prohlizece (TV / PC). Vraci text pro prohlizec. */

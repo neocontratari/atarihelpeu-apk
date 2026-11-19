@@ -169,6 +169,14 @@ body{background:radial-gradient(120% 70% at 50% 40%,#1c1006 0%,#0a0603 45%,#0302
       <button id="stOvlSkryt" type="button">SKRÝT DOTYK</button>
     </div>
     <div class="sthint" id="stOvlHint"></div>
+    <!-- B355: TLACITKA OVLADACE - co ktere tlacitko herniho ovladace dela, zvlast pro kazdy emulator
+         (Rene: "musi byt v nastaveni u kazdeho emu"). Dialog appky; ve hre ho otevre i HOME na ovladaci. -->
+    <div class="sthint" id="stTlHint">TLAČÍTKA OVLADAČE – co které tlačítko dělá:</div>
+    <div class="qrow" id="stTlacitka">
+      <button id="stTlAtari" type="button" data-nepreklad>ATARI</button>
+      <button id="stTlSega" type="button" data-nepreklad>SEGA</button>
+      <button id="stTlPs1" type="button" data-nepreklad>PS1</button>
+    </div>
     <!-- B331: Bluetooth ovladac primo v appce - hledani, parovani, zapamatovane ovladace (Android si parovani pamatuje) -->
     <button id="stBtHledej" type="button">PŘIPOJIT OVLADAČ (BLUETOOTH)</button>
     <div id="stBt" style="display:none">
@@ -489,6 +497,15 @@ OVL_TL.forEach(function(p){
     try{ if(window.AHOVL) AHOVL.nastavRezim(p[1]); }catch(err){}
     log('SETTINGS_OVLADAC rezim='+p[1]);
     setTimeout(ovlObnov,150);
+  },true);
+});
+// B355: TLACITKA OVLADACE - dialog appky (AHOVL.tlacitka) pro Atari, Segu a PS1
+[['stTlAtari','atari'],['stTlSega','sega'],['stTlPs1','ps1']].forEach(function(p){
+  var el=$(p[0]); if(!el) return;
+  el.addEventListener('click',function(e){
+    e.preventDefault();e.stopPropagation();
+    try{ if(window.AHOVL) AHOVL.tlacitka(p[1]); }catch(err){}
+    log('SETTINGS_OVLADAC tlacitka='+p[1]);
   },true);
 });
 // B331: BLUETOOTH OVLADAC PRIMO V APPCE - Java (AHBT) hleda, paruje a vraci stav jako JSON:

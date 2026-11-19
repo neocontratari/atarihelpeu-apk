@@ -797,6 +797,9 @@ static const long long B348_OPTION_PRI_BOOTU = 50;
 // 0 nahoru, 1 dolu, 2 vlevo, 3 vpravo, 4 FIRE); START/SELECT/OPTION z
 // ovladace (1/2/4 = stisknuto). Vse pod g_mStroj.
 static int g_joyDotyk = 0, g_joyPad = 0, g_padConsol = 0, g_padKlav = 0;
+static bool g_padBreak = false;                    // B355: BREAK z herniho ovladace (drzeny)
+// B355: udalost PAD hrace 2 ma bit 30 (bity 8-17 hrace 1 jsou ted klavesa a BREAK - nap_ovladac.h atariMapuj)
+static constexpr int PAD_HRAC2 = 1 << 30;
 static int g_joyPad2 = 0, g_padConsol2 = 0;        // B354: druhy herni ovladac = joystick 2 (hrac 2)
 static bool g_joyHlasenoDotyk = false, g_joyHlasenoPad = false, g_joyHlasenoPad2 = false;
 // B302: klavesnice pocitace (prohlizec na TV/PC): joystick 1 a START/SELECT/OPTION
@@ -1285,17 +1288,19 @@ static void emuVlaknoMain() {
             }
             break;
           case nap::dev::Ev::JOY:
-            vstupHraceTed();                                   // B353: hrac hraje -> zadne turbo
+            if ((e.v & 31) != g_joyDotyk) vstupHraceTed();     // B353/B355: hrac hraje -> zadne turbo (jen skutecna zmena)
             g_joyDotyk = e.v & 31;
             aplikujJoyLocked();
             if (!g_joyHlasenoDotyk) { g_joyHlasenoDotyk = true; devLog("B296 JOYSTICK 1 dotykem na obrazovce (leva pulka = smer, prava = FIRE)"); }
             break;
           case nap::dev::Ev::PAD: {
-            vstupHraceTed();                                   // B353: hrac hraje -> zadne turbo
-            if (e.v & 0x10000) {                               // B354: druhy ovladac = joystick 2 + START / SELECT / OPTION
+            // B355: do turba (B353) se pocita jen SKUTECNA zmena - "pust vse" pri odchodu ze hry zustalo ve
+            // fronte a na zacatku dalsi hry drzelo turbo 3 s (log Reneho: Tony a PoP turbo az po ~3 s)
+            if (e.v & PAD_HRAC2) {                             // B354: druhy ovladac = joystick 2 + START / SELECT / OPTION
+              const int pc2 = (e.v >> 5) & 7;
+              if ((e.v & 31) != g_joyPad2 || pc2 != g_padConsol2) vstupHraceTed();
               g_joyPad2 = e.v & 31;
               aplikujJoyLocked();
-              const int pc2 = (e.v >> 5) & 7;
               for (int b = 0; b < 3; b++)
                 if ((pc2 & (1 << b)) && !(g_padConsol2 & (1 << b))) g_consolDrzetDo[b] = g_snimkuCelkem.load() + 5;
               g_padConsol2 = pc2;
@@ -1303,9 +1308,12 @@ static void emuVlaknoMain() {
               if (!g_joyHlasenoPad2 && (e.v & 0xFF)) { g_joyHlasenoPad2 = true; devLog("B354 JOYSTICK 2 z druheho herniho ovladace (hrac 2: smer, FIRE, START / SELECT / OPTION)"); }
               break;
             }
+            const int pc = (e.v >> 5) & 7;
+            const int kl = (int)((e.v & nap::ovladac::AP_KLAVESA_MASKA) >> nap::ovladac::AP_KLAVESA_POSUN);   // KBCODE + 1, 0 = zadna
+            const bool brk = (e.v & nap::ovladac::AP_BREAK) != 0;
+            if ((e.v & 31) != g_joyPad || pc != g_padConsol || kl != g_padKlav || brk != g_padBreak) vstupHraceTed();
             g_joyPad = e.v & 31;
             aplikujJoyLocked();
-            const int pc = (e.v >> 5) & 7;
             if (pc != g_padConsol) {
               // kratky stisk START/SELECT/OPTION musi stroj videt aspon 5 snimku
               for (int b = 0; b < 3; b++)
@@ -1313,15 +1321,14 @@ static void emuVlaknoMain() {
               g_padConsol = pc;
               if (g_stroj && !g_xex.aktivni()) g_stroj->consol = consolEfektivni();
             }
-            // tlacitka X / Y = klavesy MEZERA / RETURN (drzene jako prstem)
-            const int kl = (e.v >> 8) & 3;
+            // B355: tlacitko s klavesou (mapa: MEZERA, RETURN, ESC, HELP, P ...) - drzena jako prstem
             if (kl != g_padKlav && g_stroj && g_strojBezi) {
-              const int nove = kl & ~g_padKlav;
-              if (nove & 1) g_stroj->klavesa(33, true);
-              else if (nove & 2) g_stroj->klavesa(12, true);
-              else if (!kl) g_stroj->klavesaPustena();
+              if (kl) g_stroj->klavesa(kl - 1, true);
+              else g_stroj->klavesaPustena();
             }
             g_padKlav = kl;
+            if (brk && !g_padBreak && g_stroj && g_strojBezi) g_stroj->breakKey();   // B355: BREAK z ovladace
+            g_padBreak = brk;
             if (!g_joyHlasenoPad) { g_joyHlasenoPad = true; devLog("B296 JOYSTICK 1 z herniho ovladace / klavesnice telefonu (smer, FIRE, START, SELECT, OPTION)"); }
             break;
           }
@@ -1596,6 +1603,7 @@ Java_eu_atarihelp_emu10_NativeAtariCoreBridge_devStartNative(JNIEnv *, jclass, j
     std::lock_guard<std::mutex> l(g_mStroj);
     if (studeny) {
       g_joyDotyk = g_joyPad = g_padConsol = g_padKlav = 0;   // B296: joystick pusteny
+      g_padBreak = false;                                    // B355
       g_joyPad2 = g_padConsol2 = 0;                          // B354
       g_joyPc = g_pcConsol = 0;                              // B302: klavesnice pocitace pustena
       g_pcHrac.zrus();
@@ -1933,62 +1941,70 @@ Java_eu_atarihelp_emu10_NativeAtariCoreBridge_devCtlNative(JNIEnv *env, jclass, 
 }
 
 /** B296: herni ovladac / klavesnice telefonu -> joystick 1 a konzole.
- *  maska: bit0 nahoru, 1 dolu, 2 vlevo, 3 vpravo, 4 FIRE, 5 START, 6 SELECT, 7 OPTION,
- *  8 klavesa MEZERA, 9 klavesa RETURN. */
-// B320: herni ovladac (nap_ovladac.h atariBity) a klavesnice telefonu (Java devPad) maji kazdy
-// svou masku - do stroje jde jejich soucet (jedno druhemu nic nepusti)
+ *  maska (Java devPad): bit0 nahoru, 1 dolu, 2 vlevo, 3 vpravo, 4 FIRE, 5 START, 6 SELECT, 7 OPTION.
+ *  B355: herni ovladac navic bity 8-16 klavesa (KBCODE + 1) a 17 BREAK (nap_ovladac.h atariMapuj). */
+// B320: herni ovladac (nap_ovladac.h) a klavesnice telefonu (Java devPad) maji kazdy svou masku - do stroje
+// jde jejich soucet (jedno druhemu nic nepusti). B355: tlacitka ovladace podle mapy (TLACITKA OVLADACE v appce).
 static std::mutex g_ovl_m;
 static nap::ovladac::Stav g_ovl_stav;      // pod g_ovl_m
 static uint32_t g_ovl_maska = 0, g_padJava = 0, g_padPoslano = 0xFFFFFFFFu;   // pod g_ovl_m
 static int g_ovl_udalosti = 0;             // pod g_ovl_m
-// B354: druhy herni ovladac (hrac 2) = joystick 2; udalost PAD s bitem 16 (pod g_ovl_m)
+// B354: druhy herni ovladac (hrac 2) = joystick 2; udalost PAD s PAD_HRAC2 (pod g_ovl_m)
 static nap::ovladac::Stav g_ovl_stav2;
 static uint32_t g_ovl_maska2 = 0, g_pad2Poslano = 0xFFFFFFFFu;
+// B355: mapa tlacitek; radek naposled stisknuteho tlacitka s klavesou (drzi-li hrac vic klaves, plati posledni)
+// (pod g_ovl_m). Prvni stisk kazdeho tlacitka v kazdem emulatoru loguje Java (NapOvladac.klavesa, B329/B355).
+static nap::ovladac::Mapa g_ovl_mapa = nap::ovladac::vychoziMapa(nap::ovladac::J_ATARI);
+static int g_ovl_posledni = -1;
+static bool g_ovl_mapaVLogu = false;
 static void padPosliLocked(bool vzdy) {
-  const uint32_t m = (g_ovl_maska | g_padJava) & 0x3FF;
+  const uint32_t m = (g_ovl_maska & (0xFFu | nap::ovladac::AP_KLAVESA_MASKA | nap::ovladac::AP_BREAK)) | (g_padJava & 0xFFu);
   if (!vzdy && m == g_padPoslano) return;
   g_padPoslano = m;
   nap::dev::Ev e; e.t = nap::dev::Ev::PAD; e.v = (int)m;
   std::lock_guard<std::mutex> l(g_mEv); g_evQ.push_back(e);
 }
 static void pad2PosliLocked() {
-  const uint32_t m = g_ovl_maska2 & 0xFF;            // smer, FIRE, START / SELECT / OPTION (klavesy jen hrac 1)
+  const uint32_t m = g_ovl_maska2 & 0xFF;            // smer, FIRE, START / SELECT / OPTION (klavesy a BREAK jen hrac 1)
   if (m == g_pad2Poslano) return;
   g_pad2Poslano = m;
-  nap::dev::Ev e; e.t = nap::dev::Ev::PAD; e.v = (int)(m | 0x10000u);
+  nap::dev::Ev e; e.t = nap::dev::Ev::PAD; e.v = (int)m | PAD_HRAC2;
   std::lock_guard<std::mutex> l(g_mEv); g_evQ.push_back(e);
 }
-
 extern "C" JNIEXPORT void JNICALL
 Java_eu_atarihelp_emu10_NativeAtariCoreBridge_devPadNative(JNIEnv *, jclass, jint maska) {
   std::lock_guard<std::mutex> o(g_ovl_m);
-  g_padJava = (uint32_t)maska & 0x3FF;
+  g_padJava = (uint32_t)maska & 0xFF;
   padPosliLocked(true);
 }
 
-/** B320: klavesa z herniho ovladace (KeyEvent.KEYCODE_*) -> joystick 1, konzole, MEZERA / RETURN
- *  (nap_ovladac.h atariBity). Vraci logicka tlacitka, 0 = neni klavesa ovladace. */
+/** B320: klavesa z herniho ovladace (KeyEvent.KEYCODE_*) -> joystick, konzole, klavesy podle mapy (B355).
+ *  Vraci logicka tlacitka, 0 = neni klavesa ovladace. B354: hrac 0 / 1 (= joystick 2). */
 extern "C" JNIEXPORT jint JNICALL
 Java_eu_atarihelp_emu10_NativeAtariCoreBridge_devOvladacKlavesaHracNative(JNIEnv *, jclass, jint hrac, jint keyCode, jboolean dolu) {
-  uint32_t t;
-  int n;
+  uint32_t t, maska = 0;
+  int n = 99;
   {
     std::lock_guard<std::mutex> o(g_ovl_m);
-    if (hrac == 1) {                                 // B354: hrac 2 = joystick 2
-      t = nap::ovladac::klavesa(g_ovl_stav2, keyCode, dolu == JNI_TRUE);
-      if (t) { g_ovl_maska2 = nap::ovladac::atariBity(g_ovl_stav2.vse()); pad2PosliLocked(); }
-      return (jint)t;
-    }
-    t = nap::ovladac::klavesa(g_ovl_stav, keyCode, dolu == JNI_TRUE);
+    const int h = hrac == 1 ? 1 : 0;
+    t = nap::ovladac::klavesa(h ? g_ovl_stav2 : g_ovl_stav, keyCode, dolu == JNI_TRUE);
     if (!t) return 0;
-    g_ovl_maska = nap::ovladac::atariBity(g_ovl_stav.vse());
-    padPosliLocked(false);
-    n = g_ovl_udalosti++;
+    if (h) {                                         // B354: hrac 2 = joystick 2
+      g_ovl_maska2 = nap::ovladac::atariMapuj(g_ovl_stav2.vse(), g_ovl_mapa);
+      pad2PosliLocked();
+    } else {
+      const int r = nap::ovladac::radekTlacitka(t);
+      if (dolu && r >= 0 && g_ovl_mapa.cil[r] >= nap::ovladac::A_KLAVESA && g_ovl_mapa.cil[r] != nap::ovladac::CIL_MENU) g_ovl_posledni = r;
+      g_ovl_maska = nap::ovladac::atariMapuj(g_ovl_stav.vse(), g_ovl_mapa, g_ovl_posledni);
+      padPosliLocked(false);
+      n = g_ovl_udalosti++;
+      maska = nap::ovladac::atariMapuj(t, g_ovl_mapa);
+    }
   }
   if (n < 10) {
     char b[200];
-    std::snprintf(b, sizeof(b), "B320 OVLADAC: klavesa %d %s -> %s -> Atari maska 0x%03x", (int)keyCode, dolu ? "dolu" : "nahoru",
-                  nap::ovladac::jmena(t).c_str(), (unsigned)nap::ovladac::atariBity(t));
+    std::snprintf(b, sizeof(b), "B320 OVLADAC: klavesa %d %s -> %s -> Atari maska 0x%05x", (int)keyCode, dolu ? "dolu" : "nahoru",
+                  nap::ovladac::jmena(t).c_str(), (unsigned)maska);
     devLog(b);
   }
   return (jint)t;
@@ -1997,7 +2013,7 @@ extern "C" JNIEXPORT jint JNICALL
 Java_eu_atarihelp_emu10_NativeAtariCoreBridge_devOvladacKlavesaNative(JNIEnv *env, jclass c, jint keyCode, jboolean dolu) {
   return Java_eu_atarihelp_emu10_NativeAtariCoreBridge_devOvladacKlavesaHracNative(env, c, 0, keyCode, dolu);
 }
-/** B320: osy herniho ovladace (leva packa, krizek HAT = smer; spouste L2 / R2 = OPTION). B354: hrac 0 / 1. */
+/** B320: osy herniho ovladace (leva packa, krizek HAT = smer; spouste L2 / R2 podle mapy). B354: hrac 0 / 1. */
 extern "C" JNIEXPORT void JNICALL
 Java_eu_atarihelp_emu10_NativeAtariCoreBridge_devOvladacOsyHracNative(JNIEnv *env, jclass, jint hrac, jfloatArray josy, jint maska) {
   float v[nap::ovladac::O_POCET] = {0};
@@ -2006,14 +2022,20 @@ Java_eu_atarihelp_emu10_NativeAtariCoreBridge_devOvladacOsyHracNative(JNIEnv *en
     env->GetFloatArrayRegion(josy, 0, n < nap::ovladac::O_POCET ? n : nap::ovladac::O_POCET, v);
   }
   std::lock_guard<std::mutex> o(g_ovl_m);
-  if (hrac == 1) {
-    nap::ovladac::osy(g_ovl_stav2, v, maska);
-    g_ovl_maska2 = nap::ovladac::atariBity(g_ovl_stav2.vse());
+  const int h = hrac == 1 ? 1 : 0;
+  nap::ovladac::Stav &st = h ? g_ovl_stav2 : g_ovl_stav;
+  const uint32_t spoustePred = st.spouste;
+  nap::ovladac::osy(st, v, maska);
+  if (h) {
+    g_ovl_maska2 = nap::ovladac::atariMapuj(g_ovl_stav2.vse(), g_ovl_mapa);
     pad2PosliLocked();
     return;
   }
-  nap::ovladac::osy(g_ovl_stav, v, maska);
-  g_ovl_maska = nap::ovladac::atariBity(g_ovl_stav.vse());
+  const uint32_t noveSpouste = st.spouste & ~spoustePred;                    // spoust zmacknuta prave ted (L2 / R2)
+  for (int r : {nap::ovladac::R_L2, nap::ovladac::R_R2})
+    if ((noveSpouste & nap::ovladac::R_BIT[r]) && g_ovl_mapa.cil[r] >= nap::ovladac::A_KLAVESA && g_ovl_mapa.cil[r] != nap::ovladac::CIL_MENU)
+      g_ovl_posledni = r;
+  g_ovl_maska = nap::ovladac::atariMapuj(g_ovl_stav.vse(), g_ovl_mapa, g_ovl_posledni);
   padPosliLocked(false);
 }
 extern "C" JNIEXPORT void JNICALL
@@ -2026,10 +2048,46 @@ Java_eu_atarihelp_emu10_NativeAtariCoreBridge_devOvladacPustNative(JNIEnv *, jcl
   std::lock_guard<std::mutex> o(g_ovl_m);
   nap::ovladac::pustVse(g_ovl_stav);
   g_ovl_maska = 0;
+  g_ovl_posledni = -1;
   padPosliLocked(false);
   nap::ovladac::pustVse(g_ovl_stav2);
   g_ovl_maska2 = 0;
   pad2PosliLocked();
+}
+/** B355: mapa tlacitek z Javy (NapOvladacMapa, "A=FIRE;B=FIRE;X=K33;..."; "" = vychozi). Vraci mapu tak,
+ *  jak ji jadro pouziva (nezname dvojice zustanou vychozi). Log jen pri zmene. */
+extern "C" JNIEXPORT jstring JNICALL
+Java_eu_atarihelp_emu10_NativeAtariCoreBridge_devOvladacMapaNative(JNIEnv *env, jclass, jstring jmapa) {
+  std::string s;
+  if (jmapa) {
+    const char *c = env->GetStringUTFChars(jmapa, nullptr);
+    if (c) { s.assign(c, strnlen(c, 4096)); env->ReleaseStringUTFChars(jmapa, c); }
+  }
+  int nezname = 0;
+  bool zmena;
+  std::string norm, popis;
+  {
+    std::lock_guard<std::mutex> o(g_ovl_m);
+    const nap::ovladac::Mapa m = nap::ovladac::mapaZRetezce(nap::ovladac::J_ATARI, s, &nezname);
+    zmena = !g_ovl_mapaVLogu || !nap::ovladac::stejnaMapa(m, g_ovl_mapa);
+    g_ovl_mapa = m;
+    g_ovl_mapaVLogu = true;
+    g_ovl_posledni = -1;
+    g_ovl_maska = nap::ovladac::atariMapuj(g_ovl_stav.vse(), g_ovl_mapa);
+    g_ovl_maska2 = nap::ovladac::atariMapuj(g_ovl_stav2.vse(), g_ovl_mapa);
+    padPosliLocked(false);
+    pad2PosliLocked();
+    norm = nap::ovladac::mapaNaRetezec(m);
+    popis = nap::ovladac::mapaPopis(m);
+  }
+  if (zmena) devLog("B355 OVLADAC TLACITKA Atari: " + popis + (nezname ? " | neznamych dvojic " + std::to_string(nezname) + " (zustaly vychozi)" : ""));
+  return env->NewStringUTF(norm.c_str());
+}
+/** B355: katalog pro dialog TLACITKA OVLADACE - radky, cile a vychozi mapa pro jadro 0 Atari / 1 Sega / 2 PS1
+ *  (nap_ovladac.h je jedine misto - Java nic neopisuje; knihovna Atari je nactena vzdy). */
+extern "C" JNIEXPORT jstring JNICALL
+Java_eu_atarihelp_emu10_NativeAtariCoreBridge_devOvladacKatalogNative(JNIEnv *env, jclass, jint jadro, jboolean en) {
+  return env->NewStringUTF(nap::ovladac::katalog((int)jadro, en == JNI_TRUE).c_str());
 }
 
 /** B302: klavesa z prohlizece na TV/PC (web viewer appky). code = e.code (misto

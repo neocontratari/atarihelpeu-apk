@@ -9484,6 +9484,7 @@ public class MainActivity extends Activity {
         final String[] polozky = {
                 tx("UPRAVIT ROZLOŽENÍ TLAČÍTEK", "EDIT BUTTON LAYOUT"),
                 tx("OVLÁDÁNÍ: CITLIVOST A VZHLED", "CONTROLS: SENSITIVITY AND LOOK"),
+                tx("TLAČÍTKA HERNÍHO OVLADAČE", "GAME CONTROLLER BUTTONS"),     // B355
                 tx("PROHODIT D-PAD A AKCE (LEVÁK)", "SWAP D-PAD AND ACTIONS (LEFT-HANDED)"),
                 tx("VÝCHOZÍ ROZLOŽENÍ TLAČÍTEK", "DEFAULT BUTTON LAYOUT"),
                 "RESET ATARI",
@@ -9503,27 +9504,30 @@ public class MainActivity extends Activity {
                         case 1:
                             atariCppOvladaniNastaveni();
                             break;
-                        case 2:
+                        case 2:   // B355: co ktere tlacitko herniho ovladace dela
+                            ovlTlacitkaDialog(NapOvladacMapa.ATARI, -1);
+                            break;
+                        case 3:
                             atariCppOvladaniUloz(NativeAtariCoreBridge.devCtlSafe("mirror"));
                             NativeAtariCoreBridge.devStatusSafe(tx("D-PAD A AKCE PROHOZENY (LEVÁK) - ULOŽENO", "D-PAD AND ACTIONS SWAPPED (LEFT-HANDED) - SAVED"), 3000);
                             break;
-                        case 3:
+                        case 4:
                             atariCppOvladaniUloz(NativeAtariCoreBridge.devCtlSafe("reset"));
                             NativeAtariCoreBridge.devStatusSafe(tx("ROZLOŽENÍ VRÁCENO NA VÝCHOZÍ", "LAYOUT RESET TO DEFAULT"), 3000);
                             break;
-                        case 4:
+                        case 5:
                             NativeAtariCoreBridge.devCtlSafe("atari_reset");   // jako tlacitko RESET na pristroji
                             break;
-                        case 5:
+                        case 6:
                             atariZarizeniAkce(2);
                             break;
-                        case 6:
+                        case 7:
                             atariZarizeniAkce(3);
                             break;
-                        case 7:
+                        case 8:
                             atariZarizeniAkce(1);
                             break;
-                        case 8:   // B298: na sirku neni kazetak videt - vyber kazety odsud
+                        case 9:   // B298: na sirku neni kazetak videt - vyber kazety odsud
                             atariZarizeniAkce(9);
                             break;
                         default:
@@ -12585,6 +12589,7 @@ public class MainActivity extends Activity {
     }
 
     private void ovladacStart() {
+        ovlMapaNacti();   // B355: TLACITKA OVLADACE z minula
         try {
             ovladac = new NapOvladac(this, ui, new NapOvladac.Posluchac() {
                 @Override public void ovladacLog(String radek) { appendNativeLog(radek); }
@@ -12643,6 +12648,194 @@ public class MainActivity extends Activity {
         if (ovlPouzitSega) try { NativeSegaCoreBridge.ovladacPustSafe(); } catch (Throwable ignored) {}
         if (ovlPouzitAtari) try { NativeAtariCoreBridge.devOvladacPustSafe(); } catch (Throwable ignored) {}
         appendNativeLog("B320 OVLADAC: vse pusteno (" + duvod + ")");
+    }
+
+    // ===================================================================
+    //  B355: TLACITKA OVLADACE - co ktere tlacitko herniho ovladace dela, zvlast v Atari, Seze a PS1.
+    //  Rene: "musi byt v nastaveni u kazdeho emu co ktere tlacitko ma delat podle bt d-padu".
+    //  Mapa = text "A=FIRE;B=FIRE;..." (NapOvladacMapa, SharedPreferences "nap_ovladac_mapa"); co ktery cil
+    //  znamena, jmena a vychozi mapa = C++ (nap_ovladac.h, katalog pres knihovnu Atari). Jadro dostane mapu
+    //  pred dalsim stiskem (verze). Otevira se z OPTIONS (HERNI OVLADAC), z kolecka v Atari / Seze / PS1 a
+    //  ve hre tlacitkem s cilem MENU (vychozi HOME - do B354 byl HOME v Atari OPTION a v Prince of Persia
+    //  otevrel menu hry; log Reneho 19. 11.).
+    // ===================================================================
+    private final NapOvladacMapa ovlMapa = new NapOvladacMapa();
+    private final int[] ovlMapaPoslano = {0, 0, 0};                 // verze mapy, kterou uz jadro ma
+    private final NapOvladacMapa.Katalog[][] ovlKatalogy = new NapOvladacMapa.Katalog[NapOvladacMapa.JADER][2];
+    private android.app.AlertDialog ovlMapaDialog;                  // otevrene TLACITKA OVLADACE
+    private static final String OVL_MAPA_PREFS = "nap_ovladac_mapa";
+
+    private void ovlMapaNacti() {
+        try {
+            final android.content.SharedPreferences p = getSharedPreferences(OVL_MAPA_PREFS, MODE_PRIVATE);
+            final StringBuilder sb = new StringBuilder("B355 OVLADAC TLACITKA pri startu:");
+            for (int j = 0; j < NapOvladacMapa.JADER; j++) {
+                ovlMapa.nastav(j, p.getString(NapOvladacMapa.JADRA[j], ""));
+                sb.append(' ').append(NapOvladacMapa.JADRA_JMENO[j]).append(ovlMapa.mapa(j).isEmpty() ? " vychozi" : " VLASTNI").append(j < 2 ? "," : "");
+            }
+            appendNativeLog(sb.toString() + " | nastaveni: OPTIONS -> HERNI OVLADAC, kolecko ve hre, HOME na ovladaci");
+        } catch (Throwable t) {
+            appendNativeLog("B355 OVLADAC TLACITKA nacteni chyba " + safeMsg(t));
+        }
+    }
+
+    private void ovlMapaUloz(int j) {
+        try {
+            getSharedPreferences(OVL_MAPA_PREFS, MODE_PRIVATE).edit().putString(NapOvladacMapa.JADRA[j], ovlMapa.mapa(j)).apply();
+        } catch (Throwable ignored) {}
+    }
+
+    /** Katalog jadra z C++ (cache podle jazyka); prazdny (ok() == false) = knihovna Atari chybi. */
+    private NapOvladacMapa.Katalog ovlKatalog(int j, boolean en) {
+        if (j < 0 || j >= NapOvladacMapa.JADER) j = NapOvladacMapa.ATARI;
+        final int e = en ? 1 : 0;
+        NapOvladacMapa.Katalog k = ovlKatalogy[j][e];
+        if (k == null || !k.ok()) {
+            k = NapOvladacMapa.Katalog.z(NativeAtariCoreBridge.devOvladacKatalogSafe(j, en));
+            ovlKatalogy[j][e] = k;
+        }
+        return k;
+    }
+
+    /** Cil radku (token) podle mapy jadra j - kvuli MENU. */
+    private String ovlMapaCil(int j, int radek) {
+        return ovlMapa.cil(j, radek, ovlKatalog(j, false).vychozi);
+    }
+
+    /** Jadro dostane aktualni mapu (jen kdyz se od minule zmenila). Vola se jen v tom emulatoru, kde se hraje
+     *  (most Segy bez nactene knihovny spadne - viz B320 C2). */
+    private void ovlMapaPosli(int j) {
+        try {
+            final int v = ovlMapa.verze(j);
+            if (ovlMapaPoslano[j] == v) return;
+            ovlMapaPoslano[j] = v;
+            final String m = ovlMapa.mapa(j);
+            final String r;
+            if (j == NapOvladacMapa.SEGA) r = NativeSegaCoreBridge.ovladacMapaSafe(m);
+            else if (j == NapOvladacMapa.PS1) r = NativePs1CoreBridge.ovladacMapaSafe(m);
+            else r = NativeAtariCoreBridge.devOvladacMapaSafe(m);
+            appendNativeLog("B355 OVLADAC TLACITKA " + NapOvladacMapa.JADRA_JMENO[j] + (m.isEmpty() ? " (vychozi)" : " (VLASTNI)")
+                    + " -> jadro: " + (r.isEmpty() ? "nepotvrdilo" : r));
+        } catch (Throwable t) {
+            appendNativeLog("B355 OVLADAC TLACITKA posli chyba " + safeMsg(t));
+        }
+    }
+
+    /** Dialog TLACITKA OVLADACE pro jadro j. Stisk tlacitka na ovladaci = rovnou vyber pro jeho radek. */
+    void ovlTlacitkaDialog(int j, int radekHned) {
+        try {
+            if (j < 0 || j >= NapOvladacMapa.JADER) j = NapOvladacMapa.ATARI;
+            final int jadro = j;
+            if (ovlMapaDialog != null && ovlMapaDialog.isShowing()) return;
+            final boolean en = NapJazyk.en(this);
+            final NapOvladacMapa.Katalog kat = ovlKatalog(jadro, en);
+            if (!kat.ok()) {
+                ovladacZprava(tx("Nastavení tlačítek teď nejde (knihovna Atari chybí)", "Button settings unavailable (Atari library missing)"));
+                appendNativeLog("B355 OVLADAC TLACITKA: katalog z C++ prazdny (knihovna Atari: " + NativeAtariCoreBridge.isLoaded() + ")");
+                return;
+            }
+            ovladacPustVse("TLACITKA OVLADACE otevreno");      // nic nesmi zustat drzene, dialog bere klavesy
+            final float dp = getResources().getDisplayMetrics().density;
+            final android.widget.LinearLayout box = new android.widget.LinearLayout(this);
+            box.setOrientation(android.widget.LinearLayout.VERTICAL);
+            box.setPadding((int) (16 * dp), (int) (8 * dp), (int) (16 * dp), (int) (8 * dp));
+            final android.widget.TextView rada = new android.widget.TextView(this);
+            final String jm = ovladac != null ? ovladac.jmeno() : "";
+            rada.setText(tx("Zmáčkni tlačítko na herním ovladači – hned vybereš, co má dělat. Nebo klepni na řádek."
+                            + (jm.isEmpty() ? "" : "\nOvladač: " + jm) + "\nSměr (křížek, levá páčka) zůstává směrem.",
+                    "Press a button on the game controller – you choose right away what it does. Or tap a row."
+                            + (jm.isEmpty() ? "" : "\nController: " + jm) + "\nDirections (d-pad, left stick) stay directions."));
+            rada.setTextSize(14f);
+            rada.setPadding(0, 0, 0, (int) (8 * dp));
+            box.addView(rada);
+            final android.widget.Button[] radky = new android.widget.Button[NapOvladacMapa.RADKY.length];
+            for (int i = 0; i < radky.length; i++) {
+                final int ri = i;
+                final android.widget.Button b = new android.widget.Button(this);
+                b.setAllCaps(false);
+                b.setGravity(android.view.Gravity.START | android.view.Gravity.CENTER_VERTICAL);
+                b.setTextSize(15f);
+                b.setOnClickListener(v -> ovlTlacitkoVyber(jadro, ri, kat, radky));
+                radky[i] = b;
+                box.addView(b, new android.widget.LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+            }
+            ovlRadkyObnov(jadro, kat, radky, radekHned);
+            final android.widget.ScrollView sv = new android.widget.ScrollView(this);
+            sv.addView(box);
+            final android.app.AlertDialog d = new android.app.AlertDialog.Builder(this)
+                    .setTitle(tx("TLAČÍTKA OVLADAČE – ", "CONTROLLER BUTTONS – ") + NapOvladacMapa.JADRA_JMENO[jadro])
+                    .setView(sv)
+                    .setPositiveButton(tx("HOTOVO", "DONE"), null)
+                    .setNeutralButton(tx("VÝCHOZÍ", "DEFAULT"), null)
+                    .create();
+            d.setOnShowListener(x -> {
+                final android.widget.Button vych = d.getButton(android.app.AlertDialog.BUTTON_NEUTRAL);
+                if (vych != null) vych.setOnClickListener(v -> {
+                    if (ovlMapa.nastav(jadro, "")) {
+                        ovlMapaUloz(jadro);
+                        appendNativeLog("B355 OVLADAC TLACITKA " + NapOvladacMapa.JADRA_JMENO[jadro] + ": VYCHOZI");
+                    }
+                    ovlRadkyObnov(jadro, kat, radky, -1);
+                });
+            });
+            // stisk tlacitka na ovladaci = jeho radek (podle MISTA jako ve hre); krizek a OK dalkoveho = pohyb v dialogu
+            d.setOnKeyListener((dlg, kc, ev) -> {
+                if (!NapOvladac.jeHerniTlacitko(kc)) return false;
+                final int k = ovladac != null ? ovladac.kodPodleMista(ev) : kc;
+                final int r = NapOvladacMapa.radekKlavesy(k);
+                if (r < 0) return false;
+                if (ev.getAction() == KeyEvent.ACTION_DOWN && ev.getRepeatCount() == 0) {
+                    ovlRadkyObnov(jadro, kat, radky, r);
+                    radky[r].requestFocus();
+                    ovlTlacitkoVyber(jadro, r, kat, radky);
+                }
+                return true;                 // i pusteni (B by jinak Android poslal jako ZPET a dialog zavrel)
+            });
+            d.setOnDismissListener(x -> {
+                ovlMapaDialog = null;
+                appendNativeLog("B355 OVLADAC TLACITKA " + NapOvladacMapa.JADRA_JMENO[jadro] + " zavreno: "
+                        + (ovlMapa.mapa(jadro).isEmpty() ? "vychozi" : ovlMapa.mapa(jadro)));
+            });
+            ovlMapaDialog = d;
+            d.show();
+            appendNativeLog("B355 OVLADAC TLACITKA " + NapOvladacMapa.JADRA_JMENO[jadro] + ": nastaveni otevreno");
+            if (radekHned >= 0 && radekHned < radky.length) ovlTlacitkoVyber(jadro, radekHned, kat, radky);
+        } catch (Throwable t) {
+            appendNativeLog("B355 OVLADAC TLACITKA chyba " + safeMsg(t));
+        }
+    }
+
+    /** Vyber cile pro jeden radek (seznam z katalogu C++). */
+    private void ovlTlacitkoVyber(int j, int r, NapOvladacMapa.Katalog kat, android.widget.Button[] radky) {
+        try {
+            final String ted = ovlMapa.cil(j, r, kat.vychozi);
+            final String[] jmena = kat.cilJmeno.toArray(new String[0]);
+            new android.app.AlertDialog.Builder(this)
+                    .setTitle(kat.radekJmeno[r])
+                    .setSingleChoiceItems(jmena, kat.cilToken.indexOf(ted), (dlg, w) -> {
+                        final String tok = kat.cilToken.get(w);
+                        if (ovlMapa.nastavRadek(j, r, tok, kat.vychozi)) {
+                            ovlMapaUloz(j);
+                            appendNativeLog("B355 OVLADAC TLACITKA " + NapOvladacMapa.JADRA_JMENO[j] + ": " + NapOvladacMapa.RADKY[r]
+                                    + " -> " + NapOvladacMapa.doLogu(ovlKatalog(j, false).jmenoCile(tok)) + " (" + tok + ")");
+                        }
+                        ovlRadkyObnov(j, kat, radky, r);
+                        dlg.dismiss();
+                    })
+                    .setNegativeButton(tx("ZPĚT", "BACK"), null)
+                    .show();
+        } catch (Throwable t) {
+            appendNativeLog("B355 OVLADAC TLACITKA vyber chyba " + safeMsg(t));
+        }
+    }
+
+    private void ovlRadkyObnov(int j, NapOvladacMapa.Katalog kat, android.widget.Button[] radky, int zvyrazni) {
+        final String[] v = NapOvladacMapa.rozloz(ovlMapa.mapa(j), kat.vychozi);
+        final String[] vych = NapOvladacMapa.rozloz("", kat.vychozi);
+        for (int i = 0; i < radky.length; i++) {
+            radky[i].setText((i == zvyrazni ? "▶ " : "") + kat.radekJmeno[i] + "\n→ " + kat.jmenoCile(v[i])
+                    + (v[i].equals(vych[i]) ? "" : tx("   (změněno)", "   (changed)")));
+        }
     }
 
     /** Dotykove ovladani schovat / ukazat: stranky PS1 a Sega, Atari 130XE na sirku (vlakno UI). */
@@ -12949,6 +13142,18 @@ public class MainActivity extends Activity {
         final int h = ovladac != null ? ovladac.hrac(e) : 0;
         if (h < 0 && (kam == OVL_PS1 || kam == OVL_SEGA || kam == OVL_ATARI)) return false;
         final int hr = h < 0 ? 0 : h;
+        // B355: TLACITKA OVLADACE - jadro dostane mapu pred stiskem; cil MENU (vychozi HOME) otevre nastaveni
+        final int jadro = kam == OVL_PS1 ? NapOvladacMapa.PS1 : kam == OVL_SEGA ? NapOvladacMapa.SEGA
+                : kam == OVL_ATARI ? NapOvladacMapa.ATARI : -1;
+        final int radek = jadro >= 0 ? NapOvladacMapa.radekKlavesy(k) : -1;
+        if (jadro >= 0) {
+            ovlMapaPosli(jadro);
+            if (radek >= 0 && NapOvladacMapa.MENU.equals(ovlMapaCil(jadro, radek))) {
+                if (dolu && e.getRepeatCount() == 0) ui.post(() -> ovlTlacitkaDialog(jadro, -1));
+                if (ovladac != null) ovladac.klavesa(e, k, OVL_KAM[kam], 1, "MENU (TLACITKA OVLADACE)");
+                return true;
+            }
+        }
         int t;
         switch (kam) {
             case OVL_PS1:   ovlPouzitPs1 = true; t = NativePs1CoreBridge.ovladacKlavesaSafe(hr, k, dolu); break;
@@ -12957,7 +13162,14 @@ public class MainActivity extends Activity {
             case OVL_MENU:  t = ovladacMenu(k, dolu, e.getRepeatCount()); break;
             default:        t = 0; break;   // stranky (OPTIONS, HELP ...): jako drive - A = klik, B = zpet
         }
-        if (ovladac != null) ovladac.klavesa(e, k, OVL_KAM[kam], t);
+        if (ovladac != null) {
+            String co = "";
+            if (radek >= 0 && t != 0 && dolu && e.getRepeatCount() == 0) {
+                co = NapOvladacMapa.doLogu(ovlKatalog(jadro, false).jmenoCile(ovlMapaCil(jadro, radek)));
+                if (hr == 1) co = "hrac 2: " + co;
+            }
+            ovladac.klavesa(e, k, OVL_KAM[kam], t, co);
+        }
         return t != 0;
     }
 
@@ -13007,6 +13219,7 @@ public class MainActivity extends Activity {
                     // B354: osy patri hraci sveho ovladace; neprirazeny ovladac v klidu nic neposila
                     final int h = ovladac.hracOsy(e, ovladacOsy, maska);
                     if (h < 0) return true;
+                    ovlMapaPosli(kam == OVL_PS1 ? NapOvladacMapa.PS1 : kam == OVL_SEGA ? NapOvladacMapa.SEGA : NapOvladacMapa.ATARI);   // B355
                     if (kam == OVL_PS1) { ovlPouzitPs1 = true; NativePs1CoreBridge.ovladacOsySafe(h, ovladacOsy, maska); }
                     else if (kam == OVL_SEGA) { ovlPouzitSega = true; NativeSegaCoreBridge.ovladacOsySafe(h, ovladacOsy, maska); }
                     else { ovlPouzitAtari = true; NativeAtariCoreBridge.devOvladacOsySafe(h, ovladacOsy, maska); }
@@ -13195,6 +13408,12 @@ public class MainActivity extends Activity {
         public String jmeno() {
             final NapOvladac o = ovladac;
             return o == null ? "" : o.jmeno();
+        }
+        /** B355: TLACITKA OVLADACE (OPTIONS, kolecko Segy / PS1): "atari" / "sega" / "ps1" */
+        @JavascriptInterface
+        public void tlacitka(String emu) {
+            final int j = "sega".equals(emu) ? NapOvladacMapa.SEGA : "ps1".equals(emu) ? NapOvladacMapa.PS1 : NapOvladacMapa.ATARI;
+            ui.post(() -> ovlTlacitkaDialog(j, -1));
         }
     }
 

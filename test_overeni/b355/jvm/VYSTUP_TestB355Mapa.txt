@@ -1,0 +1,11 @@
+B355 - NapOvladacMapa: radky podle mista, mapa jako text, katalog z C++, MENU, zmena radku
+OK     1) BUTTON_A B X Y L1 R1 L2 R2 L3 R3 START SELECT MODE = radky 0-12; krizek, OK, C, Z = zadny radek
+katalogy (jadro jazyk = cilu): 0cs=65 0en=65 1cs=14 1en=14 2cs=18 2en=18 | Atari A: A · spodní (✕ PlayStation, B Nintendo) | cil K33: klávesa MEZERA
+OK     2) katalog z C++ (Atari 65 cilu, Sega 14, PS1 18; CZ i EN): 13 radku, vychozi mapa = C++, jmena (klávesa MEZERA, ✕ křížek)
+OK     3a) nova appka: mapy prazdne (= vychozi C++), HOME = MENU ve vsech trech jadrech
+A -> K10: A=K10;B=FIRE;X=K33;Y=K12;L1=FIRE;R1=FIRE;L2=OPTION;R2=OPTION;L3=0;R3=0;START=START;SELECT=SELECT;MODE=MENU | zpet FIRE: "" | verze 1 -> 2 -> 3
+OK     3b) zmena radku: cela mapa (13 radku), stejna volba nic nezmeni (verze stoji), navrat na vychozi = "" (jadro dostane znovu)
+OK     3c) ulozena mapa s chybami (prazdne, neznamy radek Q, A bez cile): co nejde, zustane vychozi; B = MENU (otevre dialog)
+do logu: klavesa MEZERA | krizek | MENU - tlacitka ovladace | SELECT (-, SHARE)
+OK     4) jmena do logu bez diakritiky a symbolu (klavesa MEZERA, krizek, MENU - tlacitka ovladace)
+VYSLEDEK: 6 OK, 0 CHYBA

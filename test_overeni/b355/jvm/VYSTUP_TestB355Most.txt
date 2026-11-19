@@ -1,0 +1,7 @@
+B355 - mosty TLACITKA OVLADACE v JVM (-Xcheck:jni): NativePs1CoreBridge se skutecnym nap_ps1_native.cpp, Atari bez knihovny
+OK     A1) knihovna napps1core nactena skutecnou tridou NativePs1CoreBridge
+hra: PS1_HRA_OK | mapa: A=KOLECKO;B=KRIZEK;X=CTVEREC;Y=TROJUHELNIK;L1=L1;R1=R1;L2=L2;R2=R2;L3=L3;R3=R3;START=START;SELECT=SELECT;MODE=SELECT | null: A=KRIZEK;B=KOLECKO;X=CTVEREC;Y=TROJUHELNIK;L1=L1;R1=R1;L2=L2;R2=R2;L3=L3;R3=R3;START=START;SELECT=SELECT;MODE=MENU
+OK     A2) ps1OvladacMapa za behu hry: jadro vrati mapu (neznamy radek Q vynechan), null i "" = vychozi, klavesa ovladace dal jde
+OK     A3) denik PS1: "OVLADAC TLACITKA (B355): A(spodni)=KOLECKO ..."
+OK     B1) most Atari bez knihovny: devOvladacMapaSafe / devOvladacKatalogSafe vraci "" a nespadne
+VYSLEDEK: 4 OK, 0 CHYBA

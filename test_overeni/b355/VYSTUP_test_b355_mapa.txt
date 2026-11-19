@@ -1,0 +1,26 @@
+B355 - mapa tlacitek herniho ovladace (nap_ovladac.h): vychozi mapy, retezec, Atari klavesy, katalog pro Javu
+Atari vychozi: 18 z 19 stejne, zmeny: MODE: 0x00080 -> 0x00000
+OK     A1) Atari vychozi = do B354 (A B L1 R1 C = FIRE, START, SELECT, L2 R2 = OPTION, X = MEZERA, Y = RETURN); jen HOME uz neni OPTION (MENU)
+Sega vychozi: 15 z 19 stejne, zmeny: Y(horni): 0x00000 -> 0x00200 L2: 0x00000 -> 0x00100 R2: 0x00000 -> 0x00400 Z: 0x00000 -> 0x00400
+OK     A2) Sega vychozi = do B354 (leve A, spodni B, prave C, L1 A, R1 C, START); navic 6 tlacitek: horni Y, L2 X, R2 Z, Z = Z
+PS1 vychozi: 18 z 19 stejne, zmeny: MODE: 0x00004 -> 0x00000
+OK     A3) PS1 vychozi = do B354 (stejne misto jako PlayStation); HOME uz neni SELECT (MENU) - SELECT ma svoje tlacitko
+OK     A4) HOME (MODE) = MENU ve vsech trech - v appce otevre TLACITKA OVLADACE, do jadra nic
+vychozi 0: A=FIRE;B=FIRE;X=K33;Y=K12;L1=FIRE;R1=FIRE;L2=OPTION;R2=OPTION;L3=0;R3=0;START=START;SELECT=SELECT;MODE=MENU
+vychozi 1: A=B;B=C;X=A;Y=Y;L1=A;R1=C;L2=X;R2=Z;L3=0;R3=0;START=START;SELECT=0;MODE=MENU
+vychozi 2: A=KRIZEK;B=KOLECKO;X=CTVEREC;Y=TROJUHELNIK;L1=L1;R1=R1;L2=L2;R2=R2;L3=L3;R3=R3;START=START;SELECT=SELECT;MODE=MENU
+OK     B1) vychozi mapa -> text -> mapa beze zmeny (vsechna jadra); "" = vychozi
+vlastni Atari: A=K10;B=BREAK;X=NAHORU;Y=K12;L1=K17;R1=FIRE;L2=OPTION;R2=OPTION;L3=0;R3=0;START=START;SELECT=SELECT;MODE=OPTION (spatnych 4)
+OK     B2) vlastni mapa (oddelovac ; , mezera): A = klavesa P, B = BREAK, X = joystick nahoru, HOME = OPTION, L1 = HELP; neznamy radek Q, cil KX, K300 a prazdny START zustanou vychozi (4 spatne)
+OK     B3) PS1: prohozeny krizek a kolecko, HOME = SELECT; cil jineho jadra (Y=FIRE v PS1, Y=K33 v Seze) zustane vychozi
+A=0x00B00 A+L1 (posledni L1)=0x01200 (posledni A)=0x00B00 (bez posledniho)=0x00B00 B=0x20000 Y=0x00000 X+nahoru=0x01D01
+OK     C1) klavesa = KBCODE + 1 v bitech 8-16 (P = 10, HELP = 17, ESC = 28); drzi-li se dve, plati naposled stisknuta; BREAK bit 17; Y = nic
+OK     C2) nejvyssi KBCODE 255 (SHIFT + CONTROL) se vejde do bitu 8-16 a nesaha na BREAK ani na joystick
+OK     C3) cil MENU jadro nic neudela (dialog otevira Java)
+katalog (jadro jazyk : cilu): 0cs:65 0en:65 1cs:14 1en:14 2cs:18 2en:18
+OK     D1) katalog vsech jader CZ / EN: 13 radku, cile bez duplicit (vc. MENU a nic), token -> cil -> token, jmena, D = vychozi mapa
+OK     D2) jmena pro hrace: klavesa MEZERA / key SPACE, klavesa P, HELP, ✕ krizek, Z (6-button pad)
+klavesy na pristroji: 55, z mapy porovnano 51, shodnych 51
+OK     E1) scankody klaves mapy = klavesnice pristroje (51 z 51), carka $20, lomitko $26, HELP $11
+
+VYSLEDEK: 13 OK, 0 CHYBA

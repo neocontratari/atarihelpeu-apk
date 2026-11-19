@@ -7,6 +7,7 @@ NapJazyk.slovnik({
   'SPUSTIT WEB TV': 'START WEB TV',
   // B320: OPTIONS -> HERNI OVLADAC (Retroid Pocket 6, gamepad)
   'HERNÍ OVLADAČ': 'GAME CONTROLLER',
+  'TLAČÍTKA OVLADAČE – co které tlačítko dělá:': 'CONTROLLER BUTTONS – what each button does:',   // B355
   'VŽDY DOTYK': 'ALWAYS TOUCH',
   'SKRÝT DOTYK': 'HIDE TOUCH',
   // B331: OPTIONS -> HERNI OVLADAC -> Bluetooth ovladac primo v appce

@@ -345,6 +345,8 @@ body.tvCastActive .segaRychlyPruh{animation-play-state:paused!important;}
     <h2>D-PAD A OVLÁDÁNÍ</h2>
     <button id="segaBtnEditLayout" type="button">UPRAVIT ROZLOŽENÍ TLAČÍTEK</button>
     <button id="segaBtnCtrlSettings" type="button">OVLÁDÁNÍ: CITLIVOST A VZHLED</button>
+    <!-- B355: co ktere tlacitko herniho ovladace dela (dialog appky, jako HOME na ovladaci) -->
+    <button id="segaBtnTlacitka" type="button">TLAČÍTKA HERNÍHO OVLADAČE</button>
     <button id="segaBtnMirror" type="button">PROHODIT D-PAD A AKCE (LEVÁK)</button>
     <!-- BUILD2SB39: ulozeni/nacteni je ted PER HRU (viz Java
          segaSaveStateFileFor) - tahle dve tlacitka zustavaji jako
@@ -1259,6 +1261,8 @@ $('btnSegaSettings').addEventListener('click',function(e){e.preventDefault();sho
 $('segaDpadMenuClose').addEventListener('click',function(e){e.preventDefault();closeSegaDpadMenu();},true);
 $('segaBtnEditLayout').addEventListener('click',function(e){e.preventDefault();layoutEditEnter();},true);
 $('segaBtnCtrlSettings').addEventListener('click',function(e){e.preventDefault();closeSegaDpadMenu();showSegaCtrl();},true);
+// B355: TLACITKA HERNIHO OVLADACE - dialog appky (AHOVL.tlacitka)
+$('segaBtnTlacitka').addEventListener('click',function(e){e.preventDefault();closeSegaDpadMenu();try{if(window.AHOVL)AHOVL.tlacitka('sega');}catch(err){}},true);
 $('segaBtnMirror').addEventListener('click',function(e){e.preventDefault();layoutMirrorHorizontal();},true);
 /* BUILD2SB37: Rene - "dalo by se vymyslet ukladani her jako Sonic?"
    Ano - jadro (ClownMDEmu) uz umi ulozit/nacist cely svuj stav, jen se
