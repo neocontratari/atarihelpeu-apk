@@ -4607,4 +4607,44 @@
      - DALSI KROK: Rene - PoP a Tony na telefonu (radky "B353 TURBO konec ... Kx"). Pak B354: dva BT ovladace (hrac 2:
        Atari PORTA horni 4 bity + TRIG1, Sega player_id 1, PS1 port 2; prirazeni hracu podle prvniho stisku).
 
+   B354: DVA HERNI OVLADACE = DVA HRACI (ATARI JOYSTICK 2, SEGA OVLADAC 2, PS1 PORT 2) (19. 11. 2026).
+   Rene: "dokazal by si napojit 2 bt dpady na jeden mobil ? ... plno her je 1vs1", "necham to na tobe".
+     - Java NapOvladac.Hraci (cista trida, id[2] = deviceId): hrac(zarizeni, stisk) - prirazeny vraci 0 / 1; oba
+       obsazene -> 0 (treti ovladac za hrace 1); neprirazeny bez stisku -> -1 (nic neposilat - pusteni / sum packy
+       nesmi prepsat hrace 1); se stiskem dostane volne misto. odpoj(id) v onInputDeviceRemoved (log "B354 OVLADAC
+       hrac N uvolnen"). hrac(KeyEvent) = ACTION_DOWN, hracOsy(MotionEvent) = pohyb(). hracZarizeni loguje "B354
+       OVLADAC "jm" (id) = HRAC N" a vola Posluchac.ovladacHrac (default metoda) -> MainActivity Toast "🎮 Hráč 2:
+       jmeno" / "🎮 Player 2: name". Do slotu se dostane jen udalost, kterou propusti zOvladace (herni tlacitko, smer
+       jen z ovladace) - dalkovy ovladac TV a klavesnice ne. Dotyk = hrac 1 (beze zmeny).
+     - MainActivity.ovladacKlavesa: h < 0 ve hre (PS1 / Sega / Atari) -> return false; jinak *Safe(hr, ...).
+       dispatchGenericMotionEvent: h < 0 -> spotrebovat, nic neposlat. Most Segy jen v Seze (trida bez knihovny
+       spadne pri nacteni - viz B320 C2).
+     - Atari: g_joyPad2 / g_padConsol2 (pod g_mStroj), aplikujJoyLocked: PORTA = ((~m2 & 15) << 4) | (~m & 15),
+       TRIG1 = FIRE hrace 2 (OS: STICK1 $279, STRIG1 $285); consolEfektivni ORuje g_padConsol2 (drzi aspon 5 snimku).
+       Udalost PAD s bitem 0x10000; g_ovl_stav2 / g_ovl_maska2 / pad2PosliLocked (jen smer, FIRE, konzole - MEZERA a
+       RETURN jen hrac 1, klavesnice je jedna). JNI devOvladacKlavesaHracNative / devOvladacOsyHracNative, stare
+       funkce = hrac 0; devOvladacPustNative pusti oba; studeny start nuluje g_joyPad2 / g_padConsol2. Log "B354
+       JOYSTICK 2 z druheho herniho ovladace".
+     - Sega: g_ovl_stav2 / g_ovl_bity2, nap_real_input_requested player_id 1; JNI ovladacKlavesaHrac / ovladacOsyHrac;
+       ovladacPust a oba konce Segy pusti oba.
+     - PS1: g_ovl_stav2 / g_ovl_logicke2 / g_ovl_snimek2, nap_input_state port 1 jen s g_mys VYP (s mysi patri port 2
+       mysi nebo ovladaci hrace 1); JNI ps1OvladacKlavesaHrac / ps1OvladacOsyHrac; denik "OVLADAC 2 (hrac 2): prvni
+       stisk -> PS1 port 2"; ps1_ovladac_pust pusti oba.
+     - B353 drobnost: turbo kratsi nez 0,05 s pise "kratke - rychlost se neda zmerit" (drive "0.0x rychleji").
+     - Napoveda CZ / EN (Herni ovladac a Retroid Pocket 6): "Dva ovladače = dva hráči" / "Two controllers = two
+       players". Kontroly 220 / 212 / 3 zamerne. build.gradle: versionCode 397 "EMU10-B354-2-HRACI".
+     - Testy test_overeni/b354: test_b354_atari 12 (skutecny nativni kod: TRIG1 / STRIG1, STICK1, START, oba naraz,
+       odpojeni), test_b354_sega 4 (dotaz jadra clownmdemu), test_b354_ps1 8 (skutecne PCSX + mys_test.exe: port 2,
+       oba naraz, osy, s mysi hrac 2 nic, odpojeni, denik), jvm TestB354Hraci 9 + TestB354Most 6 (-Xcheck:jni),
+       kontrola_jni 110 metod 0 chyb, javac cele appky. Regrese b320 Atari 14 / Sega 5, b348 16, b352 12, b353 11.
+       Na telefonu neovereno.
+     - RIZIKO (na telefonu neovereno): jeden fyzicky ovladac muze mit vic uzlu evdev (tlacitka, senzory, touchpad).
+       Novejsi Android je slouci do jednoho InputDevice (AOSP "Support multiple EventHub devices per InputDevice" -
+       shoda vendor, product, revision, bus, uniqueId, location); starsi Android (S8 = Android 9) mel InputDevice 1:1
+       s evdev. Kdyby druhy uzel posilal herni tlacitka (napr. tlacitko Xbox / HOME zvlast), dostal by hrace 2 - log
+       "B354 OVLADAC ... = HRAC 2" s jinym id a stejnym jmenem. Pak priradit hrace podle InputDevice getDescriptor()
+       nebo vendor+product+jmena misto deviceId.
+     - DALSI KROK: Rene - dva ovladace na telefonu (Atari hra pro 2 hrace, Sega, PS1 bez mysi), log "B354 OVLADAC";
+       zaroven B352 (Tony) a B353 (turbo PoP / Tony).
+
 ===============================================================================

@@ -49,6 +49,9 @@ static bool g_input[8] = {false,false,false,false,false,false,false,false};
 static std::mutex g_ovl_m;
 static nap::ovladac::Stav g_ovl_stav;              // pod g_ovl_m (vlakno UI Javy)
 static std::atomic<uint32_t> g_ovl_bity{0};        // bity 0-7 jako g_input
+// B354: druhy herni ovladac = ovladac 2 Segy (hrac 2, player_id 1); dotyk hraje jen za hrace 1
+static nap::ovladac::Stav g_ovl_stav2;             // pod g_ovl_m
+static std::atomic<uint32_t> g_ovl_bity2{0};
 static std::atomic<int> g_ovl_udalosti{0};
 static inline bool nap_vstup(int i) {
     return g_input[i] || ((g_ovl_bity.load(std::memory_order_relaxed) >> i) & 1u);
@@ -749,6 +752,22 @@ static void nap_tv_po_kroku(NapRealCoreState *st) {
 
 static cc_bool nap_real_input_requested(void *user_data, cc_u8f player_id, ClownMDEmu_Button button_id) {
     (void)user_data;
+    if (player_id == 1) {                       // B354: hrac 2 = druhy herni ovladac
+        const uint32_t b2 = g_ovl_bity2.load(std::memory_order_relaxed);
+        int i = -1;
+        switch (button_id) {
+            case CLOWNMDEMU_BUTTON_UP: i = 0; break;
+            case CLOWNMDEMU_BUTTON_DOWN: i = 1; break;
+            case CLOWNMDEMU_BUTTON_LEFT: i = 2; break;
+            case CLOWNMDEMU_BUTTON_RIGHT: i = 3; break;
+            case CLOWNMDEMU_BUTTON_A: i = 4; break;
+            case CLOWNMDEMU_BUTTON_B: i = 5; break;
+            case CLOWNMDEMU_BUTTON_C: i = 6; break;
+            case CLOWNMDEMU_BUTTON_START: i = 7; break;
+            default: break;
+        }
+        return (i >= 0 && ((b2 >> i) & 1u)) ? cc_true : cc_false;
+    }
     if (player_id != 0) return cc_false;
     switch (button_id) {
         // B320: dotyk (g_input) + herni ovladac (g_ovl_bity)
@@ -1692,8 +1711,13 @@ Java_eu_atarihelp_emu10_NativeSegaCoreBridge_inputStatus(JNIEnv* env, jclass) {
 /** Klavesa z herniho ovladace (KeyEvent.KEYCODE_*). Vraci logicka tlacitka
  *  (nap_ovladac.h T_*), 0 = neni klavesa ovladace (Java ji pusti dal). */
 extern "C" JNIEXPORT jint JNICALL
-Java_eu_atarihelp_emu10_NativeSegaCoreBridge_ovladacKlavesa(JNIEnv*, jclass, jint keyCode, jboolean dolu) {
+Java_eu_atarihelp_emu10_NativeSegaCoreBridge_ovladacKlavesaHrac(JNIEnv*, jclass, jint hrac, jint keyCode, jboolean dolu) {
     std::lock_guard<std::mutex> l(g_ovl_m);
+    if (hrac == 1) {                            // B354: hrac 2
+        const uint32_t t2 = nap::ovladac::klavesa(g_ovl_stav2, keyCode, dolu == JNI_TRUE);
+        if (t2) g_ovl_bity2.store(nap::ovladac::segaBity(g_ovl_stav2.vse()), std::memory_order_relaxed);
+        return (jint)t2;
+    }
     const uint32_t t = nap::ovladac::klavesa(g_ovl_stav, keyCode, dolu == JNI_TRUE);
     if (t) {
         g_ovl_bity.store(nap::ovladac::segaBity(g_ovl_stav.vse()), std::memory_order_relaxed);
@@ -1703,24 +1727,39 @@ Java_eu_atarihelp_emu10_NativeSegaCoreBridge_ovladacKlavesa(JNIEnv*, jclass, jin
     }
     return (jint)t;
 }
-/** Osy: leva packa x y, prava x y, krizek HAT x y, spoust L2 R2 + maska (nap_ovladac.h). */
+extern "C" JNIEXPORT jint JNICALL
+Java_eu_atarihelp_emu10_NativeSegaCoreBridge_ovladacKlavesa(JNIEnv* env, jclass c, jint keyCode, jboolean dolu) {
+    return Java_eu_atarihelp_emu10_NativeSegaCoreBridge_ovladacKlavesaHrac(env, c, 0, keyCode, dolu);
+}
+/** Osy: leva packa x y, prava x y, krizek HAT x y, spoust L2 R2 + maska (nap_ovladac.h). B354: hrac 0 / 1. */
 extern "C" JNIEXPORT void JNICALL
-Java_eu_atarihelp_emu10_NativeSegaCoreBridge_ovladacOsy(JNIEnv* env, jclass, jfloatArray josy, jint maska) {
+Java_eu_atarihelp_emu10_NativeSegaCoreBridge_ovladacOsyHrac(JNIEnv* env, jclass, jint hrac, jfloatArray josy, jint maska) {
     float o[nap::ovladac::O_POCET] = {0};
     if (josy) {
         const jsize n = env->GetArrayLength(josy);
         env->GetFloatArrayRegion(josy, 0, n < nap::ovladac::O_POCET ? n : nap::ovladac::O_POCET, o);
     }
     std::lock_guard<std::mutex> l(g_ovl_m);
+    if (hrac == 1) {
+        nap::ovladac::osy(g_ovl_stav2, o, maska);
+        g_ovl_bity2.store(nap::ovladac::segaBity(g_ovl_stav2.vse()), std::memory_order_relaxed);
+        return;
+    }
     nap::ovladac::osy(g_ovl_stav, o, maska);
     g_ovl_bity.store(nap::ovladac::segaBity(g_ovl_stav.vse()), std::memory_order_relaxed);
 }
-/** Vse pustit (ovladac odpojen, odchod ze Segy). */
+extern "C" JNIEXPORT void JNICALL
+Java_eu_atarihelp_emu10_NativeSegaCoreBridge_ovladacOsy(JNIEnv* env, jclass c, jfloatArray josy, jint maska) {
+    Java_eu_atarihelp_emu10_NativeSegaCoreBridge_ovladacOsyHrac(env, c, 0, josy, maska);
+}
+/** Vse pustit (ovladac odpojen, odchod ze Segy). B354: oba hraci. */
 extern "C" JNIEXPORT void JNICALL
 Java_eu_atarihelp_emu10_NativeSegaCoreBridge_ovladacPust(JNIEnv*, jclass) {
     std::lock_guard<std::mutex> l(g_ovl_m);
     nap::ovladac::pustVse(g_ovl_stav);
     g_ovl_bity.store(0, std::memory_order_relaxed);
+    nap::ovladac::pustVse(g_ovl_stav2);
+    g_ovl_bity2.store(0, std::memory_order_relaxed);
 }
 
 extern "C" JNIEXPORT void JNICALL
@@ -1772,7 +1811,7 @@ Java_eu_atarihelp_emu10_NativeSegaCoreBridge_shutdown(JNIEnv* env, jclass) {
 #if NAP_SEGA_VENDOR_CORE_PRESENT
     nap_real_stop_worker();
     for (int i = 0; i < 8; ++i) g_input[i] = false;
-    { std::lock_guard<std::mutex> l(g_ovl_m); nap::ovladac::pustVse(g_ovl_stav); g_ovl_bity.store(0); }   // B320
+    { std::lock_guard<std::mutex> l(g_ovl_m); nap::ovladac::pustVse(g_ovl_stav); g_ovl_bity.store(0); nap::ovladac::pustVse(g_ovl_stav2); g_ovl_bity2.store(0); }   // B320, B354
     nap_audio_clear();
     {
         std::lock_guard<std::mutex> lock(g_real_mutex);
@@ -1783,7 +1822,7 @@ Java_eu_atarihelp_emu10_NativeSegaCoreBridge_shutdown(JNIEnv* env, jclass) {
     return env->NewStringUTF("NATIVE_SHUTDOWN_OK_RV_QT_CPP_ONLY worker=STOPPED audio=CLEARED input=RELEASED");
 #else
     for (int i = 0; i < 8; ++i) g_input[i] = false;
-    { std::lock_guard<std::mutex> l(g_ovl_m); nap::ovladac::pustVse(g_ovl_stav); g_ovl_bity.store(0); }   // B320
+    { std::lock_guard<std::mutex> l(g_ovl_m); nap::ovladac::pustVse(g_ovl_stav); g_ovl_bity.store(0); nap::ovladac::pustVse(g_ovl_stav2); g_ovl_bity2.store(0); }   // B320, B354
     return env->NewStringUTF("NATIVE_SHUTDOWN_OK_RV_QT_CPP_ONLY noVendor input=RELEASED");
 #endif
 }

@@ -1067,6 +1067,11 @@ static std::atomic<uint32_t> g_ovl_logicke{0};          // logicka tlacitka vcet
 static std::atomic<uint32_t> g_ovl_bez_packy{0};        // ... bez smeru z leve packy (ta pak ridi mys)
 static std::atomic<uint32_t> g_ovl_snimek{0};           // PS1 bity pro tenhle krok (pocita vlakno emulace)
 static std::atomic<int> g_ovl_udalosti{0}, g_ovl_v_okne{0};
+// B354: druhy herni ovladac = hrac 2 v portu 2 (jen s vypnutou mysi - jinak port 2 patri mysi / ovladaci 1)
+static nap::ovladac::Stav g_ovl_stav2;                  // pod g_ovl_m
+static std::atomic<uint32_t> g_ovl_logicke2{0};
+static std::atomic<uint32_t> g_ovl_snimek2{0};          // PS1 bity hrace 2 pro tenhle krok
+static std::atomic<bool> g_ovl2_hlaseno{false};
 
 // po zmene stavu (pod g_ovl_m): bity pro vlakno emulace, packy mysi
 static void ps1_ovladac_zverejni_locked(void) {
@@ -1080,6 +1085,9 @@ static void ps1_ovladac_pust(void) {
   nap::ovladac::pustVse(g_ovl_stav);
   ps1_ovladac_zverejni_locked();
   g_ovl_snimek.store(0, std::memory_order_relaxed);
+  nap::ovladac::pustVse(g_ovl_stav2);                    // B354
+  g_ovl_logicke2.store(0, std::memory_order_relaxed);
+  g_ovl_snimek2.store(0, std::memory_order_relaxed);
 }
 // vlakno emulace, kazdy krok pred retro_run: PS1 bity ovladace pro tenhle snimek
 // (s mysi samotnou v portu 1 leva packa neni smer - ridi kurzor analogove)
@@ -1088,6 +1096,9 @@ static uint32_t ps1_ovladac_pro_snimek(void) {
   const uint32_t b = nap::ovladac::ps1Bity(mysSama ? g_ovl_bez_packy.load(std::memory_order_relaxed)
                                                    : g_ovl_logicke.load(std::memory_order_relaxed));
   g_ovl_snimek.store(b, std::memory_order_relaxed);
+  // B354: hrac 2 jen s vypnutou mysi (port 2 je pak ovladac); jinak nic
+  g_ovl_snimek2.store(g_mys.rezim() == nap::Ps1Mys::VYP ? nap::ovladac::ps1Bity(g_ovl_logicke2.load(std::memory_order_relaxed)) : 0u,
+                      std::memory_order_relaxed);
   return b;
 }
 // po startu hry / BIOSu: zapamatovana mys pro tuhle hru (podle ID disku); porty
@@ -1378,6 +1389,8 @@ static int16_t nap_input_state(unsigned port, unsigned device, unsigned, unsigne
   // drive: tlacitka jen do portu 1, ostatni porty nic.
   if (device == nap::Ps1Mys::RD_MOUSE) return g_mys.mysDotaz(port, id);
   if (device != nap::Ps1Mys::RD_JOYPAD) return 0;
+  // B354: port 2 s vypnutou mysi = hrac 2 (druhy herni ovladac)
+  if (port == 1 && id < 16 && g_mys.rezim() == nap::Ps1Mys::VYP) return (g_ovl_snimek2.load(std::memory_order_relaxed) >> id) & 1u ? 1 : 0;
   return g_mys.padDotaz(port, id, g_input_bits.load(std::memory_order_relaxed) | g_klav_bits.load(std::memory_order_relaxed) |
                                       g_ovl_snimek.load(std::memory_order_relaxed));   // B320: + herni ovladac
 }
@@ -1388,8 +1401,18 @@ static int16_t nap_input_state(unsigned port, unsigned device, unsigned, unsigne
 /** Klavesa z herniho ovladace (KeyEvent.KEYCODE_*). Vraci logicka tlacitka
  *  (nap_ovladac.h T_*), 0 = neni klavesa ovladace (Java ji pusti dal). */
 extern "C" JNIEXPORT jint JNICALL
-Java_eu_atarihelp_emu10_NativePs1CoreBridge_ps1OvladacKlavesa(JNIEnv *, jclass, jint keyCode, jboolean dolu) {
+Java_eu_atarihelp_emu10_NativePs1CoreBridge_ps1OvladacKlavesaHrac(JNIEnv *, jclass, jint hrac, jint keyCode, jboolean dolu) {
   uint32_t t;
+  if (hrac == 1) {                                       // B354: hrac 2 = port 2
+    {
+      std::lock_guard<std::mutex> l(g_ovl_m);
+      t = nap::ovladac::klavesa(g_ovl_stav2, keyCode, dolu == JNI_TRUE);
+      if (t) g_ovl_logicke2.store(g_ovl_stav2.vse(true), std::memory_order_relaxed);
+    }
+    if (t && !g_ovl2_hlaseno.exchange(true))
+      ps1_denik("OVLADAC 2 (hrac 2): prvni stisk -> PS1 port 2%s", g_mys.rezim() == nap::Ps1Mys::VYP ? "" : " - ale mys je zapnuta, port 2 patri mysi / ovladaci 1 (hrac 2 nic)");
+    return (jint)t;
+  }
   {
     std::lock_guard<std::mutex> l(g_ovl_m);
     t = nap::ovladac::klavesa(g_ovl_stav, keyCode, dolu == JNI_TRUE);
@@ -1405,18 +1428,31 @@ Java_eu_atarihelp_emu10_NativePs1CoreBridge_ps1OvladacKlavesa(JNIEnv *, jclass, 
   }
   return (jint)t;
 }
+extern "C" JNIEXPORT jint JNICALL
+Java_eu_atarihelp_emu10_NativePs1CoreBridge_ps1OvladacKlavesa(JNIEnv *env, jclass c, jint keyCode, jboolean dolu) {
+  return Java_eu_atarihelp_emu10_NativePs1CoreBridge_ps1OvladacKlavesaHrac(env, c, 0, keyCode, dolu);
+}
 /** Osy herniho ovladace: 8 cisel (nap_ovladac.h O_*: leva packa x y, prava x y,
- *  krizek HAT x y, spoust L2 R2) a maska M_* (co ovladac ma). */
+ *  krizek HAT x y, spoust L2 R2) a maska M_* (co ovladac ma). B354: hrac 0 / 1. */
 extern "C" JNIEXPORT void JNICALL
-Java_eu_atarihelp_emu10_NativePs1CoreBridge_ps1OvladacOsy(JNIEnv *env, jclass, jfloatArray josy, jint maska) {
+Java_eu_atarihelp_emu10_NativePs1CoreBridge_ps1OvladacOsyHrac(JNIEnv *env, jclass, jint hrac, jfloatArray josy, jint maska) {
   float o[nap::ovladac::O_POCET] = {0};
   if (josy) {
     const jsize n = env->GetArrayLength(josy);
     env->GetFloatArrayRegion(josy, 0, n < nap::ovladac::O_POCET ? n : nap::ovladac::O_POCET, o);
   }
   std::lock_guard<std::mutex> l(g_ovl_m);
+  if (hrac == 1) {                                       // B354: hrac 2 - jen smer a tlacitka (mys ridi hrac 1)
+    nap::ovladac::osy(g_ovl_stav2, o, maska);
+    g_ovl_logicke2.store(g_ovl_stav2.vse(true), std::memory_order_relaxed);
+    return;
+  }
   nap::ovladac::osy(g_ovl_stav, o, maska);
   ps1_ovladac_zverejni_locked();
+}
+extern "C" JNIEXPORT void JNICALL
+Java_eu_atarihelp_emu10_NativePs1CoreBridge_ps1OvladacOsy(JNIEnv *env, jclass c, jfloatArray josy, jint maska) {
+  Java_eu_atarihelp_emu10_NativePs1CoreBridge_ps1OvladacOsyHrac(env, c, 0, josy, maska);
 }
 /** Vse pustit (ovladac odpojen, odchod ze hry). */
 extern "C" JNIEXPORT void JNICALL

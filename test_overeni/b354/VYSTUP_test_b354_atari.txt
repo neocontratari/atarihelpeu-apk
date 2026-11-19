@@ -1,0 +1,57 @@
+B291 HELP otevren - pristroj ZAPNUT, studeny start Atari
+B293 JADRO = ATARI 130XE PAL: RAM 64 kB + rozsirena 16x16 kB (B323: 320K Compy Shop - PORTB bity 2-3 a 6-7, banky 130XE beze zmeny; procesor bit 4, ANTIC bit 5; B352: program, ktery hleda vic nez 16 bank, se sam spusti znovu s 1088K = 64 bank jako Ultimate 1MB - PORTB bity 1-3 a 5-7), OS XL/XE rev.2 (soucet $9211), BASIC rev.C vestaveny, self-test ROM $5000, TRIG3 = RD5 cartridge (prazdny slot = 0), RESET = reset CPU+ANTIC+PIA/MMU, plovouci datova sbernice, ANTIC/GTIA PAL 312 radku, POKEY 1,773 MHz
+B316 CARTRIDGE: soubory .car (XEX/MOBIL, NET, ZIP) - slot $8000-$9FFF / $A000-$BFFF pred BASICem, banky pres $D500-$D5FF, 67 typu (standard 2-16 kB, XEGS a Switchable XEGS, MegaCart, Atarimax 128 kB / 1 MB, SIC!, Williams, Express, Diamond, SpartaDOS X, OSS, Blizzard, Phoenix, Turbosoft, Atrax, Bounty Bob, J(atari)Cart, DCart ...); jiny program (XEX / ATR / TXT) cartridge vytahne, POWER ji necha ve slotu.
+B296 VBXE FX 1.26 v jadre: registry $D640, 512 kB VRAM, MEMAC A/B, XDL (overlay LR/SR/HR/text 80 sloupcu), atributova mapa, palety 4x256, blitter (rezimy 0-6, zoom, vzor, kolize) + IRQ; obraz 4 body na barevny takt. Joystick 1: leva pulka obrazovky = smer, prava = FIRE; herni ovladac taky.
+B298 ZVUK s pasmem jako TV (FIR 16 kHz, bez prekladu ultrazvuku do slysitelna), asynchronni prijem POKEY restartuje casovace 3+4 start bitem; KAZETA: hra (boot) = START+OPTION a RETURN samo, stereo WAV = zvukova stopa do TV, CLOAD i s disketou v D1:; DISKETA: ATR/DISK = vysunout / vymenit bez restartu.
+B299 BASIC/TBXL TXT: TXT soubor s programem napise appka sama do ATARI BASICu / Turbo-BASICu XL; klavesy z pristroje do logu (B299 KLAVESY); LOG/CHYBA = stav a cela pamet Atari v logu; SIO zkratka jen se zapnutou ROM OS (Turbo-BASIC XL ma na $E459 vlastni kod).
+B300 POKEY: casovac s AUDF=$FF (perioda 256) tika a dava preruseni - drive stal (Ghostbusters: hudba a rec z preruseni casovace 1, bez nej titulka stala; nejhlubsi tony byly potichu).
+B301 TV/PC (web prohlizec v appce): obraz Atari 130XE primo z jadra (vyrez 336x240 jako na telefonu) a zvuk 44100 Hz stereo - drive bylo na TV videt jen stranku s testy pod pristrojem.
+B302 KLAVESNICE POCITACE (prohlizec na TV/PC) -> Atari 130XE primo v C++: psani podle rozlozeni (cesky: diakritika bez hacku, AltGr znaky), sipky = kurzor, F1/F3/F4 START/SELECT/OPTION, F2 BREAK, F6 HELP, F8 INVERZE, F9 HRANI (WASD/sipky joystick, K skok, L FIRE); klavesy v tempu, ktere OS stihne.
+B303 TV/PC CELE V C++: kazdy snimek Atari (50/s) jako paleta + jen zmenene radky a zvuk v jednom proudu (/atari.stream) - Java uz nezvetsuje ani nekomprimuje (H.264/JPEG); Ctrl+V nebo pretazeny TXT v prohlizeci = program do BASICu bez NEW (UTF-8 s e s hackem uz neni ATASCII), jiny text = klavesy.
+B348 DISKETA D1: i na urovni bajtu SIO jako skutecna 1050 (hry s vlastnim zavadecem - xBIOS, Prince of Persia: ramec prikazu pres POKEY a linku COMMAND, odpovedi A/C/N/E, cteni/zapis/STATUS/FORMAT, 19200 Bd); OPTION pri bootu z diskety jen 1 s; Acid800 V0.1 38/38 (LXA jako SALLY, asynchronni prijem POKEY drzi casovace 3+4, hraci ve VBLANK po hires radku, fantomove DMA hracu).
+B349 ARCHIVY: hra v ZIP / RAR (XEX/MOBIL, ATR/DISK, NET HRY) se rozbali v C++ (deflate, RAR 2.9 vcetne pevneho a filtru); spusti se samostatna disketa > sada (strana A / Disk 1) > XEX > CAR, ostatni diskety z archivu nabidne ATR/DISK (i VYMENIT BEZ RESTARTU).
+B350 RAR5 (novy WinRAR 5 / 7): hlavicky vint + CRC32, komprese v blocich, filtry DELTA / E8 / E8E9 / ARM, pevny archiv (i s prazdnym souborem uprostred), odkazy se preskoci.
+B351 PPMd (RAR 4 "nejlepsi" = komprese textu): model PPMd var.H + rozsahovy dekoder RAR v C++, prechody PPMd <-> LZ, unikove prikazy, pevny archiv; heslo, vic dilu a RAR 1.5 / 2.0 zatim ne.
+B352 PAMET 1 MB: vychozi 320K (130XE + Compy Shop); program, ktery do rozsirene pameti zapisuje pod vic nez 16 ruznymi PORTB (hleda vic bank), se sam spusti znovu s 1088K (64 bank jako Ultimate 1MB) - Tony VBXE 496 KB.
+B353 TURBO pri nahravani: disketa D1: (SIO pres POKEY i OS v posledni 1 s) nebo zavadec XEX -> az 8 snimku za periodu 20 ms (kolik telefon stihne), zvuk ztlumeny; ne, kdyz hrac drzi joystick / klavesu nebo 3 s po stisku.
+B291 PRISTROJ plocha nova 1080x2160 -> kresleni 1080x2160
+B291 EMULACE_VLAKNO start (50 snimku/s, zvuk OpenSL, vse v C++)
+B291 EMULACE_VLAKNO priorita nice=-8 nastavenaB291 KRESLICI_VLAKNO start (pristroj kresli C++ primo na displej)
+B291 KRESLICI_VLAKNO priorita nice=-4 nastavena
+
+B291 PRISTROJ rozlozen 1080x2160 (displej 1080x2160) za 137 ms
+B354 - dva herni ovladace = dva hraci na Atari 130XE (C++ pristroj z appky, JNI jako Java)
+OK     Atari nastartovalo do READY
+klid: PORTA $FF TRIG0 1 TRIG1 1 | OS: STICK0 $F STICK1 $F STRIG0 1 STRIG1 1
+OK     klid: oba joysticky pusteny (PORTA $FF, TRIG0 / TRIG1 = 1, STICK1 $F)
+B354 JOYSTICK 2 z druheho herniho ovladace (hrac 2: smer, FIRE, START / SELECT / OPTION)
+hrac 2 A: PORTA $FF TRIG0 1 TRIG1 0 | OS: STICK0 $F STICK1 $F STRIG0 1 STRIG1 0
+hrac 2 nahoru: PORTA $EF TRIG0 1 TRIG1 1 | OS: STICK0 $F STICK1 $E STRIG0 1 STRIG1 1
+hrac 2 nahoru-vpravo: PORTA $6F TRIG0 1 TRIG1 1 | OS: STICK0 $F STICK1 $6 STRIG0 1 STRIG1 1
+pusteno: PORTA $FF TRIG0 1 TRIG1 1 | OS: STICK0 $F STICK1 $F STRIG0 1 STRIG1 1
+OK     1a) hrac 2: A = FIRE joysticku 2 (TRIG1 0, OS STRIG1 0), joystick 1 nic
+OK     1b) hrac 2: krizek nahoru = PORTA $EF (STICK1 $E), uhlopricka nahoru-vpravo $6F (STICK1 $6); STICK0 porad $F
+OK     1c) hrac 2 pusteno = klid
+B320 OVLADAC: klavesa 22 dolu -> vpravo -> Atari maska 0x008
+B320 OVLADAC: klavesa 96 dolu -> A(spodni) -> Atari maska 0x010
+B296 JOYSTICK 1 z herniho ovladace / klavesnice telefonu (smer, FIRE, START, SELECT, OPTION)
+B320 OVLADAC: klavesa 22 nahoru -> vpravo -> Atari maska 0x008
+B320 OVLADAC: klavesa 96 nahoru -> A(spodni) -> Atari maska 0x010
+hrac 1 vpravo + FIRE, hrac 2 vlevo: PORTA $B7 TRIG0 0 TRIG1 1 | OS: STICK0 $7 STICK1 $B STRIG0 0 STRIG1 1
+hrac 1 pustil: PORTA $BF TRIG0 1 TRIG1 1 | OS: STICK0 $F STICK1 $B STRIG0 1 STRIG1 1
+OK     2a) oba naraz: hrac 1 vpravo + FIRE, hrac 2 vlevo -> PORTA $B7 (STICK0 $7, STICK1 $B), TRIG0 0, TRIG1 1
+OK     2b) hrac 1 pustil -> hrac 2 porad vlevo ($BF); pak i hrac 2 pustil
+hrac 2 packa vpravo: PORTA $7F TRIG0 1 TRIG1 1 | OS: STICK0 $F STICK1 $7 STRIG0 1 STRIG1 1 | START drzeny: consol 6, pusteny 7 | X: vraci 4, KBCODE $FF (pred $FF)
+OK     3a) hrac 2: leva packa 0,9 = vpravo (PORTA $7F, STICK1 $7), 0,1 = klid
+OK     3b) hrac 2: START = konzolove START (i kratky stisk drzi aspon 5 snimku), pusteny = nic
+OK     3c) hrac 2: klavesy (X = MEZERA, Y = RETURN) jen hrac 1 - klavesnice je jedna
+B320 OVLADAC: klavesa 96 dolu -> A(spodni) -> Atari maska 0x010
+oba drzi: PORTA $DF TRIG0 0 TRIG1 0 | OS: STICK0 $F STICK1 $D STRIG0 0 STRIG1 0
+po devOvladacPust: PORTA $FF TRIG0 1 TRIG1 1 | OS: STICK0 $F STICK1 $F STRIG0 1 STRIG1 1
+OK     4a) ovladac odpojen uprostred stisku obou hracu (PORTA $DF, oba FIRE) -> devOvladacPust: oba joysticky pusteny
+LOG: B354 JOYSTICK 2 z druheho herniho ovladace (hrac 2: smer, FIRE, START / SELECT / OPTION)
+OK     4b) log: B354 JOYSTICK 2 z druheho herniho ovladace
+B291 KRESLICI_VLAKNO stop
+B291 EMULACE_VLAKNO stop
+
+VYSLEDEK: 12 kontrol, 0 chyb

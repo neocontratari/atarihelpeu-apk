@@ -133,6 +133,9 @@ public final class NativeAtariCoreBridge {
     //  osy: leva packa x y, prava x y, krizek HAT x y, spoust L2 R2; maska = co ovladac ma.
     private static native int     devOvladacKlavesaNative(int keyCode, boolean dolu);
     private static native void    devOvladacOsyNative(float[] osy, int maska);
+    // B354: hrac 0 = joystick 1, hrac 1 = joystick 2 (druhy herni ovladac)
+    private static native int     devOvladacKlavesaHracNative(int hrac, int keyCode, boolean dolu);
+    private static native void    devOvladacOsyHracNative(int hrac, float[] osy, int maska);
     private static native void    devOvladacPustNative();
     // B299: program z TXT souboru (rezim 0 = ATARI BASIC, 1 = Turbo-BASIC XL - ten zavede Java
     //  pred tim pres devLoadXexNative); diagnostika pameti a cela RAM pro LOG/CHYBA
@@ -355,6 +358,16 @@ public final class NativeAtariCoreBridge {
     public static void devOvladacOsySafe(float[] osy, int maska) {
         if (!loaded) return;
         try { devOvladacOsyNative(osy, maska); } catch (Throwable ignored) {}
+    }
+    /** B354: klavesa ovladace hrace 0 (joystick 1) nebo 1 (joystick 2). */
+    public static int devOvladacKlavesaSafe(int hrac, int keyCode, boolean dolu) {
+        if (!loaded) return 0;
+        try { return devOvladacKlavesaHracNative(hrac, keyCode, dolu); } catch (Throwable t) { return 0; }
+    }
+    /** B354: osy ovladace hrace 0 / 1. */
+    public static void devOvladacOsySafe(int hrac, float[] osy, int maska) {
+        if (!loaded) return;
+        try { devOvladacOsyHracNative(hrac, osy, maska); } catch (Throwable ignored) {}
     }
     /** B320: vse z ovladace pustit (odpojen, konec pristroje). */
     public static void devOvladacPustSafe() {

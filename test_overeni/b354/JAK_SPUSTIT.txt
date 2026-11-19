@@ -1,0 +1,66 @@
+B354 - DVA HERNI OVLADACE = DVA HRACI (ATARI JOYSTICK 2, SEGA OVLADAC 2, PS1 PORT 2) - overeni na PC
+===================================================================================================
+
+Rene (19. 11.): "dokazal by si napojit 2 bt dpady na jeden mobil ? ... plno her je 1vs1", pak "necham to na tobe".
+Android pripoji vic ovladacu Bluetooth naraz sam (kazdy ma sve zarizeni / deviceId); appka do B353 posilala vsechny
+ovladace jako hrace 1.
+
+CO DELA B354
+ - Java NapOvladac.Hraci (cista trida): prvni ovladac, na kterem nekdo zmackne tlacitko (nebo pohne packou / krizkem),
+   je hrac 1, dalsi JINE zarizeni hrac 2. Treti a dalsi ovladac hraje za hrace 1 (jako drive vsechny). Neprirazeny
+   ovladac, ktery nic nemacka (pusteni, sum packy), nic neposila - neprepise stav hrace 1. Odpojeny ovladac misto
+   uvolni (onInputDeviceRemoved) - dostane ho dalsi, kdo zmackne. Log "B354 OVLADAC "jmeno" (id N) = HRAC 2 ...",
+   na displeji "🎮 Hráč 2: jmeno" / "🎮 Player 2: name". Dotyk a dalkovy ovladac TV = hrac 1 (beze zmeny).
+ - MainActivity: ovladacKlavesa / dispatchGenericMotionEvent posilaji hrace do jader (*Safe(hrac, ...)).
+ - Atari (nap_atari_native.cpp): hrac 2 = joystick 2 - PORTA horni 4 bity + TRIG1 (OS opisuje do STICK1 $279 a
+   STRIG1 $285), START / SELECT / OPTION; MEZERA a RETURN jen hrac 1 (klavesnice je jedna). Udalost PAD s bitem
+   0x10000, JNI devOvladacKlavesaHracNative / devOvladacOsyHracNative; stare funkce = hrac 0.
+ - Sega (nap_sega_native_proof.cpp): hrac 2 = ovladac 2 (dotaz jadra clownmdemu player_id 1).
+ - PS1 (nap_ps1_native.cpp): hrac 2 = port 2 (libretro port 1), jen s vypnutou mysi PlayStation - s mysi port 2
+   patri mysi nebo ovladaci hrace 1. Denik "OVLADAC 2 (hrac 2): prvni stisk -> PS1 port 2".
+ - Odpojeni ovladace / odchod ze hry pusti oba hrace (ovladacPust).
+ - Napoveda CZ / EN: "Dva ovladače = dva hráči" / "Two controllers = two players" (Herní ovladač a Retroid Pocket 6).
+ - Drobnost B353: kratke turbo (pod 0,05 s) pise "kratke - rychlost se neda zmerit" misto "0.0x rychleji".
+
+Spoustet z adresare test_overeni/b354 (JAVA_HOME = JDK, ANDROID_JAR = android.jar API 34).
+
+1) Atari - SKUTECNY nap_atari_native.cpp (stuby z ../b291/stub):
+     g++ -std=c++17 -O2 -pthread -I../b291/stub -I$JAVA_HOME/include -I$JAVA_HOME/include/linux \
+         -I../../app/src/main/cpp/atari -o test_b354_atari test_b354_atari.cpp
+     ./test_b354_atari                                              -> VYSTUP_test_b354_atari.txt (12 kontrol, 0 chyb)
+   hrac 2: FIRE = TRIG1 / STRIG1, krizek a packa = STICK1, START = konzole; oba hraci naraz; odpojeni pusti oba.
+
+2) Sega - SKUTECNY nap_sega_native_proof.cpp + jadro clownmdemu (objekty a $SEGA jako ../b320/vse.sh):
+     g++ -std=c++17 -O2 -pthread -Wno-unused-function $SEGA -o test_b354_sega test_b354_sega.cpp PRAC/clown/*.o \
+         -l:libEGL.so.1 -l:libGLESv2.so.2
+     ./test_b354_sega                                               -> VYSTUP_test_b354_sega.txt (4 OK)
+
+3) PS1 - SKUTECNE jadro PCSX-ReARMed + nap_ps1_native.cpp, "hra" mys_test.exe z ../b318 cte oba porty
+   (PRAC/jadro = ../b318/stavba_jadra.sh, $PS1 jako ../b320/vse.sh):
+     g++ -std=c++17 -O1 -g -pthread $PS1 -o test_b354_ps1 test_b354_ps1.cpp PRAC/jadro/*.o \
+         -l:libEGL.so.1 -l:libGLESv2.so.2 -lz -ldl
+     EGL_PLATFORM=surfaceless ./test_b354_ps1 PRAC PRAC/mys_test.exe -> VYSTUP_test_b354_ps1.txt (8 OK)
+
+4) JVM (jvm/): NapOvladac.Hraci a mosty Java -> C++ s -Xcheck:jni
+     javac --release 17 -cp $ANDROID_JAR -d OUT NapOvladac.java NapDalkovy.java NativePs1CoreBridge.java \
+         NativeSegaCoreBridge.java NativeAtariCoreBridge.java jvm/TestB354Hraci.java jvm/TestB354Most.java
+     java -cp OUT:$ANDROID_JAR eu.atarihelp.emu10.TestB354Hraci     -> jvm/VYSTUP_TestB354Hraci.txt (9 OK)
+     libnapps1core.so z ../b308/ps1_harness.cpp (jako ../b320/vse.sh krok 7), pak
+     EGL_PLATFORM=surfaceless java -Xcheck:jni -Djava.library.path=LIB -cp OUT:$ANDROID_JAR \
+         eu.atarihelp.emu10.TestB354Most PRAC                       -> jvm/VYSTUP_TestB354Most.txt (6 OK)
+   (radek "terminate called" na konci = vlakno zvukove karty v nahrade OpenSL testu B308, ne appka)
+
+5) javac cele appky proti android.jar API 34 s hlavickami JNI:
+     javac -proc:none --release 17 -encoding UTF-8 -cp $ANDROID_JAR -d OUT -h HLAVICKY $(find ../../app/src/main/java -name "*.java")
+                                                                    -> VYSTUP_javac_android.txt (0 chyb)
+   Podpisy JNI: python3 ../b320/kontrola_jni.py HLAVICKY             -> VYSTUP_kontrola_jni.txt (110 metod, 0 CHYB)
+   (skript pise do ../b320/VYSTUP_kontrola_jni.txt - zkopirovat sem a v b320 vratit: git checkout --)
+
+6) Regrese (skutecny nativni kod B354): ../b320 test_b320_atari_ovladac 14, test_b320_sega_ovladac 5,
+   ../b348 test_b348_jni 16, ../b352 test_b352_jni 12 (s Tony), ../b353 test_b353_jni 11 (s Tony a PoP)
+                                                                    -> VYSTUP_regrese_*.txt
+   Pravidlo B343 (napoveda): b311 220 nazvu 0 CHYBA, b314 212 0 CHYBA, b343 3 CHYBA ZAMERNE (N7, A6, V)
+   Hry Reneho (Tony, PoP) v repozitari nejsou.
+
+Overi Rene (telefon): dva ovladace Bluetooth naraz - prvni stisk = hrac 1, druhy ovladac ukaze "🎮 Hráč 2"; hra 1 na 1
+v Atari (joystick 2), Seze a PS1 (bez mysi). Log: radky "B354 OVLADAC" a "B354 JOYSTICK 2".

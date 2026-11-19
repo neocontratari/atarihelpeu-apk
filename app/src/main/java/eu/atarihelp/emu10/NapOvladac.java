@@ -44,6 +44,8 @@ final class NapOvladac implements InputManager.InputDeviceListener {
         void ovladacUi(int stav, String jmeno, String duvod);
         /** ovladac odpojen - co drzel, uz nepusti (jadra: vse pustit) */
         void ovladacOdpojen();
+        /** B354: ovladac dostal hrace (0 = hrac 1, 1 = hrac 2) - prvni stisk na nem */
+        default void ovladacHrac(int hrac, String jmeno) {}
     }
 
     // rezim z OPTIONS (SharedPreferences "nap_ovladac" / "rezim")
@@ -255,6 +257,31 @@ final class NapOvladac implements InputManager.InputDeviceListener {
         return (maska & M_SPOUSTE) != 0 && (o[O_L2] > 0.5f || o[O_R2] > 0.5f);
     }
 
+    /**
+     * B354: DVA OVLADACE = DVA HRACI (hry 1 na 1). Rene: "dokazal by si napojit 2 bt dpady na jeden mobil ...
+     * plno her je 1vs1". Hrac podle poradi: prvni ovladac, na kterem nekdo zmackne tlacitko (nebo vychyli packu /
+     * krizek), je hrac 1 (0), dalsi JINE zarizeni hrac 2 (1). Dalsi ovladace hraji za hrace 1 (jako drive vsechny).
+     * Odpojeny ovladac misto uvolni - dostane ho dalsi, kdo zmackne. Neprirazeny ovladac, ktery nic nemacka (pusteni,
+     * sum packy), nic neposila - nesmi prepsat stav hrace 1. (Cista trida - testy na PC.)
+     */
+    static final class Hraci {
+        final int[] id = {-1, -1};
+        /** Hrac (0 / 1) pro zarizeni; stisk = smi priradit volne misto. -1 = neprirazene zarizeni bez stisku. */
+        int hrac(int zarizeni, boolean stisk) {
+            for (int h = 0; h < 2; h++) if (id[h] == zarizeni) return h;
+            if (id[0] >= 0 && id[1] >= 0) return 0;          // treti a dalsi ovladac: za hrace 1
+            if (!stisk) return -1;
+            for (int h = 0; h < 2; h++) if (id[h] < 0) { id[h] = zarizeni; return h; }
+            return 0;
+        }
+        /** Zarizeni odpojeno - jeho misto je volne. Vraci hrace (0 / 1), nebo -1. */
+        int odpoj(int zarizeni) {
+            for (int h = 0; h < 2; h++) if (id[h] == zarizeni) { id[h] = -1; return h; }
+            return -1;
+        }
+        boolean obsazeno(int h) { return id[h] >= 0; }
+    }
+
     /** Stav schovani dotykoveho ovladani (cisty - bez Androidu). */
     static final class Schovani {
         int rezim = REZIM_AUTO;
@@ -342,6 +369,7 @@ final class NapOvladac implements InputManager.InputDeviceListener {
     private InputManager im;
     private final Map<Integer, Zarizeni> zarizeni = new HashMap<>();
     private final Schovani schovani = new Schovani();
+    private final Hraci hraci = new Hraci();                 // B354 (pod this)
     private volatile String jmenoOvladace = "";
     private final java.util.HashSet<Integer> hlasenoBezZarizeni = new java.util.HashSet<>();   // B329
 
@@ -388,7 +416,9 @@ final class NapOvladac implements InputManager.InputDeviceListener {
     }
     @Override public void onInputDeviceRemoved(int id) {
         Zarizeni z;
-        synchronized (this) { z = zarizeni.remove(id); }
+        int hrac;
+        synchronized (this) { z = zarizeni.remove(id); hrac = hraci.odpoj(id); }
+        if (hrac >= 0) log("B354 OVLADAC hrac " + (hrac + 1) + " uvolnen - odpojen \"" + (z != null ? z.jmeno : "?") + "\" (id " + id + "), misto dostane dalsi ovladac, na kterem nekdo zmackne");
         if (z != null && (z.ovladac || z.hralo)) {
             log("B320 OVLADAC odpojen: " + z.jmeno + " (id " + id + ")");
             if (posluchac != null) try { posluchac.ovladacOdpojen(); } catch (Throwable ignored) {}
@@ -540,6 +570,34 @@ final class NapOvladac implements InputManager.InputDeviceListener {
         Zarizeni z = zarizeniUdalosti(e.getDeviceId());
         return (z != null && z.switchStara) ? klavesaSwitch(k) : k;
     }
+
+    /** B354: hrac (0 / 1) pro klavesu ovladace; -1 = neprirazeny ovladac, ktery nic nemacka (klavesu nikam neposilat). */
+    int hrac(KeyEvent e) {
+        return hracZarizeni(e.getDeviceId(), e.getAction() == KeyEvent.ACTION_DOWN);
+    }
+    /** B354: hrac (0 / 1) pro osy (ven / maska z osy()); -1 = neprirazeny ovladac v klidu. */
+    int hracOsy(MotionEvent e, float[] ven, int maska) {
+        return hracZarizeni(e.getDeviceId(), pohyb(ven, maska));
+    }
+    private int hracZarizeni(int id, boolean stisk) {
+        final boolean druhy;
+        final int h;
+        synchronized (this) {
+            final boolean bylo = hraci.id[0] == id || hraci.id[1] == id;
+            h = hraci.hrac(id, stisk);
+            druhy = !bylo && h >= 0 && hraci.id[h] == id;      // prave prirazen
+        }
+        if (druhy) {
+            final Zarizeni z = zarizeniUdalosti(id);
+            final String jm = z != null ? z.jmeno : "?";
+            log("B354 OVLADAC \"" + jm + "\" (id " + id + ") = HRAC " + (h + 1) + (h == 1
+                    ? " - Atari joystick 2, Sega ovladac 2, PS1 ovladac 2 (port 2, jen s vypnutou mysi)" : ""));
+            if (posluchac != null) try { posluchac.ovladacHrac(h, jm); } catch (Throwable ignored) {}
+        }
+        return h;
+    }
+    /** B354: kolik hracu ma ovladac (pro log / OPTIONS). */
+    synchronized int pocetHracu() { return (hraci.obsazeno(0) ? 1 : 0) + (hraci.obsazeno(1) ? 1 : 0); }
 
     /**
      * Klavesa ovladace zpracovana (kod = podle mista - kodPodleMista, kam = kam sla, t = logicka tlacitka

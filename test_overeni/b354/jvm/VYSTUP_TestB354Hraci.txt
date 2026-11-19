@@ -1,0 +1,11 @@
+B354 - NapOvladac.Hraci: prvni ovladac = hrac 1, druhy = hrac 2 (podle prvniho stisku)
+OK     1a) neprirazeny ovladac v klidu (sum packy, pusteni) nic neposila (-1)
+OK     1b) prvni stisk ovladace A = hrac 1, pak vse z A hrac 1 (i pusteni)
+OK     2a) druhy ovladac B v klidu: nic (nesmi prepsat osy hrace 1)
+OK     2b) prvni stisk na B = hrac 2; A zustava hrac 1
+OK     3) treti ovladac C hraje za hrace 1 (i jeho pusteni - nic nezustane drzet)
+OK     4a) A odpojen -> misto hrace 1 volne, B porad hrac 2
+OK     4b) C (dosud navic) se stiskem dostane volne misto hrace 1
+OK     4c) B odpojen -> D se stiskem = hrac 2; odpojit znovu nic
+OK     4d) odpojeni neznameho zarizeni nic nemeni
+VYSLEDEK: 9 OK, 0 CHYBA

@@ -86,6 +86,9 @@ public final class NativeSegaCoreBridge {
     // osy: leva packa x y, prava x y, krizek HAT x y, spoust L2 R2; maska = co ovladac ma
     private static native void ovladacOsy(float[] osy, int maska);
     private static native void ovladacPust();
+    // B354: hrac 0 = ovladac 1, hrac 1 = ovladac 2 Segy (druhy herni ovladac)
+    private static native int ovladacKlavesaHrac(int hrac, int keyCode, boolean dolu);
+    private static native void ovladacOsyHrac(int hrac, float[] osy, int maska);
 
     public static int ovladacKlavesaSafe(int keyCode, boolean dolu) {
         try { return ovladacKlavesa(keyCode, dolu); } catch (Throwable t) { return 0; }
@@ -95,5 +98,12 @@ public final class NativeSegaCoreBridge {
     }
     public static void ovladacPustSafe() {
         try { ovladacPust(); } catch (Throwable ignored) {}
+    }
+    /** B354: klavesa / osy ovladace hrace 0 nebo 1. */
+    public static int ovladacKlavesaSafe(int hrac, int keyCode, boolean dolu) {
+        try { return ovladacKlavesaHrac(hrac, keyCode, dolu); } catch (Throwable t) { return 0; }
+    }
+    public static void ovladacOsySafe(int hrac, float[] osy, int maska) {
+        try { ovladacOsyHrac(hrac, osy, maska); } catch (Throwable ignored) {}
     }
 }

@@ -12590,6 +12590,10 @@ public class MainActivity extends Activity {
                 @Override public void ovladacLog(String radek) { appendNativeLog(radek); }
                 @Override public void ovladacUi(int stav, String jmeno, String duvod) { ovladacUiPouzij(stav, jmeno, duvod); }
                 @Override public void ovladacOdpojen() { ovladacPustVse("ovladac odpojen"); }
+                @Override public void ovladacHrac(int hrac, String jmeno) {
+                    // B354: druhy ovladac = hrac 2 (Atari joystick 2, Sega ovladac 2, PS1 port 2)
+                    if (hrac == 1) ovladacZprava(tx("🎮 Hráč 2: " + jmeno, "🎮 Player 2: " + jmeno));
+                }
             });
             ovladac.start();
         } catch (Throwable t) {
@@ -12941,11 +12945,15 @@ public class MainActivity extends Activity {
         // B329: kod podle MISTA na ovladaci (Pro Controller se starou tabulkou Androidu 9 - START chodil jako R2)
         final int k = ovladac != null ? ovladac.kodPodleMista(e) : e.getKeyCode();
         final int kam = ovladacKam();
+        // B354: hrac podle ovladace (prvni = hrac 1, druhy = hrac 2); -1 = neprirazeny ovladac bez stisku
+        final int h = ovladac != null ? ovladac.hrac(e) : 0;
+        if (h < 0 && (kam == OVL_PS1 || kam == OVL_SEGA || kam == OVL_ATARI)) return false;
+        final int hr = h < 0 ? 0 : h;
         int t;
         switch (kam) {
-            case OVL_PS1:   ovlPouzitPs1 = true; t = NativePs1CoreBridge.ovladacKlavesaSafe(k, dolu); break;
-            case OVL_SEGA:  ovlPouzitSega = true; t = NativeSegaCoreBridge.ovladacKlavesaSafe(k, dolu); break;
-            case OVL_ATARI: ovlPouzitAtari = true; t = NativeAtariCoreBridge.devOvladacKlavesaSafe(k, dolu); break;
+            case OVL_PS1:   ovlPouzitPs1 = true; t = NativePs1CoreBridge.ovladacKlavesaSafe(hr, k, dolu); break;
+            case OVL_SEGA:  ovlPouzitSega = true; t = NativeSegaCoreBridge.ovladacKlavesaSafe(hr, k, dolu); break;
+            case OVL_ATARI: ovlPouzitAtari = true; t = NativeAtariCoreBridge.devOvladacKlavesaSafe(hr, k, dolu); break;
             case OVL_MENU:  t = ovladacMenu(k, dolu, e.getRepeatCount()); break;
             default:        t = 0; break;   // stranky (OPTIONS, HELP ...): jako drive - A = klik, B = zpet
         }
@@ -12996,9 +13004,12 @@ public class MainActivity extends Activity {
                 final int kam = ovladacKam();
                 if (kam == OVL_PS1 || kam == OVL_SEGA || kam == OVL_ATARI) {
                     final int maska = ovladac.osy(e, ovladacOsy);
-                    if (kam == OVL_PS1) { ovlPouzitPs1 = true; NativePs1CoreBridge.ovladacOsySafe(ovladacOsy, maska); }
-                    else if (kam == OVL_SEGA) { ovlPouzitSega = true; NativeSegaCoreBridge.ovladacOsySafe(ovladacOsy, maska); }
-                    else { ovlPouzitAtari = true; NativeAtariCoreBridge.devOvladacOsySafe(ovladacOsy, maska); }
+                    // B354: osy patri hraci sveho ovladace; neprirazeny ovladac v klidu nic neposila
+                    final int h = ovladac.hracOsy(e, ovladacOsy, maska);
+                    if (h < 0) return true;
+                    if (kam == OVL_PS1) { ovlPouzitPs1 = true; NativePs1CoreBridge.ovladacOsySafe(h, ovladacOsy, maska); }
+                    else if (kam == OVL_SEGA) { ovlPouzitSega = true; NativeSegaCoreBridge.ovladacOsySafe(h, ovladacOsy, maska); }
+                    else { ovlPouzitAtari = true; NativeAtariCoreBridge.devOvladacOsySafe(h, ovladacOsy, maska); }
                     return true;
                 }
             }
