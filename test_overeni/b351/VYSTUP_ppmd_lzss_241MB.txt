@@ -1,0 +1,5 @@
+libarchive test_read_format_rar_ppmd_lzss_conversion.rar (241 MB textu, bloky PPMd a LZ se stridaji) - nad limitem appky (64 MB), proto
+vybal.cpp prelozeny s -DNAP_ARCHIV_LIMIT='(512u << 20)':
+RAR: 1 polozek
+  ppmd_lzss_conversion_test.txt     241647978 B baleno    176602 metoda 35 verze 29 -> OK 
+-> CRC32 souboru sedi (Archiv::rozbal ho kontroluje)

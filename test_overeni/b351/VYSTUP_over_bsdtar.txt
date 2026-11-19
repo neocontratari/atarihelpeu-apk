@@ -1,0 +1,9 @@
+bsdtar 3.7.2 - libarchive 3.7.2 zlib/1.3 liblzma/5.4.5 bz2lib/1.0.8 liblz4/1.9.4 libzstd/1.5.5 
+ppmd_filtr.rar                0 shodne s puvodnimi daty, 2 jinak (filtr_neznamy.bin filtr_za_koncem.bin)  | bsdtar: filtr_za_koncem.bin: Parsing filters is unsupported.: Unknown error -1
+ppmd_pevny.rar                1 shodne s puvodnimi daty, 2 jinak (pevny2.txt pevny3.txt)  | bsdtar: bsdtar: RAR solid archive support unavailable.
+ppmd_prikazy.rar              1 shodne s puvodnimi daty, 0 jinak
+ppmd_text.rar                 1 shodne s puvodnimi daty, 0 jinak
+vyber_ppmd.rar                1 shodne s puvodnimi daty, 1 jinak (hra.xex)  | bsdtar: bsdtar: RAR solid archive support unavailable.
+
+Znamy rozdil bsdtar 3.7.2: filtry v PPMd (esc 3) libarchive vubec neumi ("Parsing filters is unsupported") - ppmd_filtr.rar
+proto overuje jen test_b351_ppmd (unrar ReadVMCodePPM: filtr za koncem souboru = soubor OK, neznamy filtr = odmitnut).

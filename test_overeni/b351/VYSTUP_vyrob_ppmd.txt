@@ -1,0 +1,6 @@
+ppmd_text.rar: 200007 B textu -> 20272 B (rad 6, model 1 MB)
+ppmd_prikazy.rar: 14880 B -> 2413 B (esc 1 / 4 / 5, 2x konec bloku, rad 64)
+ppmd_pevny.rar: 3 soubory (30005 + 20002 + 10000 B) jednim modelem PPMd
+vyber_ppmd.rar: pevny RAR, readme (PPMd) pred hrou hra.xex (PPMd)
+ppmd_filtr.rar: esc 3 - 3 filtry za koncem souboru (kod 6 / 16 / 5 B), neznamy filtr uvnitr souboru
+hotovo: 5 archivu RAR s PPMd v /tmp/b351_archivy

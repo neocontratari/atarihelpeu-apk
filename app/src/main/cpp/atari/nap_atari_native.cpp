@@ -1479,7 +1479,9 @@ Java_eu_atarihelp_emu10_NativeAtariCoreBridge_devStartNative(JNIEnv *, jclass, j
              "pevneho a filtru); spusti se samostatna disketa > sada (strana A / Disk 1) > XEX > CAR, ostatni diskety "
              "z archivu nabidne ATR/DISK (i VYMENIT BEZ RESTARTU).");
       devLog("B350 RAR5 (novy WinRAR 5 / 7): hlavicky vint + CRC32, komprese v blocich, filtry DELTA / E8 / E8E9 / ARM, "
-             "pevny archiv (i s prazdnym souborem uprostred), odkazy se preskoci; PPMd (RAR4 text), heslo a vic dilu zatim ne.");
+             "pevny archiv (i s prazdnym souborem uprostred), odkazy se preskoci.");
+      devLog("B351 PPMd (RAR 4 \"nejlepsi\" = komprese textu): model PPMd var.H + rozsahovy dekoder RAR v C++, "
+             "prechody PPMd <-> LZ, unikove prikazy, pevny archiv; heslo, vic dilu a RAR 1.5 / 2.0 zatim ne.");
     }
     g_strojBezi = zapnuto;
   }
@@ -2335,7 +2337,8 @@ Java_eu_atarihelp_emu10_NativeAtariCoreBridge_devLoadTapeNative(JNIEnv *env, jcl
 static std::string hlaskaArchivu(const std::string &ch) {
   // B350: RAR5 uz umi - zbyva novejsi verze komprese nez RAR 7
   if (ch.find("neznama verze komprese") != std::string::npos) return nap::tx(u8"TENHLE RAR JE MOC NOVÝ - ZABAL JAKO ZIP", "THIS RAR IS TOO NEW - USE ZIP");
-  if (ch.find("PPMd") != std::string::npos) return nap::tx(u8"TENHLE RAR (PPMD) NEUMÍM - ZABAL JAKO ZIP", "THIS RAR (PPMD) IS NOT SUPPORTED - USE ZIP");
+  // B351: PPMd (komprese textu RAR 4) uz umi - zbyva malo pameti pro jeho model (az 256 MB)
+  if (ch.find("malo pameti") != std::string::npos) return nap::tx(u8"MÁLO PAMĚTI NA ROZBALENÍ - ZABAL JAKO ZIP", "NOT ENOUGH MEMORY TO UNPACK - USE ZIP");
   if (ch.find("stary format") != std::string::npos) return nap::tx(u8"STARÝ RAR (1.5 / 2.0) NEUMÍM - ZABAL JAKO ZIP", "OLD RAR (1.5 / 2.0) NOT SUPPORTED - USE ZIP");
   if (ch.find("heslo") != std::string::npos || ch.find("zaheslovan") != std::string::npos) return nap::tx(u8"ARCHIV MÁ HESLO", "THE ARCHIVE HAS A PASSWORD");
   if (ch.find("vice dilu") != std::string::npos || ch.find("dalsim dilu") != std::string::npos) return nap::tx(u8"ARCHIV NA VÍCE DÍLŮ NEUMÍM", "MULTI-PART ARCHIVES NOT SUPPORTED");

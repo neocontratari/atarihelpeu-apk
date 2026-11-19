@@ -1,0 +1,31 @@
+B351 - RAR 4 s kompresi textu PPMd: model PPMd var.H + rozsahovy dekoder RAR v C++ (nap_ppmd.h)
+
+A) ROZBALENI BLOKU PPMd (obsah se porovna s puvodnimi daty z vyrob_ppmd)
+     text.txt OK  (9 ms)
+OK     200 kB textu v PPMd (rad 6, model 1 MB - cestou se zaplni a restartuje)
+     prikazy.bin OK
+OK     unikove prikazy: znak = unikovy znak (esc 1), shoda LZ (esc 4), RLE (esc 5); konec bloku + novy blok bez noveho modelu (jiny unikovy znak) a s novym modelem (rad 64, 4 MB)
+     pevny1.txt OK, pevny2.txt OK, pevny3.txt OK
+OK     pevny RAR: 3 soubory jednim modelem PPMd (konec souboru = esc 2, dalsi soubor: hlavicka bez noveho modelu)
+     na preskacku 3,1,2,3: pevny3.txt OK, pevny1.txt OK, pevny2.txt OK, pevny3.txt OK
+OK     pevny RAR s PPMd na preskacku (model se postavi znovu od 1. souboru)
+     filtr_za_koncem.bin OK, filtr_neznamy.bin rar: neznamy filtr (vlastni program VM)
+OK     filtry v PPMd (esc 3, kod 6 / 16 / 5 B): blok za koncem souboru se nepouzije (CRC sedi), neznamy filtr uvnitr souboru appka odmitne
+
+B) ATARI: PEVNY RAR "NEJLEPSI" - README (PPMd) PRED HROU
+     vyber_ppmd.rar (RAR): hra.xex [X 268 B] | preskoceno: readme.txt
+OK     hra.xex se rozbali pres readme v PPMd (pevny archiv), readme se nenabizi
+
+C) ODOLNOST: poskozene bloky PPMd nesmi appku shodit ani zaseknout
+     1250 poskozenych archivu s PPMd za 1858 ms (nejdelsi 15.9 ms), chyb rozbaleni 1297 (CRC / poskozena data PPMd)
+OK     zadny pad ani zaseknuti (s -fsanitize=address,undefined i bez chyb pameti)
+
+D) SKUTECNE RAR S PPMd (volitelne: libarchive, rarfile - jen lokalne)
+     test_read_format_rar_binary_data.rar               metoda 0x35: 2/2 OK
+     test_read_format_rar_compress_best.rar             metoda 0x35: 3/3 OK
+     test_read_format_rar_ppmd_lzss_conversion.rar      metoda 0x35: 0/0 OK ppmd_lzss_conversion_test.txt: 230 MB nad limit appky 64 MB
+     seektest.rar                                       metoda 0x35: 1/1 OK
+     unicode.rar                                        metoda 0x35: 2/2 OK
+OK     skutecne RAR "nejlepsi" (PPMd i LZ, pevny unicode.rar): vsechny soubory rozbalene, CRC sedi
+
+VYSLEDEK: 8 kontrol, 0 chyb

@@ -4512,4 +4512,33 @@
      - DALSI KROK: Rene / tester - hra v RAR5 (WinRAR 5+ / 7) pres XEX / MOBIL nebo NET HRY. Zbyva PPMd (RAR4
        "nejlepsi" komprese textu; libarchive compress_best, rarfile unicode.rar) a RAR 1.5 / 2.0.
 
+   B351: PPMd - "NEJLEPSI" KOMPRESE STAREHO WINRARU (RAR4) PRO ATARI (18. 11. 2026).
+   Rene: "pokracuj". RAR4 s volbou "nejlepsi" kodi text (a textu podobna data) modelem PPMd var.H misto LZ - v pevnem
+   archivu s readme pred hrou pak nesla rozbalit ani hra (slovnik navazuje).
+     - nap_ppmd.h (novy): model PPMd var.H (kontexty, stavy, SEE, binarni kontexty, alokator po 12 B jednotkach s
+       lepenim volnych bloku, restart pri zaplneni) + rozsahovy dekoder RAR (carryless, Bottom 0x8000) - podle
+       verejnych (public domain) kodu Shkarin (PPMd var.H), Pavlov (Ppmd7.c / Ppmd7aDec.c, LZMA SDK; stejny v
+       libarchive), Subbotin (rangecoder). Pamet modelu = std::vector<uint8_t>, "ukazatele" = posuny; vsechny
+       pristupy hlidane a smycky se stropem - poskozena data = chyba "poskozena data PPMd", ne pad. Pamet modelu
+       (MaxMB + 1) MB z hlavicky bloku, max 256 MB; kdyz se nepovede alokovat: hlaska MALO PAMETI NA ROZBALENI.
+     - nap_archiv.h, Rar29 (podle unrar Unpack29 / DecodeInit / ReadVMCodePPM): hlavicka bloku PPMd (priznaky 0x80 /
+       0x20 novy model / 0x40 unikovy znak, rad 2-64, MaxMB, 4 B dekoderu), unikove prikazy (0 konec bloku -> tabulky
+       LZ nebo novy blok PPMd, 1 znak, 2 konec souboru, 3 filtr VM pres PPMd, 4 shoda LZ, 5 RLE), pevny archiv
+       (model, unikovy znak i dekoder pokracuji; konec souboru esc 2 se docte). Limit souboru NAP_ARCHIV_LIMIT
+       (64 MB v appce, testy na PC si ho zvetsi).
+     - nap_atari_native.cpp: hlaska "TENHLE RAR (PPMD) NEUMIM" pryc, nove "MALO PAMETI NA ROZBALENI"; log B351.
+       Napoveda CZ / EN: umi i "nejlepsi" kompresi stareho WinRARu.
+     - Testy test_overeni/b351 (JAK_SPUSTIT.txt): vyrob_ppmd.cpp (koder PPMd jen pro testy - model z appky + kodovani
+       symbolu podle Ppmd7_EncodeSymbol; bsdtar nepevne archivy rozbali na puvodni data = model sedi s libarchive),
+       test_b351_ppmd 8 OK (200 kB textu s restarty modelu, esc 1 / 4 / 5, prechody bloku, rad 64, pevny i na
+       preskacku, filtry v PPMd esc 3 - libarchive je neumi, overeno proti unrar ReadVMCodePPM: blok za koncem
+       souboru se nepouzije, neznamy filtr se odmitne; Atari: readme v PPMd pred hrou, 1250 poskozenych; skutecne:
+       libarchive compress_best, binary_data, rarfile unicode.rar = pevny RAR s PPMd), libarchive 241 MB (PPMd <-> LZ)
+       s vetsim limitem OK za 1,7 s, ASan / UBSan + fuzz. POZOR: ../b349/fuzz_b349.cpp jde pres nap::AtariArchiv,
+       ktery .txt / .html nerozbaluje - PPMd v textu nezkousel; proto fuzz_b351.cpp (primo dekoder, kazda polozka,
+       i hlavicky bloku PPMd). Regrese: b349 42 OK (cele cizi archivy 29 -> 31) + JNI 19, b350 11 + JNI 13, b348 JNI 16, napoveda
+       220 / 212 / 3 zamerne. build.gradle: versionCode 394 "EMU10-B351-PPMD-ATARI". Na telefonu ani TV neovereno.
+     - DALSI KROK: Rene / tester - hra v RAR ze stareho WinRARu s volbou "nejlepsi". Zbyva: heslo (zamerne ne),
+       archiv na vice dilu, RAR 1.5 / 2.0 (DOS, 90. leta).
+
 ===============================================================================

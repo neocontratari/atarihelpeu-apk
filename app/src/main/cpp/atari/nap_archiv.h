@@ -16,7 +16,8 @@
 // Kazdy rozbaleny soubor se kontroluje CRC32 z archivu (RAR 5 jen kdyz ho ma -
 // pri otisku BLAKE2 se kontroluje velikost a stavba dat) - kdyby se rozbaleni
 // nepovedlo, appka spatna data nespusti (napise chybu).
-// Neumi: heslo, archiv na vice dilu, bloky PPMd v RAR 4 (napise to do chyby).
+// B351: bloky PPMd v RAR 4 ("komprese textu", nap_ppmd.h) taky.
+// Neumi: heslo, archiv na vice dilu, RAR 1.5 / 2.0 (napise to do chyby).
 #pragma once
 #include <cstdint>
 #include <cstdlib>
@@ -24,6 +25,12 @@
 #include <memory>
 #include <string>
 #include <vector>
+#include "nap_ppmd.h"
+
+// nejvetsi rozbaleny soubor (pojistka pameti telefonu); testy na PC ho mohou zvetsit -DNAP_ARCHIV_LIMIT=...
+#ifndef NAP_ARCHIV_LIMIT
+#define NAP_ARCHIV_LIMIT (64u << 20)
+#endif
 
 namespace nap {
 namespace archiv {
@@ -203,8 +210,9 @@ class Rar29 {
   // opakuje na stejnem objektu pro dalsi soubor (slovnik a tabulky zustavaji)
   bool rozbal(const uint8_t *in, size_t n, uint64_t velikost, bool solid, std::vector<uint8_t> &out, std::string &chyba) {
     vstup = in; vstupN = n; bit = 0; adr = 0; chyb = nullptr;
+    pv.d = in; pv.n = n; pv.adr = &adr;               // PPMd cte bajty z tehoz vstupu (u solid pokracuje)
     if (!solid || !inicializovano) zacni();
-    if (velikost > (64u << 20)) { chyba = "rar: soubor je moc velky"; return false; }
+    if (velikost > (uint64_t)NAP_ARCHIV_LIMIT) { chyba = "rar: soubor je moc velky"; return false; }
     const uint64_t start = okno.size();
     cil = start + velikost;
     if (!solid || !tabulky) {
@@ -212,8 +220,38 @@ class Rar29 {
     }
     bool konecSouboru = false;
     while (okno.size() < cil) {
-      if (adr > vstupN + 4) { chyba = "rar: data skoncila driv"; return false; }
-      if (ppm) { chyba = "rar: blok PPMd (komprese textu) zatim neumim - zabal hru jako ZIP"; return false; }
+      if (adr > vstupN + (ppm ? 16 : 4)) { chyba = "rar: data skoncila driv"; return false; }
+      if (ppm) {
+        // blok PPMd (unrar Unpack29, BLOCK_PPM): znak, nebo unikovy znak + prikaz
+        const int ch = ppmd ? ppmd->dekoduj() : -2;
+        if (ch < 0) { chyba = "rar: poskozena data PPMd"; return false; }
+        if (ch == escChar) {
+          const int dalsi = ppmd->dekoduj();
+          if (dalsi < 0) { chyba = "rar: poskozena data PPMd"; return false; }
+          if (dalsi == 0) { if (!ctiTabulky()) { chyba = chyb ? chyb : "rar: spatne tabulky"; return false; } continue; }   // konec bloku PPMd
+          if (dalsi == 2) { konecSouboru = true; break; }                                                         // konec souboru
+          if (dalsi == 3) { if (!ctiFiltrPpm()) { chyba = chyb ? chyb : "rar: spatny filtr"; return false; } continue; }
+          if (dalsi == 4) {                                    // shoda LZ uvnitr PPMd: 3 B vzdalenost, 1 B delka
+            uint32_t vzd = 0, delka = 0;
+            for (int i = 0; i < 4; i++) {
+              const int b = ppmd->dekoduj();
+              if (b < 0) { chyba = "rar: poskozena data PPMd"; return false; }
+              if (i == 3) delka = (uint32_t)b; else vzd = (vzd << 8) + (uint32_t)b;
+            }
+            kopiruj(delka + 32, vzd + 2);
+            continue;
+          }
+          if (dalsi == 5) {                                    // RLE: vzdalenost 1
+            const int delka = ppmd->dekoduj();
+            if (delka < 0) { chyba = "rar: poskozena data PPMd"; return false; }
+            kopiruj((uint32_t)delka + 4, 1);
+            continue;
+          }
+          // 1 (a cokoli jineho) = samotny unikovy znak jako data
+        }
+        okno.push_back((uint8_t)ch);
+        continue;
+      }
       const int c = dekod(LD);
       if (c < 256) { okno.push_back((uint8_t)c); continue; }
       if (c >= 271) {
@@ -280,7 +318,7 @@ class Rar29 {
     if (okno.size() < cil) { chyba = "rar: data skoncila driv"; return false; }
     // za daty souboru pise RAR kod 256 "konec souboru" s bitem "nova tabulka" - u pevneho
     // archivu podle nej dalsi soubor zacina (nebo nezacina) tabulkami
-    if (!konecSouboru && !ppm) doctiKonec();
+    if (!konecSouboru) { if (ppm) doctiKonecPpm(); else doctiKonec(); }
     okno.resize(cil);                     // zbytek posledni shody patri dalsimu souboru jen u solid (nenastava)
     // vystup = okno s pouzitymi filtry (okno zustava puvodni - z nej se kopiruji dalsi shody)
     out.assign(okno.begin() + (long)start, okno.begin() + (long)cil);
@@ -301,6 +339,9 @@ class Rar29 {
   std::vector<uint8_t> okno;            // cely rozbaleny proud (bez filtru)
   uint64_t cil = 0;
   bool inicializovano = false, tabulky = false, ppm = false;
+  std::unique_ptr<Ppmd7> ppmd;          // model PPMd (zustava mezi bloky i soubory pevneho archivu)
+  Ppmd7::Vstup pv;
+  int escChar = 2;                      // unikovy znak PPMd (unrar PPMEscChar)
   uint8_t staraTab[HTS];
   Dekoder LD, DD, LDD, RD, BD;
   uint32_t stare[4] = {0, 0, 0, 0}, posledniDelka = 0, prevLow = 0; int lowRep = 0;
@@ -311,7 +352,7 @@ class Rar29 {
   int posledniFiltr = 0;
 
   void zacni() {
-    okno.clear(); tabulky = false; ppm = false; inicializovano = true;
+    okno.clear(); tabulky = false; ppm = false; inicializovano = true; escChar = 2;
     std::memset(staraTab, 0, sizeof staraTab);
     stare[0] = stare[1] = stare[2] = stare[3] = 0; posledniDelka = 0; prevLow = 0; lowRep = 0;
     typFiltru.clear(); staraDelka.clear(); cekajici.clear(); posledniFiltr = 0;
@@ -362,7 +403,7 @@ class Rar29 {
   bool ctiTabulky() {
     if (bit) pridej(8 - bit);                       // zarovnat na bajt
     const uint32_t b = bity16();
-    if (b & 0x8000) { ppm = true; chyb = "rar: blok PPMd (komprese textu) zatim neumim - zabal hru jako ZIP"; return false; }
+    if (b & 0x8000) return ctiPpmHlavicku();           // blok PPMd (komprese textu)
     ppm = false;
     prevLow = 0; lowRep = 0;
     if (!(b & 0x4000)) std::memset(staraTab, 0, sizeof staraTab);
@@ -402,6 +443,55 @@ class Rar29 {
     return true;
   }
 
+  // unrar ModelPPM::DecodeInit: bajt (bit 0x80 = PPM, 0x20 = novy model, 0x40 = unikovy znak, rad),
+  // [MaxMB], [EscChar], 4 bajty rozsahoveho dekoderu
+  bool ctiPpmHlavicku() {
+    const uint8_t prizn = pv.cti();
+    const bool reset = (prizn & 0x20) != 0;
+    unsigned maxMB = 0;
+    if (reset) maxMB = pv.cti();
+    else if (!ppmd || !ppmd->alokovano()) { chyb = "rar: blok PPMd bez modelu"; return false; }
+    if (prizn & 0x40) escChar = pv.cti();
+    if (reset) {
+      unsigned rad = (prizn & 0x1F) + 1;
+      if (rad > 16) rad = 16 + (rad - 16) * 3;
+      if (rad == 1) { chyb = "rar: spatny blok PPMd"; return false; }
+      if (!ppmd) ppmd.reset(new Ppmd7());
+      if (!ppmd->alokuj((maxMB + 1) << 20)) { chyb = "rar: PPMd - malo pameti pro model"; return false; }
+      ppmd->initDekoder(&pv);
+      ppmd->init(rad);
+    } else ppmd->initDekoder(&pv);
+    ppm = true;
+    return true;
+  }
+  // konec souboru v PPMd = unikovy znak + 2 (u pevneho archivu na nem zavisi stav modelu)
+  void doctiKonecPpm() {
+    for (int k = 0; k < 4 && ppm && ppmd; k++) {
+      if (adr > vstupN + 4) return;
+      const int ch = ppmd->dekoduj();
+      if (ch != escChar) return;
+      const int dalsi = ppmd->dekoduj();
+      if (dalsi == 2) return;
+      if (dalsi != 0) return;
+      if (!ctiTabulky()) return;                       // novy blok (LZ nebo PPMd) az za koncem dat souboru
+      if (!ppm) { doctiKonec(); return; }
+    }
+  }
+  bool ctiFiltrPpm() {                                 // unrar ReadVMCodePPM: bajty kodu filtru pres PPMd
+    const int prvni = ppmd->dekoduj();
+    if (prvni < 0) return false;
+    uint32_t delka = ((uint32_t)prvni & 7) + 1;
+    if (delka == 7) { const int b1 = ppmd->dekoduj(); if (b1 < 0) return false; delka = (uint32_t)b1 + 7; }
+    else if (delka == 8) {
+      const int b1 = ppmd->dekoduj(), b2 = ppmd->dekoduj();
+      if (b1 < 0 || b2 < 0) return false;
+      delka = (uint32_t)b1 * 256 + (uint32_t)b2;
+    }
+    if (delka == 0) return false;
+    std::vector<uint8_t> kod(delka);
+    for (uint32_t i = 0; i < delka; i++) { const int c = ppmd->dekoduj(); if (c < 0) return false; kod[i] = (uint8_t)c; }
+    return pridejFiltr((uint32_t)prvni, kod);
+  }
   void doctiKonec() {
     for (int k = 0; k < 4; k++) {
       if (adr >= vstupN) return;                     // kod konce chybi (starsi RAR) - tabulky plati dal
@@ -440,7 +530,7 @@ class Rar29 {
       }
     }
   };
-  bool ctiFiltr() {
+  bool ctiFiltr() {                                    // unrar ReadVMCode (kod filtru z bitoveho proudu)
     const uint32_t prvni = bity16() >> 8; pridej(8);
     uint32_t delka = (prvni & 7) + 1;
     if (delka == 7) { delka = (bity16() >> 8) + 7; pridej(8); }
@@ -448,6 +538,9 @@ class Rar29 {
     if (delka == 0) return false;
     std::vector<uint8_t> kod(delka);
     for (uint32_t i = 0; i < delka; i++) { kod[i] = (uint8_t)(bity16() >> 8); pridej(8); }
+    return pridejFiltr(prvni, kod);
+  }
+  bool pridejFiltr(uint32_t prvni, const std::vector<uint8_t> &kod) {   // unrar AddVMCode
     BitVstup v{kod.data(), kod.size()};
     uint32_t pozice;
     if (prvni & 0x80) {
@@ -668,9 +761,9 @@ class Rar5 {
     if (!solid || !inicializovano) zacni();
     DC = verze == 1 ? 80 : 64;
     filtry.clear();                                   // filtry nikdy nepresahuji soubor (unrar InitFilters)
-    if (znamaVelikost && velikost > (64u << 20)) { chyba = "rar5: soubor je moc velky"; return false; }
+    if (znamaVelikost && velikost > (uint64_t)NAP_ARCHIV_LIMIT) { chyba = "rar5: soubor je moc velky"; return false; }
     const uint64_t start = okno.size();
-    const uint64_t strop = start + (znamaVelikost ? velikost : (uint64_t)(64u << 20));
+    const uint64_t strop = start + (znamaVelikost ? velikost : (uint64_t)NAP_ARCHIV_LIMIT);
     if (!ctiBlok()) { chyba = chyb ? chyb : "rar5: spatna hlavicka bloku"; return false; }
     if (!tabulky) { chyba = "rar5: chybi Huffmanovy tabulky"; return false; }
     for (;;) {
@@ -932,7 +1025,7 @@ class Archiv {
   Typ typ = ZADNY;
   std::vector<Polozka> polozky;
   std::string chyba;
-  size_t limit = 64u << 20;    // nejvetsi rozbaleny soubor
+  size_t limit = NAP_ARCHIV_LIMIT;   // nejvetsi rozbaleny soubor
 
   static Typ poznej(const uint8_t *d, size_t n) {
     if (n >= 4 && d[0] == 'P' && d[1] == 'K' && ((d[2] == 3 && d[3] == 4) || (d[2] == 5 && d[3] == 6))) return ZIP;

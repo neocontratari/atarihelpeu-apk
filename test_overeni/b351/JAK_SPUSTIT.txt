@@ -1,0 +1,48 @@
+B351 - PPMd ("NEJLEPSI" KOMPRESE STAREHO WINRARU) PRO ATARI - overeni na PC
+==========================================================================
+
+Rene: "pokracuj". Po B349 (ZIP, RAR4) a B350 (RAR5) zbyval v RAR4 blok PPMd - WinRAR 3 / 4 s volbou
+"nejlepsi" kompresi text (a textu podobna data) modelem PPMd var.H. Hlavne u pevneho archivu to vadilo: readme
+v PPMd pred hrou = hra nesla rozbalit (slovnik navazuje). B351: model i rozsahovy dekoder RAR v C++
+(app/src/main/cpp/atari/nap_ppmd.h) podle verejnych (public domain) kodu Shkarin / Pavlov / Subbotin; pamet modelu
+je pole bajtu s posuny misto ukazatelu, kazdy pristup hlidany. Podrobne v PREDAVACI_PROTOKOL_PRO_NASTUPCE.txt.
+
+Spoustet z adresare test_overeni/b351. Cizi testovaci archivy (libarchive, rarfile) v repozitari NEJSOU.
+
+1) Testovaci RAR s PPMd - vlastni koder (model = nap::archiv::Ppmd7 z appky, k nemu kodovani symbolu podle
+   Ppmd7_EncodeSymbol a rozsahovy koder RAR):
+     g++ -std=c++17 -O2 -I../../app/src/main/cpp/atari -o vyrob_ppmd vyrob_ppmd.cpp
+     ./vyrob_ppmd /tmp/b351_archivy                                 -> VYSTUP_vyrob_ppmd.txt
+   Nezavisla kontrola modelu: bsdtar (libarchive ma vlastni PPMd) rozbali nepevne archivy na puvodni data:
+     bash ../b349/over_bsdtar.sh /tmp/b351_archivy                  -> VYSTUP_over_bsdtar.txt
+   (pevny archiv bsdtar 3.7 neumi - ten overuje skutecny pevny RAR s PPMd z rarfile, bod 2 D; filtry v PPMd
+   - esc 3, ppmd_filtr.rar - libarchive neumi vubec: "Parsing filters is unsupported")
+
+2) Rozbaleni a vyber:
+     g++ -std=c++17 -O2 -Wall -Wextra -I../../app/src/main/cpp/atari -o test_b351_ppmd test_b351_ppmd.cpp
+     ./test_b351_ppmd /tmp/b351_archivy [--cizi SLOZKA_libarchive SLOZKA_rarfile]   -> VYSTUP_test_b351_ppmd.txt (8 OK)
+   A text 200 kB (model 1 MB se zaplni a restartuje), unikove prikazy (esc 1 / 4 / 5), konec bloku PPMd + novy blok
+     bez noveho modelu a s novym modelem (rad 64), pevny RAR 3 soubory jednim modelem i na preskacku; filtry v PPMd
+     (esc 3, unrar ReadVMCodePPM - vsechny 3 tvary delky kodu): blok za koncem souboru se nepouzije (soubor OK,
+     CRC), neznamy filtr (ne E8 / DELTA ... ze skutecneho WinRARu) uvnitr souboru appka odmitne
+   B Atari: pevny RAR "nejlepsi", readme (PPMd) pred hrou -> hra.xex se rozbali, readme se nenabizi
+   C 1250 poskozenych archivu s PPMd: zadny pad ani zaseknuti
+   D skutecne RAR "nejlepsi": libarchive compress_best (3x PPMd), binary_data, rarfile unicode.rar (PEVNY, PPMd
+     pres dva soubory), seektest - vse OK (CRC)
+   241 MB test libarchive (PPMd a LZ se stridaji) je nad limitem appky 64 MB -> zvlast s vetsim limitem:
+     g++ -std=c++17 -O2 "-DNAP_ARCHIV_LIMIT=(512u << 20)" -I../../app/src/main/cpp/atari -o vybal_512 vybal.cpp
+     ./vybal_512 test_read_format_rar_ppmd_lzss_conversion.rar      -> VYSTUP_ppmd_lzss_241MB.txt (OK za 1,7 s)
+   S kontrolou pameti (-fsanitize=address,undefined) + fuzz            -> VYSTUP_test_b351_asan.txt
+     ../b349/fuzz_b349.cpp jde pres vyber her (nap::AtariArchiv) - ten .txt / .html nerozbaluje, PPMd v textu tedy
+     nezkousel; proto fuzz_b351.cpp: PRIMO dekoder, kazda polozka (i na preskacku), cile i hlavicka bloku PPMd:
+       g++ -std=c++17 -O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer -I../../app/src/main/cpp/atari \
+           -o fuzz_b351 fuzz_b351.cpp && SEMINKO=41 ./fuzz_b351 200 /tmp/b351_archivy/*.rar [cizi RAR ...]
+
+3) Regrese na zdrojich B351 (nap_archiv.h zmenen: bloky PPMd, limit NAP_ARCHIV_LIMIT):
+     ../b349: test_b349_archiv 42 OK (cizi archivy cele OK 29 -> 31: compress_best, unicode), test_b349_jni 19 OK
+     ../b350: test_b350_rar5 11 OK, test_b350_jni 13 OK; ../b348: test_b348_jni 16 OK (jadro Atari beze zmeny)
+                                                                    -> VYSTUP_regrese_*.txt
+   Pravidlo B343 (napoveda): b311 220 nazvu 0 CHYBA, b314 212 0 CHYBA, b343 3 CHYBA ZAMERNE (N7, A6, V)
+
+Overi Rene / tester: hra v RAR ze stareho WinRARu s volbou "nejlepsi" (i "pevny archiv" s readme) pres XEX / MOBIL
+nebo NET HRY. Kdyz ne: log, radky "B349 ARCHIV".

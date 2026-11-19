@@ -1,0 +1,26 @@
+test_b351_ppmd prelozeny s -fsanitize=address,undefined (stejne argumenty jako VYSTUP_test_b351_ppmd.txt):
+  chyb pameti / nedefinovaneho chovani: 0
+OK     200 kB textu v PPMd (rad 6, model 1 MB - cestou se zaplni a restartuje)
+OK     unikove prikazy: znak = unikovy znak (esc 1), shoda LZ (esc 4), RLE (esc 5); konec bloku + novy blok bez noveho modelu (jiny unikovy znak) a s novym modelem (rad 64, 4 MB)
+OK     pevny RAR: 3 soubory jednim modelem PPMd (konec souboru = esc 2, dalsi soubor: hlavicka bez noveho modelu)
+OK     pevny RAR s PPMd na preskacku (model se postavi znovu od 1. souboru)
+OK     filtry v PPMd (esc 3, kod 6 / 16 / 5 B): blok za koncem souboru se nepouzije (CRC sedi), neznamy filtr uvnitr souboru appka odmitne
+OK     hra.xex se rozbali pres readme v PPMd (pevny archiv), readme se nenabizi
+     1250 poskozenych archivu s PPMd za 22406 ms (nejdelsi 157.6 ms), chyb rozbaleni 1297 (CRC / poskozena data PPMd)
+OK     zadny pad ani zaseknuti (s -fsanitize=address,undefined i bez chyb pameti)
+OK     skutecne RAR "nejlepsi" (PPMd i LZ, pevny unicode.rar): vsechny soubory rozbalene, CRC sedi
+VYSLEDEK: 8 kontrol, 0 chyb
+
+../b349/fuzz_b349.cpp pod ASan / UBSan (vyber her pres nap::AtariArchiv), vzory PPMd (vyrob_ppmd, libarchive compress_best,
+rarfile unicode) + RAR 4 / RAR5 z B349 / B350, 3 x 180 s, seminka 31-33:
+   fuzz: 44843 pokusu, 135 otevreno, nejdelsi 196.8 ms
+   fuzz: 43649 pokusu, 140 otevreno, nejdelsi 232.6 ms
+   fuzz: 45253 pokusu, 148 otevreno, nejdelsi 243.2 ms
+   (POZOR: AtariArchiv rozbaluje jen mozne hry - .txt / .html preskoci, PPMd tu slo jen pres prikazy.bin a pevny vyber_ppmd)
+fuzz_b351.cpp pod ASan / UBSan - PRIMO dekoder, vsechny polozky (cast na preskacku), cile i hlavicky bloku PPMd; vzory PPMd
++ rar_kody / rar_pevny (B349) + rar5_kody / rar5_pevny (B350); 2 x 200 s seminka 41-42, 2 x 120 s seminka 43-44 (navic ppmd_filtr.rar):
+   fuzz: 9903 pokusu, 6801 otevreno, polozek rozbaleno 4980 (CRC sedi) / odmitnuto 9721, nejdelsi 737.4 ms
+   fuzz: 10022 pokusu, 6845 otevreno, polozek rozbaleno 5302 (CRC sedi) / odmitnuto 9711, nejdelsi 703.3 ms
+   fuzz: 5965 pokusu, 4193 otevreno, polozek rozbaleno 2997 (CRC sedi) / odmitnuto 5996, nejdelsi 630.9 ms
+   fuzz: 6157 pokusu, 4250 otevreno, polozek rozbaleno 3203 (CRC sedi) / odmitnuto 6155, nejdelsi 667.7 ms
+ -> zadna chyba pameti ani nedefinovane chovani.

@@ -1,0 +1,60 @@
+B350 - hra pro Atari v RAR 5 (novy WinRAR): rozbaleni a vyber v C++ (nap_archiv.h, nap_atari_archiv.h)
+
+A) ROZBALENI RAR 5 (obsah se porovna s puvodnimi daty z vyrob_rar5.py)
+     hra.xex OK, navod.txt OK, Hry/druha.xex OK
+OK     RAR5 ulozeny (metoda 0): 3 soubory, slozka Hry/ se preskoci
+     kody.bin OK  (3 ms)
+OK     RAR5 se vsemi kody: literaly, 257, 258-261 + RD, 262+ (shody az 4097 B, vzdalenost nad 256 kB), 14 bloku s / bez tabulek, filtry DELTA E8 E8E9 ARM
+     pevny1.bin OK, pevny2.bin OK, pevny3_prazdny.bin OK, pevny4.bin OK
+OK     pevny RAR5: 2. soubor zacina blokem bez tabulek, 3. prazdny bez dat (uprostred retezu), 4. s novymi tabulkami
+     na preskacku 4,2,1,3,4: pevny4.bin OK, pevny2.bin OK, pevny1.bin OK, pevny3_prazdny.bin OK, pevny4.bin OK
+OK     pevny RAR5 na preskacku (retez od 1. komprimovaneho souboru, prazdny soubor ho nerozdeli)
+     hra.atr OK, odkaz.atr je to odkaz (symlink / hardlink), ne soubor
+OK     RAR5 bez CRC32 (jako s otiskem BLAKE2): rozbali se (obsah = puvodni data), odkaz (symlink) neni soubor
+
+B) CO Z RAR 5 ATARI SPUSTI A CO NABIDNE K VYMENE
+     vyber_pop5.rar (RAR5, 1.7 ms): PoP_DD_final.atr[A boot 133136 B], PoP_SDA_final.atr[A boot sada 92176 B], PoP_SDB_final.atr[A boot sada 92176 B] -> SPUSTI PoP_DD_final.atr | preskoceno: readme.txt
+OK     Prince of Persia v RAR5: startuje DD, SDA + SDB sada k vymene, readme preskocen
+     vyber_sd_pevny5.rar (RAR5, 1.0 ms): PoP_SDA_final.atr[A boot sada 92176 B], PoP_SDB_final.atr[A boot sada 92176 B] -> SPUSTI PoP_SDA_final.atr | preskoceno: readme.txt
+OK     pevny RAR5 (v archivu nejdriv SDB): startuje SDA, SDB k vymene
+     vyber_strany5.rar (RAR5, 1.0 ms): Hra (Side A).atr[A boot sada 92176 B], Hra (Side B).atr[A boot sada 92176 B] -> SPUSTI Hra (Side A).atr | preskoceno: navod.txt
+OK     strany A / B v RAR5 (B prvni v archivu): startuje strana A
+     rar5_bez_crc.rar (RAR5, 0.2 ms): hra.atr[A boot 92176 B] -> SPUSTI hra.atr
+OK     RAR5 s odkazem: odkaz se ani nenabizi, ani nehlasi jako chyba
+
+C) ODOLNOST: poskozene RAR 5 nesmi appku shodit ani zaseknout
+     1700 poskozenych / nahodnych RAR5 za 216 ms (nejdelsi 2.0 ms), otevreno 132
+OK     zadny pad ani zaseknuti (s -fsanitize=address,undefined i bez chyb pameti)
+
+D) CIZI TESTOVACI RAR 5 (volitelne: libarchive, rarfile - jen lokalne)
+     test_read_format_rar5_arm.rar                              1/1 OK
+     test_read_format_rar5_bad_window_sz_in_mltarc_file.rar     neotevreno: RAR5: spatna hlavicka
+     test_read_format_rar5_blake2.rar                           1/1 OK
+     test_read_format_rar5_block_size_is_too_small.rar          neotevreno: RAR5: spatna hlavicka
+     test_read_format_rar5_compressed.rar                       1/1 OK
+     test_read_format_rar5_decode_number_out_of_bounds_read.rar neotevreno: RAR5: spatna hlavicka
+     test_read_format_rar5_different_window_size.rar            neotevreno: RAR5: spatna hlavicka
+     test_read_format_rar5_distance_overflow.rar                neotevreno: RAR5: spatna hlavicka
+     test_read_format_rar5_extra_field_version.rar              2/2 OK
+     test_read_format_rar5_fileattr.rar                         4/4 OK
+     test_read_format_rar5_hardlink.rar                         1/1 OK (+ 1 odkaz)
+     test_read_format_rar5_leftshift1.rar                       neotevreno: RAR5: spatna hlavicka
+     test_read_format_rar5_leftshift2.rar                       neotevreno: RAR5: spatna hlavicka
+     test_read_format_rar5_multiarchive.part01.rar              neotevreno: RAR5 na vice dilu (part1, part2 ...) zatim neumim
+     test_read_format_rar5_multiple_files.rar                   4/4 OK
+     test_read_format_rar5_multiple_files_solid.rar             4/4 OK
+     test_read_format_rar5_nonempty_dir_stream.rar              neotevreno: RAR5: spatna hlavicka
+     test_read_format_rar5_owner.rar                            3/3 OK
+     test_read_format_rar5_readtables_overflow.rar              neotevreno: RAR5: spatna hlavicka
+     test_read_format_rar5_solid.rar                            7/7 OK
+     test_read_format_rar5_stored.rar                           1/1 OK
+     test_read_format_rar5_symlink.rar                          1/1 OK (+ 2 odkaz)
+     test_read_format_rar5_truncated_huff.rar                   neotevreno: RAR5: spatna hlavicka
+     test_read_format_rar5_win32.rar                            7/7 OK
+     test_read_format_rar5_window_buf_and_size_desync.rar       neotevreno: RAR5: spatna hlavicka
+     rar5-solid-qo.rar                                          4/4 OK
+     rar5-solid.rar                                             2/2 OK
+     celkem 27 RAR5: 15 cele v poradku (CRC sedi), 12 odmitnutych (zamerne poskozene testy libarchive, vice dilu), 0 jinych
+OK     skutecne RAR5 (WinRAR): pevne, vic souboru, filtr ARM, BLAKE2, win32, odkazy ... - vsechny soubory rozbalene, CRC sedi
+
+VYSLEDEK: 11 kontrol, 0 chyb
