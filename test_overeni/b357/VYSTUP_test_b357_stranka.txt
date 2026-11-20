@@ -1,0 +1,18 @@
+B357 - stranka Segy: HRÁT ONLINE (2 TELEFONY) - Chromium, stranka z appky, falesny most AHONLINE
+OK     1) kolecko -> HRÁT ONLINE (2 TELEFONY): panel otevren, seznam her nacten (['seznam']), jmeno z telefonu "Galaxy S8"
+OK     2) seznam: jen hry Segy (2) - Sonic · brachačíslo 0427 · čeká chvilku · máš stejnou hruPŘIPOJIT | Streets of Rage 2 · testerčíslo 8812 · čeká 3 min · hra se stáhne ze serveru N&PPŘIPOJIT
+OK        PŘIPOJIT -> AHONLINE.pripoj(pripoj|8812|e33fe5db01a322a6d8c42763049d889c8b2f5cc4|16|sega-0123456789abcdef|René); hra se stahne -> panel pryc (obraz videt pro hlidac obrazu appky)
+OK        stahovani: odznak "ONLINE · STAHUJI HRU", chyba panel zase otevre: "Hru hráče 1 se nepodařilo stáhnout."
+OK        PŘIPOJIT ke hre se stejnou hrou: panel zustava (nic se nenahrava) - pripoj|0427|891e5c3ab4c57347c9dcdc6a263580c860b8ef3e|16||René
+OK     3) ZALOŽIT HRU bez hry: "Nejdřív spusť hru (HRY, SBÍRKA nebo CARTRIDGE) – online se h"; s hrou -> zaloz|René, jmeno zapamatovano (René)
+OK     4) ceka na hrace 2: "Čekám na hráče 2 – číslo hry 0427", odznak "ONLINE · ČÍSLO HRY 0427" (block), ZALOŽIT nejde
+OK     5) hra zacala: panel se zavrel sam, odznak nahore "ONLINE · bracha · 23 MS" (y 6)
+OK     6) konec: odznak "ONLINE SKONČILO", v panelu "Online skončilo: druhý hráč hru ukončil"
+OK     7) chyby: 401 "Telefon není spárovaný s enginem N&P – nejdří" | 404 "Engine N&P zatím online hru neumí (potřebuje verzi" | pripojeni "Tahle hra už nečeká – hráč ji zrušil, nebo už"
+OK        UKONČIT ONLINE HRU -> AHONLINE.konec()
+OK        ZAVŘÍT zavre panel
+OK     8) na vysku: MOJE HRY -> HRÁT ONLINE (2 TELEFONY), odznak dole (y 816): "ONLINE · ČÍSLO HRY 1234"
+OK     9) anglicky: "PLAY ONLINE (2 PHONES)", panel bez cestiny, odznak "ONLINE · GAME NUMBER 0427"
+OK     10) bez mostu AHONLINE: "Online tady nejde (stará verze appky)."
+OK     zadna chyba JavaScriptu
+VYSLEDEK: 16 kontrol, 0 CHYBA

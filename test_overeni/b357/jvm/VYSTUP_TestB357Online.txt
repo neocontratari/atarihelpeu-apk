@@ -1,0 +1,18 @@
+B357 - online hra: NapOnlineHra + NapServerKlient.hlavickyPro (bez Androidu)
+OK     1) jmeno: 'René' zustane, prazdne = HRAC
+OK        ridici znaky a < > " \ pryc: abcdef
+OK        nejvys 24 znaku: 'Xiaomi Redmi Note 13 Pro'
+OK        emoji cele (par), pulka pryc
+OK     2) cesta hrace 1: /api/v1/online/zaloz?system=sega&hra=Sonic+The+Hedgehog+%28World%29&hra_id=sega-0123456789abcdef&otisk=0123456789abcdef0123456789abcdef01234567&nastaveni=16&jmeno=Ren%C3%A9
+OK        hra z telefonu: bez id, nazev bez cesty a pripony: /api/v1/online/zaloz?system=sega&hra=moje&hra_id=&otisk=0123456789abcdef0123456789abcdef01234567&nastaveni=0&jmeno=HRAC
+OK        cesta hrace 2 (kod jen 4 cislice)
+OK     3) otisk z C++ (sha1|nastaveni)
+OK        zadna hra / nesmysl = null
+OK        stejna hra = stejny otisk i nastaveni (region / TV)
+OK     4) stav z C++ (radky klic=hodnota)
+OK        id hry na serveru jen ve tvaru system-16hex
+OK     5) nesparovany telefon: jen User-Agent
+OK        sparovany: User-Agent, X-NaP-Zarizeni, X-NaP-Cas, X-NaP-Podpis = HMAC jako engine (cesta i s ?dotazem)
+OK        zadna hlavicka nema konec radku (C++ je sklada do pozadavku)
+OK        cas podle serveru (posun hodin z minuleho dotazu): -3600 s
+VYSLEDEK: 16 OK, 0 CHYBA

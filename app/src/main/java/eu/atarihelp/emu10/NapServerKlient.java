@@ -229,6 +229,24 @@ public final class NapServerKlient {
         c.setRequestProperty("X-NaP-Podpis", hmac(t, zarizeni + "\n" + cas + "\n" + metoda + "\n" + cesta));
     }
 
+    /**
+     * B357: hlavicky N&P pro spojeni, ktere otevira C++ (online hra - WebSocket zacina dotazem GET): cele radky
+     * "Jmeno: hodnota" - User-Agent a podpis telefonu (stejny jako podepis(): zarizeni, cas, metoda, cesta i s ?dotazem).
+     */
+    public String[] hlavickyPro(String metoda, String cesta) {
+        String t = token();
+        if (t.length() != 64) return new String[] { "User-Agent: " + ua() };
+        String c = cesta == null || cesta.isEmpty() ? "/" : cesta;
+        String cas = String.valueOf(ted());
+        String m = (metoda == null ? "GET" : metoda).toUpperCase(Locale.US);
+        return new String[] {
+            "User-Agent: " + ua(),
+            "X-NaP-Zarizeni: " + zarizeni,
+            "X-NaP-Cas: " + cas,
+            "X-NaP-Podpis: " + hmac(t, zarizeni + "\n" + cas + "\n" + m + "\n" + c)
+        };
+    }
+
     public String ua() {
         return ascii("NapVision/" + verze + " (Android " + android + "; " + model + ")");
     }

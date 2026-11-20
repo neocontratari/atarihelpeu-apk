@@ -37,11 +37,12 @@
 #include "tvproud/nap_tv_proud.h"
 #include "tvproud/nap_tv_proud_index.h"
 #include "nap_ovladac.h"   // B320: herni ovladac (Retroid Pocket 6, gamepad)
+#include "online/nap_online_klient.h"   // B357: online hrani pres engine N&P
 
 #define NAP_LOG_TAG "NAP_SEGA_NATIVE_PROOF"
 #define NAPLOG(...) __android_log_print(ANDROID_LOG_INFO, NAP_LOG_TAG, __VA_ARGS__)
 
-static bool g_input[8] = {false,false,false,false,false,false,false,false};
+static std::atomic<bool> g_input[8] = {false,false,false,false,false,false,false,false};   // B357: atomic - pise Java (dotyk), cte vlakno emulace (ThreadSanitizer)
 // B320: herni ovladac (Retroid Pocket 6, Bluetooth / USB) - Java ho jen pozna; co tlacitko udela,
 // je v nap_ovladac.h: leve = A, spodni = B, prave = C (A B C v rade zleva, jako Genesis Plus GX
 // v RetroArchu), START; krizek a leva packa = smer. Bity jako g_input (0 U, 1 D, 2 L, 3 R,
@@ -752,26 +753,65 @@ static void nap_tv_po_kroku(NapRealCoreState *st) {
     g_segaProud.snimek(g_segaProud.klientu() > 0 ? st->frame_argb.data() : nullptr, st->frame_w, st->frame_h);
 }
 
+// bit tlacitka ve vstupu Segy: 0 U 1 D 2 L 3 R 4 A 5 B 6 C 7 START, B355: 8 X 9 Y 10 Z 11 MODE
+static int nap_sega_tlacitko_bit(ClownMDEmu_Button button_id) {
+    switch (button_id) {
+        case CLOWNMDEMU_BUTTON_UP: return 0;
+        case CLOWNMDEMU_BUTTON_DOWN: return 1;
+        case CLOWNMDEMU_BUTTON_LEFT: return 2;
+        case CLOWNMDEMU_BUTTON_RIGHT: return 3;
+        case CLOWNMDEMU_BUTTON_A: return 4;
+        case CLOWNMDEMU_BUTTON_B: return 5;
+        case CLOWNMDEMU_BUTTON_C: return 6;
+        case CLOWNMDEMU_BUTTON_START: return 7;
+        case CLOWNMDEMU_BUTTON_X: return 8;      // B355: ovladac se 6 tlacitky
+        case CLOWNMDEMU_BUTTON_Y: return 9;
+        case CLOWNMDEMU_BUTTON_Z: return 10;
+        case CLOWNMDEMU_BUTTON_MODE: return 11;
+        default: return -1;
+    }
+}
+
+// =====================================================================================================
+//  B357: ONLINE HRANI (Rene: "chci hrat hry online pomoci meho enginu") - dva telefony, kazdy emuluje sam,
+//  po siti jdou jen stisky (online/nap_online.h, pres engine N&P). Hrac 1 = kdo hru zalozil (ovladac 1 Segy),
+//  hrac 2 = kdo se pripojil (ovladac 2). Oba zacnou od zapnuti (snimek 0) ve stejny okamzik; snimek N se
+//  emuluje, az jsou vstupy obou pro N (g_online_vstup, cte je nap_real_input_requested). Kazdou sekundu se
+//  porovna otisk stavu (RAM 68000 a Z80, VRAM, CRAM, VSRAM) - jiny = hra se rozjela, online konci.
+//  Bez online beze zmeny (g_online_aktivni 0).
+// =====================================================================================================
+static nap::online::OnlineKlient g_online;
+static std::atomic<int> g_online_aktivni{0};          // online zapnuto (ceka na hrace / hraje)
+static std::atomic<int> g_online_hraje{0};            // hra bezi online (vstupy z relace)
+static std::atomic<uint32_t> g_online_vstup[2];       // vstupy hrace 1 / 2 pro prave emulovany snimek
+static uint32_t g_online_snimek = 0;                  // jen vlakno emulace
+static std::mutex g_online_m;                         // otisk hry / text konce
+static uint8_t g_sega_otisk_hry[20] = {};             // SHA-1 nahrane ROM (pod g_online_m)
+static bool g_sega_otisk_je = false;
+static std::string g_online_konec;                    // proc online skoncilo (pro Javu)
+static std::atomic<uint32_t> g_online_snimku_celkem{0};
+// Rizeni po jednom: onlineStart / onlineStop / nova hra / odchod ze Segy a konec zjisteny vlaknem emulace. Konec stare
+// online hry (vlakno emulace) tak nikdy nevypne novou, kterou Java mezitim zalozila. Vlakno site ho nebere nikdy.
+static std::mutex g_online_rizeni;
+
+/** Vstup tohoto telefonu (hrac sam za sebe): dotyk + 1. herni ovladac, 12 bitu jako nap_sega_tlacitko_bit. */
+static uint32_t nap_sega_lokalni_bity() {
+    uint32_t b = 0;
+    for (int i = 0; i < 8; i++) if (nap_vstup(i)) b |= 1u << i;
+    b |= g_ovl_bity.load(std::memory_order_relaxed) & 0xF00u;
+    return b;
+}
+
 static cc_bool nap_real_input_requested(void *user_data, cc_u8f player_id, ClownMDEmu_Button button_id) {
     (void)user_data;
+    if (g_online_hraje.load(std::memory_order_relaxed)) {   // B357: online - vstupy obou hracu pro tento snimek
+        if (player_id > 1) return cc_false;
+        const int i = nap_sega_tlacitko_bit(button_id);
+        return (i >= 0 && ((g_online_vstup[player_id].load(std::memory_order_relaxed) >> i) & 1u)) ? cc_true : cc_false;
+    }
     if (player_id == 1) {                       // B354: hrac 2 = druhy herni ovladac
         const uint32_t b2 = g_ovl_bity2.load(std::memory_order_relaxed);
-        int i = -1;
-        switch (button_id) {
-            case CLOWNMDEMU_BUTTON_UP: i = 0; break;
-            case CLOWNMDEMU_BUTTON_DOWN: i = 1; break;
-            case CLOWNMDEMU_BUTTON_LEFT: i = 2; break;
-            case CLOWNMDEMU_BUTTON_RIGHT: i = 3; break;
-            case CLOWNMDEMU_BUTTON_A: i = 4; break;
-            case CLOWNMDEMU_BUTTON_B: i = 5; break;
-            case CLOWNMDEMU_BUTTON_C: i = 6; break;
-            case CLOWNMDEMU_BUTTON_START: i = 7; break;
-            case CLOWNMDEMU_BUTTON_X: i = 8; break;      // B355: ovladac se 6 tlacitky
-            case CLOWNMDEMU_BUTTON_Y: i = 9; break;
-            case CLOWNMDEMU_BUTTON_Z: i = 10; break;
-            case CLOWNMDEMU_BUTTON_MODE: i = 11; break;
-            default: break;
-        }
+        const int i = nap_sega_tlacitko_bit(button_id);
         return (i >= 0 && ((b2 >> i) & 1u)) ? cc_true : cc_false;
     }
     if (player_id != 0) return cc_false;
@@ -925,8 +965,26 @@ static std::string nap_real_detect_and_set_region(const uint8_t* bytes, size_t s
 
 static std::string nap_real_load_rom_bytes(const uint8_t* bytes, size_t size) {
     if (!bytes || size < 0x200) return "REAL_CORE_LOAD_ERROR bad rom";
+    {   // B357: jina hra uprostred online = konec online (druhy telefon dostane KONEC)
+        std::lock_guard<std::mutex> r(g_online_rizeni);
+        if (g_online_aktivni.load()) {
+            g_online_aktivni.store(0);
+            g_online_hraje.store(0);
+            g_online.stop();
+            std::lock_guard<std::mutex> l(g_online_m);
+            g_online_konec = "nahrana jina hra - online skoncilo";
+            NAPLOG("B357 ONLINE konec - nahrana jina hra");
+        }
+    }
     const std::string regionMode = nap_real_detect_and_set_region(bytes, size);
     nap_audio_clear();
+    {   // B357: otisk hry pro online (oba telefony musi mit tutez ROM)
+        nap::online::Sha1 h;
+        h.pridej(bytes, size);
+        std::lock_guard<std::mutex> l(g_online_m);
+        h.konec(g_sega_otisk_hry);
+        g_sega_otisk_je = true;
+    }
 
     // BUILD2RV: do not run ClownMDEmu from the WebView JavaBridge thread or from View.onDraw.
     // The previous builds could crash the whole app after ROM selection. Host-side core test passed,
@@ -1058,6 +1116,83 @@ static bool nap_real_render_to_argb(int out_w, int out_h, jint *out_px) {
 }
 
 
+// =====================================================================================================
+//  B357: ONLINE - studeny start, otisk stavu, krok s vstupy obou hracu (vlakno emulace)
+// =====================================================================================================
+// Studeny start jako pri startu vlakna emulace: pamet od nuly (jinak by se po predchozi hre lisila od druheho telefonu).
+static void nap_real_studeny_start_locked() {
+    std::memset(&g_real.emu, 0, sizeof(g_real.emu));
+    nap_real_setup_cfg_callbacks();
+    ClownMDEmu_Initialise(&g_real.emu, &g_real.cfg, &g_real.cb);
+    ClownMDEmu_SetCartridge(&g_real.emu, g_real.cart_words.data(), (cc_u32f)g_real.cart_words.size());
+    ClownMDEmu_HardReset(&g_real.emu, cc_true, cc_false);
+}
+
+// Otisk stavu pro porovnani telefonu: RAM 68000 a Z80, VRAM, CRAM, VSRAM (pole bez vyplne - stejne vsude).
+static uint64_t nap_sega_otisk_stavu() {
+    const ClownMDEmu &e = g_real.emu;
+    uint64_t h = nap::online::otisk(e.state.m68k.ram, sizeof(e.state.m68k.ram));
+    h = nap::online::otisk(e.state.z80.ram, sizeof(e.state.z80.ram), h);
+    h = nap::online::otisk(e.vdp.state.vram, sizeof(e.vdp.state.vram), h);
+    h = nap::online::otisk(e.vdp.state.cram, sizeof(e.vdp.state.cram), h);
+    h = nap::online::otisk(e.vdp.state.vsram, sizeof(e.vdp.state.vsram), h);
+    return h;
+}
+
+// Vlakno emulace zjistilo konec online hry (relace r skoncila, nebo bez relace spojeni skoncilo). Pod g_online_rizeni
+// se overi, ze je to porad TATAZ hra - Java mohla mezitim zalozit novou (pak nic).
+static void nap_sega_online_konec(const std::shared_ptr<nap::online::Relace> &r) {
+    std::lock_guard<std::mutex> rz(g_online_rizeni);
+    if (r ? g_online.relace() != r : g_online.faze() != nap::online::OnlineKlient::Faze::KONEC) return;
+    const std::string proc = g_online.chyba();
+    {
+        std::lock_guard<std::mutex> l(g_online_m);
+        g_online_konec = proc.empty() ? "online skoncilo" : proc;
+    }
+    g_online_hraje.store(0);
+    g_online_aktivni.store(0);
+    NAPLOG("B357 ONLINE konec po %u snimcich: %s", g_online_snimek, proc.c_str());
+}
+
+// Pred krokem jadra: 1 = emulovat s vstupy z relace, 0 = ted ne (vstup druheho hrace jeste neprisel), -1 = bez online.
+static int nap_sega_online_pred_krokem() {
+    if (!g_online_aktivni.load()) return -1;
+    if (g_online.vezmiStart()) {
+        {
+            std::lock_guard<std::mutex> lock(g_real_mutex);
+            nap_real_studeny_start_locked();
+        }
+        g_online_snimek = 0;
+        g_online_vstup[0].store(0);
+        g_online_vstup[1].store(0);
+        g_online_hraje.store(1);
+        NAPLOG("B357 ONLINE start - studeny start, snimek 0");
+    }
+    if (!g_online_hraje.load()) {
+        if (g_online.faze() == nap::online::OnlineKlient::Faze::KONEC) { nap_sega_online_konec(nullptr); return -1; }
+        // ceka se na druheho hrace: hra zatim bezi normalne jen na tomto telefonu (obraz zije - hlidac obrazu
+        // v Jave by jinak hru po nahrani restartoval); po domluve obou telefonu studeny start od snimku 0
+        return -1;
+    }
+    std::shared_ptr<nap::online::Relace> r = g_online.relace();
+    if (!r) return 0;
+    r->lokalni(g_online_snimek, nap_sega_lokalni_bity());
+    uint32_t p1 = 0, p2 = 0;
+    const int v = r->vstupy(g_online_snimek, p1, p2, 30);
+    if (v == 0) return 0;
+    if (v < 0) { nap_sega_online_konec(r); return -1; }
+    g_online_vstup[0].store(p1);
+    g_online_vstup[1].store(p2);
+    return 1;
+}
+
+static void nap_sega_online_po_kroku() {
+    std::shared_ptr<nap::online::Relace> r = g_online.relace();
+    if (r && g_online_snimek % nap::online::HASH_KAZDYCH == 0) r->otiskStavu(g_online_snimek, nap_sega_otisk_stavu());
+    g_online_snimek++;
+    g_online_snimku_celkem.store(g_online_snimek);
+}
+
 static void nap_native_worker_set_priority_rp() {
     int niceResult = 999;
     errno = 0;
@@ -1105,6 +1240,9 @@ static void nap_real_worker_thread(int generation) {
         while (g_real_thread_run.load() != 0 && generation == g_real_thread_generation.load()) {
             next_tick += frame_period;
             if (g_real.loaded) {
+                // B357: online - snimek az se vstupy obou hracu (ceka se v relaci); start online = studeny start
+                const int online = nap_sega_online_pred_krokem();
+                if (online == 0) { next_tick = std::chrono::steady_clock::now(); continue; }
                 // BUILD2RV: LOW/HIGH is video-only. HIGH captures every frame; LOW presents ~30 fps.
                 // Audio frontend timing and FIFO sizes stay identical in both modes.
                 uint32_t preIt = g_real_thread_iterations.load();
@@ -1131,6 +1269,7 @@ static void nap_real_worker_thread(int generation) {
                 if (!displayFrame) g_render_skipped_frames.fetch_add(1);
                 auto iter_start = std::chrono::steady_clock::now();
                 ClownMDEmu_Iterate(&g_real.emu);
+                if (online == 1) nap_sega_online_po_kroku();   // B357: otisk stavu, dalsi snimek
                 g_render_capture_current.store(1);
                 g_render_display_current.store(1);
                 nap_tv_po_kroku(&g_real);   // B306: snimek + zvuk tehoz kroku do prenosu na TV / PC
@@ -1839,6 +1978,14 @@ Java_eu_atarihelp_emu10_NativeSegaCoreBridge_realCoreStatus(JNIEnv* env, jclass)
 extern "C" JNIEXPORT jstring JNICALL
 Java_eu_atarihelp_emu10_NativeSegaCoreBridge_shutdown(JNIEnv* env, jclass) {
 #if NAP_SEGA_VENDOR_CORE_PRESENT
+    {   // B357: odchod ze Segy = konec online (zamek jen tady - vlakno emulace na nej muze cekat, nize se na nej ceka)
+        std::lock_guard<std::mutex> r(g_online_rizeni);
+        if (g_online_aktivni.load() || g_online.faze() != nap::online::OnlineKlient::Faze::NIC) {
+            g_online_aktivni.store(0);
+            g_online_hraje.store(0);
+            g_online.stop();
+        }
+    }
     nap_real_stop_worker();
     for (int i = 0; i < 8; ++i) g_input[i] = false;
     { std::lock_guard<std::mutex> l(g_ovl_m); nap::ovladac::pustVse(g_ovl_stav); g_ovl_bity.store(0); nap::ovladac::pustVse(g_ovl_stav2); g_ovl_bity2.store(0); }   // B320, B354
@@ -1909,6 +2056,8 @@ Java_eu_atarihelp_emu10_NativeSegaCoreBridge_loadState(JNIEnv* env, jclass, jstr
     std::string path(pathChars ? pathChars : "");
     if (pathChars) env->ReleaseStringUTFChars(jpath, pathChars);
 
+    // B357: v online hre by nahrana pozice rozjela telefony (druhy ji nema) - nejde
+    if (g_online_aktivni.load()) return env->NewStringUTF("SEGA_STATE_LOAD_FAIL online_hra");
     std::lock_guard<std::mutex> lock(g_real_mutex);
     if (!g_real.loaded) return env->NewStringUTF("SEGA_STATE_LOAD_FAIL zadna_hra_nebezi");
 
@@ -2053,3 +2202,110 @@ Java_eu_atarihelp_emu10_NativeSegaCoreBridge_proudLogNative(JNIEnv *env, jclass)
     if (s.empty()) return nullptr;
     return env->NewStringUTF(s.c_str());
 }
+
+// =====================================================================================================
+//  B357: ONLINE HRANI - JNI (NativeSegaCoreBridge.online*). Java da adresu enginu, cestu (zaloz / pripoj)
+//  a hlavicky s podpisem telefonu; vse ostatni (spojeni, domluva, vstupy, otisky) je v C++.
+// =====================================================================================================
+#if NAP_SEGA_VENDOR_CORE_PRESENT
+static std::string nap_sega_jstr(JNIEnv *env, jstring js, size_t max = 4096) {
+    std::string s;
+    if (!js) return s;
+    const char *c = env->GetStringUTFChars(js, nullptr);
+    if (c) { s.assign(c, strnlen(c, max)); env->ReleaseStringUTFChars(js, c); }
+    return s;
+}
+
+static std::string nap_sega_hex(const uint8_t *d, size_t n) {
+    static const char *h = "0123456789abcdef";
+    std::string r;
+    for (size_t i = 0; i < n; i++) { r += h[d[i] >> 4]; r += h[d[i] & 15]; }
+    return r;
+}
+
+/** Otisk nahrane hry (SHA-1 hex) a nastaveni jadra pro zalozeni hry ("otisk|nastaveni"), "" = zadna hra. */
+extern "C" JNIEXPORT jstring JNICALL
+Java_eu_atarihelp_emu10_NativeSegaCoreBridge_onlineOtisk(JNIEnv *env, jclass) {
+    std::string r;
+    {
+        std::lock_guard<std::mutex> l(g_online_m);
+        if (g_sega_otisk_je) r = nap_sega_hex(g_sega_otisk_hry, 20) + "|" + std::to_string((unsigned)g_real_cfg_region * 16u + (unsigned)g_real_cfg_tv);
+    }
+    return env->NewStringUTF(r.c_str());
+}
+
+/** Zacne online hru (hrac1 = zaklada). "OK" nebo text chyby. Hra bezi dal, dokud se telefony nedomluvi, pak studeny start. */
+extern "C" JNIEXPORT jstring JNICALL
+Java_eu_atarihelp_emu10_NativeSegaCoreBridge_onlineStart(JNIEnv *env, jclass, jstring jadresa, jstring jcesta, jobjectArray jhlavicky,
+                                                       jboolean hrac1, jstring jjmeno) {
+    nap::online::OnlineKlient::Nastaveni n;
+    n.adresa = nap_sega_jstr(env, jadresa);
+    n.cesta = nap_sega_jstr(env, jcesta);
+    if (jhlavicky) {
+        const jsize k = env->GetArrayLength(jhlavicky);
+        for (jsize i = 0; i < k; i++) {
+            jstring h = (jstring)env->GetObjectArrayElement(jhlavicky, i);
+            n.hlavicky.push_back(nap_sega_jstr(env, h, 1024));
+            if (h) env->DeleteLocalRef(h);
+        }
+    }
+    n.hrac1 = hrac1 == JNI_TRUE;
+    n.ja.jadro = nap::online::J_SEGA;
+    n.ja.jmeno = nap_sega_jstr(env, jjmeno, 60);
+    n.ja.nastaveni = (uint32_t)g_real_cfg_region * 16u + (uint32_t)g_real_cfg_tv;
+    n.snimekMs = g_real_cfg_tv == CLOWNMDEMU_TV_STANDARD_PAL ? 20.0 : 1000.0 / 60.0;
+    {
+        std::lock_guard<std::mutex> l(g_online_m);
+        if (!g_sega_otisk_je) return env->NewStringUTF("CHYBA: neni nahrana zadna hra");
+        std::memcpy(n.ja.hra, g_sega_otisk_hry, 20);
+        g_online_konec.clear();
+    }
+    if (n.adresa.empty() || n.cesta.empty()) return env->NewStringUTF("CHYBA: chybi adresa enginu");
+    std::lock_guard<std::mutex> rz(g_online_rizeni);
+    g_online_hraje.store(0);
+    g_online_aktivni.store(0);
+    g_online.start(n);
+    g_online_snimku_celkem.store(0);
+    g_online_aktivni.store(1);
+    NAPLOG("B357 ONLINE %s %s", n.hrac1 ? "zaklada" : "pripojuje", n.cesta.c_str());
+    return env->NewStringUTF("OK");
+}
+
+/** Konec online hry (hrac odchazi). Hra bezi dal sama (ovladani zase jen tento telefon). */
+extern "C" JNIEXPORT void JNICALL
+Java_eu_atarihelp_emu10_NativeSegaCoreBridge_onlineStop(JNIEnv *, jclass) {
+    std::lock_guard<std::mutex> rz(g_online_rizeni);
+    g_online_aktivni.store(0);
+    g_online_hraje.store(0);
+    g_online.stop();
+}
+
+/** Stav pro Javu: radky klic=hodnota (faze, kod, druhy, popis, chyba, odezva, zpozdeni, overeno, snimek, aktivni, hraje, konec). */
+extern "C" JNIEXPORT jstring JNICALL
+Java_eu_atarihelp_emu10_NativeSegaCoreBridge_onlineStav(JNIEnv *env, jclass) {
+    using F = nap::online::OnlineKlient::Faze;
+    const F f = g_online.faze();
+    const char *fs = f == F::PRIPOJUJE ? "PRIPOJUJE" : f == F::CEKA_NA_HRACE ? "CEKA_NA_HRACE" : f == F::HRAJE ? "HRAJE" : f == F::KONEC ? "KONEC" : "NIC";
+    std::shared_ptr<nap::online::Relace> r = g_online.relace();
+    std::string konec;
+    {
+        std::lock_guard<std::mutex> l(g_online_m);
+        konec = g_online_konec;
+    }
+    std::ostringstream o;
+    o << "faze=" << fs << "\nkod=" << g_online.kodMistnosti() << "\ndruhy=" << g_online.jmenoDruheho()
+      << "\npopis=" << g_online.popis() << "\nchyba=" << g_online.chyba()
+      << "\nodezva=" << (r ? r->odezvaMs() : 0) << "\nzpozdeni=" << (r ? r->zpozdeni() : 0)
+      << "\novereno=" << (r ? r->overenychOtisku() : 0) << "\ncekani=" << (r ? r->cekani() : 0)
+      << "\nsnimek=" << g_online_snimku_celkem.load() << "\naktivni=" << g_online_aktivni.load()
+      << "\nhraje=" << g_online_hraje.load() << "\nhrac1=" << (r ? (r->hrac1() ? 1 : 0) : 0) << "\nkonec=" << konec;
+    return env->NewStringUTF(o.str().c_str());
+}
+#else
+extern "C" JNIEXPORT jstring JNICALL Java_eu_atarihelp_emu10_NativeSegaCoreBridge_onlineOtisk(JNIEnv *env, jclass) { return env->NewStringUTF(""); }
+extern "C" JNIEXPORT jstring JNICALL Java_eu_atarihelp_emu10_NativeSegaCoreBridge_onlineStart(JNIEnv *env, jclass, jstring, jstring, jobjectArray, jboolean, jstring) {
+    return env->NewStringUTF("CHYBA: jadro Segy chybi");
+}
+extern "C" JNIEXPORT void JNICALL Java_eu_atarihelp_emu10_NativeSegaCoreBridge_onlineStop(JNIEnv *, jclass) {}
+extern "C" JNIEXPORT jstring JNICALL Java_eu_atarihelp_emu10_NativeSegaCoreBridge_onlineStav(JNIEnv *env, jclass) { return env->NewStringUTF("faze=NIC"); }
+#endif

@@ -1,0 +1,6 @@
+B355 - tlacitka herniho ovladace na Seze (nap_sega_native_proof.cpp z appky, dotaz jadra clownmdemu vc. X Y Z MODE)
+OK     1) vychozi mapa: 16 z 16 tlacitek - jako do B354 (A B C START, L1 A, R1 C) + 6 tlacitek: horni Y, L2 X, R2 Z; SELECT a HOME nic
+OK     2) vlastni mapa: jadro ji vrati (FIRE neni cil Segy - L2 zustal vychozi X); A = C, B = A, X = B, START = MODE, L1 = START, Y = X, SELECT = Y, HOME = Z, R1 = nahoru; po pusteni nic
+OK     3a) hrac 2 se stejnou mapou: Y = X, HOME = Z, A = C (ovladac 2); analogova spoust R2 podle mapy = Z, hrac 1 nic
+OK     3b) ovladacPust pusti oba (i X / Y ovladace se 6 tlacitky); mapa "" = zase vychozi (horni Y, HOME = MENU)
+VYSLEDEK: 4 OK, 0 CHYBA

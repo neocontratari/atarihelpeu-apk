@@ -4757,4 +4757,57 @@
        "PREDCHOZI BEH" / "KONEC BEHU APPKY"). Na serveru jsou u FF8 tri polozky (.zip, .cue, .bin) - staci jedna.
        Pak ONLINE HRANI pres engine.
 
+   B357: ONLINE HRANI PRES ENGINE N&P - SEGA, 2 TELEFONY (20. 11. 2026). Rene: "chystej se chci hrat hry online
+   pomoci meho enginu". Zacato Segou (dva hraci uz funguji - B354).
+     - PRINCIP (lockstep): kazdy telefon emuluje sam, po siti jdou jen stisky. Snimek N se emuluje, az jsou vstupy obou
+       hracu pro N; kazdy posila svuj vstup pro snimek N+D (zpozdeni D z odezvy: rtt/2 + rozptyl + 4 ms, na snimky, +1,
+       2..15). Hrac 1 (zaklada) = ovladac 1, hrac 2 (pripojil se) = ovladac 2. Domluva: AHOJ (verze, jadro, SHA-1 hry,
+       nastaveni = region*16 + TV), hrac 1 zmeri odezvu (6 pingu), posle START s D a sam zacne o rtt/2 pozdeji (oba ve
+       stejny okamzik), oba studeny start jadra (pamet od nuly) a snimek 0. Kazdych 60 snimku otisk stavu (FNV-1a pres
+       RAM 68000 a Z80, VRAM, CRAM, VSRAM) - jiny = "hra se rozjela", online konci (KONEC s duvodem obema). Ticho 15 s.
+       Zpravy binarne little-endian (AHOJ / PING / PONG / START / VSTUP / HASH / KONEC), VERZE 1.
+     - CELE V C++: online/nap_online.h (Relace), online/nap_websocket.h (WebSocket klient RFC 6455 nad POSIX sockety,
+       TCP_NODELAY, maskovani, ping/pong, delene zpravy, probouzeci roura, spoj() prerusitelny zrus() - odchod hrace pri
+       spojovani necekat na timeout), online/nap_online_klient.h (vlakno site, zpravy enginu JSON: mistnost / hrac /
+       odesel / chyba). Jadro Segy (nap_sega_native_proof.cpp): nap_real_input_requested bere za hry vstupy obou hracu
+       pro snimek (g_online_vstup), vlakno emulace pred krokem vezme vstupy z relace (ceka nejvys 30 ms, pak zkusi znovu),
+       po kroku otisk; pri cekani na hrace 2 hra bezi normalne (jinak by hlidac obrazu v Jave hru po nahrani restartoval);
+       nova hra (realCoreLoadRom), shutdown (odchod ze Segy) = konec online; loadState v online nejde (rozjelo by to
+       telefony); SHA-1 ROM pri nahrani. g_online_rizeni: onlineStart / onlineStop / nova hra / shutdown a konec zjisteny
+       vlaknem emulace po jednom - konec stare hry (overi se, ze je to porad tataz relace) nevypne novou. JNI onlineOtisk / onlineStart / onlineStop / onlineStav (radky klic=hodnota).
+       OPRAVA na okraj (ThreadSanitizer): g_input (dotyk z Javy, cte vlakno emulace) je std::atomic.
+     - ENGINE v12.4 (NapServer.cs - SOUKROMY, NENI v repozitari; u Reneho, balicek v12_4_server): trida NapOnline -
+       mistnosti s cislem 4 cislice (max 30, cekani 30 min, ticho 90 s, zprava max 4 MB), GET /api/v1/online/mistnosti
+       (JSON: kod, system, hra, hra_id, otisk, nastaveni, hrac, ceka_s), /api/v1/online/zaloz?system&hra&hra_id&otisk&
+       nastaveni&jmeno a /api/v1/online/pripoj?kod&jmeno = WebSocket (HttpListenerContext.AcceptWebSocketAsync, Windows
+       8+, stejny port jako appka - router beze zmeny), chyby JSON 400 / 404 mistnost_neni / 409 obsazeno / 503 plno.
+       Podpis telefonu jako vsude (Overeni: HMAC tokenu nad zarizeni\ncas\nMETODA\nRawUrl). Textove zpravy enginu =
+       rizeni, binarni = zpravy telefonu, predava je beze zmeny. Log 🎮 ONLINE (zalozil / pripojil / konec + doba),
+       ⚠️ ONLINE. ThreadPool min. vlaken + 2 na online hru. Mono neumi WebSocket v HttpListeneru -> testovaci hostitel
+       test/NapOnlineTest.cs (TcpListener + rucni handshake + WebSocket.CreateFromStream, stejna NapOnline).
+     - JAVA (jen lepidlo): NapOnlineHra (cesty zaloz / pripoj, jmeno hrace max 24, otisk z C++, stejnaHra),
+       NapServerKlient.hlavickyPro (User-Agent + podpis pro spojeni, ktere otevira C++), MainActivity.AHOnline (most
+       AHONLINE jen pro stranku Segy: stav, hra, seznam, zaloz, pripoj, konec). Pred spojenim podepsany GET seznamu (srovna
+       hodiny podle serveru, overi parovani a verzi enginu - stary engine = 404 neznamy_dotaz -> "potrebuje v12.4").
+       Hrac 2 bez stejne hry: hra_id ze serveru N&P -> stahne ji (downloadAndRunSegaArchive) a pocka, az bezi stejny
+       otisk; hra z telefonu hrace 1 = musi mit stejny soubor. POZOR hlidac obrazu (scheduleNativeRenderWatchdog): 1,35 s
+       po nahrani hry chce videt obraz, jinak hru nahraje znovu (shutdown = konec online) a pak vypne zvuk - proto stranka
+       pred stahovanim panel zavre (stav v odznaku) a Java se pripoji az 2 s po nahrani. hra_id hostitele: hra spustena z N&P HRY (AHHry.spust ->
+       napOnlineServerHra, loadRomBase64 -> segaCurrentServerId; pamatuje si jmeno -> id v SharedPreferences nap_online).
+     - STRANKA SEGY: kolecko ⚙ (na sirku) i MOJE HRY (na vysku) -> HRÁT ONLINE (2 TELEFONY): jmeno, ZALOŽIT HRU (HRÁČ 1),
+       HRY, KTERÉ ČEKAJÍ NA HRÁČE 2 (jen Sega; u kazde: mas stejnou / stahne se / potrebujes stejnou; PŘIPOJIT), OBNOVIT
+       SEZNAM, UKONČIT ONLINE HRU, stav (cekam na hrace 2 - cislo hry, ONLINE s ... - odezva, konec s duvodem cesky).
+       Odznak nahore (na vysku dole): ONLINE · CISLO HRY / jmeno · odezva MS / ONLINE SKONČILO. Pri startu hry se panel
+       zavre sam. Anglicky (slovnik en_sega.js + NapJazyk.t). Napoveda CZ / EN: Sega -> Online - dva telefony.
+     - build.gradle: versionCode 400 "EMU10-B357-ONLINE-SEGA". Kontroly 227 / 219 / b343 4 CHYBA zamerne (N7 N9 A6 V).
+     - Testy test_overeni/b357: lockstep 30 (simulovana sit LAN / internet / mobil / zamrznuti, rozjeti, jina hra /
+       verze, ticho, konec), klient proti enginu 31 (vc. odchodu pri spojovani), Sega 8 se SKUTECNYM jadrem a rucne
+       prelozenou ROM 68000 (sega_test_rom.py: kazdy snimek cte oba ovladace) - bez site determinismus, pak dva procesy
+       pres engine 720 snimku s nahodnymi stisky: 12 overenych otisku na obou, vstupy obou v obou jadrech; TSAN 0 hlaseni;
+       JVM 16 (podpis jako engine), stranka 16 (Chromium), javac 0 chyb (136 trid), JNI 118 0 CHYB, regrese Segy b320 /
+       b354 / b355 stejne. NEOVERENO: AcceptWebSocketAsync na Windows (mono ho neumi) a skutecne telefony.
+     - DALSI KROK: Rene - vymenit NapServer.exe za v12.4 (NAVOD_v12_4.txt), oba telefony B357 (sparovane), Sega: hrac 1
+       ZALOŽIT HRU, hrac 2 PŘIPOJIT; poslat log obou ("B357 ONLINE", "B357 ONLINE konec ... overeno=") a radky enginu
+       🎮 ONLINE. Pak Atari a PS1 online (PS1: overit determinismus - dynarec, asynchronni CD).
+
 ===============================================================================

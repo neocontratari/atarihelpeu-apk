@@ -19,6 +19,15 @@ NapJazyk.slovnik({
   'Zatím žádná uložená pozice. Za hraní stiskni ULOŽIT POZICI.': 'No saved position yet. Press SAVE GAME POSITION while playing.',
   'ULOŽIT': 'SAVE',
   'NE DÍKY': 'NO THANKS',
+  // B357: HRAT ONLINE (2 telefony pres engine N&P) - texty, ktere se meni (stav, seznam her), sklada stranka sama (NapJazyk.t)
+  'HRÁT ONLINE (2 TELEFONY)': 'PLAY ONLINE (2 PHONES)',
+  'HRÁT ONLINE': 'PLAY ONLINE',
+  'Dva telefony, každý hraje za svého hráče – přes engine N&P. Hráč 1 hru založí (hraje se hra, která je teď v konzoli), hráč 2 ji najde v seznamu a připojí se.':
+    'Two phones, each one plays for its own player – through the N&P engine. Player 1 creates the game (the game that is in the console now), player 2 finds it in the list and joins.',
+  'Tvoje jméno (uvidí ho druhý hráč)': 'Your name (the other player sees it)',
+  'ZALOŽIT HRU (HRÁČ 1)': 'CREATE A GAME (PLAYER 1)',
+  'HRY, KTERÉ ČEKAJÍ NA HRÁČE 2': 'GAMES WAITING FOR PLAYER 2',
+  'UKONČIT ONLINE HRU': 'END THE ONLINE GAME',
   // monitor (obrazovka Segy)
   // B343: obrazovka konzole bez hry (do B342 "SBIRKA=vykon" - SBÍRKA je ale seznam her N&P)
   'SEGA MEGA DRIVE – PŘIPRAVENO\nSBÍRKA = hry ze serveru N&P\nHRY = tvoje hry · CARTRIDGE = ROM z telefonu\nNÁVODY = krátký návod':

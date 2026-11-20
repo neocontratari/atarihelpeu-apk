@@ -1,0 +1,82 @@
+B357 - ONLINE HRANI PRES ENGINE N&P (SEGA, 2 TELEFONY) - overeni na PC
+========================================================================
+
+Rene (19. 11.): "chystej se chci hrat hry online pomoci meho enginu". Zacato Segou (dva hraci uz funguji).
+
+JAK TO FUNGUJE (podrobne v PREDAVACI_PROTOKOL, B357)
+ - Kazdy telefon emuluje hru sam, po siti jdou jen stisky (lockstep se zpozdenim vstupu D snimku): snimek N se emuluje,
+   az jsou vstupy obou hracu pro N. Oba telefony zacnou od zapnuti (studeny start) ve stejny okamzik. Kazdych
+   60 snimku si porovnaji otisk stavu (RAM 68000 a Z80, VRAM, CRAM, VSRAM) - jiny = "hra se rozjela", online konci.
+ - Cele v C++: app/src/main/cpp/online/nap_online.h (relace: domluva, mereni odezvy, D, vstupy, otisky),
+   nap_websocket.h (WebSocket klient RFC 6455 nad POSIX sockety), nap_online_klient.h (vlakno site + engine).
+   Jadro Segy: nap_sega_native_proof.cpp (vstupy obou hracu pro snimek, otisk stavu, JNI online*).
+ - Engine N&P v12.4 (soukromy, NE v repozitari) jen predava zpravy: /api/v1/online/mistnosti (seznam her),
+   /api/v1/online/zaloz (hrac 1), /api/v1/online/pripoj (hrac 2) = WebSocket na stejnem portu jako appka (router beze
+   zmeny), podpis telefonu jako u ostatnich dotazu (NapServerKlient.hlavickyPro).
+ - Java jen sklada dotazy (NapOnlineHra), podepisuje, hrac 2 si hru hrace 1 stahne ze serveru N&P (kdyz tam je)
+   a stranka Segy ukazuje panel HRÁT ONLINE (2 TELEFONY) a odznak se stavem.
+
+Spoustet z teto slozky (g++ 13, clang++ volitelne, mono / mcs, JDK 17+, ANDROID_JAR = android.jar API 34,
+python3 + playwright (Chromium)). PRAC = pracovni slozka (mimo repozitar).
+Engine pro testy: test/NapOnlineTest.cs z balicku enginu v12.4 (u Reneho / Clauda, ne v repozitari) - mini server na
+TcpListeneru se STEJNOU tridou NapOnline jako NapServer.cs (mono neumi WebSocket v HttpListeneru):
+     mcs -langversion:5 -codepage:utf8 -main:NapStudioServerV6.NapOnlineTest -r:System.Windows.Forms.dll -r:System.Drawing.dll
+         -r:System.Security.dll -r:System.Numerics.dll -r:System.Net.Http.dll -out:PRAC/NapOnlineTest.exe NapServer.cs test/NapOnlineTest.cs
+     mono PRAC/NapOnlineTest.exe --port N [--ticho S]      (konci radkem "konec" na vstupu)
+
+1) Relace bez site (simulovana sit: LAN, internet, mobil s vykyvy, zamrznuti):
+     g++ -std=c++17 -O2 -pthread -Wall -Wextra -I../../app/src/main/cpp -o PRAC/test_b357_lockstep test_b357_lockstep.cpp
+     PRAC/test_b357_lockstep -> VYSTUP_test_b357_lockstep.txt (30 OK)
+
+2) Klient appky proti enginu (mono NapOnlineTest --ticho 5):
+     g++ -std=c++17 -O2 -pthread -Wall -Wextra -I../../app/src/main/cpp -o PRAC/test_b357_online test_b357_online.cpp
+     PRAC/test_b357_online http://127.0.0.1:PORT -> VYSTUP_test_b357_online.txt (31 OK)
+     seznam her, chyby enginu (404 / 400 / 409), velka zprava 300 KB, dva klienti 360 snimku, odchod hrace, zruseni hry,
+     B357: odchod hrace pri spojovani (server mlci / TCP visi / stop hned po start) - stop() do 500 ms, ne az timeout.
+
+3) Sega: SKUTECNY nap_sega_native_proof.cpp + jadro clownmdemu + testovaci ROM 68000:
+     python3 sega_test_rom.py PRAC/sega_test_rom.h     (rucne prelozeny program 68000: kazdy snimek precte OBA ovladace
+                                                        a zamicha je do RAM a barvy pozadi - zadny assembler tu neni)
+     g++ -std=c++17 -O2 -pthread -Wno-unused-function $SEGA -IPRAC -o PRAC/test_b357_sega_online test_b357_sega_online.cpp \
+         PRAC/clown/*.o -l:libEGL.so.1 -l:libGLESv2.so.2           ($SEGA a PRAC/clown jako ../b320/vse.sh, bod 6)
+     PRAC/test_b357_sega_online PORT -> VYSTUP_test_b357_sega_online.txt (8 OK)
+       A) bez site: stejne vstupy = stejne otisky (i po jine hre - studeny start), jiny jediny stisk hrace 1 / 2 =
+          rozdil presne od toho snimku, kazde z 8 tlacitek obou hracu meni stav
+       B) dva procesy = dva telefony (kazdy sve jadro a vlakno emulace jako v appce), jen JNI: hrac 1 zalozi, hrac 2 se
+          pripoji, 720 snimku s nahodnymi stisky (dotyk + BT ovladac) v nahodnych chvilich -> 12 overenych otisku na obou,
+          vstupy obou hracu v obou jadrech, konec hrace 1 -> u hrace 2 "druhy hrac hru ukoncil"; jina ROM (1 bajt) ->
+          oba "jinou hru", hra nezacne
+     totez s -O1 -g -fsanitize=thread -> VYSTUP_tsan_b357_sega_online.txt (8 OK, 0 hlaseni; B357 opravil g_input -
+       dotyk z Javy se cetl ve vlakne emulace bez synchronizace, ted std::atomic)
+
+4) Java bez Androidu (tridy appky z bodu 5 v OUT):
+     javac --release 17 -encoding UTF-8 -cp OUT:$ANDROID_JAR -d T jvm/eu/atarihelp/emu10/TestB357Online.java
+     java -Dstdout.encoding=UTF-8 -cp T:OUT:$ANDROID_JAR eu.atarihelp.emu10.TestB357Online -> jvm/VYSTUP_TestB357Online.txt (16 OK)
+       NapOnlineHra (jmeno hrace, cesty zaloz / pripoj, otisk hry z C++, stav), NapServerKlient.hlavickyPro: podpis
+       overeny stejne jako engine (HMAC-SHA256 tokenu nad zarizeni\ncas\nGET\ncesta i s ?dotazem), cas podle serveru
+
+5) javac cele appky + podpisy JNI:
+     javac --release 17 -proc:none -encoding UTF-8 -cp $ANDROID_JAR -d OUT -h HLAVICKY ../../app/src/main/java/eu/atarihelp/emu10/*.java
+     -> VYSTUP_javac_android.txt (38 zdroju, 136 trid, 0 chyb)
+     cd ../b320 && python3 kontrola_jni.py HLAVICKY -> VYSTUP_kontrola_jni.txt (118 native metod, 0 CHYB)
+     (skript pise do ../b320/VYSTUP_kontrola_jni.txt - zkopirovat sem a v b320 vratit: git checkout --)
+
+6) Stranka Segy (Chromium, stranka presne z appky, falesny most AHONLINE):
+     python3 test_b357_stranka.py -> VYSTUP_test_b357_stranka.txt (16 kontrol, 0 CHYBA)
+       kolecko / MOJE HRY -> HRÁT ONLINE (2 TELEFONY), seznam her (jen Sega, co je potreba), PŘIPOJIT (hra se stahne -> panel
+       pryc, at hlidac obrazu appky vidi obraz; chyba panel zase otevre), ZALOŽIT HRU bez
+       hry / s hrou, cekani (cislo hry), start (panel se zavre, odznak), konec, chyby enginu (401, stary engine 404,
+       JSON odpovedi), na vysku odznak dole, anglicky bez cestiny, starsi appka bez AHONLINE, zadna chyba JS
+
+7) Regrese (vystupy sem jako VYSTUP_regrese_*; puvodni soubory v jejich slozkach vratit: git checkout --):
+     ../b311/kontrola_navodu.py      -> 227 nazvu, 0 CHYBA (B356: 221 - online pridal 6)
+     ../b314/kontrola_navodu_en.py   -> 219 nazvu, 0 CHYBA (B356: 213)
+     ../b343/kontrola_b343.py        -> 4 CHYBA zamerne jako od B356 (N7, N9, A6, V - texty / verze, ktere pozdejsi
+                                        buildy zamerne zmenily); ES5 kontrola stranek 0 CHYBA
+     ../b320 test_b320_sega_ovladac, ../b354 test_b354_sega, ../b355 test_b355_sega (Sega s novym jadrem appky)
+                                     -> stejne vysledky jako v jejich slozkach (5 / 4 / 4 OK)
+
+NEOVERENO NA PC
+ - HttpListenerContext.AcceptWebSocketAsync v NapServer.exe (Windows 8 a novejsi): mono ho neumi, test pouziva
+   WebSocket.CreateFromStream (stejna trida NapOnline). Prvni ostra zkouska = Reneho PC.
+ - Skutecne telefony pres mobilni sit / Wi-Fi (odezva, vykyvy) - simulace v bodu 1, skutecnost az u Reneho a brachy.

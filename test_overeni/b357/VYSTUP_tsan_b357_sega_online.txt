@@ -1,0 +1,11 @@
+B357 - test_b357_sega_online prelozeny s -fsanitize=thread (ThreadSanitizer): oba telefony (procesy), vlakno emulace, vlakno site, JNI z hlavniho vlakna
+OK     1) stejne vstupy -> stejnych 600 otisku i po jine hre mezi tim (studeny start maze vse); ruznych otisku 600 z 600 (stav se meni kazdy snimek)
+OK     2) hrac 1 jinak jen ve snimku 300 -> prvni rozdil otisku ve snimku 300, potom stejnych 0 (rozjeti je trvale - online by ho poznal)
+OK     3) hrac 2 jinak jen ve snimku 400 -> prvni rozdil ve snimku 400, potom stejnych 0
+OK     4) kazde z 8 tlacitek obou hracu (1 snimek) zmeni stav hry: 16 z 16
+OK     5) hrac 1 zalozil hru (cislo 4256), hrac 2 se pripojil, hrali: telefon 1 721 snimku, telefon 2 722 (zpozdeni vstupu 2 snimky)
+OK     6) overenych otisku stavu: telefon 1 13, telefon 2 13 (kazdych 60 snimku), rozjeti zadne, vstupy obou hracu v obou jadrech ano
+OK     7) hrac 1 skoncil -> telefon 2: 'druhy hrac hru ukoncil', telefon 1: 'online hru jsi ukoncil'
+OK     8) hrac 2 ma jinou ROM (1 bajt) -> telefon 1: 'druhy hrac ma jinou hru nebo jine nastaveni', telefon 2: 'druhy hrac ma jinou hru nebo jine nastaveni', online snimku 0 / 0 (hra nezacala)
+VYSLEDEK: 8 OK, 0 CHYBA
+hlaseni ThreadSanitizer: 0

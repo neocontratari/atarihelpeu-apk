@@ -1,0 +1,4 @@
+B357 - javac cele appky proti android.jar API 34 (zdroje app/src/main/java, javac 21 --release 17 -proc:none -encoding UTF-8 -h HLAVICKY)
+zdroju: 38, trid: 136, chyb prekladu: 0   (B356: 37 / 134 - nove NapOnlineHra a MainActivity$AHOnline)
+hlavicky JNI (javac -h) -> ../b320/kontrola_jni.py HLAVICKY -> VYSTUP_kontrola_jni.txt (118 native metod, 0 CHYB; nove onlineOtisk, onlineStart, onlineStop, onlineStav)
+VYSLEDEK: javac OK, 0 chyb

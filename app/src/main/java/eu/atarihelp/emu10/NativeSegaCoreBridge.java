@@ -112,4 +112,32 @@ public final class NativeSegaCoreBridge {
     public static String ovladacMapaSafe(String mapa) {
         try { final String r = ovladacMapa(mapa == null ? "" : mapa); return r == null ? "" : r; } catch (Throwable t) { return ""; }
     }
+
+    // ===== B357: ONLINE HRANI PRES ENGINE N&P (dva telefony, kazdy hraje za sveho hrace) =====
+    // Vse je v C++ (online/nap_online*.h): spojeni WebSocket s enginem, domluva telefonu, stisky obou hracu
+    // (hra jede na obou telefonech presne stejne - lockstep), kontrola otisku stavu. Java da jen adresu
+    // enginu, cestu (zaloz / pripoj) a hlavicky s podpisem telefonu (NapServerKlient.hlavickyPro).
+    /** "sha1|nastaveni" nahrane hry ("" = zadna hra) - hrac 2 musi mit tutez hru se stejnym nastavenim. */
+    private static native String onlineOtisk();
+    /** Zacne online hru (hrac1 = zaklada). "OK" nebo "CHYBA: ...". */
+    private static native String onlineStart(String adresa, String cesta, String[] hlavicky, boolean hrac1, String jmeno);
+    private static native void onlineStop();
+    /** Radky klic=hodnota: faze, kod, druhy, popis, chyba, odezva, zpozdeni, overeno, cekani, snimek, aktivni, hraje, hrac1, konec. */
+    private static native String onlineStav();
+
+    public static String onlineOtiskSafe() {
+        try { final String r = onlineOtisk(); return r == null ? "" : r; } catch (Throwable t) { return ""; }
+    }
+    public static String onlineStartSafe(String adresa, String cesta, String[] hlavicky, boolean hrac1, String jmeno) {
+        try {
+            final String r = onlineStart(adresa, cesta, hlavicky, hrac1, jmeno == null ? "" : jmeno);
+            return r == null ? "CHYBA: zadna odpoved" : r;
+        } catch (Throwable t) { return "CHYBA: " + t.getClass().getSimpleName(); }
+    }
+    public static void onlineStopSafe() {
+        try { onlineStop(); } catch (Throwable ignored) {}
+    }
+    public static String onlineStavSafe() {
+        try { final String r = onlineStav(); return r == null ? "faze=NIC" : r; } catch (Throwable t) { return "faze=NIC"; }
+    }
 }

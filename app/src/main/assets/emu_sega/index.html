@@ -103,6 +103,23 @@ body.tvCastActive .segaRychlyPruh{animation-play-state:paused!important;}
 .libGame .libPlay{background:linear-gradient(160deg,#8ef07a,#3cb043);color:#0a2a08;border:1px solid rgba(140,240,120,.6);}
 .libGame .libDel{background:rgba(90,20,20,.6);color:#ffb3b3;border:1px solid rgba(200,80,80,.55);}
 .libEmpty{text-align:center;color:#9fcf9f;font:700 12px "Courier New",monospace;padding:16px 0;}
+/* B357: HRAT ONLINE (2 telefony pres engine N&P) - panel, radky her a odznak se stavem (i behem hrani) */
+#segaOnlinePanel h2{color:#9effa0;text-shadow:0 0 14px rgba(60,220,90,.75),0 2px 4px #000;}
+#segaOnlinePanel h3{margin:16px 0 4px;font:900 13px "Courier New",monospace;color:#ffe14d;}
+#segaOnlinePanel label{display:block;margin:12px 0 4px;font:800 12px "Courier New",monospace;color:#cfe8ff;}
+#segaOnlineJmeno{width:100%;box-sizing:border-box;padding:10px;border-radius:10px;border:1px solid rgba(140,200,255,.45);background:rgba(0,0,0,.4);color:#fff;font:800 15px "Courier New",monospace;}
+#segaOnlineStav{min-height:1.4em;padding:9px 11px;border-radius:10px;background:rgba(0,0,0,.42);color:#9effa0;font:800 13px/1.4 "Courier New",monospace;}
+#segaOnlineStav.chyba{color:#ffb0b0;}
+#segaOnlineStav:empty{display:none;}
+.onlineHra{display:flex;align-items:center;gap:10px;padding:10px 12px;margin:10px 0;border-radius:10px;background:rgba(8,32,16,.96);border:1px solid rgba(60,190,70,.4);}
+.onlineHra .onlineInfo{flex:1;min-width:0;}
+.onlineHra .onlineNazev{font:900 13px "Courier New",monospace;color:#eaffef;word-break:break-word;}
+.onlineHra .onlineMeta{font:700 11px "Courier New",monospace;color:#9fcf9f;margin-top:3px;}
+.onlineHra button{width:auto;margin:0;padding:10px 12px;flex-shrink:0;}
+#segaOnlineOdznak{position:fixed;left:50%;top:6px;transform:translateX(-50%);z-index:170;display:none;pointer-events:none;max-width:80vw;padding:4px 12px;border-radius:999px;background:rgba(0,0,0,.6);border:1px solid rgba(60,190,70,.5);color:#9effa0;font:900 11px "Courier New",monospace;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+#segaOnlineOdznak.vidi{display:block;}
+#segaOnlineOdznak.chyba{color:#ffb0b0;border-color:rgba(255,120,120,.55);}
+@media (orientation:portrait){#segaOnlineOdznak{top:auto;bottom:8px;}}
 .panel input[type=range]{-webkit-appearance:none;width:100%;margin:6px 0 2px;height:6px;border-radius:3px;background:linear-gradient(90deg,#3cb043,#ffd60a,#1e88e5,#e8342a);}
 .panel input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:22px;height:22px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#fff,#bfe6ff);box-shadow:0 0 10px rgba(90,180,255,.7),0 0 0 2px rgba(255,255,255,.5);}
 .panel .ctrlVal{text-align:center;color:#8ee7ff;font:800 12px "Courier New",monospace;margin:0 0 10px;}
@@ -347,6 +364,8 @@ body.tvCastActive .segaRychlyPruh{animation-play-state:paused!important;}
     <button id="segaBtnCtrlSettings" type="button">OVLÁDÁNÍ: CITLIVOST A VZHLED</button>
     <!-- B355: co ktere tlacitko herniho ovladace dela (dialog appky, jako HOME na ovladaci) -->
     <button id="segaBtnTlacitka" type="button">TLAČÍTKA HERNÍHO OVLADAČE</button>
+    <!-- B357: online hra pres engine N&P -->
+    <button id="segaBtnOnline" type="button">HRÁT ONLINE (2 TELEFONY)</button>
     <button id="segaBtnMirror" type="button">PROHODIT D-PAD A AKCE (LEVÁK)</button>
     <!-- BUILD2SB39: ulozeni/nacteni je ted PER HRU (viz Java
          segaSaveStateFileFor) - tahle dve tlacitka zustavaji jako
@@ -393,6 +412,7 @@ body.tvCastActive .segaRychlyPruh{animation-play-state:paused!important;}
     <h2>MOJE HRY</h2>
     <p>Hry stažené do telefonu. Klepnutím na hru ji spustíš, koš hru smaže.</p>
     <div id="segaLibraryList"></div>
+    <button id="segaLibraryOnline" type="button">HRÁT ONLINE (2 TELEFONY)</button>
     <button id="segaLibraryRefresh" type="button" class="secondary">OBNOVIT SEZNAM</button>
     <button id="segaLibraryPickManual" type="button" class="secondary">VYBRAT SOUBOR RUČNĚ V TELEFONU</button>
     <button id="segaLibraryClose" type="button" class="zavrit">ZAVŘÍT</button>
@@ -419,6 +439,24 @@ body.tvCastActive .segaRychlyPruh{animation-play-state:paused!important;}
     <button id="segaSavedClose" type="button" class="zavrit">ZAVŘÍT</button>
   </div>
 </div>
+<!-- B357: Rene - "chci hrat hry online pomoci meho enginu". Dva telefony, kazdy hraje za sveho hrace; po siti
+     jdou jen stisky (cele v C++), engine N&P je jen predava. -->
+<div id="segaOnlinePanel" class="panel" aria-hidden="true">
+  <div class="box">
+    <h2>HRÁT ONLINE</h2>
+    <p>Dva telefony, každý hraje za svého hráče – přes engine N&amp;P. Hráč 1 hru založí (hraje se hra, která je teď v konzoli), hráč 2 ji najde v seznamu a připojí se.</p>
+    <p id="segaOnlineStav"></p>
+    <label for="segaOnlineJmeno">Tvoje jméno (uvidí ho druhý hráč)</label>
+    <input id="segaOnlineJmeno" type="text" maxlength="24" autocomplete="off" spellcheck="false">
+    <button id="segaOnlineZaloz" type="button">ZALOŽIT HRU (HRÁČ 1)</button>
+    <h3>HRY, KTERÉ ČEKAJÍ NA HRÁČE 2</h3>
+    <div id="segaOnlineSeznam"></div>
+    <button id="segaOnlineObnovit" type="button" class="secondary">OBNOVIT SEZNAM</button>
+    <button id="segaOnlineKonec" type="button" class="secondary">UKONČIT ONLINE HRU</button>
+    <button id="segaOnlineClose" type="button" class="zavrit">ZAVŘÍT</button>
+  </div>
+</div>
+<div id="segaOnlineOdznak" aria-hidden="true"></div>
 <script>
 (function(){'use strict';
 var BUILD='BUILD2SA2_SEGA_WEB_ROM_ROUTING_STAGE144';
@@ -1415,6 +1453,159 @@ bindUiAction('btnManuals','manuals',function(){showMonitor('SEGA – KRÁTKÝ N�
 bindUiAction('btnMenu','menu',function(){pushLog('BUILD2RV MENU_CLICK stop native and leave sega');try{stopNativeCppInPlace('menuButton');}catch(_){}try{location.href='../index.html';}catch(_){}});
 /* B321: web atarihelp.eu v prohlizeci telefonu (WEDOS appku v okne odmita - 503) */
 bindUiAction('btnWeb','web',function(){pushLog('BUILD2RV WEB_CLICK');try{if(window.AHNET&&AHNET.openInBrowser)AHNET.openInBrowser('https://atarihelp.eu/');else location.href='https://atarihelp.eu/';}catch(_){}});
+
+/* ===== B357: HRÁT ONLINE (2 TELEFONY) pres engine N&P =====
+   Hrani je cele v C++ (online/nap_online*.h): spojeni s enginem, stisky obou hracu ve stejnem snimku na obou
+   telefonech (lockstep), kazdou sekundu kontrola otisku stavu. Tady jen panel (zalozit / seznam her / pripojit /
+   ukoncit) a odznak se stavem nahore (na vysku dole). Java: AHONLINE (MainActivity.AHOnline). */
+var onlineCasovac=null,onlinePanelOtevren=false,onlineHrajeBylo=false,onlineAktivniBylo=false,onlineKonecDo=0,onlineDrzDo=0,onlineChyba='',onlineMojeHra={};
+function onlineT(cs,en){try{return window.NapJazyk?NapJazyk.t(cs,en):cs;}catch(e){return cs;}}
+function onlineStav(){var r={};try{if(window.AHONLINE)String(AHONLINE.stav()).split('\n').forEach(function(l){var i=l.indexOf('=');if(i>0)r[l.substring(0,i)]=l.substring(i+1);});}catch(e){}return r;}
+function onlineDuvod(s){
+  s=String(s||'');
+  var j=s.indexOf('{');
+  if(s.indexOf('engine odmitl online')===0&&j>0){try{var o=JSON.parse(s.substring(j));if(o&&o.zprava)return String(o.zprava);}catch(e){}}
+  var M=[
+    ['druhy hrac hru ukoncil','druhý hráč hru ukončil','the other player ended the game'],
+    ['online hru jsi ukoncil','hru jsi ukončil','you ended the game'],
+    ['hra se rozjela','hra se rozjela – telefony už nehrají totéž','the game desynced – the phones no longer play the same'],
+    ['druhy hrac ma jinou hru','druhý hráč má jinou hru nebo jiné nastavení','the other player has a different game or settings'],
+    ['druhy hrac ma jinou verzi','druhý hráč má jinou verzi appky – aktualizujte obě','the other player has a different app version – update both'],
+    ['od druheho hrace dlouho nic','od druhého hráče dlouho nic nepřišlo','nothing came from the other player for a long time'],
+    ['poskozena zprava','poškozená zpráva ze sítě','a damaged message from the network'],
+    ['spojeni se serverem spadlo','spojení s enginem spadlo','the connection to the engine dropped'],
+    ['hra zrusena','hra zrušena','game cancelled'],
+    ['druhy hrac odesel','druhý hráč odešel','the other player left'],
+    ['engine spojeni zavrel','engine spojení zavřel','the engine closed the connection'],
+    ['nahrana jina hra','spuštěna jiná hra','another game was started'],
+    ['spojeni se serverem nejde','engine N&P není dostupný','the N&P engine is not reachable'],
+    ['server nejde najit','engine N&P není dostupný','the N&P engine is not reachable'],
+    ['server neodpovedel','engine N&P neodpověděl','the N&P engine did not answer'],
+    ['spatna adresa serveru','špatná adresa enginu (online jen přes http://)','wrong engine address (online works over http:// only)'],
+    ['online skoncilo','online skončilo','online ended']
+  ];
+  for(var i=0;i<M.length;i++)if(s.indexOf(M[i][0])===0)return onlineT(M[i][1],M[i][2]);
+  return s;
+}
+function onlineText(st){
+  if(st.krok==='STAHUJI')return onlineT('Stahuji hru hráče 1 ze serveru N&P…','Downloading player 1’s game from the N&P server…');
+  switch(st.faze){
+    case 'PRIPOJUJE':return onlineT('Připojuji se k enginu N&P…','Connecting to the N&P engine…');
+    case 'CEKA_NA_HRACE':return st.kod?onlineT('Čekám na hráče 2 – číslo hry '+st.kod,'Waiting for player 2 – game number '+st.kod):onlineT('Zakládám hru…','Creating the game…');
+    case 'HRAJE':
+      if(st.hraje==='1')return onlineT('ONLINE s hráčem '+st.druhy+' – odezva '+st.odezva+' ms','ONLINE with '+st.druhy+' – latency '+st.odezva+' ms');
+      return onlineT('Domlouvám se s hráčem '+st.druhy+'…','Agreeing with '+st.druhy+'…');
+    case 'KONEC':return onlineT('Online skončilo: ','Online ended: ')+onlineDuvod(st.konec||st.chyba);
+  }
+  return '';
+}
+function onlineOdznakText(st){
+  if(st.krok==='STAHUJI')return onlineT('ONLINE · STAHUJI HRU','ONLINE · DOWNLOADING THE GAME');
+  if(st.faze==='CEKA_NA_HRACE')return st.kod?onlineT('ONLINE · ČÍSLO HRY '+st.kod,'ONLINE · GAME NUMBER '+st.kod):'ONLINE';
+  if(st.faze==='HRAJE')return st.hraje==='1'?'ONLINE · '+st.druhy+' · '+st.odezva+' MS':onlineT('ONLINE · DOMLOUVÁM SE','ONLINE · AGREEING');
+  if(st.faze==='PRIPOJUJE')return onlineT('ONLINE · PŘIPOJUJI','ONLINE · CONNECTING');
+  if(st.faze==='KONEC')return onlineT('ONLINE SKONČILO','ONLINE ENDED');
+  return '';
+}
+function onlineTik(){
+  var st=onlineStav(),ted=Date.now();
+  var aktivni=st.krok==='STAHUJI'||st.faze==='PRIPOJUJE'||st.faze==='CEKA_NA_HRACE'||st.faze==='HRAJE';
+  var hraje=st.faze==='HRAJE'&&st.hraje==='1';
+  if(hraje&&!onlineHrajeBylo){pushLog('B357 ONLINE hra zacala s '+st.druhy+' zpozdeni='+st.zpozdeni+' odezva='+st.odezva);if(onlinePanelOtevren)closeSegaOnline();}
+  if(st.faze==='KONEC'&&onlineAktivniBylo){onlineKonecDo=ted+8000;pushLog('B357 ONLINE konec: '+(st.konec||st.chyba)+' overeno='+st.overeno+' snimek='+st.snimek+' cekani='+st.cekani);}
+  onlineHrajeBylo=hraje;onlineAktivniBylo=aktivni;
+  var t=onlineText(st),el=$('segaOnlineStav');
+  if(el){
+    if(onlineChyba&&!aktivni){el.textContent=onlineChyba;el.className='chyba';}
+    else{el.textContent=t;el.className=st.faze==='KONEC'?'chyba':'';}
+  }
+  var o=$('segaOnlineOdznak'),ot=onlineOdznakText(st);
+  var ukaz=aktivni||(st.faze==='KONEC'&&ted<onlineKonecDo);
+  if(o){o.textContent=ot;o.classList.toggle('vidi',!!(ukaz&&ot));o.classList.toggle('chyba',st.faze==='KONEC');}
+  var zal=$('segaOnlineZaloz');if(zal)zal.disabled=aktivni;
+  if(!aktivni&&!onlinePanelOtevren&&ted>onlineKonecDo&&ted>onlineDrzDo){clearInterval(onlineCasovac);onlineCasovac=null;if(o)o.classList.remove('vidi');}
+}
+// po akci (zalozit / pripojit / ukoncit) hlidat aspon 20 s - Java stav meni az za chvili (vlakno, stahovani hry)
+function onlineHlidej(akce){if(akce)onlineDrzDo=Date.now()+20000;if(!onlineCasovac)onlineCasovac=setInterval(onlineTik,600);onlineTik();}
+function onlineJmeno(){var el=$('segaOnlineJmeno'),j=el?String(el.value||'').replace(/^\s+|\s+$/g,''):'';if(!j)j=onlineMojeHra.jmeno||'HRAC';try{localStorage.setItem('napOnlineJmeno',j);}catch(e){}return j;}
+function onlineCekaS(s){var n=parseInt(s,10)||0;return n<60?onlineT('čeká chvilku','waiting a moment'):onlineT('čeká '+Math.floor(n/60)+' min','waiting '+Math.floor(n/60)+' min');}
+function onlineSeznam(){
+  var host=$('segaOnlineSeznam');if(!host)return;
+  if(!window.AHONLINE){host.innerHTML='<p class="libEmpty">'+segaLibEsc(onlineT('Online tady nejde (stará verze appky).','Online is not available here (old app version).'))+'</p>';return;}
+  host.innerHTML='<p class="libEmpty">'+segaLibEsc(onlineT('Načítám…','Loading…'))+'</p>';
+  try{AHONLINE.seznam();}catch(e){}
+}
+function onlineVykresli(r){
+  var host=$('segaOnlineSeznam');if(!host)return;
+  if(!r.ok){
+    var z=r.kod===401?onlineT('Telefon není spárovaný s enginem N&P – nejdřív ho aktivuj (SBÍRKA → N&P HRY).','The phone is not paired with the N&P engine – activate it first (CATALOG → N&P GAMES).')
+      :(r.kod===404&&r.duvod==='neznamy_dotaz')?onlineT('Engine N&P zatím online hru neumí (potřebuje verzi v12.4).','The N&P engine cannot do online games yet (it needs version v12.4).')
+      :r.kod===0?onlineT('Engine N&P není dostupný – zkus to za chvíli.','The N&P engine is not reachable – try again in a moment.')
+      :(r.zprava||('HTTP '+r.kod));
+    host.innerHTML='<p class="libEmpty">'+segaLibEsc(z)+'</p>';return;
+  }
+  var st=onlineStav(),moje=st.faze==='CEKA_NA_HRACE'?st.kod:'';
+  var m=(r.data&&r.data.mistnosti)||[],html='',n=0;
+  for(var i=0;i<m.length;i++){
+    var h=m[i];if(h.system!=='sega')continue;n++;
+    var stejna=onlineMojeHra.otisk&&h.otisk===onlineMojeHra.otisk;
+    var jak=h.kod===moje?onlineT('tvoje hra','your game'):stejna?onlineT('máš stejnou hru','you have the same game'):h.hra_id?onlineT('hra se stáhne ze serveru N&P','the game downloads from the N&P server'):onlineT('potřebuješ stejnou hru jako hráč 1','you need the same game as player 1');
+    html+='<div class="onlineHra" data-i="'+i+'"><div class="onlineInfo"><div class="onlineNazev">'+segaLibEsc((h.hra||'?')+' · '+(h.hrac||'?'))+'</div>'
+        +'<div class="onlineMeta">'+segaLibEsc(onlineT('číslo ','number ')+h.kod+' · '+onlineCekaS(h.ceka_s)+' · '+jak)+'</div></div>'
+        +(h.kod===moje?'':'<button type="button" class="onlinePripoj">'+segaLibEsc(onlineT('PŘIPOJIT','JOIN'))+'</button>')+'</div>';
+  }
+  if(!n)html='<p class="libEmpty">'+segaLibEsc(onlineT('Zatím žádná hra nečeká. Založ ji ty, nebo ať ji založí druhý hráč, a dej OBNOVIT SEZNAM.','No game is waiting yet. Create one, or let the other player create it, then tap REFRESH THE LIST.'))+'</p>';
+  host.innerHTML=html;
+  var rows=host.querySelectorAll('.onlineHra');
+  for(var k=0;k<rows.length;k++)(function(row){
+    var b=row.querySelector('.onlinePripoj');if(!b)return;
+    var h=m[parseInt(row.getAttribute('data-i'),10)];
+    b.addEventListener('click',function(e){
+      e.preventDefault();onlineChyba='';
+      var stejna=!!onlineMojeHra.otisk&&h.otisk===onlineMojeHra.otisk&&String(h.nastaveni||'')===String(onlineMojeHra.nastaveni||'');
+      pushLog('B357 ONLINE pripojit ke hre '+h.kod+' ('+h.hra+')'+(stejna?'':h.hra_id?' - stahne se '+h.hra_id:' - jina hra'));
+      try{AHONLINE.pripoj(String(h.kod),String(h.otisk||''),String(h.nastaveni||''),String(h.hra_id||''),onlineJmeno());}catch(err){}
+      // hra hrace 1 se stahne a nahraje: panel pryc, at je obraz videt (hlidac obrazu appky jinak hru nahraje znovu
+      // a vypne zvuk) - stav ukazuje odznak, chyba panel zase otevre
+      if(!stejna&&h.hra_id)closeSegaOnline();
+      onlineHlidej(true);
+    },true);
+  })(rows[k]);
+}
+window.napOnline={vysledek:function(r){
+  r=r||{};
+  if(r.akce==='seznam'){onlineVykresli(r);return;}
+  if(!r.ok&&r.zprava&&r.zprava!=='zruseno'){
+    onlineChyba=String(r.zprava).indexOf('CHYBA: ')===0?onlineDuvod(String(r.zprava).substring(7)):String(r.zprava);
+    pushLog('B357 ONLINE '+r.akce+' nejde: '+r.zprava);
+    if(!onlinePanelOtevren)showSegaOnline(true);   // panel byl pryc (stahovani hry hrace 1) - at hrac vidi proc
+  }
+  onlineHlidej();
+}};
+function showSegaOnline(nechChybu){
+  try{onlineMojeHra=window.AHONLINE?JSON.parse(String(AHONLINE.hra())):{};}catch(e){onlineMojeHra={};}
+  var el=$('segaOnlineJmeno');
+  if(el&&!el.value){var j='';try{j=localStorage.getItem('napOnlineJmeno')||'';}catch(e){}el.value=j||onlineMojeHra.jmeno||'';}
+  onlinePanelOtevren=true;if(nechChybu!==true)onlineChyba='';
+  napSegaPlochaHide();napSegaOtevriSeZpozdenim($('segaOnlinePanel'),onlineSeznam);
+  onlineHlidej();
+}
+function closeSegaOnline(){onlinePanelOtevren=false;napSegaPlochaShow();var p=$('segaOnlinePanel');if(p){p.classList.remove('open');p.setAttribute('aria-hidden','true');}}
+$('segaBtnOnline').addEventListener('click',function(e){e.preventDefault();closeSegaDpadMenu();showSegaOnline();},true);
+$('segaLibraryOnline').addEventListener('click',function(e){e.preventDefault();closeSegaLibrary();showSegaOnline();},true);
+$('segaOnlineClose').addEventListener('click',function(e){e.preventDefault();closeSegaOnline();},true);
+$('segaOnlineObnovit').addEventListener('click',function(e){e.preventDefault();onlineSeznam();},true);
+$('segaOnlineZaloz').addEventListener('click',function(e){
+  e.preventDefault();onlineChyba='';
+  try{onlineMojeHra=window.AHONLINE?JSON.parse(String(AHONLINE.hra())):{};}catch(err){onlineMojeHra={};}
+  if(!onlineMojeHra.otisk){onlineChyba=onlineT('Nejdřív spusť hru (HRY, SBÍRKA nebo CARTRIDGE) – online se hraje hra, která je teď v konzoli.','Start a game first (GAMES, CATALOG or CARTRIDGE) – online uses the game that is in the console now.');onlineTik();return;}
+  pushLog('B357 ONLINE zalozit hru '+onlineMojeHra.nazev+(onlineMojeHra.hra_id?' ('+onlineMojeHra.hra_id+')':' (hra z telefonu)'));
+  try{AHONLINE.zaloz(onlineJmeno());}catch(err){}
+  onlineHlidej(true);
+  setTimeout(onlineSeznam,1500);
+},true);
+$('segaOnlineKonec').addEventListener('click',function(e){e.preventDefault();onlineChyba='';try{if(window.AHONLINE)AHONLINE.konec();}catch(err){}pushLog('B357 ONLINE ukoncit (hrac)');onlineHlidej(true);setTimeout(onlineSeznam,800);},true);
+try{if(window.AHONLINE){var ost=onlineStav();if(ost.faze&&ost.faze!=='NIC'&&ost.faze!=='KONEC')onlineHlidej();}}catch(_){}
 
 var nativeCpp=$('btnNativeCpp');
 if(nativeCpp){try{nativeCpp.style.display='none';nativeCpp.disabled=true;nativeCpp.setAttribute('aria-hidden','true');}catch(_){}}

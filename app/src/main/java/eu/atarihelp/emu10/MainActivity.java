@@ -10647,6 +10647,7 @@ public class MainActivity extends Activity {
                 // hry - pouziva se pro per-hru ulozene pozice (ULOZENE) a
                 // pro "ulozit do telefonu" (SBIRKA/knihovna).
                 segaCurrentGameName = name;
+                segaCurrentServerId = napOnlineIdProHru(name);   // B357
                 segaCurrentGameBytes = data;
                 long t0 = System.currentTimeMillis();
                 String info = NativeSegaCoreBridge.romInfo(data);
@@ -10667,6 +10668,7 @@ public class MainActivity extends Activity {
                 nativeViewDrawCounterAtRomLoad = nativeViewDrawCounter;
                 nativeRenderPerfWindowStartMs = 0; nativeRenderPerfWindowFrames = 0; nativeRenderPerfSlowFrames = 0;
                 String realCore = NativeSegaCoreBridge.realCoreLoadRom(data);
+                napSegaNahrani.incrementAndGet();   // B357: hra nahrana (online hrac 2 ceka na stazenou hru)
                 // Obraz Segy jde od B117 PRIMO na plochu pres OpenGL ES,
                 // stejne jako u PS1. Doted se snimal z okna aplikace, coz
                 // zpusobovalo viditelne zpozdeni proti mobilu.
@@ -11179,6 +11181,10 @@ public class MainActivity extends Activity {
     // duplikovane na kazdem miste zvlast.
     private volatile String segaCurrentGameName = null;
     private volatile byte[] segaCurrentGameBytes = null;
+    // B357: online hra - id prave hrane hry na serveru N&P (hrac 2 si ji stahne sam), "" = hra z telefonu
+    private volatile String segaCurrentServerId = "";
+    private volatile String napOnlineServerHra = null;   // "id|soubor" (N&P HRY / online hrac 2) - ceka na nahrani hry
+    private volatile long napOnlineServerHraCas = 0;
     // BUILD2SB27: JEDNO misto, ktere rozhoduje JAK schovat/ukazat plochu -
     // podle aktualni vrstvy (portrait=nad strankou / landscape=pod strankou).
     // Vsechna tri mista (ps1PlochaVisible, ps1PlochaUmisti, plochaZkontroluj)
@@ -12212,6 +12218,8 @@ public class MainActivity extends Activity {
             ui.post(() -> {
                 if ("atari".equals(system)) { atariNetGen.incrementAndGet(); downloadAndRun(url); }
                 else if ("sega".equals(system)) {
+                    napOnlineServerHra = id + "|" + jm;   // B357: hrac 2 online si pak tutez hru stahne sam
+                    napOnlineServerHraCas = android.os.SystemClock.uptimeMillis();
                     if (jm.toLowerCase(Locale.US).endsWith(".zip")) downloadAndRunSegaArchive(url); else downloadAndRunSega(url);
                 } else downloadAndRunPs1Remote(url, "napHry");
             });
@@ -13582,6 +13590,177 @@ public class MainActivity extends Activity {
         }
     }
 
+    // =====================================================================================================
+    //  B357: HRAT ONLINE (2 TELEFONY) PRES ENGINE N&P - stranka Segy (kolecko / MOJE HRY)
+    //  Rene: "chci hrat hry online pomoci meho enginu". Hrani je cele v C++ (online/nap_online*.h: WebSocket,
+    //  domluva telefonu, stisky obou hracu ve stejnem snimku, otisky stavu). Tady jen: seznam her na enginu,
+    //  podpis telefonu pro spojeni a hrac 2 si hru hrace 1 stahne ze serveru N&P (kdyz tam je).
+    // =====================================================================================================
+    private volatile String napOnlineKrok = "";   // co appka dela pred spojenim ("STAHUJI" = hru hrace 1)
+    private final java.util.concurrent.atomic.AtomicInteger napSegaNahrani = new java.util.concurrent.atomic.AtomicInteger();        // nahranych her Segy
+    private final java.util.concurrent.atomic.AtomicInteger napSegaStahovaniChyb = new java.util.concurrent.atomic.AtomicInteger();  // nepovedenych stazeni
+    private final java.util.concurrent.atomic.AtomicInteger napOnlineGen = new java.util.concurrent.atomic.AtomicInteger();
+
+    private void napOnlineVysledek(String json) {
+        napJs("window.napOnline&&napOnline.vysledek(JSON.parse(" + NapJson.uvoz(json) + "))");
+    }
+
+    /** Hra se prave nahrava (loadRomBase64): je ze serveru N&P? Vraci jeji id ("sega-..."), jinak "". */
+    private String napOnlineIdProHru(String name) {
+        String n = name == null ? "" : name.trim();
+        android.content.SharedPreferences sp = getSharedPreferences("nap_online", MODE_PRIVATE);
+        String p = napOnlineServerHra;
+        napOnlineServerHra = null;
+        if (p != null && android.os.SystemClock.uptimeMillis() - napOnlineServerHraCas < 180000) {
+            int i = p.indexOf('|');
+            String id = NapOnlineHra.serverId(i > 0 ? p.substring(0, i) : p);
+            String soubor = i > 0 ? p.substring(i + 1) : "";
+            // jmeno = soubor ze serveru; ZIP ze serveru ma uvnitr ROM s jinym jmenem; "*" = hrac 2 online (stahuje tuhle hru)
+            if (!id.isEmpty() && ("*".equals(soubor) || soubor.equalsIgnoreCase(n) || soubor.toLowerCase(Locale.US).endsWith(".zip"))) {
+                if (!n.isEmpty()) try { sp.edit().putString("id:" + n.toLowerCase(Locale.US), id).apply(); } catch (Throwable ignored) {}
+                return id;
+            }
+        }
+        if (n.isEmpty()) return "";
+        try { return NapOnlineHra.serverId(sp.getString("id:" + n.toLowerCase(Locale.US), "")); } catch (Throwable t) { return ""; }
+    }
+
+    private String napOnlineChyba(NapServerKlient.Odpoved o) {
+        if (o == null || o.kod == 401) return tx("Telefon není spárovaný s enginem N&P – nejdřív ho aktivuj.", "The phone is not paired with the N&P engine – activate it first.");
+        if (o.kod == 0) return tx("Engine N&P není dostupný – zkus to za chvíli.", "The N&P engine is not reachable – try again in a moment.");
+        if (o.kod == 404 && "neznamy_dotaz".equals(o.duvod())) return tx("Engine N&P zatím online hru neumí (potřebuje verzi v12.4).", "The N&P engine cannot do online games yet (it needs version v12.4).");
+        String z = o.zprava();
+        return z == null || z.isEmpty() ? "HTTP " + o.kod + " " + o.duvod() : z;
+    }
+
+    /** Hrac 1: zalozi hru s prave nahranou hrou. "OK" nebo text pro hrace. */
+    private String napOnlineZaloz(String jmeno, int gen) {
+        if (napServer == null || !napServer.sparovano()) return napOnlineChyba(null);
+        String[] o = NapOnlineHra.otisk(NativeSegaCoreBridge.onlineOtiskSafe());
+        if (o == null) return tx("Nejdřív spusť hru – online se hraje hra, která je teď v konzoli.", "Start a game first – online uses the game that is in the console now.");
+        // podepsany GET pred spojenim: srovna hodiny telefonu podle serveru (podpis plati jen chvili) a overi parovani
+        NapServerKlient.Odpoved t = napServer.get(NapOnlineHra.CESTA_SEZNAM);
+        if (!t.ok()) return napOnlineChyba(t);
+        if (gen != napOnlineGen.get()) return "zruseno";
+        String nazev = segaCurrentGameName, id = segaCurrentServerId;
+        String cesta = NapOnlineHra.cestaZaloz("sega", nazev, id, o[0], o[1], jmeno);
+        String r = NativeSegaCoreBridge.onlineStartSafe(napServer.server(), cesta, napServer.hlavickyPro("GET", cesta), true, NapOnlineHra.jmeno(jmeno));
+        appendNativeLog("B357 ONLINE zalozit hru " + NapOnlineHra.nazevHry(nazev) + (id.isEmpty() ? " (hra z telefonu)" : " (" + id + ")")
+                + " otisk " + o[0].substring(0, 12) + " nastaveni " + o[1] + " -> " + r);
+        return r;
+    }
+
+    /** Hrac 2: pripoji se. Kdyz nema tutez hru a hra je na serveru N&P, nejdriv si ji stahne a pocka, az bezi. */
+    private String napOnlinePripoj(String kod, String otisk, String nastaveni, String hraId, String jmeno, int gen) {
+        if (napServer == null || !napServer.sparovano()) return napOnlineChyba(null);
+        String k = NapOnlineHra.kod(kod);
+        if (k.isEmpty()) return tx("Špatné číslo hry.", "Wrong game number.");
+        if (!NapOnlineHra.stejnaHra(NativeSegaCoreBridge.onlineOtiskSafe(), otisk, nastaveni)) {
+            String id = NapOnlineHra.serverId(hraId);
+            if (!id.startsWith("sega-")) return tx("Hráč 1 hraje hru, kterou v konzoli nemáš. Spusť stejnou hru (stejný soubor) a připoj se znovu.",
+                    "Player 1 plays a game you do not have in the console. Start the same game (the same file) and join again.");
+            final int nahraniPred = napSegaNahrani.get(), chybPred = napSegaStahovaniChyb.get();
+            napOnlineKrok = "STAHUJI";
+            napOnlineServerHra = id + "|*";
+            napOnlineServerHraCas = android.os.SystemClock.uptimeMillis();
+            final String url = napServer.server() + "/api/v1/hra?id=" + id;
+            appendNativeLog("B357 ONLINE hrac 2 nema hru hrace 1 - stahuji ze serveru " + id);
+            ui.post(() -> downloadAndRunSegaArchive(url));
+            long konec = android.os.SystemClock.uptimeMillis() + 150000;
+            final String nejde = tx("Hru hráče 1 se nepodařilo stáhnout.", "Player 1's game could not be downloaded.");
+            String vysledek = null;
+            while (vysledek == null) {
+                if (gen != napOnlineGen.get()) vysledek = "zruseno";
+                else if (napSegaStahovaniChyb.get() != chybPred || android.os.SystemClock.uptimeMillis() > konec) vysledek = nejde;
+                else {
+                    final int nahrani = napSegaNahrani.get();   // nejdriv pocet nahrani, pak otisk (otisk je hotovy drive nez pocet)
+                    if (NapOnlineHra.stejnaHra(NativeSegaCoreBridge.onlineOtiskSafe(), otisk, nastaveni)) break;
+                    if (nahrani != nahraniPred) vysledek = tx("Hra ze serveru je jiná než u hráče 1 – spusť stejnou hru (stejný soubor).",
+                            "The game from the server differs from player 1's – start the same game (the same file).");
+                    else try { Thread.sleep(300); } catch (InterruptedException e) { vysledek = "zruseno"; }
+                }
+            }
+            if (vysledek != null) { napOnlineKrok = ""; appendNativeLog("B357 ONLINE hrac 2: " + vysledek); return vysledek; }
+            // hlidac obrazu appky (scheduleNativeRenderWatchdog) se 1,35 s po nahrani podiva, jestli je videt obraz -
+            // spojeni az po nem (kdyby hru nahral znovu, shutdown by online hned ukoncil)
+            try { Thread.sleep(2000); } catch (InterruptedException ignored) {}
+            napOnlineKrok = "";
+            appendNativeLog("B357 ONLINE hrac 2 ma hru hrace 1 (stazena ze serveru)");
+        }
+        if (gen != napOnlineGen.get()) return "zruseno";
+        NapServerKlient.Odpoved t = napServer.get(NapOnlineHra.CESTA_SEZNAM);   // hodiny podle serveru + parovani
+        if (!t.ok()) return napOnlineChyba(t);
+        if (gen != napOnlineGen.get()) return "zruseno";
+        String cesta = NapOnlineHra.cestaPripoj(k, jmeno);
+        String r = NativeSegaCoreBridge.onlineStartSafe(napServer.server(), cesta, napServer.hlavickyPro("GET", cesta), false, NapOnlineHra.jmeno(jmeno));
+        appendNativeLog("B357 ONLINE pripojit ke hre " + k + " -> " + r);
+        return r;
+    }
+
+    public class AHOnline {
+        private boolean nase() {
+            String u = napAktualniUrl;
+            return napServer != null && u != null && u.startsWith(SEGA_URL);
+        }
+
+        /** Stav pro stranku: krok appky + stav online z C++ (radky klic=hodnota). */
+        @JavascriptInterface public String stav() {
+            if (!nase()) return "faze=NIC";
+            return "krok=" + napOnlineKrok + "\nsparovano=" + (napServer.sparovano() ? 1 : 0) + "\n" + NativeSegaCoreBridge.onlineStavSafe();
+        }
+
+        /** Hra v konzoli: {"otisk","nastaveni","nazev","hra_id","jmeno"} ("otisk":"" = zadna hra). */
+        @JavascriptInterface public String hra() {
+            if (!nase()) return "{}";
+            String[] o = NapOnlineHra.otisk(NativeSegaCoreBridge.onlineOtiskSafe());
+            return "{\"otisk\":" + NapJson.uvoz(o == null ? "" : o[0]) + ",\"nastaveni\":" + NapJson.uvoz(o == null ? "" : o[1])
+                    + ",\"nazev\":" + NapJson.uvoz(NapOnlineHra.nazevHry(segaCurrentGameName)) + ",\"hra_id\":" + NapJson.uvoz(segaCurrentServerId)
+                    + ",\"jmeno\":" + NapJson.uvoz(NapOnlineHra.jmeno(Build.MODEL)) + "}";
+        }
+
+        /** Hry na enginu, ktere cekaji na hrace 2. Vysledek do napOnline.vysledek({akce:"seznam",...}). */
+        @JavascriptInterface public void seznam() {
+            if (!nase()) return;
+            new Thread(() -> {
+                NapServerKlient.Odpoved o = napServer.sparovano() ? napServer.get(NapOnlineHra.CESTA_SEZNAM) : null;
+                boolean ok = o != null && o.ok() && o.json != null;
+                napOnlineVysledek("{\"akce\":\"seznam\",\"ok\":" + ok + ",\"kod\":" + (o == null ? 401 : o.kod)
+                        + ",\"duvod\":" + NapJson.uvoz(o == null ? "nesparovano" : o.duvod()) + ",\"zprava\":" + NapJson.uvoz(o == null ? "" : o.zprava())
+                        + ",\"data\":" + (ok ? o.text() : "null") + "}");
+            }, "nap-online-seznam").start();
+        }
+
+        /** Hrac 1: zalozi hru s prave nahranou hrou. Vysledek do napOnline.vysledek({akce:"zaloz",...}). */
+        @JavascriptInterface public void zaloz(final String jmeno) {
+            if (!nase()) return;
+            final int gen = napOnlineGen.incrementAndGet();
+            new Thread(() -> {
+                String r = napOnlineZaloz(jmeno, gen);
+                napOnlineVysledek("{\"akce\":\"zaloz\",\"ok\":" + "OK".equals(r) + ",\"zprava\":" + NapJson.uvoz(r) + "}");
+            }, "nap-online-zaloz").start();
+        }
+
+        /** Hrac 2: pripoji se ke hre cislo kod. Vysledek do napOnline.vysledek({akce:"pripoj",...}). */
+        @JavascriptInterface public void pripoj(final String kod, final String otisk, final String nastaveni, final String hraId, final String jmeno) {
+            if (!nase()) return;
+            final int gen = napOnlineGen.incrementAndGet();
+            new Thread(() -> {
+                String r = napOnlinePripoj(kod, otisk, nastaveni, hraId, jmeno, gen);
+                napOnlineVysledek("{\"akce\":\"pripoj\",\"ok\":" + "OK".equals(r) + ",\"zprava\":" + NapJson.uvoz(r) + "}");
+            }, "nap-online-pripoj").start();
+        }
+
+        /** Konec online hry (hra pak bezi dal jen na tomhle telefonu). */
+        @JavascriptInterface public void konec() {
+            napOnlineGen.incrementAndGet();   // rozbehnute stahovani hry hrace 1 uz nepripoji
+            napOnlineKrok = "";
+            new Thread(() -> {
+                NativeSegaCoreBridge.onlineStopSafe();
+                appendNativeLog("B357 ONLINE konec (hrac)");
+            }, "nap-online-konec").start();
+        }
+    }
+
     public class AHOvladac {
         /** "stav|jmeno ovladace" - stav NapOvladac.UI_* (0 videt, 1 schovane, 2 schovane vzdy) */
         @JavascriptInterface
@@ -13728,6 +13907,7 @@ public class MainActivity extends Activity {
         web.addJavascriptInterface(new AHBluetooth(), "AHBT");      // B331: Bluetooth ovladac primo v appce
         web.addJavascriptInterface(new AHHry(), "AHHRY");           // B321: aktivace telefonu + hry ze serveru N&P
         web.addJavascriptInterface(new AHObrazovka(), "AHOBRAZ");   // B342: obrazovka na vysku / na sirku
+        web.addJavascriptInterface(new AHOnline(), "AHONLINE");     // B357: online hra pres engine N&P (Sega)
         ovladacStart();                                              // B320: ovladace do logu, sledovat pripojeni
         web.setWebChromeClient(new WebChromeClient() {
             // BUILD2SH2: zachyt JS console (jen nase SH2 stream diagnostika) do
@@ -14428,6 +14608,7 @@ public class MainActivity extends Activity {
                 ui.post(() -> openSegaRomBytes(dataArr, name, "rawSega"));
             } catch (Exception ex) {
                 appendNativeLog("BUILD2SA5AB SEGA_WEB_ROM_FAIL " + safeMsg(ex));
+                napSegaStahovaniChyb.incrementAndGet();   // B357
                 showWebDownloadError("SEGA SBIRKA: download selhal - " + safeMsg(ex));
             }
         }).start();
@@ -14450,6 +14631,7 @@ public class MainActivity extends Activity {
                 ui.post(() -> openSegaRomBytes(sega.data, sega.name, "segaArchive"));
             } catch (Exception ex) {
                 appendNativeLog("BUILD2SA5AB SEGA_ARCHIVE_FAIL " + safeMsg(ex));
+                napSegaStahovaniChyb.incrementAndGet();   // B357
                 showWebDownloadError("SEGA SBIRKA: download selhal - " + safeMsg(ex));
             }
         }).start();
