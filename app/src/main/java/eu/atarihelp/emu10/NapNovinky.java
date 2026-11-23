@@ -59,6 +59,17 @@ final class NapNovinky {
         return (en ? "WHAT'S NEW" : "CO JE NOVÉHO") + (b.isEmpty() ? "" : " · " + b);
     }
 
+    /**
+     * B360: v okne nejvys 2 nejnovejsi verze (telefon z doby pred B359 si nic nepamatuje a s kazdym buildem by okno
+     * rostlo; B358 uz Rene videl). Starsi zustanou v Napovede - pod textem odkaz. Napoveda ukazuje 6 verzi.
+     */
+    static final int V_OKNE = 2;
+
+    static String textOkna(List<Zaznam> z, boolean en) {
+        if (z.size() <= V_OKNE) return text(z, en);
+        return text(z.subList(0, V_OKNE), en) + "\n\n" + (en ? "Older news: Help \u2192 WHAT'S NEW." : "Star\u0161\u00ed novinky: N\u00e1pov\u011bda \u2192 CO JE NOV\u00c9HO.");
+    }
+
     /** Text okna: po verzich "B359 · 23. 11. 2026" a pod tim odrazky. Anglicky text chybi -> cesky (a naopak). */
     static String text(List<Zaznam> z, boolean en) {
         StringBuilder s = new StringBuilder();

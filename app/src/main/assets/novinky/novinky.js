@@ -5,6 +5,17 @@
    NapNovinky.java), Napoveda je ma nahore v sekci CO JE NOVEHO. Pole za NAP_NOVINKY = musi byt cisty JSON (Java ho
    cte pres NapJson) - zadne komentare ani carky navic. Texty pro lidi: kratce, co se zmenilo a kde to najdou. */
 window.NAP_NOVINKY = [
+  {"verze": 403, "build": "B360", "datum": "23. 11. 2026",
+   "cs": ["Online Sega: když se hra na telefonech rozjede, telefon hráče 1 pošle druhému celý stav hry a hraje se dál – dřív hra skončila.",
+          "Méně sekání: během online hry drží appka Wi-Fi v režimu nízké latence a zpoždění ovládání se samo přizpůsobí síti.",
+          "Když hra čeká na druhý telefon déle než 1,5 s, nahoře svítí červeně ČEKÁM NA DRUHÝ TELEFON. Při konci online appka napíše přesný důvod.",
+          "Do logu se každých 10 s zapisuje průběh online hry (čekání, zpoždění, synchronizace).",
+          "Sega: po načtení uložené pozice má hra hned správné barvy."],
+   "en": ["Sega online: when the game drifts apart on the phones, player 1's phone sends the other one the whole game state and play goes on – before, the game ended.",
+          "Less stutter: during an online game the app keeps Wi-Fi in low-latency mode and the control delay adapts to the network by itself.",
+          "When the game waits for the other phone for more than 1.5 s, WAITING FOR THE OTHER PHONE lights up in red at the top. When online ends, the app says the exact reason.",
+          "Every 10 s the course of the online game (waiting, delay, syncing) goes into the log.",
+          "Sega: after loading a saved position the game has the right colours straight away."]},
   {"verze": 402, "build": "B359", "datum": "23. 11. 2026",
    "cs": ["Co je nového: po každé aktualizaci appka jednou ukáže, co se změnilo. Kdykoli později to najdeš v Nápovědě úplně nahoře (CO JE NOVÉHO)."],
    "en": ["What's new: after every update the app shows once what has changed. Any time later you find it at the very top of Help (WHAT'S NEW)."]},

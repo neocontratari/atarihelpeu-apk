@@ -38,6 +38,7 @@
 #include "tvproud/nap_tv_proud_index.h"
 #include "nap_ovladac.h"   // B320: herni ovladac (Retroid Pocket 6, gamepad)
 #include "online/nap_online_klient.h"   // B357: online hrani pres engine N&P
+#include <zlib.h>                       // B360: zabaleny stav jadra pro synchronizaci online hry
 
 #define NAP_LOG_TAG "NAP_SEGA_NATIVE_PROOF"
 #define NAPLOG(...) __android_log_print(ANDROID_LOG_INFO, NAP_LOG_TAG, __VA_ARGS__)
@@ -1130,14 +1131,89 @@ static void nap_real_studeny_start_locked() {
 }
 
 // Otisk stavu pro porovnani telefonu: RAM 68000 a Z80, VRAM, CRAM, VSRAM (pole bez vyplne - stejne vsude).
-static uint64_t nap_sega_otisk_stavu() {
+// B360: kazda cast zvlast (jdou s otiskem - pri rozjeti je v logu videt, co se lisi), otisk = otisk casti.
+static const int NAP_SEGA_CASTI = 5;
+static const char *const NAP_SEGA_NAZVY_CASTI[NAP_SEGA_CASTI] = {"RAM 68000", "RAM Z80", "VRAM", "CRAM (barvy)", "VSRAM"};
+static uint64_t nap_sega_otisk_stavu_casti(uint64_t c[NAP_SEGA_CASTI]) {
     const ClownMDEmu &e = g_real.emu;
-    uint64_t h = nap::online::otisk(e.state.m68k.ram, sizeof(e.state.m68k.ram));
-    h = nap::online::otisk(e.state.z80.ram, sizeof(e.state.z80.ram), h);
-    h = nap::online::otisk(e.vdp.state.vram, sizeof(e.vdp.state.vram), h);
-    h = nap::online::otisk(e.vdp.state.cram, sizeof(e.vdp.state.cram), h);
-    h = nap::online::otisk(e.vdp.state.vsram, sizeof(e.vdp.state.vsram), h);
-    return h;
+    c[0] = nap::online::otisk(e.state.m68k.ram, sizeof(e.state.m68k.ram));
+    c[1] = nap::online::otisk(e.state.z80.ram, sizeof(e.state.z80.ram));
+    c[2] = nap::online::otisk(e.vdp.state.vram, sizeof(e.vdp.state.vram));
+    c[3] = nap::online::otisk(e.vdp.state.cram, sizeof(e.vdp.state.cram));
+    c[4] = nap::online::otisk(e.vdp.state.vsram, sizeof(e.vdp.state.vsram));
+    return nap::online::otisk(c, sizeof(uint64_t) * NAP_SEGA_CASTI);
+}
+static uint64_t nap_sega_otisk_stavu() {
+    uint64_t c[NAP_SEGA_CASTI];
+    return nap_sega_otisk_stavu_casti(c);
+}
+
+// B360: barvy pro obraz si appka drzi sama (jadro je hlasi jen pri zapisu do CRAM) - po nahrani stavu je
+// prepocitat z CRAM presne jako vdp.c WriteAndIncrement (normalni / stin / zvyrazneni), jinak by hra mela az do
+// pristiho zapisu barev barvy z minula.
+static void nap_real_obnov_paletu_locked() {
+    for (cc_u16f i = 0; i < 64; i++) {
+        const cc_u16f c = g_real.emu.vdp.state.cram[i] & 0xEEE;
+        nap_real_colour_updated(&g_real, 0 + i, c | ((c & 0x888) >> 3));
+        nap_real_colour_updated(&g_real, 64 + i, c >> 1);
+        nap_real_colour_updated(&g_real, 128 + i, 0x888 + (c >> 1));
+    }
+}
+
+// =====================================================================================================
+//  B360: SYNCHRONIZACE STAVU PRI ROZJETI (online/nap_online.h). Rene 23. 11.: pokus 1 skoncil po 13 s "hra se
+//  rozjela". Ted hrac 1 zabali CELY stav jadra (ClownMDEmu_SaveState + stav ovladacu, ktery v zaloze neni),
+//  zlib, a hrac 2 ho pred stejnym snimkem nahraje - hraje se dal. Data: "NAPS", velikost zalohy, velikost
+//  ovladacu (u32 LE - jina velikost = jine jadro, nenahrat), zaloha, ovladace; ven: u32 delka + zlib.
+//  Velke buffery staticky (zaloha ma 1,1 MB - ne na zasobnik). Jen vlakno emulace.
+// =====================================================================================================
+static ClownMDEmu_StateBackup g_online_zaloha;
+static std::vector<uint8_t> g_online_surova;
+static std::atomic<uint32_t> g_online_stav_kb{0};
+
+static void nap_sega_le32(uint8_t *p, uint32_t v) { for (int i = 0; i < 4; i++) p[i] = (uint8_t)(v >> (8 * i)); }
+
+static bool nap_sega_stav_zabal(std::vector<uint8_t> &ven) {
+    const size_t nz = sizeof(ClownMDEmu_StateBackup), nc = sizeof(ControllerManager);
+    g_online_surova.resize(12 + nz + nc);
+    uint8_t *p = g_online_surova.data();
+    {
+        std::lock_guard<std::mutex> lock(g_real_mutex);
+        ClownMDEmu_SaveState(&g_real.emu, &g_online_zaloha);
+        std::memcpy(p + 12 + nz, &g_real.emu.controller_manager, nc);
+    }
+    std::memcpy(p, "NAPS", 4);
+    nap_sega_le32(p + 4, (uint32_t)nz);
+    nap_sega_le32(p + 8, (uint32_t)nc);
+    std::memcpy(p + 12, &g_online_zaloha, nz);
+    uLongf mez = compressBound((uLong)g_online_surova.size());
+    ven.resize(4 + (size_t)mez);
+    nap_sega_le32(ven.data(), (uint32_t)g_online_surova.size());
+    if (compress2(ven.data() + 4, &mez, g_online_surova.data(), (uLong)g_online_surova.size(), 1) != Z_OK) return false;
+    ven.resize(4 + (size_t)mez);
+    g_online_stav_kb.store((uint32_t)((ven.size() + 1023) / 1024));
+    return true;
+}
+
+static bool nap_sega_stav_nahraj(const std::vector<uint8_t> &d) {
+    const size_t nz = sizeof(ClownMDEmu_StateBackup), nc = sizeof(ControllerManager);
+    if (d.size() < 5) return false;
+    const uint32_t surova = nap::online::r32(d.data());
+    if (surova != 12 + nz + nc) return false;   // jina velikost = jine jadro (jina verze appky)
+    g_online_surova.resize(surova);
+    uLongf n = surova;
+    if (uncompress(g_online_surova.data(), &n, d.data() + 4, (uLong)(d.size() - 4)) != Z_OK || n != surova) return false;
+    const uint8_t *p = g_online_surova.data();
+    if (std::memcmp(p, "NAPS", 4) != 0 || nap::online::r32(p + 4) != nz || nap::online::r32(p + 8) != nc) return false;
+    std::memcpy(&g_online_zaloha, p + 12, nz);
+    {
+        std::lock_guard<std::mutex> lock(g_real_mutex);
+        ClownMDEmu_LoadState(&g_real.emu, &g_online_zaloha);
+        std::memcpy(&g_real.emu.controller_manager, p + 12 + nz, nc);
+        nap_real_obnov_paletu_locked();
+    }
+    g_online_stav_kb.store((uint32_t)((d.size() + 1023) / 1024));
+    return true;
 }
 
 // Vlakno emulace zjistilo konec online hry (relace r skoncila, nebo bez relace spojeni skoncilo). Pod g_online_rizeni
@@ -1145,7 +1221,10 @@ static uint64_t nap_sega_otisk_stavu() {
 static void nap_sega_online_konec(const std::shared_ptr<nap::online::Relace> &r) {
     std::lock_guard<std::mutex> rz(g_online_rizeni);
     if (r ? g_online.relace() != r : g_online.faze() != nap::online::OnlineKlient::Faze::KONEC) return;
-    const std::string proc = g_online.chyba();
+    std::string proc = g_online.chyba();
+    // B360: vlakno emulace konec casto pozna DRIV, nez vlakno site zapise text (Rene 23. 11., pokus 2: v logu jen
+    // "online skoncilo", ve skutecnosti 15 s nic od druheho) - text konce primo z relace, stejny jako zapise sit
+    if (proc.empty() && r) proc = r->textKonce();
     {
         std::lock_guard<std::mutex> l(g_online_m);
         g_online_konec = proc.empty() ? "online skoncilo" : proc;
@@ -1178,6 +1257,30 @@ static int nap_sega_online_pred_krokem() {
     std::shared_ptr<nap::online::Relace> r = g_online.relace();
     if (!r) return 0;
     r->lokalni(g_online_snimek, nap_sega_lokalni_bity());
+    // B360: synchronizace stavu po rozjeti - hrac 1 posle stav pred snimkem G, hrac 2 ho pred G nahraje
+    if (r->hrac1()) {
+        if (r->chciPoslatStav(g_online_snimek)) {
+            std::vector<uint8_t> st;
+            if (nap_sega_stav_zabal(st)) {
+                r->posliStav(g_online_snimek, st);
+                NAPLOG("B360 ONLINE synchronizace: stav jadra pred snimkem %u odeslan (%zu B)", g_online_snimek, st.size());
+            } else {
+                r->ukonci(nap::online::D_ROZJETO);   // stav nejde zabalit - hra zustane rozjeta, konec (oba vedi proc)
+            }
+        }
+    } else {
+        std::vector<uint8_t> st;
+        const int k = r->stavPro(g_online_snimek, st, 30);
+        if (k < 0) return 0;   // stav od hrace 1 jeste neprisel - emulator stoji
+        if (k > 0) {
+            if (nap_sega_stav_nahraj(st)) {
+                r->stavNahran(g_online_snimek);
+                NAPLOG("B360 ONLINE synchronizace: stav jadra pred snimkem %u nahran (%zu B)", g_online_snimek, st.size());
+            } else {
+                r->ukonci(nap::online::D_ROZJETO);   // poskozeny / cizi stav (jine jadro) - nenahran, konec (oba vedi proc)
+            }
+        }
+    }
     uint32_t p1 = 0, p2 = 0;
     const int v = r->vstupy(g_online_snimek, p1, p2, 30);
     if (v == 0) return 0;
@@ -1187,9 +1290,18 @@ static int nap_sega_online_pred_krokem() {
     return 1;
 }
 
+// B360: test (test_overeni/b360) si sem dosadi "poruchu" jadra hrace 2 - v appce je to prazdne (nic se neprelozi)
+#ifndef NAP_SEGA_ONLINE_TEST_PO_KROKU
+#define NAP_SEGA_ONLINE_TEST_PO_KROKU(snimek)
+#endif
 static void nap_sega_online_po_kroku() {
+    NAP_SEGA_ONLINE_TEST_PO_KROKU(g_online_snimek);
     std::shared_ptr<nap::online::Relace> r = g_online.relace();
-    if (r && g_online_snimek % nap::online::HASH_KAZDYCH == 0) r->otiskStavu(g_online_snimek, nap_sega_otisk_stavu());
+    if (r && g_online_snimek % nap::online::HASH_KAZDYCH == 0) {
+        uint64_t c[NAP_SEGA_CASTI];
+        const uint64_t h = nap_sega_otisk_stavu_casti(c);
+        r->otiskStavu(g_online_snimek, h, c, (uint8_t)NAP_SEGA_CASTI);
+    }
     g_online_snimek++;
     g_online_snimku_celkem.store(g_online_snimek);
 }
@@ -2071,6 +2183,7 @@ Java_eu_atarihelp_emu10_NativeSegaCoreBridge_loadState(JNIEnv* env, jclass, jstr
     }
 
     ClownMDEmu_LoadState(&g_real.emu, &g_sega_state_backup);
+    nap_real_obnov_paletu_locked();   // B360: barvy obrazu hned podle nahrane pozice (ne az po zapisu do CRAM)
 
     char out[256];
     snprintf(out, sizeof(out), "SEGA_STATE_LOAD_OK bytes=%zu path=%s", got, path.c_str());
@@ -2302,6 +2415,14 @@ Java_eu_atarihelp_emu10_NativeSegaCoreBridge_onlineStav(JNIEnv *env, jclass) {
       << "\nsnimek=" << g_online_snimku_celkem.load() << "\naktivni=" << g_online_aktivni.load()
       << "\nhraje=" << g_online_hraje.load() << "\nhrac1=" << (r ? (r->hrac1() ? 1 : 0) : 0) << "\nkonec=" << konec
       << "\nstart=" << g_online_startu.load();
+    if (r) {   // B360: prubeh hry (cekani na stisky druheho, zpozdeni, synchronizace) - Java z toho pise log
+        o << "\nzpozdeni_ted=" << r->zpozdeniTed() << "\ncekani_ms=" << r->cekaniMs() << "\ncekani_max_ms=" << r->cekaniMaxMs()
+          << "\ndlouhych=" << r->dlouhychCekani() << "\nzadosti=" << r->zadosti() << "\nzvyseni=" << r->zvyseni()
+          << "\nsnizeni=" << r->snizeni() << "\nsync=" << (r->synchronizuje() ? 1 : 0) << "\nsynchronizaci=" << r->synchronizaci()
+          << "\nsynchronizovano=" << r->synchronizovano() << "\nrozjeti=" << r->rozjeti() << "\nrozjeti_snimek=" << r->rozjetoVeSnimku()
+          << "\nrozjeti_casti=" << nap::online::nazvyCasti(r->rozdilCasti(), NAP_SEGA_NAZVY_CASTI, NAP_SEGA_CASTI)
+          << "\nstav_kb=" << g_online_stav_kb.load() << "\nticho_ms=" << r->tichoMs() << "\nstoji_ms=" << r->stojiMs();
+    }
     return env->NewStringUTF(o.str().c_str());
 }
 #else

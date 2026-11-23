@@ -132,6 +132,8 @@ target_link_libraries(napsega_native_proof PRIVATE
         # takze potrebuje EGL i GLESv2.
         EGL
         GLESv2
+        # B360: systemova zlib z NDK - zabaleny stav jadra pro synchronizaci online hry
+        z
         clownmdemu-core)
 # ============ BUILD2SA1-FIX: PCSX-ReARMed presne dle jni/Android.mk (arm64, interpreter) ============
 # KILL-SWITCH: kdyz by PS1 blok zlobil, staci OFF a workflow je zeleny bez PS1.

@@ -1,0 +1,30 @@
+B357 - online hra na Seze: skutecny nap_sega_native_proof.cpp + jadro clownmdemu + testovaci ROM 68000 (sega_test_rom.py)
+A) bez site - jadro clownmdemu primo, vstupy obou hracu online vetvi (g_online_vstup)
+OK     1) stejne vstupy -> stejnych 600 otisku i po jine hre mezi tim (studeny start maze vse); ruznych otisku 600 z 600 (stav se meni kazdy snimek)
+OK     2) hrac 1 jinak jen ve snimku 300 -> prvni rozdil otisku ve snimku 300, potom stejnych 0 (rozjeti je trvale - online by ho poznal)
+OK     3) hrac 2 jinak jen ve snimku 400 -> prvni rozdil ve snimku 400, potom stejnych 0
+OK     4) kazde z 8 tlacitek obou hracu (1 snimek) zmeni stav hry: 16 z 16
+B) dva telefony = dva procesy (kazdy sve jadro a vlakno emulace), spojeni pres engine na portu 18942
+   telefon 1 | START OK otisk=891e5c3ab4c57347c9dcdc6a263580c860b8ef3e|16
+   telefon 1 | KOD 9299
+   telefon 1 | VYSLEDEK hrac=1 overeno=13 snimek=733 zpozdeni=2 odezva=0 cekani=0 videt1=1 videt2=1 faze=KONEC
+   telefon 1 | KONEC_TEXT 
+   telefon 1 | CHYBA_TEXT online hru jsi ukoncil
+   telefon 2 | START OK otisk=891e5c3ab4c57347c9dcdc6a263580c860b8ef3e|16
+   telefon 2 | VYSLEDEK hrac=2 overeno=13 snimek=733 zpozdeni=2 odezva=0 cekani=0 videt1=1 videt2=1 faze=KONEC
+   telefon 2 | KONEC_TEXT druhy hrac hru ukoncil
+   telefon 2 | CHYBA_TEXT druhy hrac hru ukoncil
+OK     5) hrac 1 zalozil hru (cislo 9299), hrac 2 se pripojil, hrali: telefon 1 733 snimku, telefon 2 733 (zpozdeni vstupu 2 snimky)
+OK     6) overenych otisku stavu: telefon 1 13, telefon 2 13 (kazdych 60 snimku), rozjeti zadne, vstupy obou hracu v obou jadrech ano
+OK     7) hrac 1 skoncil -> telefon 2: 'druhy hrac hru ukoncil', telefon 1: 'online hru jsi ukoncil'
+   telefon 1 | START OK otisk=891e5c3ab4c57347c9dcdc6a263580c860b8ef3e|16
+   telefon 1 | KOD 8362
+   telefon 1 | VYSLEDEK hrac=1 overeno=0 snimek=0 zpozdeni=3 odezva=0 cekani=0 videt1=0 videt2=0 faze=KONEC
+   telefon 1 | KONEC_TEXT druhy hrac ma jinou hru nebo jine nastaveni
+   telefon 1 | CHYBA_TEXT druhy hrac ma jinou hru nebo jine nastaveni
+   telefon 2 | START OK otisk=e33fe5db01a322a6d8c42763049d889c8b2f5cc4|16
+   telefon 2 | VYSLEDEK hrac=2 overeno=0 snimek=0 zpozdeni=3 odezva=0 cekani=0 videt1=0 videt2=0 faze=KONEC
+   telefon 2 | KONEC_TEXT druhy hrac ma jinou hru nebo jine nastaveni
+   telefon 2 | CHYBA_TEXT druhy hrac ma jinou hru nebo jine nastaveni
+OK     8) hrac 2 ma jinou ROM (1 bajt) -> telefon 1: 'druhy hrac ma jinou hru nebo jine nastaveni', telefon 2: 'druhy hrac ma jinou hru nebo jine nastaveni', online snimku 0 / 0 (hra nezacala)
+VYSLEDEK: 8 OK, 0 CHYBA

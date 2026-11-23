@@ -1,0 +1,22 @@
+B358 - stranka Segy: ONLINE JEDNODUSE - Chromium, stranka z appky, falesny most AHONLINE
+OK     1) na vysku: tlacitko "🌐 ONLINE" na mrizce mezi 16-BIT a cartridgi [137, 595, 255, 633], nic neprekryva
+OK        tlacitko ONLINE otevre panel, nacte seznam her a HRY (['knihovna', 'seznam'])
+OK     2) bez hry: karta "JAK NA TOHráč 1 spustí hru a dá ZALOŽIT …", VYBRAT HRU misto ZALOŽIT, seznam "Zatím nikdo nečeká. Až druhý hráč dá ZALOŽIT "
+OK     3) seznam se obnovil sam po 4 s (1 -> 2), bez blikani "Načítám…" (0)
+OK     4) VYBRAT HRU -> MOJE HRY (True), ▶ spusti hru (1), panel ONLINE se sam vratil (True): "Hra v konzoli: Golden Axe II  World"
+OK     5) s hrou v konzoli: ZALOŽIT HRU -> zaloz|René, druhe tlacitko "VYBRAT JINOU HRU (HRY)"
+OK     6) cekani: velke cislo ['0427', 46], navod pro druhy telefon, jen ZRUŠIT ČEKÁNÍ, tlacitko ONLINE "aktivni", odznak "ONLINE · ČÍSLO HRY 0427"
+OK        ZRUŠIT ČEKÁNÍ -> AHONLINE.konec()
+OK     7) seznam (jen Sega, 4): Sonic · brachačíslo 0427 · čeká chvilku · ✔ máš stejnou hruP | Streets of Rage 2 · testerčíslo 8812 · čeká 3 min · ⬇ hra se | Golden Axe II  World · Renéčíslo 3141 · čeká chvilku · ✔ máš | Aladdin · kamaradčíslo 2718 · čeká 1 min · ✖ tuhle hru v tel
+OK     8) PŘIPOJIT SE: stejna hra -> pripojHru|0427|891e5c3ab4c57347c9dcdc6a263580c860b8ef3e|16||Sonic|René (panel zustal); z HRY -> pripojHru|3141|31f12a21af01aa00bb11cc22dd33ee44ff556677|16||Golden Axe II  World|René (panel pryc, odznak "ONLINE · SPOUŠTÍM HRU")
+OK        ze serveru -> panel pryc, odznak "ONLINE · STAHUJI HRU"; hru nema -> chyba v karte (chyba): "Hru „Aladdin“ v telefonu nemáš. Hráč 1 ji má ze sv"
+OK     9) konec: site "Online skončilo: engine N&P neodpovědělZkontroluj, že engine N&P běží a telefon má interne" | engine "Online skončilo: Online hra potřebuje spojení WebSocket."
+OK     10) hra zacala: panel se zavrel sam, odznak "ONLINE · bracha · 23 MS"
+OK     15) stejny stav 3 s: odznak nad obrazem hry se neprepisuje (0 zmen)
+OK     11) na sirku: tlacitko ONLINE dole vpravo vedle LOAD GAME [575, 379, 660, 397], nic neprekryva, otevre panel
+OK     12) anglicky: tlacitko "🌐 ONLINE", panel i cekani bez cestiny
+OK     13) bez mostu AHONLINE: "Online tady nejde (stará verze appky)."
+OK        most B357 bez pripojHru -> pripoj|0427|891e5c3ab4c57347c9dcdc6a263580c860b8ef3e|16||Galaxy S8
+OK     14) klic nazvu hry v JS = Java NapOnlineHra.klicNazvu: 8/8 vzorku [True, True, True, True, True, True, True, True]
+OK     zadna chyba JavaScriptu
+VYSLEDEK: 20 kontrol, 0 CHYBA

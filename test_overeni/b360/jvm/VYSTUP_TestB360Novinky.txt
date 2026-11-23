@@ -1,0 +1,6 @@
+B360 - co je noveho: okno nejvys 2 verze (NapNovinky nad skutecnym novinky.js)
+OK     1) nejnovejsi B360 = versionCode 403 (build.gradle 403), 5 vet cesky i anglicky
+OK     2) telefon s B359: okno jen B360 (6 radku), bez odkazu
+OK        telefon s B358 (nic si nepamatuje, nove B360,B359,B358): okno B360 + B359 a odkaz do Napovedy, B358 ne
+OK        anglicky: B360 + B359, odkaz 'Older news: Help → WHAT'S NEW.'
+VYSLEDEK: 4 OK, 0 CHYBA

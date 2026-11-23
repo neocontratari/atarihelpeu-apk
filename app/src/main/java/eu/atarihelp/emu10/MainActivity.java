@@ -12996,7 +12996,7 @@ public class MainActivity extends Activity {
             appendNativeLog("B359 NOVINKY ukazuji " + co + " (verze " + ted + ", videno " + videno + ")");
             new android.app.AlertDialog.Builder(this)
                     .setTitle(NapNovinky.nadpis(z, en))
-                    .setMessage(NapNovinky.text(z, en))
+                    .setMessage(NapNovinky.textOkna(z, en))   // B360: nejvys 2 verze, starsi v Napovede
                     .setPositiveButton(tx("ROZUMÍM", "GOT IT"), null)
                     .show();
         } catch (Throwable t) {
@@ -13644,8 +13644,10 @@ public class MainActivity extends Activity {
             long klidOd = 0;
             try {
                 while (true) {
-                    String z = h.zmena("krok=" + napOnlineKrok + "\n" + NativeSegaCoreBridge.onlineStavSafe());
-                    if (z != null) appendNativeLog(z);
+                    long ted0 = android.os.SystemClock.uptimeMillis();
+                    String z = h.zmena("krok=" + napOnlineKrok + "\n" + NativeSegaCoreBridge.onlineStavSafe(), ted0);
+                    if (z != null) for (String r : z.split("\n")) appendNativeLog(r);
+                    napOnlineWifi(h.aktivni());   // B360: Wi-Fi bez usporneho rezimu po celou online hru
                     long ted = android.os.SystemClock.uptimeMillis();
                     if (h.hotovo() && ted > napOnlineHlidatDo.get()) {
                         if (klidOd == 0) klidOd = ted;
@@ -13657,8 +13659,44 @@ public class MainActivity extends Activity {
             } finally {
                 napOnlineHlidacBezi.set(false);
                 if (android.os.SystemClock.uptimeMillis() < napOnlineHlidatDo.get()) napOnlineHlidej();   // novy pokus prave zacal
+                else napOnlineWifi(false);
             }
         }, "nap-online-hlidac").start();
+    }
+
+    // ===================================================================
+    //  B360: Wi-Fi telefonu v uspornem rezimu spi mezi majaky routeru (desitky az stovky ms) - stisky druheho
+    //  telefonu pak chodi po davkach a emulator na ne ceka ("telefony se sekaji", Rene 23. 11.). Behem online hry
+    //  appka drzi Wi-Fi v rezimu nizke latence (Android 10+ LOW_LATENCY, starsi HIGH_PERF) - stejne jako B303 pri
+    //  prenosu na TV, ale vlastni zamek (TV a online se nevypinaji navzajem). Po konci online pusti.
+    // ===================================================================
+    private android.net.wifi.WifiManager.WifiLock napOnlineWifiZamek;
+
+    @SuppressWarnings("deprecation")
+    private synchronized void napOnlineWifi(boolean zap) {
+        try {
+            if (zap) {
+                if (napOnlineWifiZamek == null) {
+                    android.net.wifi.WifiManager wm = (android.net.wifi.WifiManager) getApplicationContext()
+                            .getSystemService(android.content.Context.WIFI_SERVICE);
+                    if (wm == null) return;
+                    int rezim = Build.VERSION.SDK_INT >= 29 ? android.net.wifi.WifiManager.WIFI_MODE_FULL_LOW_LATENCY
+                            : android.net.wifi.WifiManager.WIFI_MODE_FULL_HIGH_PERF;
+                    napOnlineWifiZamek = wm.createWifiLock(rezim, "atarihelp:online");
+                    napOnlineWifiZamek.setReferenceCounted(false);
+                }
+                if (!napOnlineWifiZamek.isHeld()) {
+                    napOnlineWifiZamek.acquire();
+                    appendNativeLog("B360 ONLINE WIFI: rezim nizke latence ZAPNUT (" + (Build.VERSION.SDK_INT >= 29 ? "LOW_LATENCY" : "HIGH_PERF")
+                            + ") - stisky druheho telefonu bez cekani na usporny rezim Wi-Fi");
+                }
+            } else if (napOnlineWifiZamek != null && napOnlineWifiZamek.isHeld()) {
+                napOnlineWifiZamek.release();
+                appendNativeLog("B360 ONLINE WIFI: rezim nizke latence VYPNUT (online skoncilo)");
+            }
+        } catch (Throwable t) {
+            appendNativeLog("B360 ONLINE WIFI: rezim nizke latence nejde - " + safeMsg(t));
+        }
     }
 
     /** B358: soubory her Segy v HRY (Download/AtariHelp/Sega_hry), bez ulozenych pozic. */

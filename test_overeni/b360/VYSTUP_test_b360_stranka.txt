@@ -1,0 +1,10 @@
+B360 - stranka Segy: odznak za online hry (cekani na druhy telefon, synchronizace), duvody konce
+OK     1) hraje: odznak "ONLINE · SM-A125F · 9 MS" (zeleny, jako B358)
+OK     2) hra stoji 300 ms (kratke cekani): odznak beze zmeny (0 zmen)
+OK     3) hra stoji 2,4 s: "ONLINE · ČEKÁM NA DRUHÝ TELEFON 2 S" (cervene), 5,1 s: "ONLINE · ČEKÁM NA DRUHÝ TELEFON 5 S", pak zase "ONLINE · SM-A125F · 9 MS" (zeleny)
+OK     4) synchronizace po rozjeti: odznak "ONLINE · SYNCHRONIZUJI HRU…"
+OK     5) ticho: "Online skončilo: druhý telefon přestal odpovídat (15 s nic nepřišlo) – spadla mu Wi-Fi, nebo se zasekl"
+OK        rozjeti: "Online skončilo: hra se rozjela a ani synchronizace nepomohla" | starsi text: "Online skončilo: hra se rozjela – telefony už nehrají totéž"
+OK     6) anglicky: "ONLINE · WAITING FOR THE OTHER PHONE 3 S" | "ONLINE · SYNCING THE GAME…" | "Online ended: the other phone stopped responding (nothing for 15 s) – its Wi-Fi " | "Online ended: the game desynced and even re-syncing did not help"
+OK     zadna chyba JavaScriptu
+VYSLEDEK: 8 kontrol, 0 CHYBA

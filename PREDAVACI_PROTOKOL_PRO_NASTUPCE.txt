@@ -4881,3 +4881,44 @@
        (Chromium), ES5, regrese navodu / mostu beze zmeny.
      - DALSI KROK: Rene - B359 na oba telefony (okno ukaze B359 + B358), test Sega online, logy obou telefonu + log
        enginu (EXPORT LOGU DO TXT). Pak Atari online (B360).
+
+   B360: ONLINE SEGA - SYNCHRONIZACE MISTO KONCE, ZPOZDENI PODLE SITE, WI-FI BEZ USPORY, PRESNE DUVODY (23. 11. 2026)
+     Rene po druhem testu: "mame chyby asi v prenosu - telefony se sekaji, posilam dva logy, kazdy jina chyba". Oba logy
+     z telefonu 1 (S8, zakladal): pokus 1 po 13 s "hra se rozjela" (otisk ve snimku 780; na S8 nic zvlastniho - pricina
+     bude v logu A12, ten NEPRISEL), pokus 2: 2,5 min a 134 otisku OK, pak A12 15 s nic neposlal a v logu jen "online
+     skoncilo" (chyba appky - vlakno emulace konec poznalo driv nez vlakno site zapsalo text). Sekani = S8 cekal na
+     stisky A12 (zvuk vypadaval jen za online hry).
+     - nap_online.h, PROTOKOL VERZE 2 (B358/B359 s B360 nehraji - "aktualizujte obe"):
+       * textKonce(duvod, odeMne) - stejny text z vlakna site i emulace (Relace::textKonce). D_TICHO text: "od druheho
+         hrace dlouho nic neprislo - spadla mu sit, nebo se telefon zasekl"; D_ROZJETO: "hra se rozjela a synchronizace
+         nepomohla" (stranka pozna oba podle zacatku).
+       * kazdy telefon ma SVE zpozdeni vstupu (Dmuj_, posledniPoslany_); vstup nese cislo snimku, mezera po zvyseni se
+         vyplni stejnym stiskem, po snizeni se uz poslane snimky preskoci. ZPOZDENI(o_kolik): kdo cekal na stisky
+         druheho > 2 snimky, pozada o tolik snimku, kolik chybelo - 1 (1..4), nejvys 1x za 2 s; druhy zvysi nejvys 1x za
+         1 s, strop start + 8 (a 15). 30 s bez zadosti -> o 1 dolu (ne pod start). Ladeni = struct Ladeni (test zkracuje).
+       * SYNCHRONIZACE: rozdil otisku -> hrac 1 G = posledniPoslany_ + 1 (prvni snimek bez jeho odeslaneho vstupu), RESYNC(G)
+         (TCP poradi: dorazi pred jeho vstupem pro G, hrac 2 G bez nej emulovat nemuze), pred G STAV(G, data jadra),
+         hrac 2 pred G stavPro -> nahrat -> stavNahran (STAV_OK). Otisky pred G se ignoruji (ignorujDo_). 3 synchronizace
+         do 10 s nebo 20 za hru -> konec D_ROZJETO. Pojistky: hrac 2 videl rozdil a RESYNC do 5 s neprisel / RESYNC prisel,
+         STAV do 10 s ne -> D_ROZJETO; hrac 1 za G bez odeslaneho stavu (jadro synchronizaci neumi) -> D_ROZJETO.
+       * HASH nese casti otisku (u8 n + n x u64) -> rozdilCasti_ (bity), Sega: RAM 68000, RAM Z80, VRAM, CRAM (barvy), VSRAM.
+       * nove statistiky: cekani (snimky, na ktere se cekalo), cekaniMs, cekaniMaxMs, dlouhychCekani, zadosti, zvyseni,
+         snizeni, synchronizaci, synchronizovano, stavKB, stojiMs, tichoMs.
+     - nap_sega_native_proof.cpp: stav = "NAPS" + velikosti (u32 LE) + ClownMDEmu_SaveState + controller_manager (v zaloze
+       neni), zlib level 1 (CMake: "z" - systemova z NDK); jina velikost = jine jadro -> nenahrat (D_ROZJETO). Po nahrani
+       nap_real_obnov_paletu_locked (barvy z CRAM jako vdp.c) - i po LOAD GAME (drive barvy z minula do pristiho zapisu
+       CRAM). onlineStav: zpozdeni_ted, cekani_ms, cekani_max_ms, dlouhych, zadosti, zvyseni, snizeni, sync, synchronizaci,
+       synchronizovano, rozjeti, rozjeti_snimek, rozjeti_casti, stav_kb, ticho_ms, stoji_ms. Hacek testu
+       NAP_SEGA_ONLINE_TEST_PO_KROKU (v appce prazdne makro). Velke buffery staticky (zaloha 1,1 MB).
+     - Java: NapOnlineHlidac.zmena(radky, tedMs) - vic radku (\n): kazdych 10 s "B360 ONLINE PRUBEH", zadost / zvyseni /
+       snizeni zpozdeni, "B360 ONLINE SYNCHRONIZACE c. N" (hrac 1 posila / hrac 2 nahrava, co se lisilo) a "hotova
+       (stav K KB)", KONEC s prubehem. MainActivity.napOnlineWifi: WifiLock "atarihelp:online" (LOW_LATENCY / HIGH_PERF)
+       po celou online hru (aktivni() = krok / PRIPOJUJE / CEKA / HRAJE), log "B360 ONLINE WIFI".
+       NapNovinky.textOkna: okno CO JE NOVEHO nejvys 2 verze + "Starsi novinky: Napoveda -> CO JE NOVEHO".
+     - Stranka Segy: odznak cervene "ONLINE · ČEKÁM NA DRUHÝ TELEFON N S" (stoji_ms >= 1500), "ONLINE · SYNCHRONIZUJI
+       HRU…"; duvody konce CZ / EN. Napoveda CZ / EN (online: cekani, synchronizace, Wi-Fi a zpozdeni). novinky.js B360.
+     - build.gradle 403 "EMU10-B360-ONLINE-SYNCHRONIZACE". Testy test_overeni/b360 (lockstep 28, Sega 2 procesy pres
+       engine 6, oba i pod TSAN 0 hlaseni, JVM 9 + 4, stranka 8, ES5, regrese B357-B359, help, JNI).
+     - DALSI KROK: Rene - B360 na OBA telefony, test Sega online, logy OBOU telefonu (EXPORTOVAT LOG) + log enginu.
+       V logu: "B360 ONLINE PRUBEH" (kdo ceka a jak dlouho), "SYNCHRONIZACE" (co se lisilo - podle toho hledat pricinu
+       rozjeti v jadre), "WIFI". Pak Atari online (rozpracovano v scratchpad b357/atari_online_rozpracovano.patch).

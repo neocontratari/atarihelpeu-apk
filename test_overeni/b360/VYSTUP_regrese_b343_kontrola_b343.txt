@@ -1,0 +1,72 @@
+OK     N1) CZ zapati bez natvrdo cisla buildu (do B342 "ATARIHELP.EU · B322"), misto pro verzi z appky
+OK     N1) CZ zapati: verze z AHJAZYK.verze() ("B343 (386)"), bez mostu nic (try)
+OK     N1) CZ viditelny text navodu nema zadne natvrdo cislo buildu
+OK     N1) EN zapati bez natvrdo cisla buildu (do B342 "ATARIHELP.EU · B322"), misto pro verzi z appky
+OK     N1) EN zapati: verze z AHJAZYK.verze() ("B343 (386)"), bez mostu nic (try)
+OK     N1) EN viditelny text navodu nema zadne natvrdo cislo buildu
+OK     N1) most AHJAZYK.verze() v MainActivity existuje
+OK     N2) MAPA Segy: K i mezernik = A, L = B, O = C, P i Enter = START, WASD i sipky
+OK     N2) CZ kapitola Sega (TIP): K / mezerník = A, P / Enter = START, šipky
+OK     N2) CZ kapitola WEB TV (klavesnice SEGA): stejne
+OK     N2) EN kapitola Sega (TIP): K / space = A, P / Enter = START, arrows
+OK     N2) EN kapitola WEB TV (klavesnice SEGA): stejne
+OK     N3) cpp/nap_ps1_native.cpp: KeyF = 14 (L3), KeyG = 15 (R3)
+OK     N3) CZ kapitola ps1: F / G = L3 / R3
+OK     N3) CZ kapitola tv: F / G = L3 / R3
+OK     N3) EN kapitola ps1: F / G = L3 / R3
+OK     N3) EN kapitola tv: F / G = L3 / R3
+OK     N4) Java: menu pristroje Atari na TV ma vsechny polozky z napovedy
+OK     N4) Java: menu konzole SEGA / PS1 na TV ma vsechny polozky z napovedy
+OK     N4) NapObrazovka: OBRAZOVKA NA VÝŠKU / SCREEN TO PORTRAIT
+OK     N4) CZ kapitola WEB TV: menu Atari i SEGA / PS1 jako v appce (B336-B342)
+OK     N4) EN kapitola WEB TV: stejne anglicky
+OK     N4) Java: anglicke nazvy polozek, ktere uvadi en.html
+OK     N4) CZ: Sonic a BIOS na TV "po STAHNOUT" = tlacitko okna (NapStahovaniSeSouhlasem)
+OK     N5) NapPravidla.jeSlabeZarizeni: 32 bitu, pod 1500 MHz nebo nejvys 2 jadra
+OK     N5) CZ: pravidlo slabeho zarizeni stejne v OPTIONS i WEB TV (do B342 "jen 32 bitů, nejvýš 1,5 GHz")
+OK     N5) EN: stejne
+OK     N6) CZ FAQ: prehravac hraje MP3, WAV, M4A, AAC, OGG, OPUS, FLAC i WEBM (AUDIO_JMENO: mp3,wav,m4a,aac,ogg,oga,opus,flac,webm)
+OK     N6) EN FAQ: MP3, WAV, M4A, AAC, OGG, OPUS, FLAC and WEBM
+CHYBA  N7) NapPravidla: stazeni PS1 hry chce 2x velikost + 200 MB
+OK     N7) navod: 2× velikost + 200 MB, MÁLO MÍSTA / LOW STORAGE
+OK     N7) NapPravidla.ps1MaloMista: stejne nazvy jako navod
+OK     N7) TV: okno MALO MISTA nabidne rovnou HRY V TELEVIZI (navod: "appka rovnou nabídne")
+OK     N8) CZ prvni spusteni: jazyk -> Sonic / BIOS -> aktivace -> film ([0, 1, 2, 3])
+OK     N8) EN prvni spusteni: jazyk -> Sonic / BIOS -> aktivace -> film ([0, 1, 2, 3])
+OK     N8) Java: na LOW se demo nepousti, OK / PLAY / START ho preskoci (navod: "na televizi tlačítkem OK")
+OK     N8) CZ: film na TV tlacitkem OK, na LOW se nepousti
+OK     N9) Soubory: BIOS v PS1_BIOS (do B342 "emu/sega, emu/ps1" - emu/ps1 appka nepouziva)
+OK     N9) Java: BIOS hleda v PS1_BIOS, BIOS i v koreni
+CHYBA  N9) CZ: Android 9 bez povoleni -> slozka appky (getPublicAtariHelpDownloadsDir)
+OK     N10) assets/index.html: OPTIONS -> VÝKON ZAŘÍZENÍ (AUTO / LOW / HIGH) a ÚLOŽIŠTĚ
+OK     N10) CZ navod OPTIONS: bloky Výkon zařízení a Úložiště (do B342 chybely)
+OK     N10) EN navod OPTIONS: Device performance a Storage
+OK     N10) CZ STÁHNOUT HRY A BIOS: zaloha server N&P
+OK     N11) Java: WEB TV na portu 8765, /log a /log/predchozi
+OK     N11) CZ kapitola Log: blok Televize
+OK     N11) EN kapitola Log: blok TV
+OK     N12) CZ caste otazky: otoceni obrazovky a dalkovy ovladac, odkazy vedou na existujici mista
+OK     N12) EN caste otazky: otoceni obrazovky a dalkovy ovladac, odkazy vedou na existujici mista
+OK     N12) Java (OVLADANI DALKOVYM OVLADACEM): OK = PS1 ✕, Sega B, Atari FIRE - jak pise otazka
+OK     N13) stejna stavba CZ / EN: section 13, blok 49, details 22, dt 60, li 152, kbd 161, a# 75
+OK     A1) PS1 panel: zadny Google Drive ani "PS1 stranka na AtariHelp.eu" (LOAD GAME je server N&P)
+OK     A1) PS1: tlacitko HRY ZE SERVERU N&P (do B342 "PS1 GOOGLE DRIVE") i LOAD GAME -> AHNET.openPs1Games
+OK     A2) PS1 panel: vsech 11 ceskych textu ma anglicky preklad
+OK     A2) en_ps1.js: GAMES FROM THE N&P SERVER, stare Google Drive texty pryc
+OK     A3) SEGA NAVODY: navod pro hrace (do B342 technicke poznamky "BUILD2RV ... safe-audit governor")
+OK     A3) SEGA NAVODY: 10 radku, nejdelsi 47 znaku (obrazovka konzole ma ~16 radku, overflow hidden)
+OK     A3) en_sega.js: anglicky navod se stejnym poctem radku, stary BUILD2RV text pryc
+OK     A5) SEGA ULOŽENÉ POZICE: export logu = na sirku kolecko -> EXPORTOVAT LOG (do B342 neexistujici "OVLÁDÁNÍ → NÁVODY")
+OK     A5) SEGA menu vykonu (podrzene SBÍRKA): pise, ze pri VÝKON ZAŘÍZENÍ LOW hraje vzdy LOW (Java B338; do B342 "SBIRKA = vyber vykonu")
+OK     A5) en_sega.js: nove texty anglicky
+OK     A5) CZ navod Sega: tlacitka jako na obrazku konzole (<dt>SBÍRKA</dt>, <dt>ULOŽENÉ</dt>, <dt>NÁVODY</dt>), LOW drzi OPTIONS
+OK     A5) EN navod Sega: tlacitka jako na obrazku konzole (<dt>CATALOG</dt>, <dt>SAVES</dt>, <dt>MANUALS</dt>), LOW drzi OPTIONS
+OK     A5) SEGA obrazovka bez hry: co je kde (do B342 "SEGA C++ ONLY READY / SBIRKA=vykon LOW/HIGH")
+CHYBA  A6) PS1 pruh stahovani: "PS1: pripojuji server" (do B342 "pripojuji Drive"), chyba "PS1 hry N&P"
+OK     A4) Atari HELP cesky: NA SIRKU tlacitkem (B342), NET / HRY = server N&P (do B342 "z atarihelp.eu"), L1 / R1, televize, odkaz na HELP
+OK     A4) Atari HELP cesky cely s diakritikou (do B342 pul textu bez hacku)
+OK     A4) Atari HELP anglicky: stejny obsah
+OK     A4) nazvy z HELP existuji: pilulka NA SIRKU / LANDSCAPE (C++), ZPET NA ATARI 130XE (stranka logu)
+OK     A4) karta HELP v hlavnim menu existuje (odkazy "hlavní menu → karta HELP")
+CHYBA  V) build.gradle: 386 EMU10-B343-HELP-KONTROLA
+VYSLEDEK: 71 kontrol, 4 CHYBA

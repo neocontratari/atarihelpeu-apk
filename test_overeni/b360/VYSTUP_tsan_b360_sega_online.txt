@@ -1,0 +1,12 @@
+B360 - test_b360_sega_online pod ThreadSanitizer (-O1 -g -fsanitize=thread, oba procesy = telefony instrumentovane)
+== 1) jadro hrace 2 se ve snimku 300 splete -> synchronizace pres engine, hra pokracuje
+OK     rozjeti poznano v otisku 300, synchronizace: telefon 1 poslal stav, telefon 2 nahral (synchronizovano 1 / 1), stav jadra 3 KB (zlib)
+OK     casti otisku: lisila se 'RAM 68000' (porucha byla v RAM 68000) - tohle pujde do logu appky
+OK     hra pokracovala: telefon 1 780 snimku, telefon 2 779, otisk jadra ve snimku 660 u obou e162cccc9464b796 (STEJNY), overeno otisku 12
+OK     konec jako dosud: telefon 1 skoncil sam -> telefon 2 'druhy hrac hru ukoncil'
+== 2) bez poruchy: zadna synchronizace, prubeh hry v onlineStav
+OK     600 snimku, overeno 10 otisku, synchronizaci 0, zpozdeni 2 -> 2, cekani 0x (0 ms), nove polozky onlineStav vsechna
+== 3) telefon 2 zamrzne (jako A12 v pokusu 2) -> telefon 1 po 15 s konci s duvodem, ne 'online skoncilo'
+OK     telefon 1: 'od druheho hrace dlouho nic neprislo - spadla mu sit, nebo se telefon zasekl' (cele trvani 18 s)
+VYSLEDEK: 6 OK, 0 CHYBA
+hlaseni ThreadSanitizer (WARNING): 0

@@ -1,0 +1,71 @@
+B360 - ONLINE SEGA: SYNCHRONIZACE MISTO KONCE, ZPOZDENI PODLE SITE, WI-FI BEZ USPORY, PRESNE DUVODY (23. 11. 2026)
+Rene po druhem testu (2 telefony, Golden Axe II): "mame chyby asi v prenosu - telefony se sekaji, posilam dva logy,
+kazdy jina chyba". Oba logy byly z telefonu 1 (Galaxy S8, zakladal hru):
+ - pokus 1: 13 s hry, pak "hra se rozjela" (otisk ve snimku 780 se lisil, na S8 nic zvlastniho - pricina je v logu
+   druheho telefonu, ten Rene jeste neposlal)
+ - pokus 2: 2,5 min a 134 overenych otisku, pak druhy telefon 15 s nic neposlal (S8 stal, zvuk vypadaval) a v logu
+   bylo jen "online skoncilo" - CHYBA APPKY: vlakno emulace konec poznalo driv, nez vlakno site zapsalo text
+ - sekani: zvuk na S8 vypadaval jen za online hry (27x za 2 min) - emulator cekal na stisky druheho telefonu
+
+CO SE ZMENILO (podrobne v PREDAVACI_PROTOKOL, B360)
+ - app/src/main/cpp/online/nap_online.h (protokol verze 2): text konce stejny z obou vlaken (textKonce); kazdy
+   telefon ma sve zpozdeni vstupu a meni ho za hry (ZPOZDENI: kdo na stisky druheho cekal > 2 snimky, pozada
+   o zvyseni o tolik snimku, kolik chybelo, nejvys 4; po 30 s klidu o 1 dolu); rozjeti -> hrac 1 posle RESYNC(G)
+   a pred snimkem G cely stav jadra (STAV), hrac 2 ho nahraje (STAV_OK) a hraje se dal; casti otisku (co se lisi);
+   pojistky (RESYNC / STAV neprisel, poskozeny stav, 3 synchronizace do 10 s -> konec s duvodem).
+ - nap_sega_native_proof.cpp: stav jadra = ClownMDEmu_SaveState + stav ovladacu, zlib (systemova z NDK, CMake "z"),
+   barvy obrazu po nahrani stavu (i po LOAD GAME), casti otisku RAM 68000 / RAM Z80 / VRAM / CRAM / VSRAM, onlineStav
+   s prubehem (zpozdeni_ted, cekani_ms, cekani_max_ms, dlouhych, zadosti, zvyseni, snizeni, sync, synchronizaci,
+   synchronizovano, rozjeti_snimek, rozjeti_casti, stav_kb, ticho_ms, stoji_ms). Hacek pro test:
+   NAP_SEGA_ONLINE_TEST_PO_KROKU (v appce prazdny).
+ - Java: NapOnlineHlidac - kazdych 10 s PRUBEH, zmeny zpozdeni, SYNCHRONIZACE do logu; MainActivity.napOnlineWifi -
+   Wi-Fi v rezimu nizke latence po celou online hru (vlastni zamek "atarihelp:online"); NapNovinky.textOkna - okno
+   CO JE NOVEHO nejvys 2 verze + odkaz do Napovedy.
+ - Stranka Segy: odznak "ONLINE · ČEKÁM NA DRUHÝ TELEFON N S" (cervene, od 1,5 s), "ONLINE · SYNCHRONIZUJI HRU…",
+   nove duvody konce CZ / EN. Napoveda CZ / EN, novinky.js B360 (verze 403).
+
+Spoustet z teto slozky (g++ 13, mono, JDK 17+, python3 + playwright, node + acorn). PRAC = pracovni slozka mimo repo.
+Engine pro testy: NapOnlineTest.exe z balicku enginu (jako ../b357/JAK_SPUSTIT.txt) - mini server se STEJNOU tridou
+NapOnline jako NapServer.cs. Jadro clownmdemu (PRAC/clown/*.o) a testovaci ROM (PRAC/sega_test_rom.h) jako ../b357,
+$SEGA jako ../b320/vse.sh bod 6. Novinka: linkovat -lz.
+
+1) Relace bez site (simulovana sit jako TCP: zpozdeni, kolisani, spicky, ztracene / poskozene zpravy):
+     g++ -std=c++17 -O2 -pthread -Wall -Wextra -I../../app/src/main/cpp -o PRAC/test_b360_lockstep test_b360_lockstep.cpp
+     PRAC/test_b360_lockstep -> VYSTUP_test_b360_lockstep.txt (28 OK)
+       text konce, bez poruchy (LAN / internet / mobil), rozjeti -> synchronizace (od G kazdy obraz stejny, casti otisku),
+       dve synchronizace / trvale rozjeti -> konec, sit se spickami 120 ms -> jedna zadost, zpozdeni 2 -> 6, dalsi
+       cekani zmizi, po klidu zpozdeni zase dolu, pri zmenach zpozdeni zadny snimek bez vstupu; pojistky
+     totez s -O1 -g -fsanitize=thread -> VYSTUP_tsan_b360_lockstep.txt (28 OK, 0 hlaseni)
+
+2) Sega: SKUTECNY nap_sega_native_proof.cpp + clownmdemu, dva procesy = dva telefony pres engine:
+     g++ -std=c++17 -O2 -pthread -Wno-unused-function $SEGA -IPRAC -o PRAC/test_b360_sega_online test_b360_sega_online.cpp \
+         PRAC/clown/*.o -l:libEGL.so.1 -l:libGLESv2.so.2 -lz
+     mono NapOnlineTest.exe --port N &   PRAC/test_b360_sega_online N -> VYSTUP_test_b360_sega_online.txt (6 OK)
+       jadro hrace 2 se ve snimku 300 splete -> stav jadra (zlib) pres engine, hrac 2 ho nahraje, otisk ve snimku 660
+       u obou STEJNY, v logu "RAM 68000"; bez poruchy zadna synchronizace; telefon 2 zamrzne (SIGSTOP, jako A12 v pokusu 2)
+       -> telefon 1 konci "od druheho hrace dlouho nic neprislo ...", ne "online skoncilo"
+     totez s -O1 -g -fsanitize=thread -> VYSTUP_tsan_b360_sega_online.txt (6 OK, 0 hlaseni)
+
+3) Java bez Androidu:
+     javac --release 17 -encoding UTF-8 -d OUT ../../app/src/main/java/eu/atarihelp/emu10/NapOnlineHra.java \
+           ../../app/src/main/java/eu/atarihelp/emu10/NapOnlineHlidac.java jvm/eu/atarihelp/emu10/TestB360Hlidac.java
+     java -cp OUT eu.atarihelp.emu10.TestB360Hlidac jvm/VYSTUP_TestB360Hlidac.txt (9 OK)
+     javac ... NapJson.java NapNovinky.java jvm/eu/atarihelp/emu10/TestB360Novinky.java
+     java -cp OUT eu.atarihelp.emu10.TestB360Novinky ../.. jvm/VYSTUP_TestB360Novinky.txt (4 OK)
+     cela appka s android.jar API 34: VYSTUP_javac_android.txt (40 zdroju, 139 trid, 0 chyb);
+     ../b320/kontrola_jni.py -> VYSTUP_regrese_b320_kontrola_jni.txt (118 native metod, 0 CHYB - podpisy beze zmeny)
+
+4) Stranka Segy (Chromium, harness ../b358/test_b358_stranka.py):
+     python3 test_b360_stranka.py [slozka pro snimky] -> VYSTUP_test_b360_stranka.txt (8 kontrol, 0 CHYBA)
+
+5) ES5 (acorn): node kontrola_es5.js ../../app/src/main/assets emu_sega/index.html napoveda/index.html napoveda/en.html \
+         novinky/novinky.js jazyk/en_sega.js spolecne/nap_jazyk.js -> VYSTUP_kontrola_es5.txt (10 OK)
+
+6) Regrese (vystupy sem jako VYSTUP_regrese_*, originaly vraceny git checkout --):
+     ../b357 lockstep 30 OK (rozjeti s jadrem, ktere synchronizaci neumi = konec jako dosud), online klient vs engine 31 OK,
+     Sega online 8 OK; ../b358 start 4 OK, stranka 20, JVM 15; ../b359 napoveda 6 (sekce CO JE NOVEHO: B360 nahore);
+     ../b311 navod 231 nazvu 0 CHYBA, mosty 137 0 chybi; ../b314 223 nazvu 0 CHYBA; ../b343 4 zamerne (N7 N9 A6 V);
+     ../b359/kontrola_novinek.py (= CI): B360 verze 403, 5 vet cesky i anglicky.
+
+NEOVERENO (az u Reneho): skutecne dva telefony a Golden Axe II (velikost stavu skutecne hry - test ROM ma 3 KB),
+Wi-Fi zamek na A12, a hlavne PROC se pokus 1 rozjel - na to je potreba log druheho telefonu (A12) a log enginu.

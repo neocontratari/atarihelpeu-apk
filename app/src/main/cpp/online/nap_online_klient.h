@@ -164,8 +164,9 @@ class OnlineKlient {
       if (r) for (auto &v : r->vyzvedni()) ws_.posli(v);
       if (r && r->konec()) {
         for (auto &v : r->vyzvedni()) ws_.posli(v);
-        // hrac tohoto telefonu hru ukoncil sam (stop) - ne "druhy hrac hru ukoncil"
-        nastavChybu(r->duvod() == D_HRAC && r->duvodOdeMne() ? "online hru jsi ukoncil" : popisDuvodu(r->duvod()));
+        // hrac tohoto telefonu hru ukoncil sam (stop) - ne "druhy hrac hru ukoncil"; B360: stejny text jako
+        // Relace::textKonce, ktery cte vlakno emulace, kdyz konec pozna driv nez tohle vlakno
+        nastavChybu(textKonce(r->duvod(), r->duvodOdeMne()));
         break;
       }
       if (konecPozadovan_ && !r) { nastavChybu("hra zrusena"); break; }

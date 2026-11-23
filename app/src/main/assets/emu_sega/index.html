@@ -1527,10 +1527,11 @@ function onlineDuvod(s){
   var M=[
     ['druhy hrac hru ukoncil','druhý hráč hru ukončil','the other player ended the game'],
     ['online hru jsi ukoncil','hru jsi ukončil','you ended the game'],
+    ['hra se rozjela a synchronizace','hra se rozjela a ani synchronizace nepomohla','the game desynced and even re-syncing did not help'],
     ['hra se rozjela','hra se rozjela – telefony už nehrají totéž','the game desynced – the phones no longer play the same'],
     ['druhy hrac ma jinou hru','druhý hráč má jinou hru nebo jiné nastavení','the other player has a different game or settings'],
     ['druhy hrac ma jinou verzi','druhý hráč má jinou verzi appky – aktualizujte obě','the other player has a different app version – update both'],
-    ['od druheho hrace dlouho nic','od druhého hráče dlouho nic nepřišlo','nothing came from the other player for a long time'],
+    ['od druheho hrace dlouho nic','druhý telefon přestal odpovídat (15 s nic nepřišlo) – spadla mu Wi-Fi, nebo se zasekl','the other phone stopped responding (nothing for 15 s) – its Wi-Fi dropped or it froze'],
     ['poskozena zprava','poškozená zpráva ze sítě','a damaged message from the network'],
     ['spojeni se serverem spadlo','spojení s enginem spadlo','the connection to the engine dropped'],
     ['hra zrusena','hra zrušena','game cancelled'],
@@ -1565,11 +1566,19 @@ function onlineText(st){
   }
   return '';
 }
+/* B360: hra stoji dele nez 1,5 s (ceka na stisky druheho telefonu) - odznak cervene s odpoctem */
+function onlineCeka(st){return st.faze==='HRAJE'&&st.hraje==='1'&&(parseInt(st.stoji_ms,10)||0)>=1500;}
 function onlineOdznakText(st){
   if(st.krok==='STAHUJI')return onlineT('ONLINE · STAHUJI HRU','ONLINE · DOWNLOADING THE GAME');
   if(st.krok==='SPOUSTIM')return onlineT('ONLINE · SPOUŠTÍM HRU','ONLINE · STARTING THE GAME');
   if(st.faze==='CEKA_NA_HRACE')return st.kod?onlineT('ONLINE · ČÍSLO HRY '+st.kod,'ONLINE · GAME NUMBER '+st.kod):'ONLINE';
-  if(st.faze==='HRAJE')return st.hraje==='1'?'ONLINE · '+st.druhy+' · '+st.odezva+' MS':onlineT('ONLINE · DOMLOUVÁM SE','ONLINE · AGREEING');
+  if(st.faze==='HRAJE'){
+    if(st.hraje!=='1')return onlineT('ONLINE · DOMLOUVÁM SE','ONLINE · AGREEING');
+    // B360: hra stoji - chvilku synchronizace po rozjeti, nebo ceka na stisky druheho telefonu (vic nez 1,5 s)
+    if(st.sync==='1')return onlineT('ONLINE · SYNCHRONIZUJI HRU…','ONLINE · SYNCING THE GAME…');
+    if(onlineCeka(st))return onlineT('ONLINE · ČEKÁM NA DRUHÝ TELEFON ','ONLINE · WAITING FOR THE OTHER PHONE ')+Math.floor((parseInt(st.stoji_ms,10)||0)/1000)+' S';
+    return 'ONLINE · '+st.druhy+' · '+st.odezva+' MS';
+  }
   if(st.faze==='PRIPOJUJE')return onlineT('ONLINE · PŘIPOJUJI','ONLINE · CONNECTING');
   if(st.faze==='KONEC')return onlineT('ONLINE SKONČILO','ONLINE ENDED');
   return '';
@@ -1609,7 +1618,7 @@ function onlineTik(){
   var zal=$('segaOnlineZaloz');if(zal&&zal.disabled!==aktivni)zal.disabled=aktivni;
   var o=$('segaOnlineOdznak'),ot=onlineOdznakText(st);
   var ukaz=aktivni||(st.faze==='KONEC'&&ted<onlineKonecDo);
-  if(o){if(o.textContent!==ot)o.textContent=ot;o.classList.toggle('vidi',!!(ukaz&&ot));o.classList.toggle('chyba',st.faze==='KONEC');}
+  if(o){if(o.textContent!==ot)o.textContent=ot;o.classList.toggle('vidi',!!(ukaz&&ot));o.classList.toggle('chyba',st.faze==='KONEC'||onlineCeka(st));}
   var tl=$('segaOnlineTlacitko');if(tl)tl.classList.toggle('aktivni',aktivni);
   if(!aktivni&&!onlinePanelOtevren&&ted>onlineKonecDo&&ted>onlineDrzDo){clearInterval(onlineCasovac);onlineCasovac=null;if(o)o.classList.remove('vidi');}
 }
