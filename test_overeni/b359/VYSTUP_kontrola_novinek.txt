@@ -1,0 +1,17 @@
+B359 - kontrola_novinek.py: zkouska, ze CI build bez zaznamu opravdu zastavi (kopie repozitare v pracovni slozce)
+== 1) build.gradle versionCode 403 / B360, novinky.js beze zmeny:
+app/build.gradle: versionCode 403, versionName EMU10-B360-NECO (build B360)
+CHYBA  nejnovejsi zaznam je pro verzi 402, build ma versionCode 403 - pridej nahoru zaznam pro tenhle build
+CHYBA  nejnovejsi zaznam je B359, build je B360
+VYSLEDEK: 4 zaznamu, 2 CHYBA
+rc=1
+== 2) nejnovejsi zaznam bez ceskeho textu:
+app/build.gradle: versionCode 402, versionName EMU10-B359-CO-JE-NOVEHO (build B359)
+CHYBA  zaznam 1 (B359): cs musi byt neprazdny seznam vet
+VYSLEDEK: 4 zaznamu, 1 CHYBA
+rc=1
+== 3) skutecny repozitar:
+app/build.gradle: versionCode 402, versionName EMU10-B359-CO-JE-NOVEHO (build B359)
+OK     nejnovejsi zaznam B359 (verze 402, 23. 11. 2026): 1 vet cesky, 1 anglicky
+VYSLEDEK: 4 zaznamu, 0 CHYBA
+rc=0

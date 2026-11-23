@@ -109,6 +109,10 @@ mark{background:rgba(255,200,70,.32);color:#fff8e6;border-radius:3px;padding:0 1
 .rychle{margin-top:22px;padding:16px 16px 10px;border-radius:18px;border:1px solid var(--cara2);
   background:linear-gradient(160deg,rgba(60,38,10,.85),rgba(20,12,5,.9) 60%);box-shadow:0 10px 30px rgba(0,0,0,.45),inset 0 1px 0 rgba(255,214,130,.12);}
 .rychle h2{font-size:15px;letter-spacing:.28em;color:var(--zlata2);margin:0 0 6px;}
+.novinky .novinka{margin:10px 0 2px;}
+.novinky .novinka-hlava{font:700 13px/1.3 var(--nadpis);letter-spacing:.1em;color:var(--text2);}
+.novinky .nejnovejsi .novinka-hlava{color:var(--zlata2);}
+.novinky .novinka ul{margin:.25em 0 .2em;}
 .kroky{list-style:none;padding:0;margin:8px 0;counter-reset:krok;}
 .kroky>li{position:relative;padding:3px 0 3px 40px;margin:.55em 0;counter-increment:krok;}
 .kroky>li:before{content:counter(krok);position:absolute;left:0;top:1px;width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;
@@ -233,6 +237,29 @@ body.hleda .rychle,body.hleda #obsahStitek,body.hleda #obsah{display:none;}
   </div>
   <p class="hledat-info" id="hledatInfo" hidden></p>
 </header>
+
+<!-- B359: CO JE NOVEHO (Rene 23. 11. 2026: "v kazde aktualizaci musi byt videt co je noveho - to je zasada").
+     Texty jsou v ../novinky/novinky.js - stejne jako okno po aktualizaci v appce. Sem se nic nepise rucne. -->
+<section class="rychle novinky" id="novinky" aria-label="What's new" hidden>
+  <h2>WHAT'S NEW</h2>
+  <div id="novinkySeznam"></div>
+</section>
+<script src="../novinky/novinky.js"></script>
+<script>
+(function(){
+  function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+  var d=window.NAP_NOVINKY,host=document.getElementById('novinkySeznam'),sek=document.getElementById('novinky');
+  if(!d||!d.length||!host||!sek)return;
+  var en=document.documentElement.lang==='en',h='';
+  for(var i=0;i<d.length&&i<6;i++){
+    var z=d[i],t=(en?z.en:z.cs)||z.cs||[];
+    h+='<div class="novinka'+(i===0?' nejnovejsi':'')+'"><div class="novinka-hlava"><b>'+esc(z.build||'')+'</b> · '+esc(z.datum||'')+'</div><ul>';
+    for(var j=0;j<t.length;j++)h+='<li>'+esc(t[j])+'</li>';
+    h+='</ul></div>';
+  }
+  host.innerHTML=h;sek.hidden=false;
+})();
+</script>
 
 <section class="rychle" aria-label="Quick start">
   <h2>QUICK START</h2>

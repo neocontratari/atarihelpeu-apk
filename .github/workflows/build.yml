@@ -16,6 +16,11 @@ jobs:
       - name: Stazeni kodu
         uses: actions/checkout@v4
 
+      # B359: zasada Reneho "v kazde aktualizaci musi byt videt co je noveho" - bez zaznamu
+      # v app/src/main/assets/novinky/novinky.js pro tenhle versionCode se APK nesestavi
+      - name: Co je noveho - kazdy build ma svuj zaznam
+        run: python3 test_overeni/b359/kontrola_novinek.py
+
       - name: Pojistka - jediny povoleny build je tento (jeden push = jeden balicek)
         continue-on-error: true
         env:

@@ -12974,6 +12974,36 @@ public class MainActivity extends Activity {
     }
 
     /** Poprve, kdyz je ve hre dotykove ovladani schovane: kratka zprava, jak ho vratit. */
+    // B359: CO JE NOVEHO - Rene 23. 11. 2026: "v kazde aktualizaci musi byt videt co je noveho - to je zasada".
+    // Po aktualizaci (prvni hlavni menu) jednou okno se zaznamy z assets/novinky/novinky.js, ktere telefon jeste nevidel.
+    private boolean napNovinkyHotovo = false;
+
+    private void napNovinky() {
+        if (napNovinkyHotovo || isFinishing()) return;
+        napNovinkyHotovo = true;
+        try {
+            final int ted = napTvVerze();
+            final android.content.SharedPreferences sp = getSharedPreferences("nap_novinky", MODE_PRIVATE);
+            final int videno = sp.getInt("videna_verze", NapNovinky.VIDENO_PRED_B359);
+            if (ted <= 0 || videno >= ted) return;
+            byte[] b = atariCppAsset("novinky/novinky.js");
+            java.util.List<NapNovinky.Zaznam> z = NapNovinky.nove(b == null ? null : new String(b, java.nio.charset.StandardCharsets.UTF_8), videno, ted);
+            sp.edit().putInt("videna_verze", ted).apply();   // jednou - i kdyz okno nejde ukazat
+            if (z.isEmpty()) { appendNativeLog("B359 NOVINKY verze " + ted + " (videno " + videno + "): v novinky.js nic noveho"); return; }
+            final boolean en = NapJazyk.en(this);
+            StringBuilder co = new StringBuilder();
+            for (NapNovinky.Zaznam x : z) co.append(co.length() > 0 ? ", " : "").append(x.build);
+            appendNativeLog("B359 NOVINKY ukazuji " + co + " (verze " + ted + ", videno " + videno + ")");
+            new android.app.AlertDialog.Builder(this)
+                    .setTitle(NapNovinky.nadpis(z, en))
+                    .setMessage(NapNovinky.text(z, en))
+                    .setPositiveButton(tx("ROZUMÍM", "GOT IT"), null)
+                    .show();
+        } catch (Throwable t) {
+            appendNativeLog("B359 NOVINKY chyba " + safeMsg(t));
+        }
+    }
+
     private void ovladacNapoveda() {
         if (ovladacNapovedaUkazana || ovladacUiPoslano != NapOvladac.UI_SKRYTO) return;
         final int kam = ovladacKam();
@@ -14121,6 +14151,7 @@ public class MainActivity extends Activity {
                 // B311: hlavni nabidka nactena -> nad ni C++ menu (karusel karet)
                 if (jeMenuUrl(url) && !menuSkryteProOptions && !napZamceno()) menuUkaz("stranka menu");
                 if (jeMenuUrl(url)) napNabidniCekajici();   // B321: i kdyz je menu v HTML (bez C++)
+                if (jeMenuUrl(url) && !napZamceno()) ui.postDelayed(MainActivity.this::napNovinky, 700);   // B359: co je noveho
                 // B320: hra s hernim ovladacem - poprve kratka zprava, jak vratit dotykove ovladani
                 if (isPs1OwnerUrl(url) || isSegaNativeOwnerUrl(url)) ui.postDelayed(MainActivity.this::ovladacNapoveda, 1500);
                 napTvStrankaNactena(url);   // B334: Android TV - ramecek dalkoveho ovladace, focus

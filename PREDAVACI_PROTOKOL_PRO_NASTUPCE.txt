@@ -4863,3 +4863,21 @@
      - DALSI KROK: log enginu z Reneho testu (EXPORT LOGU DO TXT) -> proc pokusy koncily. Podezreni: WebSocket pres
        HTTP.sys ve Windows je prvni ostra zkouska (Windows 7 ho v HttpListeneru neumi - engine pak vraci 400 neni_websocket
        a do logu to nepise). Pak test B358 se dvema telefony (log obou: radky "B358 ONLINE").
+
+   B359: CO JE NOVEHO - ZASADA (23. 11. 2026). Rene: "Partaku pred testem - v kazde aktualizaci musi byt videt co je
+     noveho :-) to je zasada".
+     - !!! ZASADA PRO KAZDY DALSI BUILD: do app/src/main/assets/novinky/novinky.js NAHORU zaznam {"verze": versionCode,
+       "build": "Bxxx", "datum", "cs": [...], "en": [...]} - kratce pro lidi, co se zmenilo a kde to najdou. CI (Build APK,
+       krok "Co je noveho" = test_overeni/b359/kontrola_novinek.py) bez nej APK NESESTAVI (overeno: versionCode bez
+       zaznamu i prazdny cesky text = rc 1). Pole za NAP_NOVINKY = musi byt cisty JSON.
+     - APPKA: MainActivity.napNovinky - prvni hlavni menu po aktualizaci (onPageFinished, ne pri zamcene konzoli) jednou
+       okno (AlertDialog, jako ostatni okna appky) se zaznamy, ktere telefon jeste nevidel (SharedPreferences nap_novinky
+       / videna_verze; telefon pred B359 si nic nepamatuje -> vse po verzi 400 = B358 + B359). Cesky / anglicky podle
+       jazyka appky, ROZUMÍM / GOT IT, log "B359 NOVINKY ukazuji ...". NapNovinky (ciste Java, cte NapJson): vse / nove /
+       nadpis / text; poskozeny soubor = zadne okno (appka nespadne), chybi preklad -> druhy jazyk.
+     - NAPOVEDA CZ / EN: sekce CO JE NOVÉHO / WHAT'S NEW uplne nahore (pred RYCHLÝ START), texty ze stejneho novinky.js
+       (nic se nepise dvakrat), nejnovejsi zvyrazneny, pri hledani schovana. Zaznamy B356 az B359.
+     - build.gradle versionCode 402 "EMU10-B359-CO-JE-NOVEHO". Testy test_overeni/b359: pravidlo, JVM 6, napoveda 6
+       (Chromium), ES5, regrese navodu / mostu beze zmeny.
+     - DALSI KROK: Rene - B359 na oba telefony (okno ukaze B359 + B358), test Sega online, logy obou telefonu + log
+       enginu (EXPORT LOGU DO TXT). Pak Atari online (B360).

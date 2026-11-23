@@ -1,0 +1,8 @@
+B359 - co je noveho: NapNovinky nad skutecnym assets/novinky/novinky.js
+OK     1) novinky.js: 4 zaznamu (B359,B358,B357,B356), nejnovejsi B359 = versionCode 402 (build.gradle 402)
+OK     2) telefon z B357 (nic si nepamatuje) -> B359,B358; z B358 -> B359; aktualni -> nic
+OK     3) okno cesky "CO JE NOVÉHO · B359" (9 radku), anglicky "WHAT'S NEW · B359"
+OK        chybi anglicky preklad -> cesky text (radsi nez prazdne okno)
+OK     4) poskozeny / prazdny soubor appku neshodi: 6/6 -> prazdny seznam (okno se neukaze)
+OK        poradi podle verze (novejsi prvni), i kdyz je v souboru jinak: B9,B8,B7
+VYSLEDEK: 6 OK, 0 CHYBA

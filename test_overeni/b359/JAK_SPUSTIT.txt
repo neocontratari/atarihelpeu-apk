@@ -1,0 +1,25 @@
+B359 - CO JE NOVEHO (23. 11. 2026)
+Rene: "Partaku pred testem - v kazde aktualizaci musi byt videt co je noveho :-) to je zasada".
+
+ZASADA OD B359 PRO KAZDY BUILD: do app/src/main/assets/novinky/novinky.js NAHORU zaznam
+  {"verze": <versionCode>, "build": "Bxxx", "datum": "d. m. rrrr", "cs": ["..."], "en": ["..."]}
+kratce pro lidi (co se zmenilo a kde to najdou). Hlida to CI (Build APK, krok "Co je noveho") - bez zaznamu
+se APK nesestavi.
+
+1) PRAVIDLO (to same jako CI):   python3 kontrola_novinek.py              -> VYSTUP_kontrola_novinek.txt
+   (v tom souboru i zkouska, ze CI opravdu zastavi build bez zaznamu a s prazdnym textem)
+2) JAVA BEZ ANDROIDU (NapNovinky nad skutecnym novinky.js) - 6 kontrol:
+     javac --release 17 -encoding UTF-8 -d OUT ../../app/src/main/java/eu/atarihelp/emu10/NapJson.java \
+           ../../app/src/main/java/eu/atarihelp/emu10/NapNovinky.java jvm/eu/atarihelp/emu10/TestB359Novinky.java
+     java -cp OUT eu.atarihelp.emu10.TestB359Novinky ../.. jvm/VYSTUP_TestB359Novinky.txt
+3) NAPOVEDA (Chromium): sekce CO JE NOVEHO / WHAT'S NEW nahore - 6 kontrol:
+     python3 test_b359_napoveda.py [slozka pro snimky]                       -> VYSTUP_test_b359_napoveda.txt
+4) ES5 (acorn):  node kontrola_es5.js ../../app/src/main/assets novinky/novinky.js napoveda/index.html napoveda/en.html \
+                      emu_sega/index.html jazyk/en_sega.js spolecne/nap_jazyk.js   -> VYSTUP_kontrola_es5.txt
+5) REGRESE (VYSTUP_regrese_*): navody 229 / 221 jmen 0 CHYBA, b343 4 zamerne (N7 N9 A6 V), mosty 137 0 chybi.
+
+OKNO V APPCE (MainActivity.napNovinky): prvni hlavni menu po aktualizaci (onPageFinished, ne pri zamcene konzoli)
+ukaze zaznamy, ktere telefon jeste nevidel (SharedPreferences nap_novinky / videna_verze; telefon pred B359 si nic
+nepamatuje -> vse po B357, tedy B358 + B359), cesky nebo anglicky podle jazyka appky, tlacitko ROZUMIM / GOT IT.
+Jednou za verzi - i kdyz okno nejde ukazat. Log "B359 NOVINKY ukazuji B359, B358 (verze 402, videno 400)".
+V tomhle kontejneru neni android.jar - okno (AlertDialog) overi az CI preklad a telefon.

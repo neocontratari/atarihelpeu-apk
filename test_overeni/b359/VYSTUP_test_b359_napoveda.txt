@@ -1,0 +1,8 @@
+B359 - napoveda: sekce CO JE NOVEHO (Chromium, stranky z appky)
+OK     napoveda/index.html: sekce "CO JE NOVÉHO" nahore (pred RYCHLY START: True), 4 verzi ['B359 · 23. 11. 2026', 'B358 · 23. 11. 2026', 'B357 · 20. 11. 2026', 'B356 · 19. 11. 2026'], vety presne z novinky.js, nejnovejsi zvyrazneny
+OK        pri hledani v navodu se sekce schova (jako RYCHLY START)
+OK     napoveda/en.html: sekce "WHAT'S NEW" nahore (pred RYCHLY START: True), 4 verzi ['B359 · 23. 11. 2026', 'B358 · 23. 11. 2026', 'B357 · 20. 11. 2026', 'B356 · 19. 11. 2026'], vety presne z novinky.js, nejnovejsi zvyrazneny
+OK        pri hledani v navodu se sekce schova (jako RYCHLY START)
+OK     bez novinky.js: sekce neni videt, navod jinak beze zmeny
+OK     zadna chyba JavaScriptu
+VYSLEDEK: 6 kontrol, 0 CHYBA
