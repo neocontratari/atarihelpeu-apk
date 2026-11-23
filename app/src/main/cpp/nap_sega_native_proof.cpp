@@ -790,6 +790,7 @@ static uint8_t g_sega_otisk_hry[20] = {};             // SHA-1 nahrane ROM (pod 
 static bool g_sega_otisk_je = false;
 static std::string g_online_konec;                    // proc online skoncilo (pro Javu)
 static std::atomic<uint32_t> g_online_snimku_celkem{0};
+static std::atomic<int> g_online_startu{0};          // B358: kolikate spojeni (Java pozna novy pokus i se stejnym koncem)
 // Rizeni po jednom: onlineStart / onlineStop / nova hra / odchod ze Segy a konec zjisteny vlaknem emulace. Konec stare
 // online hry (vlakno emulace) tak nikdy nevypne novou, kterou Java mezitim zalozila. Vlakno site ho nebere nikdy.
 static std::mutex g_online_rizeni;
@@ -2265,6 +2266,7 @@ Java_eu_atarihelp_emu10_NativeSegaCoreBridge_onlineStart(JNIEnv *env, jclass, js
     g_online_hraje.store(0);
     g_online_aktivni.store(0);
     g_online.start(n);
+    g_online_startu.fetch_add(1);
     g_online_snimku_celkem.store(0);
     g_online_aktivni.store(1);
     NAPLOG("B357 ONLINE %s %s", n.hrac1 ? "zaklada" : "pripojuje", n.cesta.c_str());
@@ -2298,7 +2300,8 @@ Java_eu_atarihelp_emu10_NativeSegaCoreBridge_onlineStav(JNIEnv *env, jclass) {
       << "\nodezva=" << (r ? r->odezvaMs() : 0) << "\nzpozdeni=" << (r ? r->zpozdeni() : 0)
       << "\novereno=" << (r ? r->overenychOtisku() : 0) << "\ncekani=" << (r ? r->cekani() : 0)
       << "\nsnimek=" << g_online_snimku_celkem.load() << "\naktivni=" << g_online_aktivni.load()
-      << "\nhraje=" << g_online_hraje.load() << "\nhrac1=" << (r ? (r->hrac1() ? 1 : 0) : 0) << "\nkonec=" << konec;
+      << "\nhraje=" << g_online_hraje.load() << "\nhrac1=" << (r ? (r->hrac1() ? 1 : 0) : 0) << "\nkonec=" << konec
+      << "\nstart=" << g_online_startu.load();
     return env->NewStringUTF(o.str().c_str());
 }
 #else

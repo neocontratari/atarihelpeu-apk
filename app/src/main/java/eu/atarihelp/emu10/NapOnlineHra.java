@@ -107,6 +107,52 @@ final class NapOnlineHra {
         return r.length() > 60 ? r.substring(0, 60) : r;
     }
 
+    /**
+     * B358: klic pro porovnani nazvu her: jen mala pismena a-z a cislice, vse ostatni oddeluje slova (jedna mezera).
+     * Proc tak hrube: HRY uklada soubory pres safeFileName ([^A-Za-z0-9._-] -> '_'), hra z CARTRIDGE ma puvodni jmeno -
+     * "Golden Axe II (World)" i "Golden_Axe_II__World_" tak daji "golden axe ii world". Ze je to opravdu tataz hra,
+     * overi az otisk po spusteni. Stranka Segy (onlineKlic) dela presne totez.
+     */
+    static String klicNazvu(String nazev) {
+        if (nazev == null) return "";
+        StringBuilder b = new StringBuilder();
+        boolean mezera = false;
+        for (int i = 0; i < nazev.length(); i++) {
+            char c = nazev.charAt(i);
+            if (c >= 'A' && c <= 'Z') c = (char) (c + ('a' - 'A'));
+            if (!((c >= 'a' && c <= 'z') || (c >= '0' && c <= '9'))) { mezera = b.length() > 0; continue; }
+            if (mezera) { b.append(' '); mezera = false; }
+            b.append(c);
+        }
+        return b.toString();
+    }
+
+    /**
+     * B358: hra hrace 1 je z jeho telefonu (ne ze serveru N&P) - ma ji tenhle telefon v HRY? Vrati jmeno souboru
+     * z knihovny se stejnym nazvem hry (nazevHry), jinak null. Ze je to opravdu tataz hra, overi az otisk po spusteni.
+     */
+    static String najdiVKnihovne(java.util.List<String> soubory, String hraMistnosti) {
+        String k = klicNazvu(hraMistnosti);
+        if (k.isEmpty() || soubory == null) return null;
+        for (String s : soubory) {
+            if (s != null && !s.endsWith(".state") && klicNazvu(nazevHry(s)).equals(k)) return s;
+        }
+        return null;
+    }
+
+    /** B358: seznam her na enginu (JSON /api/v1/online/mistnosti) do logu: "2 (sega 1234, ps1 5555)", "0". */
+    static String popisSeznamu(String json) {
+        if (json == null) return "?";
+        java.util.regex.Matcher k = java.util.regex.Pattern.compile("\"kod\"\\s*:\\s*\"([0-9]{4})\"").matcher(json);
+        java.util.regex.Matcher s = java.util.regex.Pattern.compile("\"system\"\\s*:\\s*\"([a-z0-9]{1,10})\"").matcher(json);
+        StringBuilder b = new StringBuilder();
+        int n = 0;
+        while (k.find()) {
+            b.append(n++ == 0 ? " (" : ", ").append(s.find() ? s.group(1) : "?").append(' ').append(k.group(1));
+        }
+        return n + (n > 0 ? b.append(')').toString() : "");
+    }
+
     /** Ma telefon tutez hru jako hrac 1? (otisk z C++ proti otisku z mistnosti) */
     static boolean stejnaHra(String mujOtisk, String otiskMistnosti, String nastaveniMistnosti) {
         String[] o = otisk(mujOtisk);

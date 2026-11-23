@@ -13600,6 +13600,47 @@ public class MainActivity extends Activity {
     private final java.util.concurrent.atomic.AtomicInteger napSegaNahrani = new java.util.concurrent.atomic.AtomicInteger();        // nahranych her Segy
     private final java.util.concurrent.atomic.AtomicInteger napSegaStahovaniChyb = new java.util.concurrent.atomic.AtomicInteger();  // nepovedenych stazeni
     private final java.util.concurrent.atomic.AtomicInteger napOnlineGen = new java.util.concurrent.atomic.AtomicInteger();
+    // B358: stav online do logu appky (Rene 23. 11.: "posilam ti log" - a v nem nebylo, proc online skoncilo)
+    private final java.util.concurrent.atomic.AtomicBoolean napOnlineHlidacBezi = new java.util.concurrent.atomic.AtomicBoolean();
+    private final java.util.concurrent.atomic.AtomicLong napOnlineHlidatDo = new java.util.concurrent.atomic.AtomicLong();
+    private volatile String napOnlineSeznamLog = "";
+
+    /** B358: kazda zmena stavu online (pripojovani, cislo hry, druhy hrac, hra bezi, konec s duvodem) do logu appky. */
+    private void napOnlineHlidej() {
+        napOnlineHlidatDo.set(android.os.SystemClock.uptimeMillis() + 20000);
+        if (!napOnlineHlidacBezi.compareAndSet(false, true)) return;
+        new Thread(() -> {
+            NapOnlineHlidac h = new NapOnlineHlidac();
+            long klidOd = 0;
+            try {
+                while (true) {
+                    String z = h.zmena("krok=" + napOnlineKrok + "\n" + NativeSegaCoreBridge.onlineStavSafe());
+                    if (z != null) appendNativeLog(z);
+                    long ted = android.os.SystemClock.uptimeMillis();
+                    if (h.hotovo() && ted > napOnlineHlidatDo.get()) {
+                        if (klidOd == 0) klidOd = ted;
+                        else if (ted - klidOd > 3000) break;
+                    } else klidOd = 0;
+                    Thread.sleep(400);
+                }
+            } catch (Throwable ignored) {
+            } finally {
+                napOnlineHlidacBezi.set(false);
+                if (android.os.SystemClock.uptimeMillis() < napOnlineHlidatDo.get()) napOnlineHlidej();   // novy pokus prave zacal
+            }
+        }, "nap-online-hlidac").start();
+    }
+
+    /** B358: soubory her Segy v HRY (Download/AtariHelp/Sega_hry), bez ulozenych pozic. */
+    private java.util.List<String> napSegaKnihovna() {
+        java.util.List<String> r = new java.util.ArrayList<>();
+        try {
+            File[] f = new File(getPublicAtariHelpDownloadsDir(), "Sega_hry").listFiles();
+            if (f != null) for (File x : f) if (x != null && x.isFile() && !x.getName().endsWith(".state")) r.add(x.getName());
+        } catch (Throwable ignored) {}
+        java.util.Collections.sort(r);
+        return r;
+    }
 
     private void napOnlineVysledek(String json) {
         napJs("window.napOnline&&napOnline.vysledek(JSON.parse(" + NapJson.uvoz(json) + "))");
@@ -13650,24 +13691,49 @@ public class MainActivity extends Activity {
         return r;
     }
 
-    /** Hrac 2: pripoji se. Kdyz nema tutez hru a hra je na serveru N&P, nejdriv si ji stahne a pocka, az bezi. */
-    private String napOnlinePripoj(String kod, String otisk, String nastaveni, String hraId, String jmeno, int gen) {
+    /**
+     * Hrac 2: pripoji se. Kdyz nema tutez hru: hra ze serveru N&P se stahne, hra z telefonu hrace 1 se spusti z HRY
+     * (B358 - stejny nazev, otisk se overi po spusteni), jinak jasne vysvetleni, co je potreba. Pak pocka, az hra bezi.
+     */
+    private String napOnlinePripoj(String kod, String otisk, String nastaveni, String hraId, String hra, String jmeno, int gen) {
         if (napServer == null || !napServer.sparovano()) return napOnlineChyba(null);
         String k = NapOnlineHra.kod(kod);
         if (k.isEmpty()) return tx("Špatné číslo hry.", "Wrong game number.");
         if (!NapOnlineHra.stejnaHra(NativeSegaCoreBridge.onlineOtiskSafe(), otisk, nastaveni)) {
             String id = NapOnlineHra.serverId(hraId);
-            if (!id.startsWith("sega-")) return tx("Hráč 1 hraje hru, kterou v konzoli nemáš. Spusť stejnou hru (stejný soubor) a připoj se znovu.",
-                    "Player 1 plays a game you do not have in the console. Start the same game (the same file) and join again.");
+            final String nazev = hra == null ? "" : hra.trim();
+            final String soubor = id.startsWith("sega-") ? null : NapOnlineHra.najdiVKnihovne(napSegaKnihovna(), nazev);
+            if (!id.startsWith("sega-") && soubor == null) {
+                return nazev.isEmpty()
+                        ? tx("Hráč 1 hraje hru, kterou v telefonu nemáš. Spusť stejnou hru (stejný soubor) a připoj se znovu.",
+                             "Player 1 plays a game you do not have on this phone. Start the same game (the same file) and join again.")
+                        : tx("Hru „" + nazev + "“ v telefonu nemáš. Hráč 1 ji má ze svého telefonu – nahraj si přesně stejný soubor do HRY a dej PŘIPOJIT SE znovu.",
+                             "You do not have the game “" + nazev + "” on this phone. Player 1 has it from their phone – put exactly the same file into GAMES and tap JOIN again.");
+            }
             final int nahraniPred = napSegaNahrani.get(), chybPred = napSegaStahovaniChyb.get();
-            napOnlineKrok = "STAHUJI";
-            napOnlineServerHra = id + "|*";
-            napOnlineServerHraCas = android.os.SystemClock.uptimeMillis();
-            final String url = napServer.server() + "/api/v1/hra?id=" + id;
-            appendNativeLog("B357 ONLINE hrac 2 nema hru hrace 1 - stahuji ze serveru " + id);
-            ui.post(() -> downloadAndRunSegaArchive(url));
-            long konec = android.os.SystemClock.uptimeMillis() + 150000;
-            final String nejde = tx("Hru hráče 1 se nepodařilo stáhnout.", "Player 1's game could not be downloaded.");
+            final String nejde;
+            long konec;
+            if (soubor != null) {   // B358: hru ma v HRY - spustit jako tlacitko ▶ v HRY
+                napOnlineKrok = "SPOUSTIM";
+                appendNativeLog("B358 ONLINE hrac 2 ma hru hrace 1 v HRY - spoustim " + soubor);
+                String r = new AHSega().segaLibraryLaunch(soubor);
+                if (r == null || !r.startsWith("SEGA_LIBRARY_LAUNCH_OK")) {
+                    napOnlineKrok = "";
+                    appendNativeLog("B358 ONLINE hrac 2: hru z HRY nejde spustit - " + r);
+                    return tx("Hru „" + soubor + "“ z HRY se nepodařilo spustit.", "The game “" + soubor + "” from GAMES could not be started.");
+                }
+                konec = android.os.SystemClock.uptimeMillis() + 30000;
+                nejde = tx("Hru „" + soubor + "“ z HRY se nepodařilo spustit.", "The game “" + soubor + "” from GAMES could not be started.");
+            } else {
+                napOnlineKrok = "STAHUJI";
+                napOnlineServerHra = id + "|*";
+                napOnlineServerHraCas = android.os.SystemClock.uptimeMillis();
+                final String url = napServer.server() + "/api/v1/hra?id=" + id;
+                appendNativeLog("B357 ONLINE hrac 2 nema hru hrace 1 - stahuji ze serveru " + id);
+                ui.post(() -> downloadAndRunSegaArchive(url));
+                konec = android.os.SystemClock.uptimeMillis() + 150000;
+                nejde = tx("Hru hráče 1 se nepodařilo stáhnout.", "Player 1's game could not be downloaded.");
+            }
             String vysledek = null;
             while (vysledek == null) {
                 if (gen != napOnlineGen.get()) vysledek = "zruseno";
@@ -13675,8 +13741,11 @@ public class MainActivity extends Activity {
                 else {
                     final int nahrani = napSegaNahrani.get();   // nejdriv pocet nahrani, pak otisk (otisk je hotovy drive nez pocet)
                     if (NapOnlineHra.stejnaHra(NativeSegaCoreBridge.onlineOtiskSafe(), otisk, nastaveni)) break;
-                    if (nahrani != nahraniPred) vysledek = tx("Hra ze serveru je jiná než u hráče 1 – spusť stejnou hru (stejný soubor).",
-                            "The game from the server differs from player 1's – start the same game (the same file).");
+                    if (nahrani != nahraniPred) vysledek = soubor != null
+                            ? tx("Hra „" + soubor + "“ v HRY se jmenuje stejně, ale je to jiný soubor (jiná verze) než u hráče 1. Potřebuješ přesně stejný soubor.",
+                                 "The game “" + soubor + "” in GAMES has the same name, but it is a different file (another version) than player 1's. You need exactly the same file.")
+                            : tx("Hra ze serveru je jiná než u hráče 1 – spusť stejnou hru (stejný soubor).",
+                                 "The game from the server differs from player 1's – start the same game (the same file).");
                     else try { Thread.sleep(300); } catch (InterruptedException e) { vysledek = "zruseno"; }
                 }
             }
@@ -13685,7 +13754,7 @@ public class MainActivity extends Activity {
             // spojeni az po nem (kdyby hru nahral znovu, shutdown by online hned ukoncil)
             try { Thread.sleep(2000); } catch (InterruptedException ignored) {}
             napOnlineKrok = "";
-            appendNativeLog("B357 ONLINE hrac 2 ma hru hrace 1 (stazena ze serveru)");
+            appendNativeLog(soubor != null ? "B358 ONLINE hrac 2 ma hru hrace 1 (spustena z HRY)" : "B357 ONLINE hrac 2 ma hru hrace 1 (stazena ze serveru)");
         }
         if (gen != napOnlineGen.get()) return "zruseno";
         NapServerKlient.Odpoved t = napServer.get(NapOnlineHra.CESTA_SEZNAM);   // hodiny podle serveru + parovani
@@ -13724,28 +13793,52 @@ public class MainActivity extends Activity {
             new Thread(() -> {
                 NapServerKlient.Odpoved o = napServer.sparovano() ? napServer.get(NapOnlineHra.CESTA_SEZNAM) : null;
                 boolean ok = o != null && o.ok() && o.json != null;
+                String l = ok ? "B358 ONLINE seznam her na enginu: " + NapOnlineHra.popisSeznamu(o.text())
+                        : "B358 ONLINE seznam her nejde: " + (o == null ? "telefon neni sparovany" : "HTTP " + o.kod + " " + o.duvod());
+                if (!l.equals(napOnlineSeznamLog)) { napOnlineSeznamLog = l; appendNativeLog(l); }   // obnova kazde 4 s - do logu jen zmena
                 napOnlineVysledek("{\"akce\":\"seznam\",\"ok\":" + ok + ",\"kod\":" + (o == null ? 401 : o.kod)
                         + ",\"duvod\":" + NapJson.uvoz(o == null ? "nesparovano" : o.duvod()) + ",\"zprava\":" + NapJson.uvoz(o == null ? "" : o.zprava())
                         + ",\"data\":" + (ok ? o.text() : "null") + "}");
             }, "nap-online-seznam").start();
         }
 
+        /** B358: hry v HRY ([{"soubor","klic"}]) - u her na enginu stranka ukaze "mas ji v HRY - spusti se sama". */
+        @JavascriptInterface public String knihovna() {
+            if (!nase()) return "[]";
+            StringBuilder b = new StringBuilder("[");
+            for (String s : napSegaKnihovna()) {
+                if (b.length() > 1) b.append(',');
+                b.append("{\"soubor\":").append(NapJson.uvoz(s)).append(",\"klic\":")
+                 .append(NapJson.uvoz(NapOnlineHra.klicNazvu(NapOnlineHra.nazevHry(s)))).append('}');
+            }
+            return b.append(']').toString();
+        }
+
         /** Hrac 1: zalozi hru s prave nahranou hrou. Vysledek do napOnline.vysledek({akce:"zaloz",...}). */
         @JavascriptInterface public void zaloz(final String jmeno) {
             if (!nase()) return;
             final int gen = napOnlineGen.incrementAndGet();
+            napOnlineHlidej();
             new Thread(() -> {
                 String r = napOnlineZaloz(jmeno, gen);
+                if (!"OK".equals(r)) appendNativeLog("B358 ONLINE zalozit nejde: " + r);
                 napOnlineVysledek("{\"akce\":\"zaloz\",\"ok\":" + "OK".equals(r) + ",\"zprava\":" + NapJson.uvoz(r) + "}");
             }, "nap-online-zaloz").start();
         }
 
-        /** Hrac 2: pripoji se ke hre cislo kod. Vysledek do napOnline.vysledek({akce:"pripoj",...}). */
+        /** Hrac 2 (stranka B357, bez nazvu hry): pripoji se ke hre cislo kod. */
         @JavascriptInterface public void pripoj(final String kod, final String otisk, final String nastaveni, final String hraId, final String jmeno) {
+            pripojHru(kod, otisk, nastaveni, hraId, "", jmeno);
+        }
+
+        /** Hrac 2: pripoji se ke hre cislo kod (hra = nazev hry hrace 1, B358). Vysledek do napOnline.vysledek({akce:"pripoj",...}). */
+        @JavascriptInterface public void pripojHru(final String kod, final String otisk, final String nastaveni, final String hraId, final String hra, final String jmeno) {
             if (!nase()) return;
             final int gen = napOnlineGen.incrementAndGet();
+            napOnlineHlidej();
             new Thread(() -> {
-                String r = napOnlinePripoj(kod, otisk, nastaveni, hraId, jmeno, gen);
+                String r = napOnlinePripoj(kod, otisk, nastaveni, hraId, hra, jmeno, gen);
+                if (!"OK".equals(r)) appendNativeLog("B358 ONLINE pripojit ke hre " + NapOnlineHra.kod(kod) + " nejde: " + r);
                 napOnlineVysledek("{\"akce\":\"pripoj\",\"ok\":" + "OK".equals(r) + ",\"zprava\":" + NapJson.uvoz(r) + "}");
             }, "nap-online-pripoj").start();
         }
@@ -13754,6 +13847,7 @@ public class MainActivity extends Activity {
         @JavascriptInterface public void konec() {
             napOnlineGen.incrementAndGet();   // rozbehnute stahovani hry hrace 1 uz nepripoji
             napOnlineKrok = "";
+            napOnlineHlidej();
             new Thread(() -> {
                 NativeSegaCoreBridge.onlineStopSafe();
                 appendNativeLog("B357 ONLINE konec (hrac)");

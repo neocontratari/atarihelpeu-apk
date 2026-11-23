@@ -1,0 +1,8 @@
+OK     hra nahrana (testovaci ROM 68000)
+pokus 1: start OK -> faze=KONEC start=1 chyba=spojeni se serverem nejde: Connection refused
+pokus 2: start OK -> faze=KONEC start=2 chyba=spojeni se serverem nejde: Connection refused
+pokus 3: start OK -> faze=KONEC start=3 chyba=spojeni se serverem nejde: Connection refused
+OK     3 pokusy -> start=1, 2, 3 (kazdy pokus sve cislo)
+OK     pokazde KONEC se STEJNYM duvodem ("spojeni se serverem nejde: Connection refused") - bez cisla pokusu by log nove pokusy nerozlisil
+OK     hra po neuspesnych pokusech bezi dal (stav jadra se meni)
+VYSLEDEK: 4 OK, 0 CHYBA

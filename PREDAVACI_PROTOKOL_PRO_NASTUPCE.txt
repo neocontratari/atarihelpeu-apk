@@ -4811,3 +4811,55 @@
        🎮 ONLINE. Pak Atari a PS1 online (PS1: overit determinismus - dynarec, asynchronni CD).
 
 ===============================================================================
+
+   B358: ONLINE JEDNODUSE + STAV ONLINE DO LOGU (23. 11. 2026). Rene po prvnim testu online (Sega, 2 telefony):
+     "posilam ti log - s testu online sega ... online musi byt vice intuitivni".
+     - CO UKAZAL LOG (telefon 1, S8): hru zalozil 4x (17:20, 17:22, 17:23, 17:23), engine odpovidal (seznam her,
+       podepsany GET pred spojenim), ale kazdy pokus po par vterinach skoncil (ZALOŽIT jde zmacknout az po konci
+       predchoziho). PROC, v logu nebylo - stav online z C++ videla jen stranka (pushLog jde jen do konzole WebView).
+       Duvod musi ukazat log enginu (EXPORT LOGU DO TXT, radky 🎮 / ⚠️ ONLINE) - vyzadano od Reneho.
+     - ENGINE (soukromy, NENI v repozitari): v12.4 az v12.4.2 na Windows nenajely - MissingMethodException
+       String.Split(Char, StringSplitOptions). Mono mcs na Linuxu napojil Split('x'), Trim('x'), TrimEnd(), TrimStart('x')
+       a String.Format(IFormatProvider, string, object) na varianty jen z Mono/.NET Core. OD v12.4.3 POVINNE: preklad
+       "mcs -sdk:4.5-api ..." (referencni sestavy .NET Framework) + kontrola KontrolaApi.cs (Mono.Cecil: kazdy typ a clen,
+       na ktery exe odkazuje, musi existovat v /usr/lib/mono/4.5-api i 4.8-api). Kontrola overena: v12.3.1 (u Reneho
+       bezi) = 0 chybi, v12.4.2 (spadl) = 6 chybi. v12.4.4: citliva data ve slozce tajne\ (kody, zarizeni, approved_ips,
+       blacklist, spravce_klic, nastaveni, platby, registrace, registrace_blokace, posta, platby_banka) - presun pri
+       startu (driv nez se ctou), nic se nemaze (v obou = plati tajne, druhy do tajne\stare_<cas>), nejde presunout =
+       zustava a ⚠️ TAJNÉ v logu. Ve slozce serveru zustava jen to, co se smi poslat (audit_log_*.txt, PAD_SERVERU.txt).
+       Testy enginu: 346 + 30 (tajne, vc. prechodu ze skutecnych dat v12.4.3) + 8 (online cesty).
+     - STAV ONLINE DO LOGU: NapOnlineHlidac (Java bez Androidu) + vlakno MainActivity.napOnlineHlidej (400 ms; od zaloz /
+       pripoj / konec do 3 s po konci): "B358 ONLINE pripojuji se k enginu N&P (pokus N)", "ceka na hrace 2 - cislo hry
+       1234", "domlouva se s hracem X", "HRAJE s X - odezva N ms, zpozdeni D snimku", "KONEC (pokus N): <duvod z C++ vc.
+       HTTP kodu a JSON enginu> | overeno N otisku, snimek S", "stahuji hru hrace 1", "spoustim stejnou hru z HRY".
+       C++ onlineStav ma navic start=N (g_online_startu, +1 pri kazdem onlineStart) - pokus, ktery skonci hned a stejne
+       jako minuly (engine nedostupny), se pozna. Do logu i chyby Javy pred spojenim ("B358 ONLINE zalozit nejde: ..."),
+       seznam her (jen zmeny - obnova kazde 4 s) a udalosti stranky (SEGA_JS B358 ONLINE panel otevren / zalozit /
+       pripojit / ukoncit).
+     - STRANKA SEGY (Rene: "online musi byt vice intuitivni"):
+       * viditelne tlacitko 🌐 ONLINE - na vysku na mrizce mezi 16-BIT a cartridgi (pod ovladacem), na sirku dole vpravo
+         vedle LOAD GAME (nahore jsou neviditelne zony SBIRKA..CARTRIDGE az do 79 % sirky). Kolecko a HRY zustavaji.
+         Behem online sviti zelene; dotykovy engine na sirku ho nebere jako ovladani.
+       * karta "co ted": JAK NA TO (3 kroky) / ČEKÁM NA HRÁČE 2 + velke cislo hry + navod pro druhy telefon (jen ZRUŠIT
+         ČEKÁNÍ) / chyba cervene - sit -> rada "zkontroluj, ze engine N&P bezi a telefon ma internet", odmitnuti enginu
+         -> jeho zprava z JSON.
+       * PŘIPOJIT SE KE HŘE (HRÁČ 2): seznam se obnovuje sam (4 s, bez blikani "Načítám…"), u kazde hry co je potreba:
+         ✔ máš stejnou hru / ⬇ stáhne se ze serveru N&P / ✔ máš ji v HRY – spustí se sama / ✖ nemáš (stejný soubor).
+       * NEBO ZALOŽ SVOU HRU (HRÁČ 1): "Hra v konzoli: X" + ZALOŽIT HRU; bez hry jen VYBRAT HRU (HRY) - po vyberu hry se
+         panel ONLINE sam vrati (za 3 s, az hlidac obrazu videl obraz). Behem cekani / hrani jsou obe sekce schovane.
+       * odznak a karta meni DOM jen pri zmene (odznak lezi nad obrazem hry).
+     - HRAC 2 BEZ HRY Z TELEFONU HRACE 1: najde ji v HRY podle nazvu (NapOnlineHra.klicNazvu: jen a-z a 0-9, vse ostatni
+       oddeluje slova - HRY uklada pres safeFileName, CARTRIDGE ma puvodni jmeno; stranka onlineKlic presne totez), spusti
+       ji (AHSega.segaLibraryLaunch, krok SPOUSTIM, panel se zavre kvuli hlidaci obrazu), pocka na stejny otisk (jiny soubor
+       stejneho jmena -> jasna chyba), az pak se pripoji. Most AHONLINE: knihovna() [{soubor, klic}] a pripojHru(kod,
+       otisk, nastaveni, hra_id, hra, jmeno); pripoj() z B357 zustava. Hru nema: "Hru „X“ v telefonu nemáš. Hráč 1 ji má
+       ze svého telefonu – nahraj si přesně stejný soubor do HRY a dej PŘIPOJIT SE znovu."
+     - Napoveda CZ / EN (Sega -> Online), slovnik en_sega.js. build.gradle versionCode 401 "EMU10-B358-ONLINE-JEDNODUSE".
+     - Testy test_overeni/b358 (JAK_SPUSTIT.txt): stranka 20, JVM 15, C++ start=N 4 (skutecne jadro), ES5 0 chyb,
+       regrese: navody 229 / 221 / b343 4 zamerne, mosty 137 0 chybi, b357 Sega online 8 OK. V kontejneru neni
+       android.jar - javac cele appky overi CI (Build APK).
+     - ATARI ONLINE (puvodne B358) se posouva na B359. Rozpracovane (typ hry XEX / ATR / CAR / kazeta, studeny start,
+       OPTION pri bootu disku, klavesnice / BREAK / RESET pres relaci, turbo v online vypnout) NENI v repozitari.
+     - DALSI KROK: log enginu z Reneho testu (EXPORT LOGU DO TXT) -> proc pokusy koncily. Podezreni: WebSocket pres
+       HTTP.sys ve Windows je prvni ostra zkouska (Windows 7 ho v HttpListeneru neumi - engine pak vraci 400 neni_websocket
+       a do logu to nepise). Pak test B358 se dvema telefony (log obou: radky "B358 ONLINE").

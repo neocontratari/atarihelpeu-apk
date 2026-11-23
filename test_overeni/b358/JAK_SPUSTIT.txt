@@ -1,0 +1,35 @@
+B358 - ONLINE JEDNODUSE + STAV ONLINE DO LOGU (23. 11. 2026)
+Rene po prvnim testu online (Sega, 2 telefony): "posilam ti log ... online musi byt vice intuitivni".
+
+1) STRANKA SEGY (Chromium, stranka presne z appky, falesny most AHONLINE) - 20 kontrol:
+     python3 test_b358_stranka.py [slozka pro snimky]          -> VYSTUP_test_b358_stranka.txt
+   (potrebuje python3-playwright + chromium; harness ../b314/jazyk_harness.py)
+
+2) JAVA BEZ ANDROIDU (NapOnlineHra.klicNazvu / najdiVKnihovne / popisSeznamu, NapOnlineHlidac) - 15 kontrol:
+     javac --release 17 -encoding UTF-8 -d OUT ../../app/src/main/java/eu/atarihelp/emu10/NapOnlineHra.java \
+           ../../app/src/main/java/eu/atarihelp/emu10/NapOnlineHlidac.java jvm/eu/atarihelp/emu10/TestB358Online.java
+     java -cp OUT eu.atarihelp.emu10.TestB358Online jvm/VYSTUP_TestB358Online.txt
+
+3) C++: kazdy pokus o online ma sve cislo (start=N) - skutecne jadro Segy (nap_sega_native_proof.cpp), 4 kontroly:
+     preklad clownmdemu a sega_test_rom.h jako ../b357/JAK_SPUSTIT.txt bod 3, pak
+     g++ -std=c++17 -O2 -pthread -Wno-unused-function $SEGA -IPRAC -I../b357 -o PRAC/test_b358_start test_b358_start.cpp \
+         PRAC/clown/*.o -l:libEGL.so.1 -l:libGLESv2.so.2
+     PRAC/test_b358_start                                       -> VYSTUP_test_b358_start.txt
+
+4) ES5 (acorn ecmaVersion 5 - starsi WebView): skripty stranky Segy, napovedy CZ / EN, slovnik en_sega.js, nap_jazyk.js:
+     node kontrola_es5.js ../../app/src/main/assets emu_sega/index.html jazyk/en_sega.js napoveda/index.html \
+          napoveda/en.html spolecne/nap_jazyk.js                -> VYSTUP_kontrola_es5.txt
+   (acorn je v kontejneru predinstalovany: /opt/npm-tools/node_modules/acorn)
+
+5) REGRESE (vystupy zkopirovane sem jako VYSTUP_regrese_*, originaly vraceny git checkout --):
+     ../b311/kontrola_navodu.py        229 jmen, 0 CHYBA
+     ../b314/kontrola_navodu_en.py     221 jmen, 0 CHYBA
+     ../b343/kontrola_b343.py          4 CHYBA zamerne (N7, N9, A6, V - jako od B343)
+     ../b311/kontrola_mostu.py         137 volani mostu z JS, 0 chybi (pribyl AHONLINE.knihovna a pripojHru)
+     ../b357 test_b357_sega_online     8 OK (skutecne jadro, 2 procesy pres engine NapOnline z NapServer v12.4.4)
+   Podpisy JNI se nezmenily (onlineStav vraci jen radek navic start=N) - b320/kontrola_jni.py neni potreba.
+   V tomhle kontejneru neni android.jar: javac cele appky = CI (Build APK). javac bez android.jar: zadna chyba
+   mimo chybejici tridy Androidu (zadna syntakticka chyba, zadna chyba v NapOnlineHlidac / NapOnlineHra).
+
+NEOVERENO (az u Reneho): skutecne dva telefony, spusteni hry z HRY u hrace 2 (AHSega.segaLibraryLaunch z vlakna
+online), a hlavne PROC pokusy z 23. 11. koncily - na to je potreba log enginu (EXPORT LOGU DO TXT).
