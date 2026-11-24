@@ -31,6 +31,8 @@
 //    prijem SERIN), klavesnice (KBCODE, SKSTAT), RANDOM z poly17/9,
 //  - PIA (PORTA/PORTB, PACTL - motor kazety, PBCTL), MMU 130XE
 //    (OS/BASIC/self-test ROM, 4 rozsirene banky, oddelene CPU/ANTIC).
+//  - B361: DRUHY POKEY (stereo upgrade, $D210-$D21F) - levy kanal POKEY 1,
+//    pravy POKEY 2 (viz PokeyDruhy nize).
 #pragma once
 #include <cstdint>
 #include <cstring>
@@ -222,6 +224,34 @@ struct TapeDeck {
   // mezerach mezi zaznamy (sum, dobeh tonu) OS ignoruje, neni co hlasit
   long long bytesRx = 0, framingRx = 0;
   void eject() { img = TapeImage(); pos = 0; loaded = false; name.clear(); line = 1; rxPhase = 0; bytes = framing = 0; bytesRx = framingRx = 0; }
+};
+
+// =====================================================================
+//  B361: DRUHY POKEY - STEREO ("POKEY Dual Stereo", Rene 23. 11. 2026)
+//  Stereo upgrade skutecneho Atari pridava druhy cip POKEY: adresni bit A4
+//  vybira cip - $D200-$D20F prvni, $D210-$D21F druhy (zrcadla po 32 bajtech
+//  az do $D2FF). Levy kanal = POKEY 1, pravy = POKEY 2 (RMT stereo, demo
+//  hudba, hry pro stereo). Druhy POKEY ma vlastni zvukove kanaly, casovace
+//  (i preruseni - linka IRQ je spolecna), poly citace, RANDOM a SKCTL;
+//  klavesnice, paddly a seriovy port na nem zapojene nejsou (cteni $FF / 228).
+//  Pocita se stejne jako prvni POKEY (pokeyTick / timerFire / updateAudioLevel
+//  ve stroji: stejne cykly, borrow, 16bit spojeni, horni propusti, poly citace).
+//  Program, ktery druhy POKEY nezna, hraje dal na obou kanalech stejne (pravy
+//  = levy) - stereo zacne, az druhy POKEY poprve hraje (kanal s hlasitosti),
+//  a plati do studeneho startu.
+// =====================================================================
+struct PokeyDruhy {
+  int audf[4] = {0, 0, 0, 0}, audc[4] = {0, 0, 0, 0}, audctl = 0;
+  int audfP1[4] = {1, 1, 1, 1}, pcnt[4] = {1, 1, 1, 1}, pborrow[4] = {0, 0, 0, 0};
+  int pcnt16[2] = {1, 1}, pborrow16[2] = {0, 0};
+  uint8_t chOut[4] = {0, 0, 0, 0}, hpf[2] = {0, 0};
+  uint8_t irqen = 0, irqst = 0xFF, skctl = 0;
+  uint64_t last64 = 0, last15 = 0, polyBase = 0, polyShutOff = 0;
+  int stimerDelay = 0;
+  bool bezi = false;        // program do nej aspon jednou zapsal - do te doby se nepocita (zadna prace navic)
+  bool slyset = false;      // nekdy hral (kanal s hlasitosti) - od te chvile stereo, do studeneho startu
+  long long zapisu = 0;     // diagnostika (log)
+  void cold() { *this = PokeyDruhy(); }
 };
 
 class Machine {
@@ -467,21 +497,22 @@ public:
   }
   std::vector<float> aaBuf;            // historie podvzorku (AA_TAPS-1) + aktualni usek
   double aaDcx = 0, aaDcy = 0;         // vazebni kondenzator (stejnosmerna slozka pryc)
-  void genAudio(float *out, int n, double sampleRateHz) {
-    (void)sampleRateHz;
-    if (n <= 0) return;
+  // B361: jeden kanal - urovne -> 8x hustsi mrizka -> FIR -> (+ zvuk kazety) -> vazebni kondenzator.
+  // Levy kanal (POKEY 1) presne stejne jako drive cele genAudio (overeno: stejne vzorky bit po bitu).
+  void genKanal(std::vector<std::pair<uint64_t, float>> &ev, double &levelStart, double level, uint64_t &from,
+                std::vector<float> &buf, double &dcx, double &dcy, const float *kazeta, float *out, int n) {
     const int H = AA_TAPS - 1, m = n * AA_K;
-    if (aaBuf.size() < (size_t)H) aaBuf.assign((size_t)H, (float)audLevelStart);
-    aaBuf.resize((size_t)H + (size_t)m);
-    integrate(audEv, audLevelStart, audFrom, cyc, aaBuf.data() + H, m, false);
-    audLevelStart = audLevel;
-    audFrom = cyc;
-    audEv.clear();
+    if (buf.size() < (size_t)H) buf.assign((size_t)H, (float)levelStart);
+    buf.resize((size_t)H + (size_t)m);
+    integrate(ev, levelStart, from, cyc, buf.data() + H, m, false);
+    levelStart = level;
+    from = cyc;
+    ev.clear();
     const float *h = aaFir();
     for (int i = 0; i < n; i++) {
       // FIR je symetricky (h[j] = h[TAPS-1-j]): vystup i = sum h[j] * (x[j] + x[TAPS-1-j])
       // pres polovinu koeficientu, 4 nezavisle soucty (rychlejsi i na telefonu)
-      const float *x = aaBuf.data() + (size_t)(i + 1) * AA_K - 1 + H - (AA_TAPS - 1);
+      const float *x = buf.data() + (size_t)(i + 1) * AA_K - 1 + H - (AA_TAPS - 1);
       float a0 = 0, a1 = 0, a2 = 0, a3 = 0;
       for (int j = 0; j < AA_TAPS / 2; j += 4) {
         a0 += h[j] * (x[j] + x[AA_TAPS - 1 - j]);
@@ -491,13 +522,39 @@ public:
       }
       out[i] = (a0 + a1) + (a2 + a3);
     }
-    std::memmove(aaBuf.data(), aaBuf.data() + m, (size_t)H * sizeof(float));
-    aaBuf.resize((size_t)H);
-    mixTapeAudio(out, n);                // B298: zvukova stopa kazety (AUDIO IN)
+    std::memmove(buf.data(), buf.data() + m, (size_t)H * sizeof(float));
+    buf.resize((size_t)H);
+    if (kazeta) for (int i = 0; i < n; i++) out[i] += kazeta[i];   // B298: zvukova stopa kazety (AUDIO IN)
     for (int i = 0; i < n; i++) {
-      const double y = out[i] - aaDcx + 0.995 * aaDcy;
-      aaDcx = out[i]; aaDcy = y; out[i] = (float)y;
+      const double y = out[i] - dcx + 0.995 * dcy;
+      dcx = out[i]; dcy = y; out[i] = (float)y;
     }
+  }
+  // Zvuk jednim kanalem (levy = POKEY 1 + reproduktor GTIA + kazeta) - testy, CSAVE, stara cesta pres JS.
+  void genAudio(float *out, int n, double sampleRateHz) {
+    (void)sampleRateHz;
+    if (n <= 0) return;
+    kazetaTmp.assign((size_t)n, 0.0f);
+    mixTapeAudio(kazetaTmp.data(), n);
+    genKanal(audEv, audLevelStart, audLevel, audFrom, aaBuf, aaDcx, aaDcy, kazetaTmp.data(), out, n);
+  }
+  // B361: stereo - levy = POKEY 1, pravy = POKEY 2 (+ reproduktor GTIA a kazeta v obou). Dokud program druhy
+  // POKEY nepouziva, je pravy stejny jako levy (mono hry hraji jako dosud na obou stranach).
+  void genAudioStereo(float *outL, float *outR, int n, double sampleRateHz) {
+    (void)sampleRateHz;
+    if (n <= 0) return;
+    kazetaTmp.assign((size_t)n, 0.0f);
+    mixTapeAudio(kazetaTmp.data(), n);
+    genKanal(audEv, audLevelStart, audLevel, audFrom, aaBuf, aaDcx, aaDcy, kazetaTmp.data(), outL, n);
+    if (!stereoAktivni()) {
+      std::memcpy(outR, outL, (size_t)n * sizeof(float));
+      // pravy kanal se nepocita - jen zahodit jeho udalosti a pripravit historii na chvili, kdy stereo zacne
+      audEv2.clear(); audFrom2 = cyc; audLevel2Start = audLevel2;
+      aaBuf2.assign((size_t)(AA_TAPS - 1), (float)audLevel2);
+      aaDcx2 = audLevel2; aaDcy2 = 0;
+      return;
+    }
+    genKanal(audEv2, audLevel2Start, audLevel2, audFrom2, aaBuf2, aaDcx2, aaDcy2, kazetaTmp.data(), outR, n);
   }
   // B298: AUDIO IN z magnetofonu - skutecny magnetofon Atari (410/1010/XC12)
   // pousti do televize LEVOU (zvukovou) stopu pasky, datovou ne. U stereo
@@ -528,7 +585,10 @@ public:
     tapeFrom = cyc;
     tapeEv.clear();
   }
-  void srovnatSledovaniZvuku() { audEv.clear(); audFrom = cyc; audLevelStart = audLevel; tapeEv.clear(); tapeFrom = cyc; tapeLevelStart = tapeLevel; }
+  void srovnatSledovaniZvuku() {
+    audEv.clear(); audFrom = cyc; audLevelStart = audLevel; tapeEv.clear(); tapeFrom = cyc; tapeLevelStart = tapeLevel;
+    audEv2.clear(); audFrom2 = cyc; audLevel2Start = audLevel2;   // B361
+  }
 
   // =================================================================
   //  PAMET
@@ -609,6 +669,16 @@ public:
   double audLevel = 0, audLevelStart = 0, tapeLevel = 0, tapeLevelStart = 0;
   uint64_t audFrom = 0, tapeFrom = 0;
   std::vector<std::pair<uint64_t, float>> audEv, tapeEv;
+  // ---- B361: druhy POKEY (stereo) - pravy kanal ----
+  bool stereoPokey = true;             // $D210-$D21F = druhy POKEY; false = zrcadlo prvniho (Atari bez upgradu)
+  PokeyDruhy pk2;
+  double audLevel2 = 0, audLevel2Start = 0;
+  uint64_t audFrom2 = 0;
+  std::vector<std::pair<uint64_t, float>> audEv2;
+  std::vector<float> aaBuf2, kazetaTmp;
+  double aaDcx2 = 0, aaDcy2 = 0;
+  /** Pravy kanal je opravdu druhy POKEY (program ho pouziva). Jinak pravy = levy. */
+  bool stereoAktivni() const { return stereoPokey && pk2.slyset; }
   double tapeTickFrac = 0;
 
   // =================================================================
@@ -624,6 +694,7 @@ public:
   }
   inline void endCycle() {
     pokeyTick();
+    if (pk2.bezi) pokey2Tick();          // B361: druhy POKEY jen kdyz ho program pouziva
     ++cyc;
     if (cyc >= sioNext) sioLineEvent();                  // B348: bajt od jednotky D1: na lince SIO
     if (vbx.stopEvent && vbx.tick(cyc)) updateIrq();    // VBXE: blitter dobehl -> IRQ
@@ -1490,7 +1561,7 @@ public:
   uint8_t ioRead(uint16_t a) {
     switch (a & 0xFF00) {
       case 0xD000: return gtiaRead(a & 0x1F);
-      case 0xD200: return pokeyRead(a & 0x0F);
+      case 0xD200: return (stereoPokey && (a & 0x10)) ? pokey2Read(a & 0x0F) : pokeyRead(a & 0x0F);   // B361: A4 = druhy POKEY
       case 0xD300: return piaRead(a & 3);
       case 0xD400: return anticRegRead(a & 0x0F);
       case 0xD600:
@@ -1516,7 +1587,7 @@ public:
         // VBXE: zapis do zrcadla GTIA $D080-$D0FF = teply reset VBXE
         if (vbxeOn && (a & 0x80)) { vbx.warmReset(); updateIrq(); }
         break;
-      case 0xD200: pokeyWrite(a & 0x0F, v); break;
+      case 0xD200: if (stereoPokey && (a & 0x10)) pokey2Write(a & 0x0F, v); else pokeyWrite(a & 0x0F, v); break;   // B361
       case 0xD300: piaWrite(a & 3, v); break;
       case 0xD400: anticRegWrite(a & 0x0F, v); break;
       case 0xD600: if (vbxeOn) { vbx.write((uint8_t)(a & 0xFF), v, cyc); updateIrq(); } break;
@@ -1664,9 +1735,14 @@ public:
     last64 = last15 = polyBase = polyShutOff = 0;
     audLevel = audLevelStart = 0; audEv.clear(); audFrom = 0;
     tapeLevel = tapeLevelStart = 0; tapeEv.clear(); tapeFrom = 0;
+    // B361: druhy POKEY po zapnuti nema nic (OS ho nenastavuje) - stereo az od programu
+    pk2.cold();
+    audLevel2 = audLevel2Start = 0; audEv2.clear(); audFrom2 = 0; aaBuf2.clear(); aaDcx2 = aaDcy2 = 0;
   }
-  // linka IRQ: POKEY nebo VBXE (konec blitru)
-  void updateIrq() { irqLine = ((~irqst) & irqen & 0xFF) != 0 || vbx.irqOut(); }
+  // linka IRQ: POKEY nebo VBXE (konec blitru); B361: i druhy POKEY (spolecna linka)
+  void updateIrq() {
+    irqLine = ((~irqst) & irqen & 0xFF) != 0 || vbx.irqOut() || ((~pk2.irqst) & pk2.irqen & 0xFF) != 0;
+  }
 
   // Polynomialni citace POKEY (fakta o hardwaru - Altirra HW Reference):
   // vsechny jsou typu XNOR (stav "same nuly" je platny, init je nuluje),
@@ -1774,6 +1850,165 @@ public:
         updateAudioLevel();
         break;
       }
+    }
+  }
+
+  // =================================================================
+  //  B361: DRUHY POKEY (stereo, $D210-$D21F) - stejne vypocty jako prvni
+  //  (pokeyRead / pokeyWrite / pokeyTick / timerFire / updateAudioLevel),
+  //  bez klavesnice, paddlu, serioveho portu a kazety (nejsou zapojene).
+  // =================================================================
+  inline uint32_t polyPos2(uint32_t period) const {
+    int64_t d = (int64_t)(cyc - pk2.polyBase);
+    int64_t m = d % (int64_t)period;
+    if (m < 0) m += period;
+    return (uint32_t)m;
+  }
+  inline int poly2Bit4() const { return (polyBuf()[polyPos2(15)] >> 3) & 1; }
+  inline int poly2Bit5() const { return (polyBuf()[polyPos2(31)] >> 2) & 1; }
+  inline int poly2Bit9() const { return (polyBuf()[polyPos2(511)] >> 1) & 1; }
+  inline int poly2Bit17() const { return polyBuf()[polyPos2(131071)] & 1; }
+
+  uint8_t pokey2Read(int r) {
+    switch (r) {
+      case 0x00: case 0x01: case 0x02: case 0x03: case 0x04: case 0x05: case 0x06: case 0x07: return 228; // paddly nezapojene
+      case 0x08: return 0;          // ALLPOT
+      case 0x0A: {                  // RANDOM - vlastni poly citace (vlastni SKCTL)
+        uint8_t force = 0;
+        if (!(pk2.skctl & 3)) {
+          const uint64_t off = cyc - pk2.polyShutOff;
+          if (off > 10) return 0xFF;
+          if (off) force = (uint8_t)(0xFFE00 >> (int)off);
+        }
+        const uint8_t *pb = polyBuf();
+        uint8_t v = 0;
+        if (pk2.audctl & 0x80) { const uint32_t o = polyPos2(511); for (int i = 7; i >= 0; i--) v = (uint8_t)((v << 1) | ((pb[o + i] >> 1) & 1)); }
+        else { const uint32_t o = polyPos2(131071); for (int i = 7; i >= 0; i--) v = (uint8_t)((v << 1) | (pb[o + i] & 1)); }
+        return (uint8_t)(~v | force);
+      }
+      case 0x0E: return pk2.irqst;
+      default: return 0xFF;         // KBCODE, SERIN, SKSTAT: klavesnice ani seriovy port nejsou zapojene
+    }
+  }
+
+  void pokey2Write(int r, uint8_t v) {
+    // Pocita se (kazdy cyklus) az od prvniho NENULOVEHO zapisu: OS pri zapnuti nuluje vsechny registry $D2xx
+    // (smycka STA $D200,X) - s nulami POKEY nic nedela (bez hodin, bez preruseni), mono hry tak nic navic nestoji.
+    if (v != 0) pk2.bezi = true;
+    pk2.zapisu++;
+    switch (r) {
+      case 0x00: case 0x02: case 0x04: case 0x06: {
+        const int ch = r >> 1;
+        pk2.audf[ch] = v; pk2.audfP1[ch] = v + 1;
+        break;
+      }
+      case 0x01: case 0x03: case 0x05: case 0x07: pk2.audc[r >> 1] = v; updateAudioLevel2(); break;
+      case 0x08: pk2.audctl = v; updateAudioLevel2(); break;
+      case 0x09:                                    // STIMER (kdyz druhy POKEY jeste nebezi, hned - nic netika)
+        if (pk2.bezi) pk2.stimerDelay = 4;
+        else {
+          for (int i = 0; i < 4; i++) { pk2.pcnt[i] = pk2.audfP1[i]; pk2.pborrow[i] = 0; }
+          if (pk2.audctl & 0x10) pk2.pcnt16[0] = (pk2.audf[1] << 8 | pk2.audf[0]) + 1;
+          if (pk2.audctl & 0x08) pk2.pcnt16[1] = (pk2.audf[3] << 8 | pk2.audf[2]) + 1;
+        }
+        break;
+      case 0x0E:
+        pk2.irqen = v;
+        pk2.irqst |= (uint8_t)(~v & 0xF7);
+        updateIrq();
+        break;
+      case 0x0F: {
+        const bool prvInit = (pk2.skctl & 3) == 0, newInit = (v & 3) == 0;
+        if (prvInit != newInit) {
+          if (!newInit) { pk2.last15 = cyc + 81 - 114; pk2.last64 = cyc + 22 - 28; pk2.polyBase = cyc + 1; }
+          else pk2.polyShutOff = cyc;
+          pk2.irqst &= ~0x08; updateIrq();
+        }
+        pk2.skctl = v;
+        updateAudioLevel2();
+        break;
+      }
+      default: break;               // SKRES, POTGO, SEROUT: nic zapojeneho
+    }
+  }
+
+  inline bool slow2Tick15() const { return (int64_t)(cyc - pk2.last15) >= 0 && ((cyc - pk2.last15) % 114) == 0; }
+  inline bool slow2Tick64() const { return (int64_t)(cyc - pk2.last64) >= 0 && ((cyc - pk2.last64) % 28) == 0; }
+
+  inline void pokey2Tick() {
+    PokeyDruhy &p = pk2;
+    if (p.stimerDelay && --p.stimerDelay == 0) {
+      for (int i = 0; i < 4; i++) { p.pcnt[i] = p.audfP1[i]; p.pborrow[i] = 0; }
+      if (p.audctl & 0x10) p.pcnt16[0] = (p.audf[1] << 8 | p.audf[0]) + 1;
+      if (p.audctl & 0x08) p.pcnt16[1] = (p.audf[3] << 8 | p.audf[2]) + 1;
+    }
+    const bool fast1 = p.audctl & 0x40, fast3 = p.audctl & 0x20, link12 = p.audctl & 0x10, link34 = p.audctl & 0x08;
+    const bool slow = (p.skctl & 3) ? ((p.audctl & 1) ? slow2Tick15() : slow2Tick64()) : false;
+    if (link12) tick2Linked(0, fast1 || slow);
+    else { tick2Ch(0, fast1 || slow); tick2Ch(1, slow); }
+    if (link34) tick2Linked(1, fast3 || slow);
+    else { tick2Ch(2, fast3 || slow); tick2Ch(3, slow); }
+  }
+  inline void tick2Ch(int ch, bool clk) {
+    PokeyDruhy &p = pk2;
+    if (p.pborrow[ch]) { if (--p.pborrow[ch] == 0) { p.pcnt[ch] = p.audfP1[ch]; timer2Fire(ch); } return; }
+    if (clk && --p.pcnt[ch] == 0) p.pborrow[ch] = 3;
+  }
+  inline void tick2Linked(int pair, bool clk) {
+    PokeyDruhy &p = pk2;
+    if (p.pborrow16[pair]) {
+      if (--p.pborrow16[pair] == 0) {
+        p.pcnt16[pair] = (pair == 0 ? ((p.audf[1] << 8) | p.audf[0]) : ((p.audf[3] << 8) | p.audf[2])) + 1;
+        timer2Fire(pair * 2 + 1);
+      }
+      return;
+    }
+    if (clk) {
+      --p.pcnt16[pair];
+      if ((p.pcnt16[pair] & 0xFF) == 0) timer2Fire(pair * 2, true);   // nizsi kanal (jen zvuk)
+      if (p.pcnt16[pair] == 0) p.pborrow16[pair] = 6;
+    }
+  }
+  void timer2Fire(int ch, bool lowOfLinked = false) {
+    PokeyDruhy &p = pk2;
+    const int ac = p.audc[ch];
+    bool change = false;
+    const bool init = !(p.skctl & 3);
+    if ((ac & 0x80) || init || poly2Bit5()) {
+      uint8_t o;
+      if (ac & 0x20) o = p.chOut[ch] ^ 1;
+      else if (init) o = 1;
+      else if (ac & 0x40) o = (uint8_t)poly2Bit4();
+      else o = (uint8_t)((p.audctl & 0x80) ? poly2Bit9() : poly2Bit17());
+      if (o != p.chOut[ch]) { p.chOut[ch] = o; change = true; }
+    }
+    if (ch == 2 && (p.audctl & 0x04)) { p.hpf[0] = p.chOut[0]; change = true; }
+    if (ch == 3 && (p.audctl & 0x02)) { p.hpf[1] = p.chOut[1]; change = true; }
+    if (lowOfLinked) { if (change) updateAudioLevel2(); return; }
+    if (ch == 0 && (p.irqen & 0x01)) { p.irqst &= ~0x01; updateIrq(); }
+    if (ch == 1 && (p.irqen & 0x02)) { p.irqst &= ~0x02; updateIrq(); }
+    if (ch == 3 && (p.irqen & 0x04)) { p.irqst &= ~0x04; updateIrq(); }
+    if (change) updateAudioLevel2();
+  }
+  // uroven praveho kanalu: kanaly druheho POKEYe + reproduktor GTIA (jako updateAudioLevel u prvniho)
+  void updateAudioLevel2() {
+    const PokeyDruhy &p = pk2;
+    double s = 0;
+    for (int ch = 0; ch < 4; ch++) {
+      const int ac = p.audc[ch];
+      const int vol = ac & 15;
+      if (!vol) continue;
+      if (ac & 0x10) { s += vol / 60.0; continue; }
+      uint8_t o = p.chOut[ch];
+      if (ch == 0 && (p.audctl & 0x04)) o ^= p.hpf[0];
+      if (ch == 1 && (p.audctl & 0x02)) o ^= p.hpf[1];
+      if (o) s += vol / 60.0;
+    }
+    if (!pk2.slyset && ((p.audc[0] | p.audc[1] | p.audc[2] | p.audc[3]) & 15)) pk2.slyset = true;   // druhy POKEY hraje -> stereo
+    s += gtiaSpeakerBit ? 0.25 : 0.0;
+    if (s != audLevel2) {
+      audLevel2 = s; audEv2.emplace_back(cyc, (float)s);
+      if (audEv2.size() > 400000) { audEv2.clear(); audFrom2 = cyc; audLevel2Start = audLevel2; }   // nikdo zvuk neodebira
     }
   }
 
@@ -1915,7 +2150,7 @@ public:
   }
 
   // ---------------- zvukovy vystup ----------------
-  void setSpeaker(bool on) { audfMark(); gtiaSpeakerBit = on ? 1 : 0; gtiaKlikPocitadlo++; updateAudioLevel(); }
+  void setSpeaker(bool on) { audfMark(); gtiaSpeakerBit = on ? 1 : 0; gtiaKlikPocitadlo++; updateAudioLevel(); updateAudioLevel2(); }
   void audfMark() {}
   void updateAudioLevel() {
     double s = 0;

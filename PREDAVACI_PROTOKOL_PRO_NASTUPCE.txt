@@ -4922,3 +4922,38 @@
      - DALSI KROK: Rene - B360 na OBA telefony, test Sega online, logy OBOU telefonu (EXPORTOVAT LOG) + log enginu.
        V logu: "B360 ONLINE PRUBEH" (kdo ceka a jak dlouho), "SYNCHRONIZACE" (co se lisilo - podle toho hledat pricinu
        rozjeti v jadre), "WIFI". Pak Atari online (rozpracovano v scratchpad b357/atari_online_rozpracovano.patch).
+
+   B361: ATARI 130XE - DRUHY POKEY (STEREO UPGRADE) (24. 11. 2026)
+     Rene 23. 11. pred testem online: "nez udelam test udelej prosim jeste POKEY Dual Stereo - a pak se bez kodu priprav
+     na online atari i ps1". Online test B360 (logy obou telefonu + engine) jeste neprisel.
+     - nap_atari_machine.h: struct PokeyDruhy (pred class Machine) - audf / audc / audctl, citace pcnt / pborrow vcetne
+       16 bitu (pcnt16 / pborrow16), chOut, horni propust hpf, irqen / irqst (=$FF), skctl, last64 / last15, polyBase /
+       polyShutOff (vlastni RANDOM), stimerDelay, bezi, slyset, zapisu; cold(). Machine: stereoPokey (vychozi true), pk2,
+       audLevel2 / audEv2 / aaBuf2 / aaDcx2 / aaDcy2 (pravy kanal = stejny 8x prevzorkovany FIR + DC jako levy).
+       ioRead / ioWrite $D200: (stereoPokey && (a & 0x10)) ? pokey2 : pokey1 - bit A4 vybira cip ($D210-$D21F a zrcadla
+       po 32 bajtech), IRQ = OR obou (updateIrq). pokey2Write: "if (v != 0) pk2.bezi = true" - OS pri zapnuti nuluje
+       $D2xx smyckou STA $D200,X (PC $C4E6), z nul se druhy POKEY nerozbehne a mono hra nic navic nepocita (endCycle:
+       if (pk2.bezi) pokey2Tick()). pokey2Read: POT 228, ALLPOT 0, RANDOM z vlastnich polynomu (v init rezimu $FF),
+       IRQST, jinak $FF. Casovace 1 / 2 / 4 s prerusenim (timer2Fire). updateAudioLevel2: slyset = nektery AUDC2 ma
+       hlasitost (zustava do studeneho startu) + reproduktor GTIA (pravy kanal ho ma taky).
+       genAudio (mono) beze zmeny = bit po bitu jako B360 (test). genAudioStereo(L, R): levy = genKanal(POKEY 1 +
+       reproduktor + kazeta), pravy: dokud !stereoAktivni() kopie leveho (a zahodit udalosti, pripravit historii FIR),
+       pak genKanal(POKEY 2 + reproduktor + kazeta).
+     - nap_atari_audio_ring.h: atariGainClampStereoToInt16(l, r, n, 4x, out).
+     - nap_atari_native.cpp: g_pokeyStereo (atomic, vychozi true) -> novy stroj; smycka emulace genAudioStereo (zvukR,
+       zvukVenR), turbo ticho na obou, nap_atari_audio_push_stereo -> OpenSL i kruh pro TV (proud na TV posle 2 kanaly,
+       kdyz L != R - nap_atari_tv_proud.h, prohlizec to umel uz od B303). Log: "B361 POKEY 2: program pouziva druhy
+       POKEY ..." (pk2.bezi), "B361 POKEY STEREO: program hraje na druhy POKEY ..." / "... konec (studeny start)" /
+       "... konec (vypnuto v menu)". devCtlNative "pokey_stereo:1" / ":0" / "pokey_stereo" -> "1" / "0"; vypnuti =
+       pk2.cold() + updateIrq (vypnuty cip nehraje ani neprerusuje), log "B361 POKEY STEREO zapnuto / vypnuto".
+     - MainActivity: atariPokeyStereo() (ATARI_CPP_PREFS "pokey_stereo", vychozi true), atariPokeyStereoPolozka()
+       ("POKEY STEREO (2 ČIPY): ZAPNUTO ✓" / "VYPNUTO - MONO", EN "(2 CHIPS): ON ✓" / "OFF - MONO"),
+       atariPokeyStereoPrepni(); polozka c. 10 v atariCppOvladaniMenu (kolecko na sirku, napoveda = default) a c. 12
+       v atariCppTvMenu (TV, ZPET); atariCppOvladaniNacti posle nastaveni do C++ pri zapnuti pristroje.
+     - Napoveda CZ / EN: uvod Atari, kolecko, novy blok "Stereo – dva čipy POKEY" / "Stereo – two POKEY chips", menu na
+       TV. novinky.js B361 (verze 404, 4 vety). build.gradle 404 "EMU10-B361-POKEY-STEREO".
+     - Testy test_overeni/b361: mono bit po bitu stare = nove = L = R (pokey_mono_dump), jadro 12 OK, skutecny
+       nap_atari_native.cpp 8 OK (i pod TSAN 0 hlaseni), JVM novinky 6, javac android.jar 0 chyb, JNI 118 / 0, ES5,
+       regrese b292 / b352 / navody / mosty / b343 / b359.
+     - DALSI KROK: Rene - test B360/B361 online Sega (logy OBOU telefonu + log enginu), u Atari vyzkouset stereo hru nebo
+       demo (sluchatka). Pak online Atari a PS1 - PLAN BEZ KODU: test_overeni/b361/PLAN_ONLINE_ATARI_PS1.txt.

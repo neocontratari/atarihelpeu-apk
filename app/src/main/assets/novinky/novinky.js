@@ -5,6 +5,15 @@
    NapNovinky.java), Napoveda je ma nahore v sekci CO JE NOVEHO. Pole za NAP_NOVINKY = musi byt cisty JSON (Java ho
    cte pres NapJson) - zadne komentare ani carky navic. Texty pro lidi: kratce, co se zmenilo a kde to najdou. */
 window.NAP_NOVINKY = [
+  {"verze": 404, "build": "B361", "datum": "24. 11. 2026",
+   "cs": ["Atari 130XE má druhý zvukový čip POKEY – jako stereo upgrade: hry a dema pro stereo hrají levým kanálem první POKEY a pravým druhý.",
+          "Obyčejné (mono) hry hrají přesně jako dřív – na obou kanálech stejně.",
+          "Zapnout a vypnout: na šířku kolečko ⚙ → POKEY STEREO (2 ČIPY), na televizi menu přístroje (ZPĚT). Vypnuté = Atari bez upgradu.",
+          "Stereo jde přes WEB TV i do televize a PC."],
+   "en": ["The Atari 130XE has a second POKEY sound chip – like the stereo upgrade: stereo games and demos play the first POKEY on the left channel and the second on the right.",
+          "Ordinary (mono) games play exactly as before – the same on both channels.",
+          "On and off: in landscape the gear ⚙ → POKEY STEREO (2 CHIPS), on the TV the device menu (BACK). Off = an Atari without the upgrade.",
+          "Stereo also goes to the TV and PC through WEB TV."]},
   {"verze": 403, "build": "B360", "datum": "23. 11. 2026",
    "cs": ["Online Sega: když se hra na telefonech rozjede, telefon hráče 1 pošle druhému celý stav hry a hraje se dál – dřív hra skončila.",
           "Méně sekání: během online hry drží appka Wi-Fi v režimu nízké latence a zpoždění ovládání se samo přizpůsobí síti.",

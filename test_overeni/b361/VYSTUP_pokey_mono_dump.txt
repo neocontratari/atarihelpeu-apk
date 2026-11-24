@@ -1,0 +1,5 @@
+dump PRAC/stary: 1500 snimku, PC=$A93A, klapani reproduktoru 7522 (stare jadro)
+dump PRAC/novy: 1500 snimku, PC=$A93A, klapani reproduktoru 7522, zapisu do POKEY 2: 128, stereo 0
+cmp stary.mono novy.mono: SHODA (bit po bitu)
+cmp novy.mono novy.L: SHODA
+cmp novy.L novy.R: SHODA

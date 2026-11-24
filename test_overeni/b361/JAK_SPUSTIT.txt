@@ -1,0 +1,66 @@
+B361 - ATARI 130XE: DRUHY POKEY (STEREO UPGRADE) (24. 11. 2026)
+Rene 23. 11. pred testem online: "udelej prosim jeste POKEY Dual Stereo".
+
+CO SE ZMENILO (podrobne v PREDAVACI_PROTOKOL_PRO_NASTUPCE.txt, B361)
+ - nap_atari_machine.h: struct PokeyDruhy (AUDF / AUDC / AUDCTL, citace a podteceni vcetne 16 bitu, horni propust,
+   vlastni RANDOM z polynomu, SKCTL init, IRQEN / IRQST s casovaci 1, 2, 4). Adresy $D200-$D2FF: bit A4 vybira cip
+   ($D210-$D21F a zrcadla po 32 bajtech = POKEY 2), linka IRQ spolecna. Zvuk: levy kanal POKEY 1 (+ reproduktor GTIA,
+   kazeta), pravy POKEY 2 (+ totez); dokud program na druhy POKEY nehraje (zadny AUDC2 s hlasitosti), pravy = levy
+   bit po bitu. OS pri zapnuti nuluje $D2xx - druhy POKEY se rozbehne az na nenulovy zapis (mono hry nic nestoji).
+   stereoPokey = false -> $D210 je zrcadlo prvniho (Atari bez upgradu). genAudio (mono) beze zmeny.
+ - nap_atari_audio_ring.h: atariGainClampStereoToInt16 (L a R zvlast, zisk 4x jako mono).
+ - nap_atari_native.cpp: smycka emulace genAudioStereo -> OpenSL i TV / PC stereo (nap_atari_audio_push_stereo);
+   devCtlNative "pokey_stereo:1" / "pokey_stereo:0" / "pokey_stereo" (vraci "1" / "0"); log "B361 POKEY 2: program
+   pouziva druhy POKEY", "B361 POKEY STEREO: program hraje na druhy POKEY", "... konec (studeny start / vypnuto v menu)",
+   "B361 POKEY STEREO zapnuto / vypnuto". Proud na TV (nap_atari_tv_proud.h) posila stereo sam, kdyz L != R.
+ - MainActivity: polozka "POKEY STEREO (2 ČIPY): ZAPNUTO ✓ / VYPNUTO - MONO" v kolecku na sirku (D-PAD A OVLADANI)
+   a v menu pristroje na TV (ZPET); ulozi se (ATARI_CPP_PREFS "pokey_stereo", vychozi zapnuto), C++ ho dostane pri
+   zapnuti pristroje. Napoveda CZ / EN (blok "Stereo - dva cipy POKEY"), novinky.js B361, build.gradle 404.
+
+Spoustet z teto slozky (g++ 13, JDK 17+, python3 + playwright, node + acorn). PRAC = pracovni slozka mimo repo.
+
+1) Mono hry beze zmeny - stare jadro (B360: git archive 6565da2 app/src/main/cpp/atari | tar -x -C PRAC/stary) a nove,
+   stejny BASIC program jen pro prvni POKEY (SOUND, 1,79 MHz, 16 bitu, horni propust, 15 kHz, klapani klaves):
+     g++ -std=c++17 -O2 -DNAP_STARY -IPRAC/stary/app/src/main/cpp/atari -o PRAC/dump_stary pokey_mono_dump.cpp
+     g++ -std=c++17 -O2 -I../../app/src/main/cpp/atari -o PRAC/dump_novy pokey_mono_dump.cpp
+     PRAC/dump_stary PRAC/stary; PRAC/dump_novy PRAC/novy; cmp ...  -> VYSTUP_pokey_mono_dump.txt
+       stary.mono = novy.mono = novy.L = novy.R bit po bitu (1500 snimku, 1 323 000 vzorku)
+
+2) Jadro (nap_atari_machine.h), 12 kontrol:
+     g++ -std=c++17 -O2 -I../../app/src/main/cpp/atari -o PRAC/test_b361_pokey_stereo test_b361_pokey_stereo.cpp
+     PRAC/test_b361_pokey_stereo PRAC/stary.mono PRAC/novy.mono PRAC/novy.L PRAC/novy.R -> VYSTUP_test_b361_pokey_stereo.txt
+       mono bit po bitu; program pozna STEREO (SKCTL druheho nezastavi RANDOM prvniho); levy 488,5 Hz (POKEY 1), pravy
+       327,3 Hz (POKEY 2), sila jako vypocet; pred stereem pravy = levy; Atari bez upgradu: MONO, $D210 = zrcadlo;
+       adresy ($D210 / $D230 / $D2F2 = POKEY 2, $D220 / $D2E2 = POKEY 1); RANDOM a SKCTL druheho; casovac 1 druheho:
+       perioda 28 / 56 / 1792 / 7168 cyklu jako prvni (B300); studeny start = zase mono; OS nuluje $D2xx a druhy POKEY
+       se nerozbehne; vykon na PC
+
+3) SKUTECNY nap_atari_native.cpp (vlakno emulace jako v telefonu, stuby ../b291/stub), 8 kontrol:
+     g++ -std=c++17 -O2 -pthread -I../b291/stub -I$JAVA_HOME/include -I$JAVA_HOME/include/linux \
+         -I../../app/src/main/cpp/atari -o PRAC/test_b361_jni test_b361_jni.cpp
+     PRAC/test_b361_jni -> VYSTUP_test_b361_jni.txt
+       samotest cpuHash 4A2C6CBA / memHash B0649DC5 beze zmeny; READY a "pokey_stereo" = "1"; BASIC program (TXT jako
+       z appky) napise STEREO, zvuk pro reproduktor / TV (devPullTvAudioNative): levy 488,5 Hz, pravy 327,3 Hz; log
+       B361 POKEY 2 / STEREO; vypnuti z menu = hned mono (levy = pravy), druhy POKEY ztichl; Atari bez upgradu: RESET +
+       RUN -> MONO, ton 327 Hz z prvniho POKEYe (zrcadlo); zapnuti zpet
+     totez s -O1 -g -fsanitize=thread -> VYSTUP_tsan_b361_jni.txt (8 OK, 0 hlaseni)
+
+4) Java: cela appka s android.jar API 34 -> VYSTUP_javac_android.txt (41 zdroju, 140 trid, 0 chyb);
+     ../b320/kontrola_jni.py (hlavicky z javac -h) -> VYSTUP_regrese_b320_kontrola_jni.txt (118 native metod, 0 CHYB)
+     javac --release 17 -encoding UTF-8 -d OUT ../../app/src/main/java/eu/atarihelp/emu10/NapJson.java \
+           ../../app/src/main/java/eu/atarihelp/emu10/NapNovinky.java jvm/eu/atarihelp/emu10/TestB361Novinky.java
+     java -cp OUT eu.atarihelp.emu10.TestB361Novinky ../.. jvm/VYSTUP_TestB361Novinky.txt (6 OK: B361 = 404, okno pro
+     telefon s B360 / B359 / B358, nazev polozky v okne = v menu appky)
+
+5) ES5 (acorn): node ../b360/kontrola_es5.js ../../app/src/main/assets novinky/novinky.js napoveda/index.html \
+         napoveda/en.html -> VYSTUP_kontrola_es5.txt (7 OK)
+
+6) Regrese (vystupy sem jako VYSTUP_regrese_*, originaly vraceny git checkout --):
+     ../b292 test_core boot / pokey-casovac / vlozeni = stejne jako ulozene vystupy, tv-proud stejne bajty na snimek
+     (hry z test_assets v repu nejsou); ../b352 jadro 15 OK, JNI 10 OK (bez Tonyho XEX, ten v repu neni);
+     ../b311 navod 232 nazvu 0 CHYBA (+ POKEY STEREO (2 ČIPY)), mosty 137 0 chybi (spoustet ze slozky b311);
+     ../b314 224 nazvu 0 CHYBA (+ POKEY STEREO (2 CHIPS)); ../b343 4 zamerne (N7 N9 A6 V);
+     ../b359 napoveda 6 (CO JE NOVEHO: B361 nahore), ../b359/kontrola_novinek.py (= CI): B361 verze 404, 4 vety.
+
+NEOVERENO (az u Reneho): skutecny telefon - sluchatka / dva reproduktory, stereo hry a dema z NET / HRY nebo z
+telefonu (hry pro stereo POKEY, ktere hledaji druhy cip), polozka v menu na sirku a na TV.

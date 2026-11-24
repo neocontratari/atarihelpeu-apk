@@ -378,7 +378,7 @@ body.hleda .rychle,body.hleda #obsahStitek,body.hleda #obsah{display:none;}
     <img class="kap-obr" src="../menu/karta_atari.jpg" alt="" loading="lazy">
     <div><div class="kap-cislo">KAPITOLA 02</div><h2>ATARI 130XE</h2><p class="kap-pod">EMULÁTOR · C++</p></div>
   </header>
-  <p class="uvod">Atari 130XE se 320 kB paměti (130XE + rozšíření 320K; hra, která hledá ještě víc, se sama spustí znovu s 1 MB jako s Ultimate 1MB) a grafickou kartou VBXE, celé napsané v C++. Na displeji je celý přístroj: obrazovka, konzolová tlačítka, klávesnice, kazeťák a úplně dole servisní tlačítka.</p>
+  <p class="uvod">Atari 130XE se 320 kB paměti (130XE + rozšíření 320K; hra, která hledá ještě víc, se sama spustí znovu s 1 MB jako s Ultimate 1MB) grafickou kartou VBXE a druhým zvukovým čipem POKEY (stereo), celé napsané v C++. Na displeji je celý přístroj: obrazovka, konzolová tlačítka, klávesnice, kazeťák a úplně dole servisní tlačítka.</p>
 
   <div class="blok">
     <h3>Zapnutí a konzole</h3>
@@ -400,7 +400,7 @@ body.hleda .rychle,body.hleda #obsahStitek,body.hleda #obsah{display:none;}
     <h4>Na šířku – tlačítko NA SIRKU pod přístrojem, nebo otoč telefon</h4>
     <ul>
       <li>Obraz Atari přes celý displej. Vlevo dole D-pad (puntík jede pod palcem, i šikmo), vpravo <span class="nw"><span class="t">FIRE</span>,</span> <span class="t">MEZERA</span> a <span class="nw"><span class="t">RETURN</span>,</span> vlevo nahoře <span class="t">START</span> / <span class="t">SELECT</span> / <span class="nw"><span class="t">OPTION</span>.</span></li>
-      <li>Kolečko <span class="t">&#9881;</span> vpravo nahoře = <span class="nw"><span class="t">D-PAD A OVLÁDÁNÍ</span>:</span> <span class="t">UPRAVIT ROZLOŽENÍ TLAČÍTEK</span> (přetáhneš prstem, <span class="nw"><span class="t">PO SKUPINÁCH</span>,</span> <span class="nw"><span class="t">VÝCHOZÍ</span>,</span> <span class="nw"><span class="t">HOTOVO</span>),</span> <span class="t">OVLÁDÁNÍ: CITLIVOST A VZHLED</span> (citlivost, průhlednost, velikost tlačítek a D-padu, vibrace), <span class="nw"><span class="t">PROHODIT D-PAD A AKCE (LEVÁK)</span>,</span> <span class="nw"><span class="t">VÝCHOZÍ ROZLOŽENÍ TLAČÍTEK</span>,</span> <span class="nw"><span class="t">RESET ATARI</span>,</span> hry, disketa, kazeta a nápověda. Nastavení si appka pamatuje.</li>
+      <li>Kolečko <span class="t">&#9881;</span> vpravo nahoře = <span class="nw"><span class="t">D-PAD A OVLÁDÁNÍ</span>:</span> <span class="t">UPRAVIT ROZLOŽENÍ TLAČÍTEK</span> (přetáhneš prstem, <span class="nw"><span class="t">PO SKUPINÁCH</span>,</span> <span class="nw"><span class="t">VÝCHOZÍ</span>,</span> <span class="nw"><span class="t">HOTOVO</span>),</span> <span class="t">OVLÁDÁNÍ: CITLIVOST A VZHLED</span> (citlivost, průhlednost, velikost tlačítek a D-padu, vibrace), <span class="nw"><span class="t">PROHODIT D-PAD A AKCE (LEVÁK)</span>,</span> <span class="nw"><span class="t">VÝCHOZÍ ROZLOŽENÍ TLAČÍTEK</span>,</span> <span class="nw"><span class="t">RESET ATARI</span>,</span> hry, disketa, kazeta, <span class="t">POKEY STEREO (2 ČIPY)</span> a nápověda. Nastavení si appka pamatuje.</li>
     </ul>
     <h4>Herní ovladač (Retroid Pocket 6, Bluetooth, USB)</h4>
     <p>Kříž nebo levá páčka = joystick, <kbd>A</kbd> / <kbd>B</kbd> (i <kbd>L1</kbd> / <kbd>R1</kbd>) = FIRE, <kbd>X</kbd> = MEZERA, <kbd>Y</kbd> = RETURN, <kbd>START</kbd> / <kbd>SELECT</kbd> = konzole, <kbd>L2</kbd> / <kbd>R2</kbd> = OPTION, <kbd>HOME</kbd> = nastavení tlačítek. Jinak si to nastavíš – viz <a href="#menu" data-skok="menu">Herní ovladač a Retroid Pocket 6</a>.</p>
@@ -446,6 +446,12 @@ body.hleda .rychle,body.hleda #obsahStitek,body.hleda #obsah{display:none;}
   <div class="blok">
     <h3>Grafika VBXE</h3>
     <p>Grafická karta VBXE je v Atari zabudovaná – hry pro VBXE (Wolfenstein 3D, Popeye…) ji najdou samy. Wolfenstein 3D: chůze joystickem, FIRE = střelba, MEZERA = otevřít dveře.</p>
+  </div>
+
+  <div class="blok">
+    <h3>Stereo – dva čipy POKEY</h3>
+    <p>V Atari je i druhý zvukový čip POKEY – jako skutečný stereo upgrade (adresy $D210–$D21F). Hry a dema pro stereo ho najdou samy: <b>levý kanál hraje první POKEY, pravý druhý</b>. Obyčejné (mono) hry hrají na obou kanálech stejně jako dřív – nic se pro ně nemění. Stereo uslyšíš ve sluchátkách, v telefonu se dvěma reproduktory a přes <a href="#tv" data-skok="tv">WEB TV</a> i v televizi a PC.</p>
+    <p>Zapíná a vypíná se v kolečku <span class="t">&#9881;</span> na šířku → <span class="t">POKEY STEREO (2 ČIPY)</span>, na televizi v menu přístroje (<span class="nw"><span class="t">ZPĚT</span>).</span> Zapnuté je od začátku. <b>Vypnuté</b> = Atari bez upgradu (jeden POKEY, adresy druhého jsou jeho zrcadlo) – jen pro vzácnou starou hru, která by na stereo Atari hrála špatně. Appka si volbu pamatuje.</p>
   </div>
 
   <div class="blok">
@@ -794,7 +800,7 @@ body.hleda .rychle,body.hleda #obsahStitek,body.hleda #obsah{display:none;}
       <li>Na stránkách (<span class="t">OPTIONS</span>, nápověda, seznamy her) ukazuje zlatý rámeček, co je vybrané – šipky ho posouvají, <span class="t">OK</span> stiskne.</li>
       <li>Úvodní demo přeskočíš tlačítkem <span class="t">OK</span>.</li>
       <li>Ve hrách: šipky = směr, <span class="t">OK</span> = hlavní tlačítko, <span class="t">PLAY</span> / <span class="t">MENU</span> = START, barevná tlačítka = další tlačítka. Na pořádné hraní připoj <b>gamepad</b> (Bluetooth nebo USB) – funguje hned, dotyková tlačítka jsou v televizi schovaná.</li>
-      <li><b>Atari na TV:</b> tlačítko <span class="t">ZPĚT</span> otevře menu přístroje – nahoře <b>HLAVNÍ MENU</b>, pod ním <span class="t">▶ START</span>, <span class="t">SELECT</span>, <span class="nw"><span class="t">OPTION</span>,</span> hry ze serveru N&amp;P, XEX / soubor, disketa, kazeta, Turbo Basic, reset, <span class="nw"><span class="t">OBRAZOVKA NA VÝŠKU</span>,</span> <span class="t">OVLÁDÁNÍ DÁLKOVÝM OVLADAČEM</span> a nápověda. <span class="t">ZPĚT</span> dvakrát za sebou tě vrátí rovnou do hlavního menu.</li>
+      <li><b>Atari na TV:</b> tlačítko <span class="t">ZPĚT</span> otevře menu přístroje – nahoře <b>HLAVNÍ MENU</b>, pod ním <span class="t">▶ START</span>, <span class="t">SELECT</span>, <span class="nw"><span class="t">OPTION</span>,</span> hry ze serveru N&amp;P, XEX / soubor, disketa, kazeta, Turbo Basic, reset, <span class="nw"><span class="t">OBRAZOVKA NA VÝŠKU</span>,</span> <span class="t">OVLÁDÁNÍ DÁLKOVÝM OVLADAČEM</span>, <span class="t">POKEY STEREO (2 ČIPY)</span> a nápověda. <span class="t">ZPĚT</span> dvakrát za sebou tě vrátí rovnou do hlavního menu.</li>
       <li><b>Na výšku i na televizi:</b> v menu konzole (<span class="t">ZPĚT</span>) u Atari, Segy i PS1 je <span class="t">OBRAZOVKA NA VÝŠKU</span> – appka se ukáže jako telefon v pruhu uprostřed televize (Atari celý přístroj, Sega a PS1 konzole na výšku). <span class="t">OBRAZOVKA NA ŠÍŘKU</span> vrátí celou obrazovku. Hlavní menu: <span class="t">OPTIONS</span> → <span class="nw"><span class="t">OBRAZOVKA</span>.</span> Appka si volbu pamatuje pro každou konzoli – viz <a href="#obrazovka" data-skok="obrazovka">Obrazovka na výšku a na šířku</a>.</li>
       <li>SEGA a PS1 se na novém zařízení otevírají stejně jako na telefonu – postupem hráče, nebo po zaplacení. Zamčená karta se nejdřív zeptá serveru N&amp;P: když už je zaplaceno, konzole se rovnou spustí.</li>
       <li><b>SEGA a PS1 na TV:</b> tlačítko <span class="t">ZPĚT</span> otevře menu konzole – <span class="t">HRY ZE SERVERU N&amp;P</span> (vybraná hra se hned spustí), u PS1 <span class="nw"><span class="t">HRY V TELEVIZI</span>,</span> <span class="t">▶ START</span> (u PS1 i SELECT, u Segy tlačítka A / B / C), uložit a načíst pozici, u PS1 reset, <span class="nw"><span class="t">OBRAZOVKA NA VÝŠKU</span>,</span> <span class="t">OVLÁDÁNÍ DÁLKOVÝM OVLADAČEM</span> a <b>HLAVNÍ MENU</b>. <span class="t">ZPĚT</span> dvakrát za sebou = hlavní menu.</li>

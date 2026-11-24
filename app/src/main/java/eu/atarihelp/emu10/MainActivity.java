@@ -9254,8 +9254,33 @@ public class MainActivity extends Activity {
         appendNativeLog("B297 OVLADANI ulozeno: " + cfg);
     }
 
+    // ===================================================================
+    //  B361: POKEY STEREO - druhy POKEY ($D210-$D21F, stereo upgrade Atari). Rene 23. 11.: "udelej prosim
+    //  jeste POKEY Dual Stereo". Zapnuto = levy kanal POKEY 1, pravy POKEY 2 (mono hry hraji dal na obou
+    //  stejne); vypnuto = $D210 je zrcadlo prvniho jako na Atari bez upgradu (pro vzacnou hru, ktera by
+    //  zrcadlo pouzivala). Ulozi se (SharedPreferences), C++ ho dostane pri zapnuti pristroje.
+    // ===================================================================
+    private boolean atariPokeyStereo() {
+        try { return getSharedPreferences(ATARI_CPP_PREFS, MODE_PRIVATE).getBoolean("pokey_stereo", true); } catch (Throwable t) { return true; }
+    }
+
+    private String atariPokeyStereoPolozka() {
+        return atariPokeyStereo() ? tx("POKEY STEREO (2 ČIPY): ZAPNUTO ✓", "POKEY STEREO (2 CHIPS): ON ✓")
+                                  : tx("POKEY STEREO (2 ČIPY): VYPNUTO - MONO", "POKEY STEREO (2 CHIPS): OFF - MONO");
+    }
+
+    private void atariPokeyStereoPrepni() {
+        final boolean zap = !atariPokeyStereo();
+        try { getSharedPreferences(ATARI_CPP_PREFS, MODE_PRIVATE).edit().putBoolean("pokey_stereo", zap).apply(); } catch (Throwable ignored) {}
+        NativeAtariCoreBridge.devCtlSafe(zap ? "pokey_stereo:1" : "pokey_stereo:0");
+        NativeAtariCoreBridge.devStatusSafe(zap ? tx("POKEY STEREO ZAPNUTO - PRAVÝ KANÁL = DRUHÝ POKEY", "POKEY STEREO ON - RIGHT CHANNEL = SECOND POKEY")
+                                                : tx("POKEY STEREO VYPNUTO - MONO (JAKO ATARI BEZ UPGRADU)", "POKEY STEREO OFF - MONO (LIKE AN ATARI WITHOUT THE UPGRADE)"), 3500);
+        appendNativeLog("B361 POKEY STEREO " + (zap ? "zapnuto" : "vypnuto") + " (uzivatel)");
+    }
+
     /** Pri zapnuti pristroje: ulozene nastaveni ovladani do C++. */
     private void atariCppOvladaniNacti() {
+        NativeAtariCoreBridge.devCtlSafe(atariPokeyStereo() ? "pokey_stereo:1" : "pokey_stereo:0");   // B361
         try {
             String cfg = getSharedPreferences(ATARI_CPP_PREFS, MODE_PRIVATE).getString("ovladani", "");
             if (cfg != null && !cfg.isEmpty()) {
@@ -9286,6 +9311,7 @@ public class MainActivity extends Activity {
                 "RESET ATARI",
                 NapObrazovka.tlacitko(napObrazNaSirku(), NapJazyk.en(this)),   // B342: na vysku / na sirku
                 tx("OVLÁDÁNÍ DÁLKOVÝM OVLADAČEM", "PLAYING WITH THE TV REMOTE"),
+                atariPokeyStereoPolozka(),                                            // B361
                 tx("NÁPOVĚDA", "HELP")
         };
         try {
@@ -9305,6 +9331,7 @@ public class MainActivity extends Activity {
                             case 9: NativeAtariCoreBridge.devCtlSafe("atari_reset"); break;
                             case 10: atariZarizeniAkce(12); break;   // B342: OBRAZOVKA NA VYSKU / NA SIRKU
                             case 11: napTvOvladaniDialog(OVL_ATARI); break;
+                            case 12: atariPokeyStereoPrepni(); break;   // B361
                             default: atariZarizeniAkce(7); break;   // NAPOVEDA
                         }
                     })
@@ -9600,6 +9627,7 @@ public class MainActivity extends Activity {
                 tx("ATR / DISK - disketa do D1: (vysunout, vyměnit)", "ATR / DISK - disk in D1: (eject, swap)"),
                 tx("NET / HRY", "NET / GAMES"),
                 tx("KAZETA (WAV) - vložit kazetu, hry z kazety", "TAPE (WAV) - insert a tape, games on tape"),
+                atariPokeyStereoPolozka(),                                            // B361
                 tx("NÁPOVĚDA K OVLÁDÁNÍ", "CONTROLS HELP")
         };
         new android.app.AlertDialog.Builder(this)
@@ -9637,6 +9665,9 @@ public class MainActivity extends Activity {
                             break;
                         case 9:   // B298: na sirku neni kazetak videt - vyber kazety odsud
                             atariZarizeniAkce(9);
+                            break;
+                        case 10:  // B361: druhy POKEY (stereo) zapnout / vypnout
+                            atariPokeyStereoPrepni();
                             break;
                         default:
                             atariCppHelpDialog();

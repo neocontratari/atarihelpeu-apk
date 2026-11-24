@@ -1,0 +1,8 @@
+OK     ES5 novinky/novinky.js
+OK     ES5 napoveda/index.html skript 2
+OK     ES5 napoveda/index.html skript 4
+OK     ES5 napoveda/index.html skript 5
+OK     ES5 napoveda/en.html skript 2
+OK     ES5 napoveda/en.html skript 4
+OK     ES5 napoveda/en.html skript 5
+VYSLEDEK: 7 OK, 0 CHYBA

@@ -1,0 +1,8 @@
+B361 - co je noveho: POKEY stereo (NapNovinky nad skutecnym novinky.js)
+OK     1) nejnovejsi B361 = versionCode 404 (build.gradle 404), 4 vety cesky i anglicky
+OK     2) telefon s B360: okno jen B361 (5 radku), bez odkazu, nadpis 'CO JE NOVÉHO · B361'
+OK        telefon s B359 (nove B361,B360): okno B361 + B360, bez odkazu
+OK        telefon s B358 (nove B361,B360,B359): okno B361 + B360 a odkaz do Napovedy, B359 ne
+OK        anglicky: B361 a u telefonu s B358 'Older news: Help → WHAT'S NEW.'
+OK     3) okno rika, kde se stereo zapina: 'POKEY STEREO (2 ČIPY)' / '(2 CHIPS)' - presne jako polozka v menu appky
+VYSLEDEK: 6 OK, 0 CHYBA

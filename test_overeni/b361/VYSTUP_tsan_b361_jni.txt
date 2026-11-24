@@ -1,0 +1,52 @@
+B292 ATARI_SELFTEST cpu=4A2C6CBA instr=51200 0.08s | mem=B0649DC5 reads=16252928 0.65s | 0.35 MIPS = 0.8x realny cas Atari (cely stroj po cyklech)
+B361 - POKEY stereo ve skutecnem nap_atari_native.cpp (zvuk do reproduktoru a na TV)
+
+OK     1) samokontrola jadra: cpuHash 4A2C6CBA memHash B0649DC5 (beze zmeny)
+B291 HELP otevren - pristroj ZAPNUT, studeny start Atari
+B293 JADRO = ATARI 130XE PAL: RAM 64 kB + rozsirena 16x16 kB (B323: 320K Compy Shop - PORTB bity 2-3 a 6-7, banky 130XE beze zmeny; procesor bit 4, ANTIC bit 5; B352: program, ktery hleda vic nez 16 bank, se sam spusti znovu s 1088K = 64 bank jako Ultimate 1MB - PORTB bity 1-3 a 5-7), OS XL/XE rev.2 (soucet $9211), BASIC rev.C vestaveny, self-test ROM $5000, TRIG3 = RD5 cartridge (prazdny slot = 0), RESET = reset CPU+ANTIC+PIA/MMU, plovouci datova sbernice, ANTIC/GTIA PAL 312 radku, POKEY 1,773 MHz
+B316 CARTRIDGE: soubory .car (XEX/MOBIL, NET, ZIP) - slot $8000-$9FFF / $A000-$BFFF pred BASICem, banky pres $D500-$D5FF, 67 typu (standard 2-16 kB, XEGS a Switchable XEGS, MegaCart, Atarimax 128 kB / 1 MB, SIC!, Williams, Express, Diamond, SpartaDOS X, OSS, Blizzard, Phoenix, Turbosoft, Atrax, Bounty Bob, J(atari)Cart, DCart ...); jiny program (XEX / ATR / TXT) cartridge vytahne, POWER ji necha ve slotu.
+B296 VBXE FX 1.26 v jadre: registry $D640, 512 kB VRAM, MEMAC A/B, XDL (overlay LR/SR/HR/text 80 sloupcu), atributova mapa, palety 4x256, blitter (rezimy 0-6, zoom, vzor, kolize) + IRQ; obraz 4 body na barevny takt. Joystick 1: leva pulka obrazovky = smer, prava = FIRE; herni ovladac taky.
+B298 ZVUK s pasmem jako TV (FIR 16 kHz, bez prekladu ultrazvuku do slysitelna), asynchronni prijem POKEY restartuje casovace 3+4 start bitem; KAZETA: hra (boot) = START+OPTION a RETURN samo, stereo WAV = zvukova stopa do TV, CLOAD i s disketou v D1:; DISKETA: ATR/DISK = vysunout / vymenit bez restartu.
+B299 BASIC/TBXL TXT: TXT soubor s programem napise appka sama do ATARI BASICu / Turbo-BASICu XL; klavesy z pristroje do logu (B299 KLAVESY); LOG/CHYBA = stav a cela pamet Atari v logu; SIO zkratka jen se zapnutou ROM OS (Turbo-BASIC XL ma na $E459 vlastni kod).
+B300 POKEY: casovac s AUDF=$FF (perioda 256) tika a dava preruseni - drive stal (Ghostbusters: hudba a rec z preruseni casovace 1, bez nej titulka stala; nejhlubsi tony byly potichu).
+B301 TV/PC (web prohlizec v appce): obraz Atari 130XE primo z jadra (vyrez 336x240 jako na telefonu) a zvuk 44100 Hz stereo - drive bylo na TV videt jen stranku s testy pod pristrojem.
+B302 KLAVESNICE POCITACE (prohlizec na TV/PC) -> Atari 130XE primo v C++: psani podle rozlozeni (cesky: diakritika bez hacku, AltGr znaky), sipky = kurzor, F1/F3/F4 START/SELECT/OPTION, F2 BREAK, F6 HELP, F8 INVERZE, F9 HRANI (WASD/sipky joystick, K skok, L FIRE); klavesy v tempu, ktere OS stihne.
+B303 TV/PC CELE V C++: kazdy snimek Atari (50/s) jako paleta + jen zmenene radky a zvuk v jednom proudu (/atari.stream) - Java uz nezvetsuje ani nekomprimuje (H.264/JPEG); Ctrl+V nebo pretazeny TXT v prohlizeci = program do BASICu bez NEW (UTF-8 s e s hackem uz neni ATASCII), jiny text = klavesy.
+B348 DISKETA D1: i na urovni bajtu SIO jako skutecna 1050 (hry s vlastnim zavadecem - xBIOS, Prince of Persia: ramec prikazu pres POKEY a linku COMMAND, odpovedi A/C/N/E, cteni/zapis/STATUS/FORMAT, 19200 Bd); OPTION pri bootu z diskety jen 1 s; Acid800 V0.1 38/38 (LXA jako SALLY, asynchronni prijem POKEY drzi casovace 3+4, hraci ve VBLANK po hires radku, fantomove DMA hracu).
+B349 ARCHIVY: hra v ZIP / RAR (XEX/MOBIL, ATR/DISK, NET HRY) se rozbali v C++ (deflate, RAR 2.9 vcetne pevneho a filtru); spusti se samostatna disketa > sada (strana A / Disk 1) > XEX > CAR, ostatni diskety z archivu nabidne ATR/DISK (i VYMENIT BEZ RESTARTU).
+B350 RAR5 (novy WinRAR 5 / 7): hlavicky vint + CRC32, komprese v blocich, filtry DELTA / E8 / E8E9 / ARM, pevny archiv (i s prazdnym souborem uprostred), odkazy se preskoci.
+B351 PPMd (RAR 4 "nejlepsi" = komprese textu): model PPMd var.H + rozsahovy dekoder RAR v C++, prechody PPMd <-> LZ, unikove prikazy, pevny archiv; heslo, vic dilu a RAR 1.5 / 2.0 zatim ne.
+B352 PAMET 1 MB: vychozi 320K (130XE + Compy Shop); program, ktery do rozsirene pameti zapisuje pod vic nez 16 ruznymi PORTB (hleda vic bank), se sam spusti znovu s 1088K (64 bank jako Ultimate 1MB) - Tony VBXE 496 KB.
+B353 TURBO pri nahravani: disketa D1: (SIO pres POKEY i OS v posledni 1 s) nebo zavadec XEX -> az 8 snimku za periodu 20 ms (kolik telefon stihne), zvuk ztlumeny; ne, kdyz hrac drzi joystick / klavesu nebo 3 s po stisku.
+B291 EMULACE_VLAKNO start (50 snimku/s, zvuk OpenSL, vse v C++)
+B291 EMULACE_VLAKNO priorita nice=-8 nastavena
+B291 KRESLICI_VLAKNO start (pristroj kresli C++ primo na displej)
+B291 KRESLICI_VLAKNO priorita nice=-4 nastavena
+B291 PRISTROJ plocha nova 1080x2160 -> kresleni 1080x2160
+B291 PRISTROJ rozlozen 1080x2160 (displej 1080x2160) za 1275 ms
+OK     2) Atari nastartovalo do READY, POKEY STEREO zapnute ("1")
+B291 TXT do Atari: 203 stisku klaves pripraveno + RUN (0 znaku na Atari klavesnici neni)
+B361 POKEY 2: program pouziva druhy POKEY ($D210-$D21F, stereo upgrade) - hleda ho, nebo na nem hraje
+B361 POKEY STEREO: program hraje na druhy POKEY - levy kanal POKEY 1, pravy POKEY 2
+OK     3) program na obrazovce: STEREO (druhy POKEY nalezen - samostatny radek, ne vypis programu)
+OK        zvuk pro reproduktor / TV (38808 vzorku na kanal): levy ton 488.5 Hz sila 0.1697 (druhy 0.0002), pravy ton 327.3 Hz sila 0.1269 (prvni 0.0001)
+OK        log: 'B361 POKEY 2 ...' a 'B361 POKEY STEREO: program hraje na druhy POKEY ...'
+B361 POKEY STEREO vypnuto: $D210-$D21F = zrcadlo prvniho POKEYe (jako Atari bez upgradu), mono
+B361 POKEY STEREO konec (vypnuto v menu) - pravy kanal zase jako levy
+OK     4) vypnuti z menu (pokey_stereo:0 -> "0"): hned mono - levy = pravy (33516 vzorku), druhy POKEY ztichl (0.0005), prvni hraje dal (0.1698)
+B297 OVLADANI atari_reset -> v=1;sens=7;op=100;size=100;dsize=100;hap=1;pos=
+B291 RESET (tlacitko RESET na pristroji - pamet zustava)
+B291 TXT do Atari: 4 stisku klaves pripraveno + RUN (0 znaku na Atari klavesnici neni)
+OK     5) Atari bez upgradu: RESET + RUN -> na obrazovce MONO, levy = pravy, ton 327.3 Hz z prvniho POKEYe (zrcadlo $D210) sila 0.1269, 488.5 Hz 0.0004; log 'konec (vypnuto v menu)'
+B361 POKEY STEREO zapnuto: $D210-$D21F = druhy POKEY (levy kanal POKEY 1, pravy POKEY 2)
+OK        zapnuti zpet (pokey_stereo:1 -> "1"), v logu 'zapnuto'
+B291 KRESLICI_VLAKNO stop
+B291 EMULACE_VLAKNO stop
+LOG: B361 POKEY 2: program pouziva druhy POKEY ($D210-$D21F, stereo upgrade) - hleda ho, nebo na nem hraje
+LOG: B361 POKEY STEREO: program hraje na druhy POKEY - levy kanal POKEY 1, pravy POKEY 2
+LOG: B361 POKEY STEREO vypnuto: $D210-$D21F = zrcadlo prvniho POKEYe (jako Atari bez upgradu), mono
+LOG: B361 POKEY STEREO konec (vypnuto v menu) - pravy kanal zase jako levy
+LOG: B361 POKEY STEREO zapnuto: $D210-$D21F = druhy POKEY (levy kanal POKEY 1, pravy POKEY 2)
+
+VYSLEDEK: 8 kontrol, 0 CHYBA
+tsan exit=0

@@ -100,4 +100,15 @@ inline void atariGainClampToStereoInt16(const float *mono, int n, float gain,
   }
 }
 
+// B361: POKEY stereo - levy a pravy kanal zvlast (stejny zisk, oriznuti a zaokrouhleni jako mono vyse).
+inline void atariGainClampStereoToInt16(const float *l, const float *r, int n, float gain, int16_t *outStereoInterleaved) {
+  for (int i = 0; i < n; i++) {
+    float a = l[i] * gain, b = r[i] * gain;
+    if (a > 1.0f) a = 1.0f; else if (a < -1.0f) a = -1.0f;
+    if (b > 1.0f) b = 1.0f; else if (b < -1.0f) b = -1.0f;
+    outStereoInterleaved[i * 2]     = (int16_t)std::lround((double)a * 32767.0);
+    outStereoInterleaved[i * 2 + 1] = (int16_t)std::lround((double)b * 32767.0);
+  }
+}
+
 }  // namespace nap

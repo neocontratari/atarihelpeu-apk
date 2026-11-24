@@ -138,8 +138,11 @@ static AnticView *g_view  = nullptr;
 // probiha POD TIMHLE ZAMKEM, aby se dve vlakna nikdy nepotkala uvnitr stroje.
 static std::mutex g_mStroj;
 
+// B361: druhy POKEY (stereo) - nastaveni z Javy (OPTIONS / kolecko: POKEY STEREO), plati pro kazdy novy stroj
+static std::atomic<bool> g_pokeyStereo{true};
+
 static void zaloz() {
-  if (!g_stroj) g_stroj = new Machine();
+  if (!g_stroj) { g_stroj = new Machine(); g_stroj->stereoPokey = g_pokeyStereo.load(); }
   if (!g_view)  g_view  = new AnticView();
   g_stroj->mem.os  = NAP_OS_ROM;
   g_stroj->mem.bas = NAP_BASIC_ROM;
@@ -202,6 +205,14 @@ static void nap_atari_audio_push(const float *mono, int n) {
   if (!mono || n <= 0) return;
   std::vector<int16_t> stereo((size_t)n * 2);
   nap::atariGainClampToStereoInt16(mono, n, 4.0f, stereo.data());
+  g_atariRing.write(stereo.data(), (unsigned)stereo.size());
+  tvZvukZapis(stereo.data(), stereo.size());
+}
+// B361: POKEY stereo - levy a pravy kanal zvlast (pravy = druhy POKEY; dokud ho program nepouziva, je jako levy)
+static void nap_atari_audio_push_stereo(const float *l, const float *r, int n) {
+  if (!l || !r || n <= 0) return;
+  std::vector<int16_t> stereo((size_t)n * 2);
+  nap::atariGainClampStereoToInt16(l, r, n, 4.0f, stereo.data());
   g_atariRing.write(stereo.data(), (unsigned)stereo.size());
   tvZvukZapis(stereo.data(), stereo.size());
 }
@@ -1166,7 +1177,8 @@ static void turboHlidejLocked(int duvod, int snimku) {
 }
 
 static void emuVlaknoMain() {
-  std::vector<float> zvuk(882), pasek(882), zvukVen(882);
+  std::vector<float> zvuk(882), pasek(882), zvukVen(882), zvukR(882), zvukVenR(882);   // B361: R = druhy POKEY
+  bool stereoBylo = false, pk2Bezel = false;
   std::string statusText; int statusMs = 0;
   long long dalsi = nap_ted_ns();
   devLog("B291 EMULACE_VLAKNO start (50 snimku/s, zvuk OpenSL, vse v C++)");
@@ -1386,9 +1398,19 @@ static void emuVlaknoMain() {
         if (g_psani.pise()) g_stroj->runFrameRadky([](Machine &m) { g_psani.radek(m); });
         else g_stroj->runFrame();
       }
-      if (g_stroj->cpu.jam) std::fill(zvuk.begin(), zvuk.end(), 0.f);
-      else g_stroj->genAudio(zvuk.data(), 882, 44100.0);
-      if (vDavce == 0) zvukVen = zvuk;                   // B353: ven jde zvuk 1. snimku periody (pri turbu ticho)
+      if (g_stroj->cpu.jam) { std::fill(zvuk.begin(), zvuk.end(), 0.f); std::fill(zvukR.begin(), zvukR.end(), 0.f); }
+      else g_stroj->genAudioStereo(zvuk.data(), zvukR.data(), 882, 44100.0);   // B361: levy POKEY 1, pravy POKEY 2
+      if (vDavce == 0) { zvukVen = zvuk; zvukVenR = zvukR; }   // B353: ven jde zvuk 1. snimku periody (pri turbu ticho)
+      // B361: do logu, kdyz program poprve sahne na druhy POKEY a kdy zacne / skonci stereo
+      if (g_stroj->pk2.bezi && !pk2Bezel)
+        devLog("B361 POKEY 2: program pouziva druhy POKEY ($D210-$D21F, stereo upgrade) - hleda ho, nebo na nem hraje");
+      pk2Bezel = g_stroj->pk2.bezi;
+      if (g_stroj->stereoAktivni() != stereoBylo) {
+        stereoBylo = g_stroj->stereoAktivni();
+        devLog(stereoBylo ? "B361 POKEY STEREO: program hraje na druhy POKEY - levy kanal POKEY 1, pravy POKEY 2"
+               : g_pokeyStereo.load() ? "B361 POKEY STEREO konec (studeny start) - pravy kanal zase jako levy"
+                                      : "B361 POKEY STEREO konec (vypnuto v menu) - pravy kanal zase jako levy");
+      }
       // B292: CSAVE nahrava linku SIO DATA OUT (signal pro magnetofon), ne
       // reproduktor - presne to, co by zapsal skutecny Atari 410/1010
       g_stroj->genTape(pasek.data(), 882);
@@ -1474,8 +1496,8 @@ static void emuVlaknoMain() {
       const int turbo = turboDuvodLocked();
       pokracovat = turbo && vDavce < TURBO_MAX && nap_ted_ns() - davkaOd < TURBO_ROZPOCET_NS;
       if (!pokracovat) {
-        if (vDavce > 1) std::fill(zvukVen.begin(), zvukVen.end(), 0.f);   // turbo: ticho v realnem case
-        nap_atari_audio_push(zvukVen.data(), 882);
+        if (vDavce > 1) { std::fill(zvukVen.begin(), zvukVen.end(), 0.f); std::fill(zvukVenR.begin(), zvukVenR.end(), 0.f); }   // turbo: ticho
+        nap_atari_audio_push_stereo(zvukVen.data(), zvukVenR.data(), 882);
         {
           std::lock_guard<std::mutex> f(g_mFrame);
           if (g_sdilenySnimek.size() != (size_t)AnticView::FW * AnticView::H)
@@ -1811,6 +1833,24 @@ Java_eu_atarihelp_emu10_NativeAtariCoreBridge_devCtlNative(JNIEnv *env, jclass, 
     // jen ASCII (JNI chce platne UTF-8); tabulatory a konce radku zustanou
     for (char &c : out) { const unsigned char u = (unsigned char)c; if (!(u == '\t' || u == '\n' || (u >= 0x20 && u <= 0x7E))) c = '?'; }
     return env->NewStringUTF(out.c_str());
+  }
+  // B361: "pokey_stereo:1" / "pokey_stereo:0" - druhy POKEY ($D210, stereo upgrade) zapnuty / vypnuty (zrcadlo
+  // prvniho jako na Atari bez upgradu). Plati hned (adresy) i pro kazdy dalsi studeny start. Vraci "1" / "0".
+  if (cmd == "pokey_stereo:1" || cmd == "pokey_stereo:0" || cmd == "pokey_stereo") {
+    if (cmd != "pokey_stereo") {
+      const bool zap = cmd == "pokey_stereo:1";
+      const bool zmena = g_pokeyStereo.exchange(zap) != zap;
+      {
+        std::lock_guard<std::mutex> l(g_mStroj);
+        if (g_stroj) {
+          g_stroj->stereoPokey = zap;
+          if (!zap) { g_stroj->pk2.cold(); g_stroj->updateIrq(); }   // vypnuty druhy POKEY nehraje ani neprerusuje
+        }
+      }
+      if (zmena) devLog(zap ? "B361 POKEY STEREO zapnuto: $D210-$D21F = druhy POKEY (levy kanal POKEY 1, pravy POKEY 2)"
+                            : "B361 POKEY STEREO vypnuto: $D210-$D21F = zrcadlo prvniho POKEYe (jako Atari bez upgradu), mono");
+    }
+    return env->NewStringUTF(g_pokeyStereo.load() ? "1" : "0");
   }
   // B314: "jazyk:en" / "jazyk:cs" - hlasky a napisy appky na pristroji (OPTIONS -> JAZYK)
   if (cmd == "jazyk:en" || cmd == "jazyk:cs") {

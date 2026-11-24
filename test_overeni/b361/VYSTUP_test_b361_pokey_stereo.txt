@@ -1,0 +1,21 @@
+B361 - druhy POKEY (stereo): skutecne jadro appky nap_atari_machine.h
+== 1) mono hry: zvuk presne jako pred B361
+OK     program jen pro prvni POKEY (SOUND, 1,79 MHz, 16 bitu, horni propust, 15 kHz, klapani klaves), 1500 snimku: stare jadro = nove jadro = levy = pravy kanal, bit po bitu (1323000 vzorku, rms 0.0774)
+== 2) program pro stereo na Atari se dvema POKEYi
+OK     program na obrazovce: STEREO (SKCTL druheho POKEYe nezastavil RANDOM prvniho)
+OK     levy kanal = POKEY 1: ton 488.5 Hz sila 0.0424 (ocekavano 0.0424, druhy ton 0.00005), pravy = POKEY 2: ton 327.3 Hz sila 0.0317 (ocekavano 0.0318, prvni ton 0.00003)
+OK     dokud program na druhy POKEY nehral (do snimku 838), pravy kanal = levy (bit po bitu)
+== 3) Atari bez upgradu (stereoPokey = false): $D210 = zrcadlo prvniho POKEYe
+OK     program pozna MONO, zapis do $D210 prepise ton prvniho POKEYe (326 Hz 0.0317, 487 Hz 0.00003), oba kanaly stejne - jako skutecne Atari bez upgradu
+== 4) adresy
+OK     $D210 / $D230 -> POKEY 2 AUDF1, $D2F2 -> POKEY 2 AUDF2, $D220 -> POKEY 1 AUDF1, $D2E2 -> POKEY 1 AUDF2 (bit A4 vybira cip)
+OK     bez upgradu: $D210 -> POKEY 1 (zrcadlo), druhy POKEY nic
+== 5) RANDOM, SKCTL a casovace druheho POKEYe
+OK     RANDOM druheho: v init rezimu $FF, po SKCTL=3 bezi (59 ruznych z 64); RANDOM prvniho bezi dal
+OK     casovac 1 druheho POKEYe: preruseni s periodou (AUDF+1) x 28 cyklu: AUDF 0 -> 28 AUDF 1 -> 56 AUDF 63 -> 1792 AUDF 255 -> 7168 (linka IRQ spolecna)
+== 6) studeny start
+OK     stereo hralo od snimku 838, po studenem startu zase mono: pravy = levy
+== 7) mono hry nic navic nestoji
+OK     po zapnuti: OS vynuloval $D2xx (128 zapisu do adres druheho POKEYe), druhy POKEY se z nul nerozbehl - nepocita se
+OK     snimek na PC: mono hra 2.441 ms, stereo hra (oba POKEYe + 2 kanaly FIR) 2.294 ms
+VYSLEDEK: 12 OK, 0 CHYBA

@@ -29,7 +29,8 @@
 //        typ bity 2-3: sirka bodu 1 / 2 / 4 (0 / 1 / 2) - v datech je kazdy f-ty
 //                      bod (Atari ma body 2 a vic sloupcu siroke, VBXE LR 4)
 //      zvuk: u16 pocet vzorku, u8 kanalu (1 = mono: L = R, 2 = stereo), pak int16
-//      (Atari hraje mono, stereo jen zvukova stopa kazety - mono = polovicni tok)
+//      (Atari vetsinou hraje mono - mono = polovicni tok; B361: program, ktery hraje
+//      na druhem POKEYi, posle stereo - levy POKEY 1, pravy POKEY 2; prohlizec umi oboje)
 #pragma once
 #include <cstdint>
 #include <cstring>

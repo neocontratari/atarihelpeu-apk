@@ -1,0 +1,3 @@
+app/build.gradle: versionCode 404, versionName EMU10-B361-POKEY-STEREO (build B361)
+OK     nejnovejsi zaznam B361 (verze 404, 24. 11. 2026): 4 vet cesky, 4 anglicky
+VYSLEDEK: 6 zaznamu, 0 CHYBA
