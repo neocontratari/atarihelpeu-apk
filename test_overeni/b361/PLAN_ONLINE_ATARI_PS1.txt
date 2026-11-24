@@ -28,8 +28,12 @@ Kod se zacne psat az po Reneho testu online Segy (B360/B361) a jeho rozhodnuti v
 =====================================================================================================================
  Proc prvni: C++ jadro presne po cyklech bez vlaken uvnitr, stav maly (64 KB az 1 MB + VBXE 512 KB, zabaleny
  desitky az stovky KB), hra (XEX / ATR / CAR) ma KB az jednotky MB - otisk hry je hned.
- Princip stejny jako Sega: oba telefony stejny program + stejne nastaveni, po domluve oba STUDENY START (snimek 0),
+ Princip stejny jako Sega: oba telefony stejny program + stejne nastaveni, po domluve stejny start (snimek 0),
  po siti jen stisky (lockstep), kazdou sekundu otisk stavu, pri rozjeti hrac 1 posle cely stav stroje.
+ START ZE STAVU (dotaz Reneho 24. 11. kvuli turbu): hrac 1 si hru nahraje u sebe normalne, S TURBEM (B353), a az se
+ pripoji hrac 2, posle mu cely stav stroje (A1) - oba hraji od stejneho mista a nikdo neceka na prvni nahrani
+ diskety v puvodni rychlosti. Nahravani BEHEM hry (dalsi level, napr. PoP ~70 s) pobezi online na obou v puvodni
+ rychlosti. Studeny start obou zustava jako zaloha (hry, ktere se nahraji hned).
 
  A1  STAV ATARI - ulozit / nahrat cely stroj (zaklad synchronizace; Atari ho dnes NEMA - zadny savestate)
      Co patri do stavu:
@@ -48,6 +52,10 @@ Kod se zacne psat az po Reneho testu online Segy (B360/B361) a jeho rozhodnuti v
      Vedlejsi uzitek: ULOZIT / NAHRAT POZICI i pro Atari (jako SAVE GAME u Segy a PS1) - kdyz Rene bude chtit.
 
  A2  NIC MIMO VSTUPY - vsechno, co dnes jde do stroje "bokem", za online hry vypnout, nebo poslat pres relaci
+     JEN ZA ONLINE HRY: offline zustava vsechno beze zmeny (Rene 24. 11.: "vypnul i v offline?" - NE). Po konci
+     online hry se vse vrati samo. Duvod: online musi oba telefony spocitat stejne snimky; co prijde jen do
+     jednoho telefonu (nebo v jinem snimku), hru rozjede. TURBO online nejde i proto, ze tempo urcuje pomalejsi
+     telefon a sit (lockstep) - pri nahravani pred online hrou ale pomuze START ZE STAVU (viz vyse).
      Vypnout za online hry:
       - TURBO (B353 - meni pocet snimku za periodu podle hodin telefonu)
       - psani programu z TXT (B299), klavesnice pocitace a Ctrl+V z prohlizece (B302 / B303), kazeta
