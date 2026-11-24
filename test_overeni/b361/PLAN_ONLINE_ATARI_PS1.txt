@@ -1,0 +1,159 @@
+PLAN: ONLINE ATARI 130XE A PS1 - BEZ KODU (24. 11. 2026, po B361)
+Rene 23. 11.: "nez udelam test udelej prosim jeste POKEY Dual Stereo - a pak se bez kodu priprav na onlina atari
+i ps1". Tady je priprava: co uz mame, co je potreba udelat, co je overene ve zdrojacich a co se musi overit testem.
+Kod se zacne psat az po Reneho testu online Segy (B360/B361) a jeho rozhodnuti v bode 4.
+
+=====================================================================================================================
+0) VYCHOZI STAV (overeno v kodu, B361)
+=====================================================================================================================
+ - Online vrstva je na jadru nezavisla (online/nap_online.h, nap_online_klient.h, nap_websocket.h):
+   AHOJ uz nese jadro (J_ATARI = 1, J_SEGA = 2, J_PS1 = 3), otisk hry (20 B), otisk nastaveni (u32), vstup je u32
+   na hrace a snimek. Z B360 se vezme vse: zpozdeni podle site (kazdy telefon sve), synchronizace stavu pri
+   rozjeti (RESYNC / STAV / STAV_OK), casti otisku (co se rozjelo), pojistky, presne duvody konce.
+ - Engine (NapServer v12.4.4, trida NapOnline - soukromy zdrojak, do repa nejde): mistnost ma System a uz ted
+   prijme "atari", "sega" i "ps1"; zprava nejvys 4 MB; 30 mistnosti; zalozena hra ceka na hrace 2 nejvys 30 min;
+   90 s ticha = konec. ENGINE NENI POTREBA MENIT (jen PS1 stav nad 4 MB - viz P5, resi se v appce).
+ - Java: NapOnlineHra (dotazy na engine, podpis telefonu), NapOnlineHlidac (log PRUBEH kazdych 10 s), Wi-Fi
+   zamek "atarihelp:online" (B360) - spolecne pro vsechny konzole.
+ - Rozpracovany navrh Atari online z B358 (diff do nap_atari_native.cpp, v repu neni - soukroma kopie mimo repo
+   "b358_atari_online_rozpracovano.patch"): OnlineTyp XEX / ATR / CAR, puvodni data programu, OPTION pri bootu
+   podle online snimku. Navazat na nej.
+ - PREDPOKLAD: online Sega musi byt nejdriv stabilni - Atari i PS1 stoji na stejne vrstve. Ceka se na Reneho test
+   B360/B361 (logy OBOU telefonu + log enginu); pricina rozjeti v pokusu 1 (snimky 720-780) zatim neni znama.
+   Drobnost pro dalsi build: Relace::stavNahran - nastavit cekaSnimek_ = UINT32_MAX (cekani po synchronizaci
+   na snimek G se ted nemeri).
+
+=====================================================================================================================
+1) ATARI 130XE ONLINE (nejdriv - jadro je nase)
+=====================================================================================================================
+ Proc prvni: C++ jadro presne po cyklech bez vlaken uvnitr, stav maly (64 KB az 1 MB + VBXE 512 KB, zabaleny
+ desitky az stovky KB), hra (XEX / ATR / CAR) ma KB az jednotky MB - otisk hry je hned.
+ Princip stejny jako Sega: oba telefony stejny program + stejne nastaveni, po domluve oba STUDENY START (snimek 0),
+ po siti jen stisky (lockstep), kazdou sekundu otisk stavu, pri rozjeti hrac 1 posle cely stav stroje.
+
+ A1  STAV ATARI - ulozit / nahrat cely stroj (zaklad synchronizace; Atari ho dnes NEMA - zadny savestate)
+     Co patri do stavu:
+      - procesor 6502 VCETNE rozdelane instrukce (jadro je po cyklech, snimek nekonci na hranici instrukce)
+      - cislo cyklu cyc (od nej jdou polynomy POKEY, RANDOM, SIO, udalosti)
+      - RAM 64 KB + rozsirena pamet (320K / 1088K) + PORTB / MMU (ktera banka, OS / BASIC / self-test ROM)
+      - ANTIC (display list, citace, NMI), GTIA (registry, hraci a strely, kolize, konzole, reproduktor)
+      - POKEY 1 i POKEY 2 (B361: citace, podteceni, 16 bitu, horni propusti, polynomy, casovace, IRQ,
+        klavesnice, SKCTL, seriovy port), PIA
+      - VBXE (512 KB pameti, registry, XDL, blitter v behu)
+      - cartridge (typ, banka, obsah), disketa D1: (stav SIO a ZMENENE sektory - hra si muze ukladat na disk),
+        kazeta, zavadec XEX (rozdelany segment), drzene START / SELECT / OPTION
+     Format jako Sega ("NAPS"): hlavicka "NAPA" + verze + delky casti + zlib.
+     Test: ulozit ve snimku N -> nahrat do noveho stroje -> oba dal stejne vstupy -> obraz, zvuk i otisk shodne bit
+     po bitu (hry s VBXE, disketa s vlastnim zavadecem, cartridge s bankami, BASIC, stereo POKEY, 1088K).
+     Vedlejsi uzitek: ULOZIT / NAHRAT POZICI i pro Atari (jako SAVE GAME u Segy a PS1) - kdyz Rene bude chtit.
+
+ A2  NIC MIMO VSTUPY - vsechno, co dnes jde do stroje "bokem", za online hry vypnout, nebo poslat pres relaci
+     Vypnout za online hry:
+      - TURBO (B353 - meni pocet snimku za periodu podle hodin telefonu)
+      - psani programu z TXT (B299), klavesnice pocitace a Ctrl+V z prohlizece (B302 / B303), kazeta
+      - LOG/CHYBA testy, prepinani POKEY STEREO (B361) a jine volby stroje za hry
+     Pres relaci (stejny snimek na obou telefonech):
+      - joystick 1 a 2 + FIRE, START / SELECT / OPTION, klavesa (KBCODE + SHIFT + CTRL), BREAK, HELP,
+        RESET (teply start), vymena diskety (cislo diskety z archivu)
+     Pocitat v online snimcich, ne v g_snimkuCelkem (ten je na kazdem telefonu jiny):
+      - drzeni OPTION pri bootu diskety (B348), restart s 1088K (B352)
+     Joystick dnes jde do stroje hned pri udalosti (aplikujJoyLocked) - online jen na zacatku snimku ze vstupu
+     relace (jinak na kazdem telefonu jindy).
+     Test: dva stroje ve stejnem procesu se stejnym scenarem vstupu a nahodne zpozdenym vlaknem -> otisky shodne
+     10 minut emulace.
+
+ A3  VSTUP, NASTAVENI, OTISKY
+      - vstup u32 na hrace a snimek: smer 4 b + FIRE + START / SELECT / OPTION 3 b + klavesa 6 b + SHIFT + CTRL +
+        "klavesa drzena" + BREAK + HELP + RESET = 20 bitu -> vejde se, protokol se kvuli Atari NEMENI
+      - porty: hrac 1 = joystick 1, hrac 2 = joystick 2. Hodne her pro 2 hrace se ale strida na JOYSTICKU 1 ->
+        volba v okne ONLINE "OBA NA JOYSTICKU 1" (oba hraci do portu 1)
+      - klavesnice obou hracu: stisknou-li oba ve stejnem snimku, plati hrac 1 (pravidlo stejne na obou)
+      - otisk nastaveni: verze appky (versionCode), BASIC zap / vyp, pamet 320K / 1088K, VBXE, POKEY STEREO (B361),
+        OS ROM, typ cartridge. Jine nastaveni -> hra se nespusti a okno napise, co se lisi.
+      - otisk hry: SHA-1 PUVODNICH dat (XEX / ATR / CAR; ZIP / RAR = cely archiv + ktera disketa)
+      - casti otisku stavu (co se rozjelo): RAM 64 KB, rozsirena pamet, VBXE, procesor + cipy, disketa
+
+ A4  VLAKNO EMULACE (nap_atari_native.cpp, emuVlaknoMain)
+      - hacky pred / po snimku jako u Segy: po domluve studeny start obou, lokalni -> vstupy, stav pro synchronizaci,
+        otisk po snimku
+      - cekani na druhy telefon MIMO zamek stroje g_mStroj (JNI z Javy a prenos na TV nesmi viset)
+      - tempo 50 snimku/s podle relace; pri cekani ticho (ne opakovany kus zvuku); log B3xx ONLINE PRUBEH pres
+        NapOnlineHlidac (stejny jako Sega)
+
+ A5  OVLADANI V APPCE (Atari nema HTML stranku jako Sega - pristroj kresli C++, menu jsou v Jave)
+      - na sirku kolecko ⚙ -> ONLINE; na TV menu ZPET -> ONLINE
+      - na vysku: servisni tlacitka jsou plna -> NAVRH: ONLINE jako zalozka v okne NET / HRY (N&P HRY)
+        -> ROZHODNE RENE (bod 4)
+      - okno: ZALOZIT HRU (velke cislo hry jako u Segy) / seznam her (jen system atari) / PRIPOJIT; hrac 2 bez hry
+        -> stahne ji ze serveru N&P (katalog her enginu ma u hry Id a pole Sha256); hra z telefonu se po siti
+        NEPOSILA (musi ji mit oba)
+      - na pristroji odznak "ONLINE · ČEKÁM NA DRUHÝ TELEFON" / "SYNCHRONIZUJI HRU" (jako Sega B360)
+
+ A6  TESTY (jako B357-B360): skutecny nap_atari_native.cpp ve dvou procesech pres mini engine (NapOnlineTest),
+     simulovana sit (zpozdeni, kolisani, spicky), porucha jadra hrace 2 -> synchronizace skutecnym stavem Atari,
+     zamrznuti telefonu, TSAN. Pak Rene: dva telefony, hra pro dva hrace, logy obou + engine.
+
+=====================================================================================================================
+2) PS1 ONLINE (PCSX-ReARMed - tezsi: cizi jadro s vlakny, stav 4,4 MB, hra stovky MB)
+=====================================================================================================================
+ P1  DETERMINISMUS JADRA - prectene ve zdrojacich (app/src/main/cpp/vendor/pcsx_rearmed), potvrdit testem:
+      - PREKLADAC VE VLAKNE (pcsx_rearmed_drc_thread, appka ted "auto" = zapnuto): dokud vlakno prekladace blok
+        neprelozi, bezi procesor PS1 v interpretu (new_dynarec/emu_if.c, ari64_execute_threaded_slow) a zpet se
+        prepne, az je preklad hotovy - KDY, zalezi na rychlosti telefonu. Interpret konci bloky jinde nez prelozeny
+        kod ("drc only stops on taken branches"), takze preruseni a udalosti se muzou vzit o kus jinde -> casovani
+        emulace se na dvou telefonech MUZE lisit -> rozjede se. Online proto "disabled" (blok se prelozi hned, na
+        obou stejne) - cena: obcas zaskubnuti pri prvnim prekladu. P8 dokaze, jestli je to opravdu potreba.
+      - KRESLENI VE VLAKNE (pcsx_rearmed_gpu_thread_rendering, "auto"): cykly kresleni pocita vlakno emulace ze
+        seznamu prikazu (plugins/gpulib/gpu_async.c), ale jedna vetev ("levne prikazy rovnou") zalezi na tom, jestli
+        kreslici vlakno zrovna nic nedela -> OVERIT testem (otisk RAM po snimcich, zap / vyp). Bez vlakna pocita
+        cykly kreslic (gpu_neon) podle stejnych vzorcu (gpulib/gpu_timing.h) - jestli vyjdou na cyklus stejne,
+        ukaze taky test; do te doby oba telefony stejne ("auto" se rozhoduje podle poctu jader -> online pevne).
+        VRAM do otisku az po dokresleni (gpu_async_sync).
+      - CTENI CD (pcsx_rearmed_async_cd "async"): kdyz sektor jeste neni nacteny, vlakno emulace si ho precte samo
+        (cdrom-async.c, cdra_do_read) a pocty v bufferu jdou jen do logu -> casovani emulace se nemeni, muze zustat
+      - zvuk ve vlakne uz vypnuty (pcsx_rearmed_spu_thread "disabled"), frameskip vychozi "disabled"
+      - BIOS "auto" = skutecny BIOS, kdyz je, jinak HLE -> SHA-1 BIOSu (nebo "HLE") do otisku nastaveni; prekladac
+        zap / vyp, kresleni ve vlakne, region taky
+ P2  PAMETOVA KARTA: hra pri startu kartu cte a kazdy telefon ma jinou -> rozjede se hned na zacatku.
+     Online docasna karta pro oba: a) prazdna (nejjednodussi), nebo b) hrac 1 posle svou kartu (128 KB) ->
+     pokracovat v ulozene hre. Skutecne karty hracu zustanou netknute. ROZHODNE RENE (bod 4) - i to, jestli si
+     hrac 1 muze ulozit to, co se nahraje online.
+ P3  OTISK HRY: appka umi CUE / BIN, IMG, ISO, CHD, PBP. SHA-1 celeho obrazu = stovky MB -> spocitat jednou
+     a zapamatovat (cesta + velikost + datum zmeny). Hry ze serveru N&P: katalog enginu ma u hry Id a pole
+     Sha256 -> bez pocitani (overit, ze je u her vyplnene).
+ P4  VSTUP: appka dava PS1 jen digitalni ovladac (16 tlacitek, port 1 / 2) a mys (B317) -> u32 staci (mys: posun
+     x / y po 8 bitech + 2 tlacitka). Analogove packy appka nema - kdyby prisly, protokol verze 3 s vetsim vstupem.
+ P5  STAV PRO SYNCHRONIZACI: retro_serialize = 4 380 651 az 4 397 047 B (frontend/libretro.c) -> zlib asi 1-2,5 MB;
+     engine bere nejvys 4 MB na zpravu -> STAV po castech (protokol verze 3, STAV_CAST po 512 KB), aby mezitim
+     chodily PING a vstupy. Synchronizace potrva sekundy (odznak SYNCHRONIZUJI) - u PS1 jen vyjimecne.
+ P6  VYKON: lockstep jede rychlosti pomalejsiho telefonu. Zmerit PS1 na S8 a A12 s prekladacem bez vlakna (radek
+     VYKON v logu). Kdyz telefon hru plnou rychlosti nestihne, online se bude sekat -> okno ONLINE to rekne predem.
+ P7  VLAKNO EMULACE PS1 (nap_ps1_native.cpp): tempo dnes ridi zvuk (nap_audio_skip_step) -> online snimek az po
+     vstupech obou hracu (relace); vstupy do portu 1 / 2 pred retro_run (nap_input_state), otisk po retro_run
+     (RAM 2 MB z retro_get_memory_data, SPU, VRAM). Stranka PS1 je HTML jako Sega -> stejny panel ONLINE
+     (napOnline) + NapOnlineHra, system ps1; hrac 2 bez hry -> HRY ZE SERVERU N&P (stovky MB - mistnost ceka 30 min).
+ P8  TESTY: jadro PCSX na PC (Linux, interpret): stejna hra dvakrat se stejnymi vstupy -> otisk RAM po snimcich
+     shodny, kresleni ve vlakne zap / vyp. Prekladac (ARM64) jen v telefonu: diagnosticky rezim - dva behy se
+     zaznamenanymi vstupy, porovnat otisky v logu (vlakno prekladace zap / vyp) - tim se P1 DOKAZE, ne odhadne.
+     Pak dva procesy pres engine, pak Rene: dva telefony + logy.
+
+=====================================================================================================================
+3) SPOLECNE A PORADI
+=====================================================================================================================
+ - Protokol verze 3 az kvuli PS1 (STAV po castech); Atari jde na verzi 2. Engine beze zmeny.
+ - Poradi (kazdy krok = build s testy, novinkami a napovedou):
+     0. Sega online stabilni - Reneho logy z obou telefonu + engine, oprava pricin rozjeti
+     1. A1 stav Atari (+ ULOZIT / NAHRAT POZICI pro Atari, kdyz Rene chce)          asi 1 build
+     2. A2-A4 Atari online v jadre + testy na PC                                      asi 1-2 buildy
+     3. A5 ovladani v appce, Rene: dva telefony                                       asi 1 build
+     4. P1 dukaz determinismu PS1 (PC + diagnostika v telefonu)                       asi 1 build
+     5. P2-P7 PS1 online + protokol verze 3                                           asi 2 buildy
+
+=====================================================================================================================
+4) ROZHODNE RENE (nez se zacne psat kod)
+=====================================================================================================================
+ 1. Atari na vysku: kde bude ONLINE (navrh: zalozka v okne NET / HRY)?
+ 2. Atari porty: vychozi "kazdy svuj joystick", nebo "oba na joysticku 1" (stridave hry)?
+ 3. PS1 karta online: prazdna, nebo karta hrace 1? A muze si hrac 1 nechat, co se ulozi online?
+ 4. Chce i pro Atari ULOZIT / NAHRAT POZICI (vyjde z A1 skoro zadarmo)?
+ 5. Poradi: Atari, pak PS1 (doporuceno), nebo naopak?
