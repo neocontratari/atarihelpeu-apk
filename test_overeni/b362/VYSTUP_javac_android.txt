@@ -1,0 +1,6 @@
+B362: cela appka (app/src/main/java/eu/atarihelp/emu10/*.java) proti android.jar API 34:
+  javac --release 17 -encoding UTF-8 -cp android-34.jar -d OUT *.java
+zdroju: 40, trid: 139, chyb: 0
+Note: Some input files use or override a deprecated API.
+Note: Recompile with -Xlint:deprecation for details.
+rc=0

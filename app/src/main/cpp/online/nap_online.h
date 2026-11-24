@@ -25,8 +25,17 @@
 //    RESYNC snimek (hrac 1 -> 2): hra se rozjela - pred timto snimkem prijde cely stav hry, do te doby necekej dal
 //    STAV snimek + data (hrac 1 -> 2): stav jadra (zabaleny, data jsou veci jadra) - hrac 2 ho nahraje a hraje se dal
 //    STAV_OK snimek (hrac 2 -> 1): nahrano
+//  B362 (verze 3) - po tretim testu (Rene 24. 11.: "furt je ten online spatny ... testuju na mistni LAN"): oba
+//  telefony cekaly na sebe navzajem (spicky site obema smery, odezva 7-123 ms), zpozdeni vyrostlo na 11 snimku.
+//    ODHAD + OPRAVA (jako netplay bojovek, "rollback"): kdyz stisk druheho pro snimek jeste neprisel, jadro snimek
+//      spocita s ODHADEM (druhy drzi, co drzel naposledy) a pred nim si ulozi stav; prijde-li skutecny stisk jiny,
+//      jadro se vrati k ulozenemu stavu a snimky spocita znovu (zkontrolujOdhady / vstupyOdhad / opraveno).
+//      Nejvys ODHAD_MAX snimku napred (jadro si limit snizi, kdyz je telefon pomaly), pak se ceka jako dosud.
+//      Otisky stavu jdou jen ze snimku spocitanych se skutecnymi stisky (odhadnute se odeslou, az se potvrdi).
+//    STATISTIKA text  kazdych 10 s druhemu telefonu (cekani, odhady, opravy, vykon, Wi-Fi) - log jednoho telefonu
+//      ukaze oba.
 //  Vsechna cisla little-endian. Bez Androidu a bez site - test test_overeni/b357 (dva emulatory, simulovana
-//  sit se zpozdenim a kolisanim).
+//  sit se zpozdenim a kolisanim), B362: test_overeni/b362 (spicky site, odhad a oprava).
 // =====================================================================================================
 #pragma once
 
@@ -46,9 +55,10 @@
 namespace nap {
 namespace online {
 
-constexpr uint8_t VERZE = 2;   // B360: zpozdeni kazdeho telefonu zvlast, synchronizace stavu pri rozjeti
+constexpr uint8_t VERZE = 3;   // B362: odhad stisku druheho + oprava, STATISTIKA (B360: zpozdeni kazdeho telefonu, synchronizace)
 
-enum Typ : uint8_t { AHOJ = 1, PING = 2, PONG = 3, START = 4, VSTUP = 5, HASH = 6, KONEC = 7, ZPOZDENI = 8, RESYNC = 9, STAV = 10, STAV_OK = 11 };
+enum Typ : uint8_t { AHOJ = 1, PING = 2, PONG = 3, START = 4, VSTUP = 5, HASH = 6, KONEC = 7, ZPOZDENI = 8, RESYNC = 9, STAV = 10, STAV_OK = 11,
+                     STATISTIKA = 12 };
 enum Jadro : uint8_t { J_ATARI = 1, J_SEGA = 2, J_PS1 = 3 };
 enum Duvod : uint8_t {
   D_NIC = 0,
@@ -70,6 +80,9 @@ constexpr int PINGU = 6;                    // kolik mereni odezvy pred startem
 constexpr uint32_t OKNO = 512;              // kruh vstupu (snimky); druhy hrac muze byt napred nejvys o 2 D
 constexpr uint8_t CASTI_MAX = 8;            // B360: casti otisku stavu (RAM 68000, RAM Z80, VRAM, CRAM, VSRAM ...)
 constexpr size_t STAV_MAX = 16u << 20;      // B360: zabaleny stav jadra nejvys 16 MB (Sega ~ 100-300 KB)
+constexpr uint32_t ODHAD_MAX = 8;           // B362: nejvys tolik snimku napred s odhadem stisku druheho (133 ms pri 60 Hz)
+constexpr uint32_t ODHAD_OPRAVA = 0xFFFFFFFFu;   // B362: vstupyOdhad pri oprave - snimky uz jednou spocitane, odhad bez limitu
+constexpr size_t STATISTIKA_MAX = 480;      // B362: text statistiky nejvys tolik znaku
 
 /** B360: ladeni za hry (vychozi hodnoty pro telefony; test je zkracuje). */
 struct Ladeni {
@@ -83,6 +96,10 @@ struct Ladeni {
   uint64_t synchronizaceOknoUs = 10000000;       // 3 synchronizace do 10 s = nepomaha, konec
   uint64_t cekatNaSynchronizaciUs = 5000000;     // hrac 2 vidi rozdil, RESYNC od hrace 1 neprisel
   uint64_t cekatNaStavUs = 10000000;             // hrac 2 dostal RESYNC, STAV neprisel (pojistka - jinak by stali oba)
+  uint64_t pingKazdychUs = 1000000;              // B362: odezva za hry kazdou sekundu (drive 2 s)
+  uint64_t statistikaPrvniUs = 3000000;          // B362: prvni STATISTIKA 3 s po startu
+  uint64_t statistikaKazdychUs = 10000000;       // B362: pak kazdych 10 s
+  bool odhad = false;                            // B362: jadro umi odhad + opravu -> START zpozdeni bez rezervy na kolisani
 };
 
 inline const char *popisDuvodu(uint8_t d) {
@@ -143,6 +160,45 @@ inline uint32_t zpozdeniZOdezvy(int rttMs, int jitterMs, double snimekMs) {
   return d;
 }
 
+/**
+ * B362: zpozdeni vstupu pro jadro s odhadem a opravou: jen jednosmerna cesta + 4 ms, v celych snimcich, + 1. Kolisani
+ * site (spicky) pokryje odhad - zpozdeni ovladani zustane male (LAN 2 snimky, internet 3-4).
+ */
+inline uint32_t zpozdeniSOdhadem(int rttMs, double snimekMs) {
+  if (snimekMs <= 0) snimekMs = 16.7;
+  const double jednosmerne = rttMs / 2.0 + 4.0;
+  uint32_t d = (uint32_t)(jednosmerne / snimekMs + 0.999) + 1;
+  if (d < ZPOZDENI_MIN) d = ZPOZDENI_MIN;
+  if (d > ZPOZDENI_MAX) d = ZPOZDENI_MAX;
+  return d;
+}
+
+/** B362: text od druheho telefonu do logu - jen tisknutelne ASCII, nejvys max znaku. */
+inline std::string cistyText(const uint8_t *d, size_t n, size_t max) {
+  std::string r;
+  for (size_t i = 0; i < n && r.size() < max; i++) r += (d[i] >= 32 && d[i] < 127) ? (char)d[i] : '?';
+  return r;
+}
+
+/** B362: nazev zpravy do logu (co od druheho prislo naposledy). */
+inline const char *nazevZpravy(uint8_t t) {
+  switch (t) {
+    case AHOJ: return "AHOJ";
+    case PING: return "PING";
+    case PONG: return "PONG";
+    case START: return "START";
+    case VSTUP: return "VSTUP";
+    case HASH: return "OTISK";
+    case KONEC: return "KONEC";
+    case ZPOZDENI: return "ZPOZDENI";
+    case RESYNC: return "RESYNC";
+    case STAV: return "STAV";
+    case STAV_OK: return "STAV_OK";
+    case STATISTIKA: return "STATISTIKA";
+    default: return "-";
+  }
+}
+
 struct Ahoj {
   uint8_t verze = VERZE;
   uint8_t jadro = 0;
@@ -152,8 +208,9 @@ struct Ahoj {
 };
 
 // =====================================================================================================
-//  Relace - jedna online hra. Vlakno emulace: lokalni(), stav (chciPoslatStav / posliStav, stavPro / stavNahran),
-//  vstupy(), otiskStavu(). Vlakno site: prijmi(), vyzvedni() / cekejNaOdchozi(), tik(). Vse pod jednim zamkem.
+//  Relace - jedna online hra. Vlakno emulace: lokalni(), zkontrolujOdhady() + opraveno(), stav (chciPoslatStav /
+//  posliStav, stavPro / stavNahran), vstupyOdhad() / vstupy(), otiskStavu(). Vlakno site: prijmi(), vyzvedni() /
+//  cekejNaOdchozi(), tik(). Vse pod jednim zamkem.
 //
 //  B360 - ZPOZDENI KAZDEHO TELEFONU ZVLAST: vstup ma v sobe cislo snimku, pro ktery plati, takze kazdy telefon
 //  muze posilat sve stisky s jinym predstihem (Dmuj_) a menit ho za hry. Zadny snimek nesmi zustat bez vstupu:
@@ -166,12 +223,21 @@ struct Ahoj {
 //  hrac 2 snimek G bez nej emulovat nemuze), a az sam dojde ke G, posle cely stav jadra (STAV). Hrac 2 pred
 //  snimkem G pocka na stav, nahraje ho a oba pokracuji od stejneho stavu se stejnymi vstupy. Otisky pred G se
 //  uz neporovnavaji. 3 synchronizace do 10 s (nebo 20 za hru) = nepomaha -> konec D_ROZJETO.
+//
+//  B362 - ODHAD + OPRAVA: jehoDo_ = prvni snimek, pro ktery stisk druheho jeste neprisel (TCP drzi poradi, takze
+//  vsechny pred nim uz jsou). Snimek >= jehoDo_ (nejvys maxOdhad napred) se smi spocitat s odhadem = posledni znamy
+//  stisk druheho (odhad_ si ho pamatuje). jistoDo_ = snimky pred nim jsou spocitane se skutecnymi stisky obou.
+//  Pred kazdym snimkem jadro zavola zkontrolujOdhady(): odhady, pro ktere uz prisel skutecny stisk, se porovnaji -
+//  prvni, ktery nesedi, vrati (jadro nahraje stav ulozeny pred nim a snimky do ted spocita znovu: vstupyOdhad s
+//  ODHAD_OPRAVA, otiskStavu). Otisk snimku spocitaneho s odhadem se drzi (cekajici_) a odesle se, az jistoDo_ za
+//  nim projde bez opravy; oprava ho zahodi (pocita se znovu). Synchronizace: hrac 1 posle stav pred G, az jsou
+//  vsechny snimky pred G overene; hrac 2 mohl s odhadem dojit za G - stav G ho vrati zpet (stavPro vrati G).
 // =====================================================================================================
 class Relace {
  public:
   Relace(bool hrac1, const Ahoj &ja, double snimekMs, const Ladeni &ladeni = Ladeni())
       : hrac1_(hrac1), ja_(ja), snimekMs_(snimekMs), ladeni_(ladeni) {
-    for (uint32_t i = 0; i < OKNO; i++) { muj_[i] = jeho_[i] = Polozka(); }
+    for (uint32_t i = 0; i < OKNO; i++) { muj_[i] = jeho_[i] = odhad_[i] = Polozka(); }
   }
 
   bool hrac1() const { return hrac1_; }
@@ -197,6 +263,7 @@ class Relace {
   /**
    * Pravidelne z vlakna site (kazdych ~20 ms): hrac 1 meri odezvu a pak posle START; oba hlidaji ticho,
    * B360: snizuji sve zpozdeni po klidu, hrac 2 hlida, ze po rozdilu otisku prijde synchronizace.
+   * B362: STATISTIKA druhemu telefonu (3 s po startu, pak kazdych 10 s).
    * @return true, kdyz se prave rozhodlo o startu (obe strany: emulator muze zacit od snimku 0)
    */
   bool tik(uint64_t ted, uint64_t tichoUs = 15000000ULL) {
@@ -215,7 +282,8 @@ class Relace {
         const int rtt = pongu_ ? (int)(nejmensiRttUs_ / 1000) : 300;
         // rezerva = cele rozpeti namerenych odezev (6 pingu nezachyti nejhorsi pripad; mobilni sit kolisa)
         const int jitter = pongu_ ? (int)((nejvetsiRttUs_ - nejmensiRttUs_) / 1000) : 50;
-        D_ = zpozdeniZOdezvy(rtt, jitter, snimekMs_);
+        // B362: jadro s odhadem a opravou kolisani spolkne samo - zpozdeni jen na jednosmernou cestu
+        D_ = ladeni_.odhad ? zpozdeniSOdhadem(rtt, snimekMs_) : zpozdeniZOdezvy(rtt, jitter, snimekMs_);
         std::vector<uint8_t> z;
         w8(z, START); w32(z, D_);
         posliLocked(z);
@@ -232,11 +300,17 @@ class Relace {
       return true;
     }
     if (stav_ == Stav::BEZI) {
-      if (ted >= dalsiPingUs_) {   // odezva i za hry (zobrazeni)
+      if (ted >= dalsiPingUs_) {   // odezva i za hry (zobrazeni, log)
         std::vector<uint8_t> z;
         w8(z, PING); w64(z, ted);
         posliLocked(z);
-        dalsiPingUs_ = ted + 2000000;
+        dalsiPingUs_ = ted + ladeni_.pingKazdychUs;
+      }
+      // B362: statistika druhemu telefonu (jeho log ukaze i tento telefon)
+      if (!dalsiStatistikaUs_) dalsiStatistikaUs_ = ted + ladeni_.statistikaPrvniUs;
+      else if (ted >= dalsiStatistikaUs_) {
+        posliStatistikuLocked();
+        dalsiStatistikaUs_ = ted + ladeni_.statistikaKazdychUs;
       }
       // B360: dlouho nikdo nezadal o vetsi zpozdeni -> o 1 dolu (mensi prodleva ovladani), ne pod start
       if (Dmuj_ > D_ && ted >= std::max(zvyseniUs_, snizeniUs_) + ladeni_.snizitPoUs) {
@@ -260,6 +334,7 @@ class Relace {
     if (stav_ == Stav::KONEC) return true;
     if (n < 1) return chybaLocked();
     posledniPrijemUs_ = ted ? ted : tedUs();
+    posledniTyp_ = d[0];
     switch (d[0]) {
       case AHOJ: {
         if (n < 1 + 1 + 1 + 20 + 4 + 1) return chybaLocked();
@@ -315,11 +390,12 @@ class Relace {
         if (n < 6 + 4 * (size_t)pocet) return chybaLocked();
         for (uint32_t i = 0; i < pocet; i++) {
           const uint32_t s = od + i;
-          if (s < spotrebovano_) continue;                                  // stary (uz emulovany) snimek
-          if (s >= spotrebovano_ + OKNO - 1) return chybaLocked();          // moc napred - nemozne (max 2 D)
+          if (s < jehoDo_) continue;                                        // uz ho mam (B362: drive "uz emulovany")
+          if (s >= jistoDo_ + OKNO - 1) return chybaLocked();               // moc napred - nemozne (D + odhad)
           Polozka &p = jeho_[s % OKNO];
           p.snimek = s; p.bity = r32(d + 6 + 4 * i); p.plne = true;
         }
+        if (stav_ == Stav::BEZI) posunJehoDoLocked();                       // pred startem: posune startLocked()
         cv_.notify_all();
         return true;
       }
@@ -364,7 +440,9 @@ class Relace {
         if (n < 5) return chybaLocked();
         if (hrac1_ || stav_ != Stav::BEZI) return true;
         const uint32_t g = r32(d + 1);
-        if (g < spotrebovano_) return chybaLocked();   // G uz je emulovany - nemozne (RESYNC jde pred vstupem pro G)
+        // G uz je spocitany se skutecnymi stisky - nemozne (RESYNC jde pred vstupem pro G). B362: s odhadem smel
+        // hrac 2 G uz spocitat (odhadem) - stav G ho vrati zpet
+        if (g < jistoDo_) return chybaLocked();
         resyncG_ = g;
         resyncAktivni_ = true;
         maStav_ = false;
@@ -373,6 +451,7 @@ class Relace {
         rozjetoVidimUs_ = 0;
         resyncOdUs_ = posledniPrijemUs_;
         synchronizaci_++;
+        cv_.notify_all();
         return true;
       }
       case STAV: {       // B360: hrac 1 -> 2: stav jadra pro snimek G
@@ -389,6 +468,12 @@ class Relace {
       case STAV_OK: {    // B360: hrac 2 -> 1: nahrano
         if (n < 5) return chybaLocked();
         if (hrac1_ && resyncAktivni_ && stavOdeslan_ && r32(d + 1) == resyncG_) { resyncAktivni_ = false; synchronizovano_++; }
+        return true;
+      }
+      case STATISTIKA: { // B362: druhy telefon o sobe (cekani, odhady, vykon, Wi-Fi) - jen do logu
+        jehoStatistika_ = cistyText(d + 1, n - 1, STATISTIKA_MAX);
+        jehoStatistik_++;
+        jehoStatistikaMujSnimek_ = spotrebovano_;
         return true;
       }
       default:
@@ -449,26 +534,71 @@ class Relace {
   }
 
   /**
-   * Vstupy obou hracu pro snimek (hrac 1, hrac 2). Ceka nejvys cekejMs na druheho hrace.
+   * B362: pred kazdym snimkem (vlakno emulace, PRED vstupyOdhad pro 'snimek'): snimky spocitane s odhadem, pro
+   * ktere uz prisel skutecny stisk druheho, porovna s odhadem. Vrati prvni, kde odhad NESEDEL - jadro nahraje stav
+   * ulozeny pred nim a snimky od nej do 'snimek' spocita znovu (vstupyOdhad s ODHAD_OPRAVA, otiskStavu, pak
+   * opraveno). UINT32_MAX = vse sedi (nebo neni co overit). Odhady, ktere sedely, se potvrdi i s cekajicimi otisky.
+   */
+  uint32_t zkontrolujOdhady(uint32_t snimek) {
+    std::lock_guard<std::mutex> l(m_);
+    if (stav_ != Stav::BEZI) return UINT32_MAX;
+    if (!hrac1_ && resyncAktivni_) return UINT32_MAX;   // stav od hrace 1 stejne prepise vse od G
+    const uint32_t konec = std::min(jehoDo_, snimek);
+    for (uint32_t f = jistoDo_; f < konec; f++) {
+      Polozka &o = odhad_[f % OKNO];
+      if (!(o.plne && o.snimek == f)) continue;        // spocitany se skutecnym stiskem
+      o.plne = false;
+      if (o.bity != jeho_[f % OKNO].bity) {
+        jistoDo_ = f;
+        zahodCekajiciOtiskyLocked(f);                   // otisky od f se spocitaji znovu
+        return f;
+      }
+      odhaduSedelo_++;
+    }
+    if (konec > jistoDo_) jistoDo_ = konec;
+    potvrdCekajiciOtiskyLocked();
+    return UINT32_MAX;
+  }
+
+  /**
+   * Vstupy obou hracu pro snimek (hrac 1, hrac 2). Ceka nejvys cekejMs na druheho hrace. B362: kdyz jeho stisk
+   * jeste neprisel a snimek je nejvys maxOdhad snimku za poslednim znamym, vrati ODHAD (posledni znamy stisk
+   * druheho) a odhad = true - jadro si PRED snimkem ulozi stav (pro opravu). maxOdhad 0 = bez odhadu (lockstep),
+   * ODHAD_OPRAVA = oprava (snimky uz jednou spocitane - bez limitu, bez cekani).
    * @return 1 = mam, 0 = jeste ne (cekat dal / emulator stoji), -1 = relace skoncila
    */
-  int vstupy(uint32_t snimek, uint32_t &p1, uint32_t &p2, int cekejMs) {
+  int vstupyOdhad(uint32_t snimek, uint32_t &p1, uint32_t &p2, bool &odhad, int cekejMs, uint32_t maxOdhad) {
     std::unique_lock<std::mutex> l(m_);
-    // B360: hrac 1 je za snimkem G a stav neposlal (jadro synchronizaci neumi) - hra se rozjela a nespravi se
-    if (hrac1_ && stav_ == Stav::BEZI && resyncAktivni_ && !stavOdeslan_ && snimek > resyncG_) ukonciLocked(D_ROZJETO, true);
+    odhad = false;
+    // B360: hrac 1 je za snimkem G a stav neposlal (jadro synchronizaci neumi) - hra se rozjela a nespravi se.
+    // B362: snimek G se bez odeslaneho stavu nespocita (blokovano) - jadro, ktere stav neposlalo, i kdyz uz mohlo
+    // (snimky pred G overene, chciPoslatStav vratil true), synchronizaci neumi -> konec hned u G
+    if (hrac1_ && stav_ == Stav::BEZI && resyncAktivni_ && !stavOdeslan_ && maxOdhad != ODHAD_OPRAVA &&
+        (snimek > resyncG_ || (snimek == resyncG_ && jistoDo_ >= resyncG_)))
+      ukonciLocked(D_ROZJETO, true);
+    // synchronizace: snimek G a dal se ted nesmi spocitat (hrac 2: nejdriv stav od hrace 1; B362 hrac 1: nejdriv
+    // stav odeslat - az budou snimky pred G overene)
+    auto blokovano = [&]() { return resyncAktivni_ && snimek >= resyncG_ && (hrac1_ ? !stavOdeslan_ : true); };
     auto mam = [&]() {
       if (stav_ == Stav::KONEC) return true;
-      if (!hrac1_ && resyncAktivni_ && snimek >= resyncG_) return false;   // B360: nejdriv stav od hrace 1
+      if (blokovano()) return false;
       if (snimek < D_) return true;
       const Polozka &a = muj_[snimek % OKNO], &b = jeho_[snimek % OKNO];
       return a.plne && a.snimek == snimek && b.plne && b.snimek == snimek;
     };
-    if (!mam()) {
+    auto mohuOdhadnout = [&]() {
+      if (stav_ != Stav::BEZI || maxOdhad == 0 || blokovano() || snimek < D_ || snimek < jehoDo_) return false;
+      const Polozka &a = muj_[snimek % OKNO];
+      if (!(a.plne && a.snimek == snimek)) return false;   // vlastni stisk musi byt (lokalni() ho poslal)
+      return maxOdhad == ODHAD_OPRAVA || snimek - jehoDo_ < maxOdhad;
+    };
+    if (!mam() && !mohuOdhadnout()) {
       if (cekaSnimek_ != snimek) { cekaSnimek_ = snimek; cekaOdUs_ = tedUs(); cekani_++; }
-      if (cekejMs > 0) cv_.wait_for(l, std::chrono::milliseconds(cekejMs), mam);
+      if (cekejMs > 0) cv_.wait_for(l, std::chrono::milliseconds(cekejMs), [&] { return mam() || mohuOdhadnout(); });
     }
     if (stav_ == Stav::KONEC) return -1;
-    if (!mam()) return 0;
+    const bool skutecne = mam();
+    if (!skutecne && !mohuOdhadnout()) return 0;
     if (cekaSnimek_ == snimek && cekaOdUs_) {   // B360: jak dlouho se na tento snimek cekalo
       const uint64_t t = tedUs() - cekaOdUs_;
       cekaniUs_ += t;
@@ -477,16 +607,47 @@ class Relace {
       cekaOdUs_ = 0;
     }
     uint32_t moje = 0, jeho = 0;
-    if (snimek >= D_) { moje = muj_[snimek % OKNO].bity; jeho = jeho_[snimek % OKNO].bity; }
+    if (snimek >= D_) {
+      moje = muj_[snimek % OKNO].bity;
+      Polozka &o = odhad_[snimek % OKNO];
+      if (skutecne) {
+        jeho = jeho_[snimek % OKNO].bity;
+        if (o.snimek == snimek) o.plne = false;      // B362: snimek se ted pocita se skutecnym stiskem (oprava)
+      } else {
+        jeho = jehoDo_ > D_ ? jeho_[(jehoDo_ - 1) % OKNO].bity : 0;   // B362: odhad - druhy drzi, co drzel naposledy
+        o.snimek = snimek; o.bity = jeho; o.plne = true;
+        odhad = true;
+        if (maxOdhad != ODHAD_OPRAVA) odhadnuto_++;
+      }
+    }
+    if (skutecne && jistoDo_ == snimek) jistoDo_ = snimek + 1;   // B362: vse do snimku vcetne se skutecnymi stisky
     p1 = hrac1_ ? moje : jeho;
     p2 = hrac1_ ? jeho : moje;
     if (snimek + 1 > spotrebovano_) spotrebovano_ = snimek + 1;
     return 1;
   }
 
+  /** Lockstep (bez odhadu): vstupy obou hracu pro snimek, ceka nejvys cekejMs. 1 / 0 / -1 jako vstupyOdhad. */
+  int vstupy(uint32_t snimek, uint32_t &p1, uint32_t &p2, int cekejMs) {
+    bool odhad = false;
+    return vstupyOdhad(snimek, p1, p2, odhad, cekejMs, 0);
+  }
+
+  /** B362: jadro opravilo snimky od .. po-1 (nahralo stav a spocitalo je znovu, trvalo us) - pocty do logu. */
+  void opraveno(uint32_t od, uint32_t po, uint64_t us) {
+    std::lock_guard<std::mutex> l(m_);
+    if (po <= od) return;
+    oprav_++;
+    prepocteno_ += po - od;
+    if (po - od > opravaMax_) opravaMax_ = po - od;
+    opravyUs_ += us;
+    if (us > opravaMaxUs_) opravaMaxUs_ = us;
+  }
+
   /**
    * Otisk stavu PO emulaci snimku (jen kazdych HASH_KAZDYCH snimku se posila a porovnava). B360: casti (RAM 68000,
-   * RAM Z80 ...) jdou s nim - pri rozjeti je v logu videt, co se lisi.
+   * RAM Z80 ...) jdou s nim - pri rozjeti je v logu videt, co se lisi. B362: snimek spocitany s odhadem (jistoDo_
+   * za nim jeste neni) se odesle, az se odhad potvrdi; oprava ho zahodi a jadro zavola otiskStavu znovu.
    */
   void otiskStavu(uint32_t snimek, uint64_t h, const uint64_t *casti = nullptr, uint8_t nCasti = 0) {
     if (snimek % HASH_KAZDYCH != 0) return;
@@ -494,21 +655,18 @@ class Relace {
     if (nCasti > CASTI_MAX) nCasti = CASTI_MAX;
     std::lock_guard<std::mutex> l(m_);
     if (stav_ != Stav::BEZI) return;
-    std::vector<uint8_t> z;
-    w8(z, HASH); w32(z, snimek); w64(z, h);
-    w8(z, nCasti);
-    for (uint8_t i = 0; i < nCasti; i++) w64(z, casti[i]);
-    posliLocked(z);
-    uint64_t c[CASTI_MAX] = {};
-    for (uint8_t i = 0; i < nCasti; i++) c[i] = casti[i];
-    porovnejLocked(snimek, h, c, nCasti, true);
+    if (snimek < jistoDo_) { posliOtiskLocked(snimek, h, casti, nCasti); return; }
+    Otisk &o = cekajici_[(snimek / HASH_KAZDYCH) % 8];
+    o.snimek = snimek; o.h = h; o.je = true; o.n = nCasti;
+    for (uint8_t k = 0; k < CASTI_MAX; k++) o.casti[k] = k < nCasti ? casti[k] : 0;
   }
 
   // ------------------------------------------------------------------ B360: synchronizace stavu (vlakno emulace)
-  /** Hrac 1: ma pred timto snimkem poslat cely stav jadra? (zavolat pred vstupy() kazdeho snimku) */
+  /** Hrac 1: ma pred timto snimkem poslat cely stav jadra? (zavolat pred vstupy() kazdeho snimku) B362: az jsou
+   *  snimky pred G overene (stav G nesmi byt spocitany z odhadu). */
   bool chciPoslatStav(uint32_t snimek) const {
     std::lock_guard<std::mutex> l(m_);
-    return hrac1_ && stav_ == Stav::BEZI && resyncAktivni_ && !stavOdeslan_ && snimek == resyncG_;
+    return hrac1_ && stav_ == Stav::BEZI && resyncAktivni_ && !stavOdeslan_ && snimek == resyncG_ && jistoDo_ >= snimek;
   }
   /** Hrac 1: stav jadra pred snimkem (data zabalilo jadro). */
   void posliStav(uint32_t snimek, const std::vector<uint8_t> &data) {
@@ -521,15 +679,18 @@ class Relace {
     stavOdeslan_ = true;
     stavKB_ = (uint32_t)((data.size() + 1023) / 1024);
     posliLocked(z);
+    cv_.notify_all();
   }
   /**
    * Hrac 2 pred snimkem (zavolat pred vstupy()): 0 = nic (zadna synchronizace, nebo relace skoncila - vstupy() to
-   * reknou), 1 = tady je stav pro tento snimek (nahrat do jadra a zavolat stavNahran), -1 = stav jeste neprisel
-   * (cekal nejvys cekejMs) - emulator stoji.
+   * reknou), 1 = tady je stav pro snimek g (nahrat do jadra, pokracovat OD g a zavolat stavNahran(g)), -1 = stav
+   * jeste neprisel (cekal nejvys cekejMs) - emulator stoji. B362: snimek muze byt i za G (hrac 2 s odhadem dosel
+   * dal, nez prisel RESYNC) - jadro se vrati na g.
    */
-  int stavPro(uint32_t snimek, std::vector<uint8_t> &data, int cekejMs) {
+  int stavPro(uint32_t snimek, std::vector<uint8_t> &data, uint32_t &g, int cekejMs) {
     std::unique_lock<std::mutex> l(m_);
-    if (hrac1_ || !resyncAktivni_ || snimek != resyncG_ || stav_ == Stav::KONEC) return 0;
+    if (hrac1_ || !resyncAktivni_ || snimek < resyncG_ || stav_ == Stav::KONEC) return 0;
+    g = resyncG_;
     if (!maStav_) {
       if (cekaSnimek_ != snimek) { cekaSnimek_ = snimek; cekaOdUs_ = tedUs(); }
       if (cekejMs > 0) cv_.wait_for(l, std::chrono::milliseconds(cekejMs), [&] { return maStav_ || stav_ == Stav::KONEC; });
@@ -541,18 +702,34 @@ class Relace {
     maStav_ = false;
     return 1;
   }
-  /** Hrac 2: stav nahrany do jadra - hraje se dal (posle STAV_OK). */
+  int stavPro(uint32_t snimek, std::vector<uint8_t> &data, int cekejMs) {
+    uint32_t g = 0;
+    return stavPro(snimek, data, g, cekejMs);
+  }
+  /** Hrac 2: stav nahrany do jadra pred snimkem g - hraje se dal od g (posle STAV_OK). */
   void stavNahran(uint32_t snimek) {
     std::lock_guard<std::mutex> l(m_);
     if (hrac1_ || !resyncAktivni_ || snimek != resyncG_) return;
     resyncAktivni_ = false;
     synchronizovano_++;
     if (cekaSnimek_ == snimek) cekaOdUs_ = 0;   // cekani na stav se nepocita jako cekani na stisky
+    cekaSnimek_ = UINT32_MAX;                  // B362 (z B360): dalsi cekani na snimek G se zase meri
+    // B362: od G se pocita znovu z nahraneho stavu - odhady a cekajici otisky pred tim neplati
+    jistoDo_ = snimek;
+    if (spotrebovano_ > snimek) spotrebovano_ = snimek;
+    for (uint32_t i = 0; i < OKNO; i++) odhad_[i].plne = false;
+    zahodCekajiciOtiskyLocked(0);
     std::vector<uint8_t> z;
     w8(z, STAV_OK); w32(z, snimek);
     posliLocked(z);
     cv_.notify_all();
   }
+
+  // ------------------------------------------------------------------ B362: info do statistiky (jakekoli vlakno)
+  /** Telefon o sobe (model, Android, Wi-Fi, baterie - pise Java) - jde druhemu ve STATISTIKA. */
+  void infoTelefonu(const std::string &s) { std::lock_guard<std::mutex> l(m_); infoTelefonu_ = s.substr(0, 200); }
+  /** Vykon jadra ("59.9 snimku/s, jadro 7.6 ms ...") - jde druhemu ve STATISTIKA. */
+  void vykon(const std::string &s) { std::lock_guard<std::mutex> l(m_); vykon_ = s.substr(0, 160); }
 
   // ------------------------------------------------------------------ stav
   Stav stav() const { std::lock_guard<std::mutex> l(m_); return stav_; }
@@ -586,6 +763,23 @@ class Relace {
   uint32_t tichoMs() const { std::lock_guard<std::mutex> l(m_); return posledniPrijemUs_ ? (uint32_t)((tedUs() - posledniPrijemUs_) / 1000) : 0; }
   std::string jmenoDruheho() const { std::lock_guard<std::mutex> l(m_); return jeho_ahoj_.jmeno; }
   bool mamAhojDruheho() const { std::lock_guard<std::mutex> l(m_); return mamAhoj_; }
+  // B362: odhad a oprava
+  uint32_t odhadnuto() const { std::lock_guard<std::mutex> l(m_); return odhadnuto_; }
+  uint32_t odhaduSedelo() const { std::lock_guard<std::mutex> l(m_); return odhaduSedelo_; }
+  uint32_t oprav() const { std::lock_guard<std::mutex> l(m_); return oprav_; }
+  uint32_t prepocteno() const { std::lock_guard<std::mutex> l(m_); return prepocteno_; }
+  uint32_t opravaMax() const { std::lock_guard<std::mutex> l(m_); return opravaMax_; }
+  uint32_t opravyMs() const { std::lock_guard<std::mutex> l(m_); return (uint32_t)(opravyUs_ / 1000); }
+  uint32_t opravaMaxMs() const { std::lock_guard<std::mutex> l(m_); return (uint32_t)(opravaMaxUs_ / 1000); }
+  uint32_t jistoDo() const { std::lock_guard<std::mutex> l(m_); return jistoDo_; }
+  uint32_t jehoDo() const { std::lock_guard<std::mutex> l(m_); return jehoDo_; }
+  // B362: statistika druheho telefonu a posledni zprava od nej (log)
+  std::string statistikaDruheho() const { std::lock_guard<std::mutex> l(m_); return jehoStatistika_; }
+  uint32_t statistikDruheho() const { std::lock_guard<std::mutex> l(m_); return jehoStatistik_; }
+  uint32_t mujSnimekPriStatistice() const { std::lock_guard<std::mutex> l(m_); return jehoStatistikaMujSnimek_; }
+  const char *posledniZprava() const { std::lock_guard<std::mutex> l(m_); return nazevZpravy(posledniTyp_); }
+  /** Text, ktery by ted sel druhemu ve STATISTIKA (test, log). */
+  std::string statistika() const { std::lock_guard<std::mutex> l(m_); return statistikaTextLocked(); }
 
  private:
   struct Polozka { uint32_t snimek = 0; uint32_t bity = 0; bool plne = false; };
@@ -611,12 +805,50 @@ class Relace {
   void startLocked(uint64_t ted) {
     stav_ = Stav::BEZI;
     spotrebovano_ = 0;
-    for (uint32_t i = 0; i < OKNO; i++) { muj_[i] = Polozka(); }
+    for (uint32_t i = 0; i < OKNO; i++) { muj_[i] = Polozka(); odhad_[i] = Polozka(); }
     // vstupy druheho, ktere prisly pred startem (hrac 2 zacina o pul odezvy driv nez hrac 1), nemazat
     dalsiPingUs_ = 0;
     Dmuj_ = D_;
     posledniPoslany_ = D_ - 1;    // snimky 0 .. D-1 maji vstup 0 u obou
     zvyseniUs_ = snizeniUs_ = ted;
+    // B362: snimky 0 .. D-1 maji stisk druheho (0) - prvni, ktery chybi, je D (nebo dal, kdyz uz prisly)
+    jistoDo_ = 0;
+    jehoDo_ = D_;
+    posunJehoDoLocked();
+  }
+
+  /** B362: jehoDo_ = prvni snimek bez stisku druheho (stisky chodi poporade - TCP). */
+  void posunJehoDoLocked() {
+    for (uint32_t i = 0; i < OKNO; i++) {
+      const Polozka &p = jeho_[jehoDo_ % OKNO];
+      if (!(p.plne && p.snimek == jehoDo_)) break;
+      jehoDo_++;
+    }
+  }
+
+  /** Otisk ze snimku spocitaneho se skutecnymi stisky: druhemu + porovnat s jeho. */
+  void posliOtiskLocked(uint32_t snimek, uint64_t h, const uint64_t *casti, uint8_t nCasti) {
+    std::vector<uint8_t> z;
+    w8(z, HASH); w32(z, snimek); w64(z, h);
+    w8(z, nCasti);
+    for (uint8_t i = 0; i < nCasti; i++) w64(z, casti[i]);
+    posliLocked(z);
+    uint64_t c[CASTI_MAX] = {};
+    for (uint8_t i = 0; i < nCasti; i++) c[i] = casti[i];
+    porovnejLocked(snimek, h, c, nCasti, true);
+  }
+
+  /** B362: cekajici otisky snimku pred jistoDo_ (odhady sedely) odeslat. */
+  void potvrdCekajiciOtiskyLocked() {
+    for (Otisk &o : cekajici_) {
+      if (!o.je || o.snimek >= jistoDo_) continue;
+      o.je = false;
+      posliOtiskLocked(o.snimek, o.h, o.casti, o.n);
+    }
+  }
+  /** B362: cekajici otisky od snimku dal zahodit (oprava je spocita znovu). */
+  void zahodCekajiciOtiskyLocked(uint32_t od) {
+    for (Otisk &o : cekajici_) if (o.je && o.snimek >= od) o.je = false;
   }
 
   void porovnejLocked(uint32_t s, uint64_t h, const uint64_t *casti, uint8_t nc, bool muj) {
@@ -677,6 +909,28 @@ class Relace {
     posliLocked(z);
   }
 
+  /** B362: text pro druhy telefon (jeho log): cekani, odhady, opravy, zpozdeni, odezva, vykon jadra, telefon. */
+  std::string statistikaTextLocked() const {
+    char b[360];
+    std::snprintf(b, sizeof(b),
+                  "snimek %u, cekal %ux (%u ms, nejdel %u ms), odhad %u snimku (sedelo %u), oprav %u (nejdel %u snimku / %u ms, "
+                  "celkem %u ms), zpozdeni %u, odezva %u ms",
+                  spotrebovano_, cekani_, (unsigned)(cekaniUs_ / 1000), (unsigned)(cekaniMaxUs_ / 1000), odhadnuto_, odhaduSedelo_,
+                  oprav_, opravaMax_, (unsigned)(opravaMaxUs_ / 1000), (unsigned)(opravyUs_ / 1000), Dmuj_, (unsigned)(posledniRttUs_ / 1000));
+    std::string s = b;
+    if (!vykon_.empty()) s += ", " + vykon_;
+    if (!infoTelefonu_.empty()) s += " | " + infoTelefonu_;
+    if (s.size() > STATISTIKA_MAX) s.resize(STATISTIKA_MAX);
+    return s;
+  }
+  void posliStatistikuLocked() {
+    const std::string t = statistikaTextLocked();
+    std::vector<uint8_t> z;
+    w8(z, STATISTIKA);
+    z.insert(z.end(), t.begin(), t.end());
+    posliLocked(z);
+  }
+
   bool chybaLocked() {
     ukonciLocked(D_CHYBA, true);
     return false;
@@ -687,6 +941,7 @@ class Relace {
     duvod_ = duvod;
     duvodOdeMne_ = poslat;
     if (poslat) {
+      if (stav_ == Stav::BEZI) posliStatistikuLocked();   // B362: posledni cisla do logu druheho (kdyz jeste prijdou)
       std::vector<uint8_t> z;
       w8(z, KONEC); w8(z, duvod);
       ven_.push_back(z);
@@ -731,6 +986,17 @@ class Relace {
   std::vector<uint8_t> stavData_;
   std::deque<uint64_t> synchronizaceCasy_;
   uint64_t rozjetoVidimUs_ = 0, resyncOdUs_ = 0;
+  // B362: odhad stisku druheho a oprava
+  Polozka odhad_[OKNO];
+  uint32_t jehoDo_ = 0, jistoDo_ = 0;
+  uint32_t odhadnuto_ = 0, odhaduSedelo_ = 0, oprav_ = 0, prepocteno_ = 0, opravaMax_ = 0;
+  uint64_t opravyUs_ = 0, opravaMaxUs_ = 0;
+  Otisk cekajici_[8];
+  // B362: statistika (text od druheho telefonu, posledni zprava)
+  std::string infoTelefonu_, vykon_, jehoStatistika_;
+  uint32_t jehoStatistik_ = 0, jehoStatistikaMujSnimek_ = 0;
+  uint64_t dalsiStatistikaUs_ = 0;
+  uint8_t posledniTyp_ = 0;
 };
 
 }  // namespace online

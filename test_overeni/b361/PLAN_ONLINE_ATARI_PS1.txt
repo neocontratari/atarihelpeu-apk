@@ -2,6 +2,10 @@ PLAN: ONLINE ATARI 130XE A PS1 - BEZ KODU (24. 11. 2026, po B361)
 Rene 23. 11.: "nez udelam test udelej prosim jeste POKEY Dual Stereo - a pak se bez kodu priprav na onlina atari
 i ps1". Tady je priprava: co uz mame, co je potreba udelat, co je overene ve zdrojacich a co se musi overit testem.
 Kod se zacne psat az po Reneho testu online Segy (B360/B361) a jeho rozhodnuti v bode 4.
+B362 (24. 11.): 3. test Segy na LAN = sekani (spicky site obema smery) -> online Sega ma ted odhad stisku druheho
++ opravu (nap_online.h verze 3, sdileny pro vsechna jadra). Pro Atari (A2) a PS1 (P3) z toho plyne: jadro musi umet
+rychle ulozit / nahrat stav (pro opravu, ne jen pro start) - u Atari A1 tedy hned s ohledem na rychlost (kruh az 10
+stavu), u PS1 je stav velky (RAM 2 MB + VRAM 1 MB + SPU 512 KB) - oprava jen par snimku, nebo lockstep (maxOdhad 0).
 
 =====================================================================================================================
 0) VYCHOZI STAV (overeno v kodu, B361)
@@ -161,6 +165,9 @@ Kod se zacne psat az po Reneho testu online Segy (B360/B361) a jeho rozhodnuti v
 4) ROZHODNE RENE (nez se zacne psat kod)
 =====================================================================================================================
  1. Atari na vysku: kde bude ONLINE (navrh: zalozka v okne NET / HRY)?
+    -> RENE 24. 11.: "na atari vyhod prepis tlacitko Log Chyba - neni potreba - tam dej online". HOTOVO v B362:
+       servisni tlacitko c. 6 = ONLINE (zatim okno "pripravuje se"), LOG / CHYBA je tlacitko dole v HELP.
+       A5 tedy: ONLINE na pristroji otevre ZALOZIT / PRIPOJIT (misto okna "pripravuje se").
  2. Atari porty: vychozi "kazdy svuj joystick", nebo "oba na joysticku 1" (stridave hry)?
  3. PS1 karta online: prazdna, nebo karta hrace 1? A muze si hrac 1 nechat, co se ulozi online?
  4. Chce i pro Atari ULOZIT / NAHRAT POZICI (vyjde z A1 skoro zadarmo)?

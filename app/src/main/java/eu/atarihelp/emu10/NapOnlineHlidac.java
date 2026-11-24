@@ -13,10 +13,17 @@ import java.util.Map;
  * (zadost / zvyseni / snizeni) a SYNCHRONIZACE po rozjeti (ve kterem otisku, co se lisilo, velikost stavu).
  * Vic radku najednou = oddelene '\n' (MainActivity je zapise kazdy zvlast).
  *
+ * B362 (Rene 24. 11.: "furt je ten online spatny ... testuju na mistni LAN" - a log druheho telefonu chybel): PRUBEH
+ * navic s odhady a opravami (odhad stisku druheho), kazdych 10 s DRUHY TELEFON (jeho cisla prisla po siti - log
+ * jednoho telefonu ukaze oba), TICHO (od druheho nic uz 2 / 5 / 10 s - co prislo naposledy), navrat hrace 2 pri
+ * synchronizaci a oprava bez ulozeneho stavu. infoTelefonu(): text o telefonu pro druhy telefon (jen ASCII).
+ *
  * Vstup = radky klic=hodnota: krok (appka: STAHUJI / SPOUSTIM), start (kolikate spojeni od spusteni appky - novy
  * pokus se pozna, i kdyz skonci stejne jako minuly), faze, kod, druhy, chyba, konec, odezva, zpozdeni, overeno,
  * snimek, hraje, hrac1 a B360 zpozdeni_ted, cekani, cekani_ms, cekani_max_ms, zadosti, zvyseni, snizeni,
  * synchronizaci, synchronizovano, rozjeti_snimek, rozjeti_casti, stav_kb (NativeSegaCoreBridge.onlineStav).
+ * B362: odhad, odhad_sedelo, oprav, oprava_max, oprava_max_ms, opravy_ms, prepocteno, odhad_max, chyb_opravy,
+ * navrat_ze, navrat_na, posledni_zprava, jeho_do, ticho_ms, druhy_info_c, druhy_info_snimek, druhy_info.
  */
 final class NapOnlineHlidac {
     static final long PRUBEH_KAZDYCH_MS = 10000;
@@ -25,6 +32,10 @@ final class NapOnlineHlidac {
     private boolean prvni = true;
     private long zadosti = 0, zvyseni = 0, snizeni = 0, synchronizaci = 0, synchronizovano = 0;
     private long prubehPosledniMs = 0;
+    // B362: statistika od druheho telefonu, ticho, navrat pri synchronizaci, oprava bez stavu
+    private long druhyInfo = 0, chybOpravy = 0, navratZe = 0;
+    private int tichoHlaseno = 0;   // kolik prahu ticha (2 / 5 / 10 s) uz je v logu
+    static final long[] TICHO_PRAHY_MS = {2000, 5000, 10000};
 
     /** Radky stavu -> radek / radky do logu, kdyz se neco zmenilo; jinak null. Prvni volani si stav jen zapamatuje. */
     String zmena(String radky) {
@@ -49,7 +60,8 @@ final class NapOnlineHlidac {
         // B360: citace prubehu (novy pokus = od nuly)
         long nZadosti = cislo(m, "zadosti"), nZvyseni = cislo(m, "zvyseni"), nSnizeni = cislo(m, "snizeni");
         long nSync = cislo(m, "synchronizaci"), nSynchronizovano = cislo(m, "synchronizovano");
-        if (novyPokus || poprve) { zadosti = zvyseni = snizeni = synchronizaci = synchronizovano = 0; }
+        if (novyPokus || poprve) { zadosti = zvyseni = snizeni = synchronizaci = synchronizovano = 0; druhyInfo = chybOpravy = navratZe = 0; tichoHlaseno = 0; }
+        long nDruhyInfo = cislo(m, "druhy_info_c"), nChybOpravy = cislo(m, "chyb_opravy"), nNavratZe = cislo(m, "navrat_ze");
         StringBuilder ven = new StringBuilder();
         if (!poprve && zmena) {
             String r = radekZmeny(m, nKrok, nStart, nFaze, nKod, nDruhy, nHraje, nKonec);
@@ -75,6 +87,26 @@ final class NapOnlineHlidac {
             }
             if (nSynchronizovano > synchronizovano)
                 pridej(ven, "B360 ONLINE synchronizace c. " + nSynchronizovano + " hotova (stav hry " + hodnota(m, "stav_kb") + " KB) - hraje se dal");
+            // B362: hrac 2 byl s odhadem uz za snimkem synchronizace - stav od hrace 1 ho vratil
+            if (nNavratZe > 0 && nNavratZe != navratZe)
+                pridej(ven, "B362 ONLINE synchronizace: byl jsem s odhadem uz na snimku " + nNavratZe + " - stav od hrace 1 me vratil na snimek "
+                        + hodnota(m, "navrat_na"));
+            if (nChybOpravy > chybOpravy)
+                pridej(ven, "B362 ONLINE oprava odhadu nenasla ulozeny stav (" + nChybOpravy + "x) - rozdil poznaji otisky, synchronizace ho spravi");
+            // B362: cisla druheho telefonu (prisla po siti) - log jednoho telefonu ukaze oba
+            if (nDruhyInfo > druhyInfo && !hodnota(m, "druhy_info").isEmpty())
+                pridej(ven, "B362 ONLINE DRUHY TELEFON (ja snimek " + hodnota(m, "druhy_info_snimek") + "): " + jedenRadek(hodnota(m, "druhy_info")));
+            // B362: od druheho nic uz 2 / 5 / 10 s - kdy presne to zacalo a co prislo naposledy
+            long ticho = cislo(m, "ticho_ms");
+            if (ticho < 1000) tichoHlaseno = 0;
+            else if (tichoHlaseno < TICHO_PRAHY_MS.length && ticho >= TICHO_PRAHY_MS[tichoHlaseno]) {
+                while (tichoHlaseno < TICHO_PRAHY_MS.length && ticho >= TICHO_PRAHY_MS[tichoHlaseno]) tichoHlaseno++;
+                long jehoDo = cislo(m, "jeho_do");
+                pridej(ven, "B362 ONLINE TICHO: od druheho telefonu nic neprislo uz " + (ticho / 1000) + " s (posledni zprava: "
+                        + (hodnota(m, "posledni_zprava").isEmpty() ? "-" : hodnota(m, "posledni_zprava"))
+                        + (jehoDo > 0 ? ", jeho stisky do snimku " + (jehoDo - 1) : "") + ", ja snimek " + hodnota(m, "snimek")
+                        + ", stojim " + hodnota(m, "stoji_ms") + " ms)");
+            }
             if (!hralo) prubehPosledniMs = tedMs;
             else if (tedMs - prubehPosledniMs >= PRUBEH_KAZDYCH_MS) {
                 prubehPosledniMs = tedMs;
@@ -86,6 +118,9 @@ final class NapOnlineHlidac {
         if (nSnizeni > snizeni) snizeni = nSnizeni;
         if (nSync > synchronizaci) synchronizaci = nSync;
         if (nSynchronizovano > synchronizovano) synchronizovano = nSynchronizovano;
+        if (nDruhyInfo > druhyInfo) druhyInfo = nDruhyInfo;
+        if (nChybOpravy > chybOpravy) chybOpravy = nChybOpravy;
+        if (nNavratZe > 0) navratZe = nNavratZe;
         return ven.length() == 0 ? null : ven.toString();
     }
 
@@ -110,12 +145,47 @@ final class NapOnlineHlidac {
         }
     }
 
-    /** B360: "cekalo se 3x (120 ms, nejdel 70 ms), zpozdeni 2 -> 4, synchronizaci 0" */
+    /**
+     * B360: "cekalo se 3x (120 ms, nejdel 70 ms), zpozdeni 2 -> 4, synchronizaci 0"; B362 navic (kdyz je C++ posila):
+     * ", odhad 40 snimku (sedelo 35), oprav 5 (nejdel 6 snimku / 31 ms), limit odhadu 8"
+     */
     private static String prubeh(Map<String, String> m) {
         String zac = hodnota(m, "zpozdeni"), ted = hodnota(m, "zpozdeni_ted");
-        return "cekalo se " + hodnota(m, "cekani") + "x (" + hodnota(m, "cekani_ms") + " ms, nejdel " + hodnota(m, "cekani_max_ms") + " ms)"
+        String r = "cekalo se " + hodnota(m, "cekani") + "x (" + hodnota(m, "cekani_ms") + " ms, nejdel " + hodnota(m, "cekani_max_ms") + " ms)"
                 + ", zpozdeni " + (zac.equals(ted) || ted.isEmpty() ? zac : zac + " -> " + ted)
                 + ", synchronizaci " + (hodnota(m, "synchronizaci").isEmpty() ? "0" : hodnota(m, "synchronizaci"));
+        if (m.containsKey("odhad"))
+            r += ", odhad " + hodnota(m, "odhad") + " snimku (sedelo " + hodnota(m, "odhad_sedelo") + "), oprav " + hodnota(m, "oprav")
+                    + " (nejdel " + hodnota(m, "oprava_max") + " snimku / " + hodnota(m, "oprava_max_ms") + " ms), limit odhadu " + hodnota(m, "odhad_max");
+        return r;
+    }
+
+    /**
+     * B362: text o tomto telefonu pro druhy telefon (jde mu ve STATISTIKA, jen ASCII, nejvys 200 znaku):
+     * "SM-A125F Android 12 (API 31), Wi-Fi -61 dBm 2.4 GHz 72 Mb/s, LOW_LATENCY, baterie 31.2 C, sporic vyp, teplo NONE".
+     * rssi / frekvence / rychlost 0 = nevim (Wi-Fi vypnuta, bez opravneni); rezim "" = zamek Wi-Fi drzen neni.
+     */
+    static String infoTelefonu(String model, String android, int api, int rssiDbm, int frekvenceMhz, int rychlostMbs,
+                               String rezimWifi, String baterieC, boolean sporic, String teplo) {
+        StringBuilder b = new StringBuilder();
+        b.append(model == null || model.isEmpty() ? "telefon" : model).append(" Android ").append(android == null ? "?" : android)
+                .append(" (API ").append(api).append(")");
+        if (rssiDbm < 0 || frekvenceMhz > 0) {
+            b.append(", Wi-Fi");
+            if (rssiDbm < 0) b.append(' ').append(rssiDbm).append(" dBm");
+            if (frekvenceMhz > 0) b.append(' ').append(frekvenceMhz >= 5900 ? "6" : frekvenceMhz >= 4900 ? "5" : "2.4").append(" GHz");
+            if (rychlostMbs > 0) b.append(' ').append(rychlostMbs).append(" Mb/s");
+        } else b.append(", Wi-Fi ?");
+        b.append(", ").append(rezimWifi == null || rezimWifi.isEmpty() ? "Wi-Fi zamek ne" : rezimWifi);
+        if (baterieC != null && !baterieC.isEmpty() && !"na".equals(baterieC) && !"err".equals(baterieC)) b.append(", baterie ").append(baterieC).append(" C");
+        b.append(", sporic ").append(sporic ? "ZAP" : "vyp");
+        if (teplo != null && !teplo.isEmpty()) b.append(", teplo ").append(teplo);
+        StringBuilder a = new StringBuilder();
+        for (int i = 0; i < b.length() && a.length() < 200; i++) {
+            char c = b.charAt(i);
+            a.append(c >= 32 && c < 127 ? c : '?');
+        }
+        return a.toString();
     }
 
     /** Konec sledovani: online skoncilo (nebo nebezi) a appka nic nedela. */

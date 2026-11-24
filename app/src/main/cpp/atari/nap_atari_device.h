@@ -419,7 +419,7 @@ static const float TAPE_Y = 1440.f, TAPE_H = 70.f;
 struct SvcDef { const char *l1; const char *l2; uint32_t led; bool small; };
 static const SvcDef SVC[8] = {
   {"NET","HRY",0xff8a00,false},{"XEX","MOBIL",0x00e2da,false},{"ATR","DISK",0x1ab4ff,false},
-  {"TURBO","BASIC",0x00e2da,false},{"BASIC/TBXL","TXT",0x1a8cff,true},{"LOG","CHYBA",0xff8a00,false},
+  {"TURBO","BASIC",0x00e2da,false},{"BASIC/TBXL","TXT",0x1a8cff,true},{"","ONLINE",0x2fd36b,false},   // B362: misto LOG/CHYBA (Rene)
   {"","HELP",0xff8a00,false},{"","MENU",0xff8a00,false},
 };
 static const float SVC_Y = 1537.f, SVC_H = 78.f, SVC_X0 = 42.f, SVC_W = 100.f, SVC_GAP = 11.f;
@@ -437,7 +437,9 @@ enum : int {
 };
 // Servisni akce (vraci se Jave - otevreni vyberu souboru, dialogu, menu...)
 enum : int {
-  SVC_NET = 1, SVC_XEX = 2, SVC_ATR = 3, SVC_TBXL = 4, SVC_TXT = 5, SVC_LOG = 6, SVC_HELP = 7, SVC_MENU = 8,
+  SVC_NET = 1, SVC_XEX = 2, SVC_ATR = 3, SVC_TBXL = 4, SVC_TXT = 5,
+  SVC_ONLINE = 6,  // B362: ONLINE (drive LOG / CHYBA - ten je ted v HELP); Java: okno online hry pro dva hrace
+  SVC_HELP = 7, SVC_MENU = 8,
   SVC_EJECT = 9,   // B292: EJECT na kazetaku -> Java nabidne ulozene WAV (kazety)
   SVC_CTRL = 10,   // B297: ozubene kolecko na sirku -> menu D-PAD A OVLADANI
   SVC_CTRL_SAVE = 11,   // B297: uprava rozlozeni HOTOVO -> Java ulozi nastaveni

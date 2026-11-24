@@ -1,0 +1,45 @@
+== 1) SHA-1 a handshake WebSocketu (RFC 6455)
+OK     SHA-1("abc") = a9993e364706816aba3e25717850c26c9cd0d89d
+OK     SHA-1(milion x 'a') (FIPS 180 vektor)
+OK     Sec-WebSocket-Accept = priklad z RFC 6455
+OK     adresa enginu http://192.0.2.10:8080 -> host + port
+OK     https (TLS) neumim -> false (engine je http)
+== 2) zpozdeni vstupu z odezvy (60 snimku/s)
+OK     LAN 20 ms -> D 2
+OK     internet CZ 80 ms -> D 5
+OK     2 s -> strop 15
+== 3) LAN 5 ms, 420 snimku (7 s)
+OK     oba telefony 420 snimku, KAZDY obraz stejny (a 420, b 420, prvni rozdil 420)
+OK     hrac 1 (zalozil) = 1. ovladac, hrac 2 (pripojil se) = 2. ovladac, na obou stejne, vstup plati o D snimku pozdeji
+OK     zpozdeni vstupu D = 2 snimku (33 ms) na obou, odezva 14 ms
+OK     otisk stavu overen 7x / 7x, nerozjelo se
+      (cekani na druheho: a 0 x, b 0 x)
+== 4) internet 40 ms +-15 ms, 420 snimku (7 s)
+OK     oba telefony 420 snimku, KAZDY obraz stejny (a 420, b 420, prvni rozdil 420)
+OK     hrac 1 (zalozil) = 1. ovladac, hrac 2 (pripojil se) = 2. ovladac, na obou stejne, vstup plati o D snimku pozdeji
+OK     zpozdeni vstupu D = 6 snimku (100 ms) na obou, odezva 100 ms
+OK     otisk stavu overen 7x / 7x, nerozjelo se
+      (cekani na druheho: a 0 x, b 0 x)
+== 5) mobilni sit 90 ms +-40 ms, 420 snimku (7 s)
+OK     oba telefony 420 snimku, KAZDY obraz stejny (a 420, b 420, prvni rozdil 420)
+OK     hrac 1 (zalozil) = 1. ovladac, hrac 2 (pripojil se) = 2. ovladac, na obou stejne, vstup plati o D snimku pozdeji
+OK     zpozdeni vstupu D = 11 snimku (183 ms) na obou, odezva 241 ms
+OK     otisk stavu overen 7x / 7x, nerozjelo se
+      (cekani na druheho: a 0 x, b 0 x)
+== 6) rozjeti: emulator B se ve snimku 200 splete -> poznaji to oba (otisk v 240)
+OK     oba konci: hra se rozjela a synchronizace nepomohla (otisk stavu se lisi) (a ve snimku 240, b 240)
+OK     prvni porovnani po chybe = snimek 240 (otisky kazdych 60)
+== 7) jina hra / jine nastaveni / jina verze -> nezacne, oba vedi proc
+OK     jina hra: druhy hrac ma jinou hru nebo jine nastaveni
+OK     jine nastaveni jadra (region ...) -> jina hra
+OK     jina verze: druhy hrac ma jinou verzi appky - aktualizujte obe
+OK     jmena hracu dorazila (Rene / bracha)
+== 8) druhy telefon zmizi (zadna zprava) -> ticho -> konec, emulator nevisi
+OK     a: od druheho hrace dlouho nic neprislo - spadla mu sit, nebo se telefon zasekl po 122 snimcich
+== 9) druhy hrac ukonci hru -> prvni se to dozvi
+OK     a: druhy hrac hru ukoncil po 181 snimcich
+== 10) poskozena zprava -> konec s chybou (ne pad)
+OK     kratka VSTUP -> D_CHYBA
+OK     neznamy typ zpravy (novejsi verze) -> ignorovat
+
+VYSLEDEK: 30 OK, 0 CHYB

@@ -1,0 +1,89 @@
+B362 - ONLINE S ODHADEM STISKU DRUHEHO A OPRAVOU + TLACITKO ONLINE U ATARI (24. 11. 2026)
+=====================================================================================
+
+PROC
+  Rene 24. 11. (3. test online Segy, oba telefony na mistni LAN, log jen z S8):
+    "furt je ten online spatny Partaku. A to ho testuju na mistni LAN"
+    "na atari vyhod prepis tlacitko Log Chyba - neni potreba - tam dej online Partaku"
+  Log S8 (Golden Axe II, 87 s): S8 sam v poradku (60 snimku/s, zvuk bez vypadku), 72 otisku stavu sedelo,
+  synchronizaci 0 (oprava B360 funguje). ALE: S8 cekal na stisky A12 119x (2,2 s, nejdel 201 ms), A12 4x zadal S8
+  o vetsi zpozdeni -> cekaly OBA telefony na sebe = spicky site obema smery (odezva 7-123 ms, na LAN ma byt ~5-10),
+  zpozdeni ovladani vyrostlo ze 4 na 11 snimku (183 ms). Konec: v 15:50:55 od A12 prestalo chodit uplne vsechno
+  (ani odpoved na ping), S8 mel Wi-Fi v poradku (obraz na TV jel dal) - co se stalo na A12, ukaze jen jeho log.
+
+CO SE ZMENILO (app/src/main/cpp/online, nap_sega_native_proof.cpp, Java)
+  1) ODHAD + OPRAVA (protokol verze 3, nap_online.h): kdyz stisk druheho pro snimek jeste neprisel, jadro snimek
+     spocita s ODHADEM (druhy drzi, co drzel naposledy) a pred nim si ulozi stav (ClownMDEmu_SaveState + ovladace,
+     ~1,1 MB, kruh ODHAD_MAX + 2 = 10, jen kdyz se odhaduje). Kdyz skutecny stisk prijde jiny, stav se vrati a
+     snimky az do ted se spocitaji znovu - bez zvuku a obrazu (g_online_prepocet; FM/PSG generator bezi, vystup ne).
+     Nejvys 8 snimku napred (limit podle rychlosti jadra: 66 ms / prumer snimku, 2..8), pak se ceka jako drive.
+     Otisky stavu jen ze snimku se skutecnymi stisky (odhadnute se drzi a odeslou, az se potvrdi).
+     Synchronizace (B360) s odhadem: hrac 1 posle stav pred G az po overeni snimku pred G; hrac 2 mohl s odhadem
+     dojit za G - stav G ho vrati zpet. Zpozdeni na startu s odhadem jen na jednosmernou cestu (LAN 2 snimky),
+     za hry roste po nejvys 2 snimcich, strop start + 4.
+  2) STATISTIKA (nova zprava 12): kazdych 10 s (prvni po 3 s) kazdy telefon posle druhemu sva cisla - cekani,
+     odhady, opravy, zpozdeni, odezva, vykon jadra (snimku/s, ms) a info z Javy (model, Android, Wi-Fi dBm / pasmo /
+     rychlost, zamek Wi-Fi, baterie, sporic, prehrati; ACCESS_WIFI_STATE, zadne SSID ani adresy). V logu radek
+     "B362 ONLINE DRUHY TELEFON" - log jednoho telefonu ukaze oba. Dale "B362 ONLINE TICHO" (od druheho nic uz
+     2 / 5 / 10 s, co prislo naposledy), PRUBEH s odhady a opravami.
+  3) WebSocket: TCP_QUICKACK po kazdem prijmu (server na Windows muze drzet dalsi zpravu, dokud telefon nepotvrdi
+     predchozi - a telefon, ktery ceka, potvrzoval az po 40 ms); IP_TOS 0xB8 (stisky na Wi-Fi s prednosti).
+  4) START (nalezeno pri regresi): engine posle "hrac" nejdriv hraci 1, ten hned posle AHOJ - kdyz ho engine predal
+     hraci 2 drive nez jeho zpravu "hrac", klient ho zahodil a hra NIKDY nezacala (i B361: 1x z 25 behu testu).
+     Klient ted binarni zpravy pred "hrac" podrzi (nap_online_klient.h, predRelaci).
+  5) Atari: servisni tlacitko LOG / CHYBA -> ONLINE (zelene; okno: pro Atari se pripravuje, online ted na Seze).
+     LOG / CHYBA (log, testy, RAM Atari) je ted tlacitko dole v HELP pristroje. Napoveda CZ / EN, novinky B362.
+
+1) Relace bez Androidu a bez site (simulovana sit jako TCP, spicky 60-200 ms obema smery jako v logu S8):
+     g++ -std=c++17 -O2 -pthread -Wall -Wextra -I../../app/src/main/cpp -o test_b362_odhad test_b362_odhad.cpp
+     ./test_b362_odhad                       -> VYSTUP_test_b362_odhad.txt (17 OK)
+       - STEJNY profil site: lockstep B361 stal 129x / 2819 ms a zpozdeni vyrostlo na 10 (jako log S8),
+         s odhadem 8x / 163 ms, zpozdeni 2 -> 3-4; obrazy obou hracu po opravach STEJNE a stejne jako prepocet
+         od nuly ze skutecnych vstupu; odhad omezeny (druhy mlci -> nejvys 8 snimku, pak ceka, ticho = konec);
+         synchronizace s odhadem vcetne navratu hrace 2 ze snimku za G; jadro bez synchronizace -> konec u G;
+         STATISTIKA obema smery (jen ASCII)
+     ThreadSanitizer (-O1 -g -fsanitize=thread)  -> VYSTUP_tsan_b362_odhad.txt (0 varovani)
+2) Skutecne jadro Segy (nap_sega_native_proof.cpp + clownmdemu + testovaci ROM z ../b357/sega_test_rom.py), dva
+   procesy pres engine (mono NapOnlineTest = trida NapOnline z NapServer.cs v12.4.5, balicek enginu u Reneho /
+   Clauda, NE v repozitari - prikaz prekladu v ../b357/JAK_SPUSTIT.txt). Spicky site = vlakno site telefonu obcas
+   "usne" na 60-220 ms (hacek NAP_ONLINE_TEST_SIT v nap_online_klient.h, v appce prazdny). Prepinace prekladu
+   SEGA ... jako ../b360/JAK_SPUSTIT.txt (bod 2), navic -I<PRAC> (sega_test_rom.h) a PRAC/clown/*.o:
+     g++ -std=c++17 -O2 -pthread -Wno-unused-function $SEGA -I$PRAC -o test_b362_sega_online test_b362_sega_online.cpp \
+         $PRAC/clown/*.o -l:libEGL.so.1 -l:libGLESv2.so.2 -lz
+     ./test_b362_sega_online <port enginu>   -> VYSTUP_test_b362_sega_online.txt (7 OK)
+       - spicky na obou telefonech, stisky se meni kazdych 5-85 ms: stovky odhadnutych snimku, desitky oprav az
+         9 snimku - otisky po celou hru STEJNE, zadne rozjeti ani synchronizace, otisk jadra ve snimku 660 u obou
+         stejny = oprava skutecneho jadra je presna; STATISTIKA s info z Javy (onlineTelefon)
+       - porucha jadra hrace 2 ve snimku 300 + spicky -> synchronizace i s odhadem, hra pokracuje
+       - telefon 2 zamrzne (SIGSTOP) -> telefon 1 nejvys 8 snimku s odhadem, pak stoji, po 15 s konec s duvodem
+     ThreadSanitizer                         -> VYSTUP_tsan_b362_sega_online.txt (0 varovani)
+3) Start, kdyz engine preda AHOJ hrace 1 drive nez zpravu "hrac" hraci 2 - engine pro test s jednim radkem navic
+   JEN PRO TEST: v NapOnline.Pripoj() mezi dvema PosliText(... "hrac" ...) Thread.Sleep(NAP_TEST_ZDRZ_HRAC2_MS):
+     g++ -std=c++17 -O2 -pthread -Wall -Wextra -I../../app/src/main/cpp -o test_b362_poradi test_b362_poradi.cpp
+     NAP_TEST_ZDRZ_HRAC2_MS=150 mono NapOnlineTest_zdrz.exe --port N &   ./test_b362_poradi http://127.0.0.1:N
+                                             -> VYSTUP_test_b362_poradi.txt (3 OK: hra zacne a dobehne)
+     totez se starymi hlavickami online/*.h z gitu (B361) -> VYSTUP_test_b362_poradi_proti_b361.txt
+                                             (3 CHYBA: hrac 1 stoji na snimku 2, hrac 2 "DOMLOUVAM SE" navzdy)
+     opakovani ../b357/test_b357_online      -> VYSTUP_test_b357_online_opakovani.txt (B361 1x z 25 visel,
+                                                B362 s opravou 0x z 20)
+4) Java bez Androidu:
+     javac --release 17 -encoding UTF-8 -d OUT ../../app/src/main/java/eu/atarihelp/emu10/NapOnlineHra.java \
+           ../../app/src/main/java/eu/atarihelp/emu10/NapOnlineHlidac.java ../../app/src/main/java/eu/atarihelp/emu10/NapJson.java \
+           ../../app/src/main/java/eu/atarihelp/emu10/NapNovinky.java jvm/eu/atarihelp/emu10/TestB362Hlidac.java \
+           jvm/eu/atarihelp/emu10/TestB362Novinky.java
+     java -cp OUT eu.atarihelp.emu10.TestB362Hlidac jvm/VYSTUP_TestB362Hlidac.txt     (6 OK: PRUBEH s odhady,
+          DRUHY TELEFON, TICHO 2 / 5 / 10 s, navrat pri synchronizaci, KONEC, infoTelefonu ASCII / 200 znaku)
+     java -cp OUT eu.atarihelp.emu10.TestB362Novinky ../.. jvm/VYSTUP_TestB362Novinky.txt   (6 OK: B362 = 405,
+          okno CO JE NOVEHO, nazvy v okne = nazvy v appce: ONLINE na pristroji, LOG / CHYBA v HELP)
+     cela appka s android.jar API 34         -> VYSTUP_javac_android.txt (40 zdroju, 139 trid, 0 chyb)
+     ../b320/kontrola_jni.py (hlavicky z javac -h) -> VYSTUP_regrese_b320_kontrola_jni.txt (119 native metod, 0 CHYB;
+          nova onlineTelefon(String))
+5) Regrese (stare testy proti B362):
+     ../b357 lockstep 30 OK, klient proti enginu 31 OK, Sega online 8 OK; ../b358 start 4 OK; ../b360 lockstep
+     28 OK, Sega online 6 OK; Java TestB360Hlidac 9 OK (radek PRUBEH bez klicu odhadu beze zmeny), TestB358Online
+     15 OK -> VYSTUP_regrese_*.txt
+     napoveda: ../b311 navod 232 nazvu 0 CHYBA (+ ONLINE, LOG / CHYBA v HELP), mosty 137 0 chybi (spoustet ze
+     slozky b311), odkazy 0 chyb, navod v Chromiu 23 OK; ../b314 224 nazvu 0 CHYBA; ../b343 4 zamerne (N7 N9 A6 V),
+     napoveda v Chromiu 27 OK; ../b359/kontrola_novinek.py: B362 = 405, 5 + 5 vet.
+NEOVERENO: skutecne telefony (Wi-Fi, A12 vykon - limit odhadu se mu sam snizi, kdyz je jeho jadro pomale),
+     server Rene na Windows (Nagle / http.sys - TCP_QUICKACK je jen pojistka na strane telefonu).

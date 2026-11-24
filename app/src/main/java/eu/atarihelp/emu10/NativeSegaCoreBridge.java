@@ -124,6 +124,8 @@ public final class NativeSegaCoreBridge {
     private static native void onlineStop();
     /** Radky klic=hodnota: faze, kod, druhy, popis, chyba, odezva, zpozdeni, overeno, cekani, snimek, aktivni, hraje, hrac1, konec. */
     private static native String onlineStav();
+    /** B362: telefon o sobe (model, Android, Wi-Fi, baterie) - C++ ho posila druhemu telefonu ve STATISTIKA (jeho log). */
+    private static native void onlineTelefon(String info);
 
     public static String onlineOtiskSafe() {
         try { final String r = onlineOtisk(); return r == null ? "" : r; } catch (Throwable t) { return ""; }
@@ -139,5 +141,8 @@ public final class NativeSegaCoreBridge {
     }
     public static String onlineStavSafe() {
         try { final String r = onlineStav(); return r == null ? "faze=NIC" : r; } catch (Throwable t) { return "faze=NIC"; }
+    }
+    public static void onlineTelefonSafe(String info) {
+        try { onlineTelefon(info == null ? "" : info); } catch (Throwable ignored) {}
     }
 }

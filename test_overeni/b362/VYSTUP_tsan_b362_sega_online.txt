@@ -1,0 +1,10 @@
+ThreadSanitizer (-O1 -g -fsanitize=thread): test_b362_sega_online.cpp (skutecne jadro, 2 procesy pres engine)
+varovani ThreadSanitizer: 0
+OK     hra jela: telefon 1 1260 snimku, telefon 2 1261; spicek 19 + 19 (2849 + 2343 ms); odhadnuto 323 + 164 snimku, oprav 73 + 26 (nejdel 9 / 9 snimku, 18 / 28 ms), ulozeny stav vzdy byl
+OK     oprava skutecneho jadra je presna: overeno 21 otisku, rozjeti 0, synchronizaci 0, otisk jadra ve snimku 660 u obou 6c4be5bfcfbeb36b (STEJNY)
+OK     zpozdeni ovladani 2 -> 6 / 6 snimku, emulator stal 8x (295 ms) / 10x (345 ms), limit odhadu 8 / 8 snimku
+OK     STATISTIKA: telefon 1 dostal od telefonu 2 2x jeho cisla (vykon jadra, odhady, opravy, info z Javy)
+OK     rozjeti poznano v otisku 300 (RAM 68000), synchronizace hotova (1 / 1), stav 3 KB
+OK     hra pokracovala: 780 / 785 snimku, otisk ve snimku 660 u obou 1e58f3660353d51d (STEJNY), overeno 12, oprav 33 + 21
+OK     telefon 1: 'od druheho hrace dlouho nic neprislo - spadla mu sit, nebo se telefon zasekl' (cele trvani 18 s), s odhadem jen 8 snimku, posledni zprava od druheho: PING
+VYSLEDEK: 7 OK, 0 CHYBA

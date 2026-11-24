@@ -29,6 +29,7 @@
 #include <cerrno>
 #include <thread>
 #include <malloc.h> // BUILD2RW: passive native heap audit only (mallinfo)
+#include <memory>   // B362: kruh stavu pro opravu online odhadu
 
 #if NAP_SEGA_VENDOR_CORE_PRESENT
 #include "clownmdemu.h"
@@ -795,6 +796,8 @@ static std::atomic<int> g_online_startu{0};          // B358: kolikate spojeni (
 // Rizeni po jednom: onlineStart / onlineStop / nova hra / odchod ze Segy a konec zjisteny vlaknem emulace. Konec stare
 // online hry (vlakno emulace) tak nikdy nevypne novou, kterou Java mezitim zalozila. Vlakno site ho nebere nikdy.
 static std::mutex g_online_rizeni;
+// B362: oprava odhadu - jadro pocita snimky znovu: zvuk a obraz techto snimku nikam nejdou (uz jednou hraly)
+static std::atomic<int> g_online_prepocet{0};
 
 /** Vstup tohoto telefonu (hrac sam za sebe): dotyk + 1. herni ovladac, 12 bitu jako nap_sega_tlacitko_bit. */
 static uint32_t nap_sega_lokalni_bity() {
@@ -883,6 +886,8 @@ static void nap_audio_fm(void*, ClownMDEmu *c, size_t n, void (*gen)(ClownMDEmu*
     outR.reserve((n * (size_t)NAP_AUDIO_OUT_RATE) / 53000u + 16u);
     if (gen && !tmp.empty()) gen(c, tmp.data(), n);
     if (tmp.empty()) return;
+    // B362: oprava online odhadu - stav FM se pocita (gen vyse), zvuk snimku uz jednou hral -> ne do reproduktoru
+    if (g_online_prepocet.load(std::memory_order_relaxed)) return;
     const double srcRate = (g_real_cfg_tv == CLOWNMDEMU_TV_STANDARD_PAL) ? (double)CLOWNMDEMU_FM_SAMPLE_RATE_PAL : (double)CLOWNMDEMU_FM_SAMPLE_RATE_NTSC;
     for (size_t i = 0; i < n; ++i) {
         int32_t l = tmp[i * CLOWNMDEMU_FM_CHANNEL_COUNT + 0] / CLOWNMDEMU_FM_VOLUME_DIVISOR;
@@ -903,6 +908,7 @@ static void nap_audio_psg(void*, ClownMDEmu *c, size_t n, void (*gen)(ClownMDEmu
     out.reserve((n * (size_t)NAP_AUDIO_OUT_RATE) / 224000u + 16u);
     if (gen && !tmp.empty()) gen(c, tmp.data(), n);
     if (tmp.empty()) return;
+    if (g_online_prepocet.load(std::memory_order_relaxed)) return;   // B362: viz FM
     const double srcRate = (g_real_cfg_tv == CLOWNMDEMU_TV_STANDARD_PAL) ? (double)CLOWNMDEMU_PSG_SAMPLE_RATE_PAL : (double)CLOWNMDEMU_PSG_SAMPLE_RATE_NTSC;
     for (size_t i = 0; i < n; ++i) {
         int32_t mono = tmp[i * CLOWNMDEMU_PSG_CHANNEL_COUNT] / CLOWNMDEMU_PSG_VOLUME_DIVISOR;
@@ -1216,6 +1222,132 @@ static bool nap_sega_stav_nahraj(const std::vector<uint8_t> &d) {
     return true;
 }
 
+// B360: test (test_overeni/b360) si sem dosadi "poruchu" jadra hrace 2 - v appce je to prazdne (nic se neprelozi).
+// B362: vola se i pri oprave odhadu (snimek spocitany znovu = stejna "porucha" jako poprve)
+#ifndef NAP_SEGA_ONLINE_TEST_PO_KROKU
+#define NAP_SEGA_ONLINE_TEST_PO_KROKU(snimek)
+#endif
+
+// =====================================================================================================
+//  B362: ODHAD STISKU DRUHEHO + OPRAVA (online/nap_online.h). Rene 24. 11.: "furt je ten online spatny ... testuju
+//  na mistni LAN" - oba telefony cekaly na sebe (spicky site obema smery), zpozdeni vyrostlo na 11 snimku. Ted kdyz
+//  stisk druheho jeste neprisel, snimek se spocita s odhadem (druhy drzi, co drzel) a PRED nim se ulozi stav jadra
+//  (ClownMDEmu_SaveState + ovladace, ~1,1 MB, kruh ODHAD_MAX + 2 - jen kdyz se odhaduje, jinak nic). Kdyz skutecny
+//  stisk prijde jiny, stav se vrati a snimky az do ted se spocitaji znovu - bez zvuku a obrazu (g_online_prepocet),
+//  na displeji je hned spravny dalsi snimek. Limit odhadu podle rychlosti jadra (pomaly telefon = mene snimku znovu).
+//  Jen vlakno emulace.
+// =====================================================================================================
+struct NapSegaZaloha {
+    uint32_t snimek = UINT32_MAX;
+    ClownMDEmu_StateBackup stav;
+    ControllerManager ovladace;
+};
+static const uint32_t NAP_SEGA_KRUH = nap::online::ODHAD_MAX + 2;   // oprava je nejvys ODHAD_MAX + 1 snimku
+static std::unique_ptr<NapSegaZaloha> g_online_kruh[NAP_SEGA_KRUH];
+static uint64_t g_online_jadro_ema_us = 8000;                      // prumerna doba snimku jadra (vlakno emulace)
+static std::atomic<uint32_t> g_online_odhad_max{nap::online::ODHAD_MAX};
+static std::atomic<uint32_t> g_online_chyb_opravy{0};
+static std::atomic<uint32_t> g_online_navrat_ze{0}, g_online_navrat_na{0};   // hrac 2: synchronizace ho vratila zpet
+static uint64_t g_online_vykon_od_us = 0, g_online_vykon_jadro_us = 0, g_online_vykon_jadro_max_us = 0;
+static uint32_t g_online_vykon_snimku = 0;
+
+static void nap_sega_online_uloz(uint32_t snimek) {
+    std::unique_ptr<NapSegaZaloha> &z = g_online_kruh[snimek % NAP_SEGA_KRUH];
+    if (!z) z.reset(new (std::nothrow) NapSegaZaloha());
+    if (!z) return;   // bez pameti: oprava tohoto snimku nepujde -> otisky to poznaji, synchronizace to spravi
+    std::lock_guard<std::mutex> lock(g_real_mutex);
+    ClownMDEmu_SaveState(&g_real.emu, &z->stav);
+    std::memcpy(&z->ovladace, &g_real.emu.controller_manager, sizeof(ControllerManager));
+    z->snimek = snimek;
+}
+
+static bool nap_sega_online_vrat(uint32_t snimek) {
+    std::unique_ptr<NapSegaZaloha> &z = g_online_kruh[snimek % NAP_SEGA_KRUH];
+    if (!z || z->snimek != snimek) return false;
+    std::lock_guard<std::mutex> lock(g_real_mutex);
+    ClownMDEmu_LoadState(&g_real.emu, &z->stav);
+    std::memcpy(&g_real.emu.controller_manager, &z->ovladace, sizeof(ControllerManager));
+    nap_real_obnov_paletu_locked();
+    return true;
+}
+
+/** Kruh stavu: zapomenout (novy start / synchronizace), uvolnit = konec online hry (az 11 MB zpet systemu). */
+static void nap_sega_online_kruh_zahod(bool uvolnit) {
+    for (auto &z : g_online_kruh) {
+        if (uvolnit) z.reset();
+        else if (z) z->snimek = UINT32_MAX;
+    }
+}
+
+/** Otisk stavu po snimku (kazdych 60) - i pri oprave (relace ho odesle, az je snimek jisty). */
+static void nap_sega_online_otisk(const std::shared_ptr<nap::online::Relace> &r, uint32_t snimek) {
+    if (!r || snimek % nap::online::HASH_KAZDYCH != 0) return;
+    uint64_t c[NAP_SEGA_CASTI];
+    const uint64_t h = nap_sega_otisk_stavu_casti(c);
+    r->otiskStavu(snimek, h, c, (uint8_t)NAP_SEGA_CASTI);
+}
+
+/** Oprava: stav pred snimkem 'od' zpet, snimky od .. g_online_snimek-1 znovu se skutecnymi (a novymi odhadnutymi) stisky. */
+static void nap_sega_online_oprav(const std::shared_ptr<nap::online::Relace> &r, uint32_t od) {
+    const uint32_t ted = g_online_snimek;
+    if (od >= ted) return;
+    if (!nap_sega_online_vrat(od)) {
+        // nemelo by nastat (stav se uklada pred kazdym odhadnutym snimkem) - otisky rozdil poznaji, synchronizace spravi
+        if (g_online_chyb_opravy.fetch_add(1) < 5) NAPLOG("B362 ONLINE oprava od snimku %u: ulozeny stav chybi", od);
+        return;
+    }
+    const auto t0 = std::chrono::steady_clock::now();
+    const int zachyt = g_render_capture_current.load(), displej = g_render_display_current.load();
+    g_render_capture_current.store(0);   // snimky opravy se nekresli (nap_real_scanline_rendered hned konci)
+    g_render_display_current.store(0);
+    g_online_prepocet.store(1);
+    uint32_t f = od;
+    for (; f < ted; f++) {
+        uint32_t p1 = 0, p2 = 0;
+        bool odhad = false;
+        if (r->vstupyOdhad(f, p1, p2, odhad, 0, nap::online::ODHAD_OPRAVA) != 1) break;   // konec relace
+        if (odhad) nap_sega_online_uloz(f);
+        g_online_vstup[0].store(p1);
+        g_online_vstup[1].store(p2);
+        ClownMDEmu_Iterate(&g_real.emu);
+        NAP_SEGA_ONLINE_TEST_PO_KROKU(f);
+        nap_sega_online_otisk(r, f);
+    }
+    g_online_prepocet.store(0);
+    g_render_capture_current.store(zachyt);
+    g_render_display_current.store(displej);
+    if (f < ted) g_online_snimek = f;   // relace skoncila uprostred - dal se stejne nehraje
+    r->opraveno(od, f, (uint64_t)std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now() - t0).count());
+}
+
+/**
+ * Vykon jadra za online hry (po kazdem snimku, vlakno emulace): limit odhadu (oprava nejvys ~66 ms pocitani) a
+ * kazde 2 s text pro druhy telefon (STATISTIKA) - "59.9 snimku/s, jadro 7.6 ms (nejvys 25.3), odhad nejvys 8".
+ */
+static void nap_sega_online_vykon(uint64_t iterNs) {
+    const uint64_t us = iterNs / 1000;
+    g_online_jadro_ema_us = (g_online_jadro_ema_us * 15 + us) / 16;
+    uint32_t m = (uint32_t)(66000 / std::max<uint64_t>(g_online_jadro_ema_us, 1000));
+    m = std::max<uint32_t>(2, std::min<uint32_t>(nap::online::ODHAD_MAX, m));
+    g_online_odhad_max.store(m);
+    const uint64_t ted = nap::online::tedUs();
+    if (!g_online_vykon_od_us) g_online_vykon_od_us = ted;
+    g_online_vykon_snimku++;
+    g_online_vykon_jadro_us += us;
+    if (us > g_online_vykon_jadro_max_us) g_online_vykon_jadro_max_us = us;
+    if (ted - g_online_vykon_od_us >= 2000000) {
+        char b[160];
+        std::snprintf(b, sizeof(b), "%.1f snimku/s, jadro %.1f ms (nejvys %.1f), odhad nejvys %u",
+                      g_online_vykon_snimku * 1e6 / (double)(ted - g_online_vykon_od_us),
+                      g_online_vykon_jadro_us / 1000.0 / std::max<uint32_t>(g_online_vykon_snimku, 1), g_online_vykon_jadro_max_us / 1000.0, m);
+        std::shared_ptr<nap::online::Relace> r = g_online.relace();
+        if (r) r->vykon(b);
+        g_online_vykon_od_us = ted;
+        g_online_vykon_snimku = 0;
+        g_online_vykon_jadro_us = g_online_vykon_jadro_max_us = 0;
+    }
+}
+
 // Vlakno emulace zjistilo konec online hry (relace r skoncila, nebo bez relace spojeni skoncilo). Pod g_online_rizeni
 // se overi, ze je to porad TATAZ hra - Java mohla mezitim zalozit novou (pak nic).
 static void nap_sega_online_konec(const std::shared_ptr<nap::online::Relace> &r) {
@@ -1231,6 +1363,7 @@ static void nap_sega_online_konec(const std::shared_ptr<nap::online::Relace> &r)
     }
     g_online_hraje.store(0);
     g_online_aktivni.store(0);
+    nap_sega_online_kruh_zahod(true);   // B362: stavy pro opravu uz netreba
     NAPLOG("B357 ONLINE konec po %u snimcich: %s", g_online_snimek, proc.c_str());
 }
 
@@ -1245,8 +1378,14 @@ static int nap_sega_online_pred_krokem() {
         g_online_snimek = 0;
         g_online_vstup[0].store(0);
         g_online_vstup[1].store(0);
+        nap_sega_online_kruh_zahod(false);   // B362
+        g_online_vykon_od_us = 0;
+        g_online_vykon_snimku = 0;
+        g_online_vykon_jadro_us = g_online_vykon_jadro_max_us = 0;
+        g_online_navrat_ze.store(0);
+        g_online_navrat_na.store(0);
         g_online_hraje.store(1);
-        NAPLOG("B357 ONLINE start - studeny start, snimek 0");
+        NAPLOG("B357 ONLINE start - studeny start, snimek 0 (B362: odhad stisku druheho nejvys %u snimku)", g_online_odhad_max.load());
     }
     if (!g_online_hraje.load()) {
         if (g_online.faze() == nap::online::OnlineKlient::Faze::KONEC) { nap_sega_online_konec(nullptr); return -1; }
@@ -1257,6 +1396,9 @@ static int nap_sega_online_pred_krokem() {
     std::shared_ptr<nap::online::Relace> r = g_online.relace();
     if (!r) return 0;
     r->lokalni(g_online_snimek, nap_sega_lokalni_bity());
+    // B362: prisly skutecne stisky druheho pro snimky spocitane s odhadem? Nesedi-li, oprava (stav zpet, znovu)
+    const uint32_t opravitOd = r->zkontrolujOdhady(g_online_snimek);
+    if (opravitOd != UINT32_MAX) nap_sega_online_oprav(r, opravitOd);
     // B360: synchronizace stavu po rozjeti - hrac 1 posle stav pred snimkem G, hrac 2 ho pred G nahraje
     if (r->hrac1()) {
         if (r->chciPoslatStav(g_online_snimek)) {
@@ -1270,38 +1412,39 @@ static int nap_sega_online_pred_krokem() {
         }
     } else {
         std::vector<uint8_t> st;
-        const int k = r->stavPro(g_online_snimek, st, 30);
+        uint32_t g = 0;
+        const int k = r->stavPro(g_online_snimek, st, g, 30);
         if (k < 0) return 0;   // stav od hrace 1 jeste neprisel - emulator stoji
         if (k > 0) {
             if (nap_sega_stav_nahraj(st)) {
-                r->stavNahran(g_online_snimek);
-                NAPLOG("B360 ONLINE synchronizace: stav jadra pred snimkem %u nahran (%zu B)", g_online_snimek, st.size());
+                // B362: s odhadem mohl hrac 2 dojit ZA snimek G, nez RESYNC prisel - stav G ho vrati zpet na G
+                const uint32_t bylo = g_online_snimek;
+                g_online_snimek = g;
+                nap_sega_online_kruh_zahod(false);
+                r->stavNahran(g);
+                if (bylo > g) { g_online_navrat_ze.store(bylo); g_online_navrat_na.store(g); }
+                NAPLOG("B360 ONLINE synchronizace: stav jadra pred snimkem %u nahran (%zu B)%s%s", g, st.size(),
+                       bylo > g ? " - B362: vracen ze snimku " : "", bylo > g ? std::to_string(bylo).c_str() : "");
             } else {
                 r->ukonci(nap::online::D_ROZJETO);   // poskozeny / cizi stav (jine jadro) - nenahran, konec (oba vedi proc)
             }
         }
     }
     uint32_t p1 = 0, p2 = 0;
-    const int v = r->vstupy(g_online_snimek, p1, p2, 30);
+    bool odhad = false;
+    // B362: stisk druheho jeste neprisel -> snimek s odhadem (nejvys g_online_odhad_max napred), stav pred nim ulozit
+    const int v = r->vstupyOdhad(g_online_snimek, p1, p2, odhad, 30, g_online_odhad_max.load());
     if (v == 0) return 0;
     if (v < 0) { nap_sega_online_konec(r); return -1; }
+    if (odhad) nap_sega_online_uloz(g_online_snimek);
     g_online_vstup[0].store(p1);
     g_online_vstup[1].store(p2);
     return 1;
 }
 
-// B360: test (test_overeni/b360) si sem dosadi "poruchu" jadra hrace 2 - v appce je to prazdne (nic se neprelozi)
-#ifndef NAP_SEGA_ONLINE_TEST_PO_KROKU
-#define NAP_SEGA_ONLINE_TEST_PO_KROKU(snimek)
-#endif
 static void nap_sega_online_po_kroku() {
     NAP_SEGA_ONLINE_TEST_PO_KROKU(g_online_snimek);
-    std::shared_ptr<nap::online::Relace> r = g_online.relace();
-    if (r && g_online_snimek % nap::online::HASH_KAZDYCH == 0) {
-        uint64_t c[NAP_SEGA_CASTI];
-        const uint64_t h = nap_sega_otisk_stavu_casti(c);
-        r->otiskStavu(g_online_snimek, h, c, (uint8_t)NAP_SEGA_CASTI);
-    }
+    nap_sega_online_otisk(g_online.relace(), g_online_snimek);   // B362: snimek s odhadem - relace otisk podrzi
     g_online_snimek++;
     g_online_snimku_celkem.store(g_online_snimek);
 }
@@ -1389,6 +1532,7 @@ static void nap_real_worker_thread(int generation) {
                 auto iter_end = std::chrono::steady_clock::now();
                 uint64_t iter_ns = (uint64_t)std::chrono::duration_cast<std::chrono::nanoseconds>(iter_end - iter_start).count();
                 nap_scene_stress_record(iter_ns);
+                if (online == 1) nap_sega_online_vykon(iter_ns);   // B362: limit odhadu + vykon pro druhy telefon
                 nap_audio_clock_governor_sleep();
                 if (nap_mobile_no_starve() && nap_audio_min_fifo() < nap_audio_low_water()) {
                     g_audio_starve_events.fetch_add(1);
@@ -2368,6 +2512,11 @@ Java_eu_atarihelp_emu10_NativeSegaCoreBridge_onlineStart(JNIEnv *env, jclass, js
     n.ja.jmeno = nap_sega_jstr(env, jjmeno, 60);
     n.ja.nastaveni = (uint32_t)g_real_cfg_region * 16u + (uint32_t)g_real_cfg_tv;
     n.snimekMs = g_real_cfg_tv == CLOWNMDEMU_TV_STANDARD_PAL ? 20.0 : 1000.0 / 60.0;
+    // B362: jadro Segy umi odhad + opravu -> zpozdeni na startu bez rezervy na kolisani; za hry roste jen po malych
+    // krocich (spicky do ~8 snimku spolkne odhad - vetsi zpozdeni by hrac citil porad, ne jen pri spicce)
+    n.ladeni.odhad = true;
+    n.ladeni.zvysitNejvys = 2;
+    n.ladeni.zpozdeniNavic = 4;
     {
         std::lock_guard<std::mutex> l(g_online_m);
         if (!g_sega_otisk_je) return env->NewStringUTF("CHYBA: neni nahrana zadna hra");
@@ -2422,8 +2571,24 @@ Java_eu_atarihelp_emu10_NativeSegaCoreBridge_onlineStav(JNIEnv *env, jclass) {
           << "\nsynchronizovano=" << r->synchronizovano() << "\nrozjeti=" << r->rozjeti() << "\nrozjeti_snimek=" << r->rozjetoVeSnimku()
           << "\nrozjeti_casti=" << nap::online::nazvyCasti(r->rozdilCasti(), NAP_SEGA_NAZVY_CASTI, NAP_SEGA_CASTI)
           << "\nstav_kb=" << g_online_stav_kb.load() << "\nticho_ms=" << r->tichoMs() << "\nstoji_ms=" << r->stojiMs();
+        // B362: odhad + oprava, statistika druheho telefonu, posledni zprava od nej (Java z toho pise log)
+        o << "\nodhad=" << r->odhadnuto() << "\nodhad_sedelo=" << r->odhaduSedelo() << "\noprav=" << r->oprav()
+          << "\noprava_max=" << r->opravaMax() << "\noprava_max_ms=" << r->opravaMaxMs() << "\nopravy_ms=" << r->opravyMs()
+          << "\nprepocteno=" << r->prepocteno() << "\nodhad_max=" << g_online_odhad_max.load()
+          << "\nchyb_opravy=" << g_online_chyb_opravy.load() << "\nnavrat_ze=" << g_online_navrat_ze.load()
+          << "\nnavrat_na=" << g_online_navrat_na.load() << "\nposledni_zprava=" << r->posledniZprava()
+          << "\njeho_do=" << r->jehoDo() << "\ndruhy_info_c=" << r->statistikDruheho()
+          << "\ndruhy_info_snimek=" << r->mujSnimekPriStatistice() << "\ndruhy_info=" << r->statistikaDruheho();
     }
     return env->NewStringUTF(o.str().c_str());
+}
+
+/** B362: telefon o sobe (model, Android, Wi-Fi, baterie - Java kazdych par s) - jde druhemu telefonu ve STATISTIKA. */
+extern "C" JNIEXPORT void JNICALL
+Java_eu_atarihelp_emu10_NativeSegaCoreBridge_onlineTelefon(JNIEnv *env, jclass, jstring jinfo) {
+    std::string s = nap_sega_jstr(env, jinfo, 200);
+    for (char &c : s) if ((unsigned char)c < 32 || (unsigned char)c > 126) c = '?';   // jen ASCII (log druheho)
+    g_online.infoTelefonu(s);
 }
 #else
 extern "C" JNIEXPORT jstring JNICALL Java_eu_atarihelp_emu10_NativeSegaCoreBridge_onlineOtisk(JNIEnv *env, jclass) { return env->NewStringUTF(""); }
@@ -2432,4 +2597,5 @@ extern "C" JNIEXPORT jstring JNICALL Java_eu_atarihelp_emu10_NativeSegaCoreBridg
 }
 extern "C" JNIEXPORT void JNICALL Java_eu_atarihelp_emu10_NativeSegaCoreBridge_onlineStop(JNIEnv *, jclass) {}
 extern "C" JNIEXPORT jstring JNICALL Java_eu_atarihelp_emu10_NativeSegaCoreBridge_onlineStav(JNIEnv *env, jclass) { return env->NewStringUTF("faze=NIC"); }
+extern "C" JNIEXPORT void JNICALL Java_eu_atarihelp_emu10_NativeSegaCoreBridge_onlineTelefon(JNIEnv *, jclass, jstring) {}
 #endif

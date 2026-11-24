@@ -7,6 +7,10 @@
 //  a zpravy jdou obema smery hned (zadne nove spojeni pro kazdy stisk). Prihlaseni telefonu = stejne
 //  hlavicky jako u ostatnich dotazu na engine (X-NaP-Zarizeni / Cas / Podpis - spocita je Java).
 //  TCP_NODELAY: male zpravy (stisky) jdou hned, ne az se jich nasbira vic (Nagle).
+//  B362: TCP_QUICKACK po kazdem prijmu - telefon potvrdi zpravu od serveru hned (ne az za 40 ms s dalsi zpravou).
+//  Server (Windows, http.sys) muze mit Nagle zapnuty: dalsi zpravu pro telefon pak drzi, dokud nedostane potvrzeni
+//  predchozi - a telefon, ktery prave ceka na stisky druheho (sam nic neposila), potvrzoval az po 40 ms.
+//  IP_TOS 0xB8 (DSCP EF, jako hlas VoIP): Wi-Fi telefonu posle stisky ve fronte s prednosti (WMM), pred obrazem na TV.
 //  Bez TLS (engine bezi na http). Ciste C++ (POSIX sockety) - test test_overeni/b357 proti nezavisle
 //  implementaci WebSocketu (.NET WebSocket.CreateFromStream v mono).
 // =====================================================================================================
@@ -148,7 +152,7 @@ class WebSocket {
     const std::string ps = std::to_string(port);
     const int g = getaddrinfo(host.c_str(), ps.c_str(), &rady, &vysl);
     if (g != 0 || !vysl) { chyba = std::string("server nejde najit (DNS): ") + gai_strerror(g); return false; }
-    int s = -1;
+    int s = -1, rodina = AF_INET;
     std::string posledni = "spojeni nejde";
     for (addrinfo *a = vysl; a; a = a->ai_next) {
       s = socket(a->ai_family, a->ai_socktype, a->ai_protocol);
@@ -177,7 +181,7 @@ class WebSocket {
         if (zruseno_) { close(s); freeaddrinfo(vysl); chyba = "zruseno"; return false; }
         if (r != 0) errno = chybaSpojeni;
       }
-      if (r == 0) break;
+      if (r == 0) { rodina = a->ai_family; break; }
       posledni = std::string("spojeni se serverem nejde: ") + std::strerror(errno);
       close(s);
       s = -1;
@@ -188,6 +192,12 @@ class WebSocket {
     int jedna = 1;
     setsockopt(s, IPPROTO_TCP, TCP_NODELAY, &jedna, sizeof(jedna));
     setsockopt(s, SOL_SOCKET, SO_KEEPALIVE, &jedna, sizeof(jedna));
+    {   // B362: stisky s prednosti na Wi-Fi (WMM); kdyz to sit / system nedovoli, nic se nedeje
+      int tos = 0xB8;
+      if (rodina == AF_INET6) setsockopt(s, IPPROTO_IPV6, IPV6_TCLASS, &tos, sizeof(tos));
+      else setsockopt(s, IPPROTO_IP, IP_TOS, &tos, sizeof(tos));
+    }
+    rychlePotvrzeni(s);
     // --- handshake
     uint8_t k[16];
     nahodne(k, 16);
@@ -289,6 +299,7 @@ class WebSocket {
         uint8_t b[16384];
         const ssize_t n = recv(fd_, b, sizeof(b), 0);
         if (n <= 0) { zavreno_ = true; return -1; }
+        rychlePotvrzeni(fd_);   // B362: Linux rezim rychleho potvrzovani sam vypina - po kazdem prijmu znovu
         prijato_.insert(prijato_.end(), b, b + n);
       }
     }
@@ -346,6 +357,16 @@ class WebSocket {
     static std::mt19937 g{std::random_device{}()};
     std::lock_guard<std::mutex> l(m);
     for (size_t i = 0; i < n; i++) b[i] = (uint8_t)(g() & 0xFF);
+  }
+
+  /** B362: potvrdit prijata data hned (TCP_QUICKACK, Linux / Android); jinde nic. */
+  static void rychlePotvrzeni(int fd) {
+#ifdef TCP_QUICKACK
+    int jedna = 1;
+    setsockopt(fd, IPPROTO_TCP, TCP_QUICKACK, &jedna, sizeof(jedna));
+#else
+    (void)fd;
+#endif
   }
 
   static bool posliVse(int fd, const uint8_t *d, size_t n) {

@@ -1,0 +1,40 @@
+B360 - online: text konce, synchronizace pri rozjeti, zpozdeni kazdeho telefonu za hry (nap_online.h)
+== 1) text konce - stejny z relace (vlakno emulace) i z vlakna site
+OK     D_HRAC: sam = 'online hru jsi ukoncil', druhy = 'druhy hrac hru ukoncil'
+OK     D_TICHO: 'od druheho hrace dlouho nic neprislo - spadla mu sit, nebo se telefon zasekl' (stranka ho pozna podle zacatku jako dosud)
+OK     dokud hra bezi, relace zadny text konce nema
+OK     po konci ho ma relace hned (vlakno emulace uz nemusi cekat na vlakno site)
+== 2) bez poruchy: LAN 5 ms, 420 snimku
+OK     420 snimku, KAZDY obraz i vstupy obou hracu stejne (prvni rozdil 420)
+OK     hrac 1 = 1. ovladac, hrac 2 = 2. ovladac, vstup plati o D = 2 snimku pozdeji
+OK     zadna synchronizace, overeno otisku 7 / 7, cekalo se a 0x (0 ms), b 0x (0 ms), zpozdeni a 2 b 2
+== 3) bez poruchy: internet 40 ms +-15 ms, 420 snimku
+OK     420 snimku, KAZDY obraz i vstupy obou hracu stejne (prvni rozdil 420)
+OK     hrac 1 = 1. ovladac, hrac 2 = 2. ovladac, vstup plati o D = 6 snimku pozdeji
+OK     zadna synchronizace, overeno otisku 7 / 7, cekalo se a 0x (0 ms), b 0x (0 ms), zpozdeni a 6 b 6
+== 4) bez poruchy: mobilni sit 90 ms +-40 ms, 420 snimku
+OK     420 snimku, KAZDY obraz i vstupy obou hracu stejne (prvni rozdil 420)
+OK     hrac 1 = 1. ovladac, hrac 2 = 2. ovladac, vstup plati o D = 11 snimku pozdeji
+OK     zadna synchronizace, overeno otisku 7 / 7, cekalo se a 0x (0 ms), b 0x (0 ms), zpozdeni a 11 b 11
+== 5) rozjeti (emulator hrace 2 se ve snimku 200 splete) -> synchronizace, hra pokracuje do 600
+OK     1 synchronizace: hrac 1 poslal stav pred snimkem 245, hrac 2 ho pred tymz snimkem nahral (245), velikost 5 KB
+OK     rozdil od snimku 200, poznano v otisku 240, od snimku G = 245 zase KAZDY obraz stejny
+OK     hra nekoncila: oba 600 snimku, vstupy obou hracu stejne po celou dobu
+OK     casti otisku: lisila se jen cast 0 (bit 1) - porucha byla v ram[5]
+OK     po synchronizaci overeno otisku 9 / 9
+== 6) dve rozjeti v ruznou dobu -> dve synchronizace; trvale rozjeti -> konec s duvodem
+OK     2 synchronizace (pred snimky 245 a 605), hra dobehla do 720, na konci stejne
+OK     emulator hrace 2 se plete porad -> po 2 synchronizacich konec u obou: 'hra se rozjela a synchronizace nepomohla (otisk stavu se lisi)' / 'hra se rozjela a synchronizace nepomohla (otisk stavu se lisi)'
+== 7) sit se spickami (Wi-Fi telefonu obcas spi): zpozdeni hrace 2 se samo zvysi, cekani zmizi
+OK     hrac 1 cekal na stisky hrace 2 (dlouhych cekani 1, nejdel 96 ms) -> pozadal 1x, hrac 2 zvysil zpozdeni 1x: 2 -> nejvys 6 snimku
+OK     dlouhych cekani v prvnich 3 s 1, v dalsich 3 s (spicky porad) 0 - vetsi zpozdeni je spolklo
+OK     po spickach klid -> zpozdeni hrace 2 zase dolu (4x, ted 2)
+OK     pri vsech zmenach zpozdeni zadny snimek bez vstupu: 900 snimku, KAZDY obraz a vstup stejny, bez synchronizace
+== 8) pojistky: synchronizace se nepovede -> konec s duvodem, nikdo nestoji navzdy
+OK     RESYNC se ztratil -> hrac 2 ceka 1,5 s, pak konec u obou: 'hra se rozjela a synchronizace nepomohla (otisk stavu se lisi)'
+OK     STAV se ztratil -> hrac 2 stoji pred G nejvys 1,5 s, pak konec u obou (hrac 2 snimek 243)
+OK     poskozeny stav se nenahraje -> konec u obou: 'hra se rozjela a synchronizace nepomohla (otisk stavu se lisi)'
+== 9) druhy telefon zmizi -> ticho; text konce vidi hned i vlakno emulace (ne 'online skoncilo')
+OK     hrac 1: vlakno emulace po vstupy() = -1 cte z relace: 'od druheho hrace dlouho nic neprislo - spadla mu sit, nebo se telefon zasekl'
+
+VYSLEDEK: 28 OK, 0 CHYB

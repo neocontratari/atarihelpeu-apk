@@ -1,0 +1,3 @@
+app/build.gradle: versionCode 405, versionName EMU10-B362-ONLINE-ODHAD (build B362)
+OK     nejnovejsi zaznam B362 (verze 405, 24. 11. 2026): 5 vet cesky, 5 anglicky
+VYSLEDEK: 7 zaznamu, 0 CHYBA

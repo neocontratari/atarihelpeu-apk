@@ -9159,7 +9159,7 @@ public class MainActivity extends Activity {
     private void atariZarizeniAkce(int kod) {
         if (kod == AtariDeviceView.AKCE_VIBRACE) { atariCppVibruj(); return; }   // B297 (bez logu - casto)
         if (kod == AtariDeviceView.AKCE_OVLADAC_DOTYK) { if (ovladac != null) ovladac.dotyk("Atari 130XE"); return; }   // B320
-        final String[] jmena = {"?", "NET_HRY", "XEX_MOBIL", "ATR_DISK", "TURBO_BASIC", "BASIC_TBXL_TXT", "LOG_CHYBA", "HELP", "MENU", "EJECT_KAZETA",
+        final String[] jmena = {"?", "NET_HRY", "XEX_MOBIL", "ATR_DISK", "TURBO_BASIC", "BASIC_TBXL_TXT", "ONLINE", "HELP", "MENU", "EJECT_KAZETA",
                 "OVLADANI_MENU", "OVLADANI_ULOZIT", "OTOCIT_OBRAZOVKU"};
         appendNativeLog("B291 SERVISNI_TLACITKO " + (kod > 0 && kod < jmena.length ? jmena[kod] : String.valueOf(kod)));
         try {
@@ -9195,13 +9195,8 @@ public class MainActivity extends Activity {
                 case 5:   // BASIC/TBXL TXT - B299: TXT soubor -> program napise appka sama
                     atariCppTxtMenu();
                     break;
-                case 6:   // LOG / CHYBA
-                    appendNativeLog(NativeAtariCoreBridge.devInfoSafe());
-                    // B299: stav pameti a cela RAM Atari k logu (chyby, ktere na PC nejdou zopakovat)
-                    for (String radek : NativeAtariCoreBridge.devDiagSafe().split("\n")) appendNativeLog(radek);
-                    atariCppPamet = NativeAtariCoreBridge.devRamDumpSafe();
-                    if (atariCppPamet != null) appendNativeLog("B299 PAMET ATARI zachycena (" + atariCppPamet.length + " B) - prida se k ulozenemu logu");
-                    atariZarizeniSkryj(true);
+                case 6:   // B362: ONLINE (Rene 24. 11.: "na atari vyhod prepis tlacitko Log Chyba - neni potreba - tam dej online")
+                    atariCppOnline();
                     break;
                 case 7:   // HELP
                     atariCppHelpDialog();
@@ -9612,6 +9607,52 @@ public class MainActivity extends Activity {
     /** B338: klepnuti na tlacitko stranky konzole (NapPravidla.tvKlik). */
     static String napTvKlik(String id) {
         return NapPravidla.tvKlik(id);
+    }
+
+    /**
+     * B362: LOG / CHYBA - stranka s logem a testy (drive servisni tlacitko na pristroji, ted v HELP; tlacitko na
+     * pristroji je ONLINE). Info o stroji, diagnostika pameti a cela RAM Atari k logu (B299).
+     */
+    private void atariCppLogChyba() {
+        appendNativeLog(NativeAtariCoreBridge.devInfoSafe());
+        // B299: stav pameti a cela RAM Atari k logu (chyby, ktere na PC nejdou zopakovat)
+        for (String radek : NativeAtariCoreBridge.devDiagSafe().split("\n")) appendNativeLog(radek);
+        atariCppPamet = NativeAtariCoreBridge.devRamDumpSafe();
+        if (atariCppPamet != null) appendNativeLog("B299 PAMET ATARI zachycena (" + atariCppPamet.length + " B) - prida se k ulozenemu logu");
+        atariZarizeniSkryj(true);
+    }
+
+    /**
+     * B362: ONLINE na pristroji Atari (misto LOG / CHYBA - Rene 24. 11.). Online hra pro dva hrace pro Atari se
+     * pripravuje (PLAN_ONLINE_ATARI_PS1.txt: nejdriv stabilni online Sega, pak stav Atari a online jadro) - zatim
+     * okno rekne, jak to je a kde hrat online ted (Sega).
+     */
+    private void atariCppOnline() {
+        appendNativeLog("B362 ATARI ONLINE - okno (online pro Atari se pripravuje)");
+        android.widget.TextView tv = new android.widget.TextView(this);
+        tv.setText(tx(
+                "Hra pro dva hráče přes server N&P – každý na svém telefonu, každý za svůj joystick.\n\n"
+              + "Pro Atari 130XE ji připravuji: nejdřív musí bez sekání jet online Sega (B362 – předvídání stisků "
+              + "druhého telefonu), pak přijde uložení celého stavu Atari a online jádro. Tohle tlačítko pak otevře "
+              + "ZALOŽIT HRU / PŘIPOJIT SE jako u Segy.\n\n"
+              + "Online hrát můžeš už teď na Seze: otevři Segu a klepni na 🌐 ONLINE.\n\n"
+              + "Log a testy Atari (dřív tlačítko LOG / CHYBA) jsou teď v HELP – tlačítko LOG / CHYBA dole.",
+                "A two-player game over the N&P server – each on their own phone, each with their own joystick.\n\n"
+              + "For the Atari 130XE it is being prepared: first online Sega has to run without stutter (B362 – "
+              + "predicting the other phone's presses), then the full Atari machine state and the online core. This "
+              + "button will then open CREATE A GAME / JOIN like on the Sega.\n\n"
+              + "You can play online right now on the Sega: open the Sega and tap 🌐 ONLINE.\n\n"
+              + "The Atari log and tests (formerly the LOG / ERROR button) are now in HELP – the LOG / ERROR button at the bottom."));
+        tv.setTextSize(15f);
+        int pad = (int) (18 * getResources().getDisplayMetrics().density);
+        tv.setPadding(pad, pad / 2, pad, pad / 2);
+        android.widget.ScrollView sv = new android.widget.ScrollView(this);
+        sv.addView(tv);
+        new android.app.AlertDialog.Builder(this)
+                .setTitle(tx("ONLINE – ATARI 130XE", "ONLINE – ATARI 130XE"))
+                .setView(sv)
+                .setPositiveButton(tx("ZAVŘÍT", "CLOSE"), null)
+                .show();
     }
 
     /** Ozubene kolecko na sirku - stejne polozky jako Sega "D-PAD A OVLADANI". */
@@ -10204,7 +10245,9 @@ public class MainActivity extends Activity {
               + "TURBO-BASIC XL a program sama napíše klávesnicí Atari (NEW, řádek po řádku). Pak RUN, CSAVE, CLOAD. "
               + "Píše jen řádky s číslem, malá písmena v řetězcích a REM zůstanou, příkazy velkými. Řádky s chybou "
               + "syntaxe a přeskočené řádky jsou v logu. Nebo NAPSAT / VLOŽIT TEXT ručně.\n\n"
-              + "LOG / CHYBA – log a testy (zpět tlačítkem ZPET NA ATARI 130XE nebo šipkou zpět).\n\n"
+              + "ONLINE – hra pro dva hráče přes server N&P (každý na svém telefonu); pro Atari se připravuje, "
+              + "online teď jde na Seze.\n\n"
+              + "LOG / CHYBA (tlačítko dole v této nápovědě) – log a testy (zpět tlačítkem ZPET NA ATARI 130XE nebo šipkou zpět).\n\n"
               + "MENU – zpět do hlavní nabídky.\n\n"
               + "Úplný návod: hlavní menu → karta HELP → Atari 130XE.";
         android.widget.TextView tv = new android.widget.TextView(this);
@@ -10218,6 +10261,7 @@ public class MainActivity extends Activity {
                 .setTitle(tx("ATARI 130XE (C++) – ovládání", "ATARI 130XE (C++) – controls"))
                 .setView(sv)
                 .setPositiveButton(tx("ZAVŘÍT", "CLOSE"), null)
+                .setNeutralButton(tx("LOG / CHYBA", "LOG / ERROR"), (d, w) -> atariCppLogChyba())   // B362: misto tlacitka na pristroji
                 .show();
     }
 
@@ -10271,7 +10315,9 @@ public class MainActivity extends Activity {
           + "TURBO-BASIC XL and types the program itself on the Atari keyboard (NEW, line by line). Then RUN, CSAVE, CLOAD. "
           + "It types only numbered lines, lowercase letters in strings and REMs stay, commands in capitals. Lines with a "
           + "syntax error and skipped lines are in the log. Or TYPE / PASTE TEXT manually.\n\n"
-          + "LOG / ERROR – log and tests (back with BACK TO THE ATARI 130XE or the back arrow).\n\n"
+          + "ONLINE – a two-player game over the N&P server (each on their own phone); for the Atari it is being prepared, "
+          + "online works on the Sega now.\n\n"
+          + "LOG / ERROR (the button at the bottom of this help) – log and tests (back with BACK TO THE ATARI 130XE or the back arrow).\n\n"
           + "MENU – back to the main menu.\n\n"
           + "Full guide: main menu → the HELP card → Atari 130XE.";
 
@@ -13672,10 +13718,15 @@ public class MainActivity extends Activity {
         if (!napOnlineHlidacBezi.compareAndSet(false, true)) return;
         new Thread(() -> {
             NapOnlineHlidac h = new NapOnlineHlidac();
-            long klidOd = 0;
+            long klidOd = 0, infoPosledniMs = 0;
             try {
                 while (true) {
                     long ted0 = android.os.SystemClock.uptimeMillis();
+                    // B362: kazdych 5 s info o telefonu (Wi-Fi, baterie ...) do C++ - jde druhemu telefonu do jeho logu
+                    if (infoPosledniMs == 0 || ted0 - infoPosledniMs >= 5000) {
+                        infoPosledniMs = ted0;
+                        NativeSegaCoreBridge.onlineTelefonSafe(napOnlineInfoTelefonu());
+                    }
                     String z = h.zmena("krok=" + napOnlineKrok + "\n" + NativeSegaCoreBridge.onlineStavSafe(), ted0);
                     if (z != null) for (String r : z.split("\n")) appendNativeLog(r);
                     napOnlineWifi(h.aktivni());   // B360: Wi-Fi bez usporneho rezimu po celou online hru
@@ -13693,6 +13744,40 @@ public class MainActivity extends Activity {
                 else napOnlineWifi(false);
             }
         }, "nap-online-hlidac").start();
+    }
+
+    /**
+     * B362: telefon o sobe pro druhy telefon (jeho log ukaze i tento telefon - Rene posila log jen z jednoho):
+     * model, Android, sila signalu Wi-Fi, pasmo, rychlost spojeni, zamek Wi-Fi, baterie, sporic, prehrati.
+     * Zadne jmeno site (SSID), adresy ani MAC - jen cisla o kvalite spojeni.
+     */
+    @SuppressWarnings("deprecation")
+    private String napOnlineInfoTelefonu() {
+        int rssi = 0, frekvence = 0, rychlost = 0;
+        try {
+            android.net.wifi.WifiManager wm = (android.net.wifi.WifiManager) getApplicationContext().getSystemService(android.content.Context.WIFI_SERVICE);
+            android.net.wifi.WifiInfo wi = wm == null ? null : wm.getConnectionInfo();
+            if (wi != null) {
+                if (wi.getRssi() > -127 && wi.getRssi() < 0) rssi = wi.getRssi();
+                frekvence = Math.max(0, wi.getFrequency());
+                rychlost = Math.max(0, wi.getLinkSpeed());
+            }
+        } catch (Throwable ignored) {}
+        String rezim = "";
+        try {
+            if (napOnlineWifiZamek != null && napOnlineWifiZamek.isHeld()) rezim = Build.VERSION.SDK_INT >= 29 ? "LOW_LATENCY" : "HIGH_PERF";
+        } catch (Throwable ignored) {}
+        boolean sporic = false;
+        String teplo = "";
+        try {
+            android.os.PowerManager pm = (android.os.PowerManager) getSystemService(android.content.Context.POWER_SERVICE);
+            if (pm != null) {
+                sporic = pm.isPowerSaveMode();
+                if (Build.VERSION.SDK_INT >= 29) teplo = napTvWebThermalName(pm.getCurrentThermalStatus());
+            }
+        } catch (Throwable ignored) {}
+        return NapOnlineHlidac.infoTelefonu(Build.MODEL, Build.VERSION.RELEASE, Build.VERSION.SDK_INT, rssi, frekvence, rychlost,
+                rezim, readBatteryTempC(), sporic, teplo);
     }
 
     // ===================================================================

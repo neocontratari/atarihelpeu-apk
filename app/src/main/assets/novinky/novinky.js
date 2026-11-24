@@ -5,6 +5,17 @@
    NapNovinky.java), Napoveda je ma nahore v sekci CO JE NOVEHO. Pole za NAP_NOVINKY = musi byt cisty JSON (Java ho
    cte pres NapJson) - zadne komentare ani carky navic. Texty pro lidi: kratce, co se zmenilo a kde to najdou. */
 window.NAP_NOVINKY = [
+  {"verze": 405, "build": "B362", "datum": "24. 11. 2026",
+   "cs": ["Online Sega: když stisky druhého telefonu přijdou pozdě, hra už nestojí – jede dál s odhadem a za okamžik se sama opraví (jako online bojovky).",
+          "Zpoždění ovládání online zůstává malé – na stejné Wi-Fi 2 snímky (dřív při výkyvech sítě rostlo až na 11).",
+          "Telefon zprávy ze serveru hned potvrzuje a své stisky posílá na Wi-Fi přednostně – méně zdržení po cestě.",
+          "Log online hry teď ukáže i druhý telefon (výkon, čekání, síla Wi-Fi) – stačí poslat log z jednoho telefonu.",
+          "Atari: místo tlačítka LOG / CHYBA je ONLINE (hra pro dva se pro Atari připravuje). Log a testy najdeš v HELP – tlačítko LOG / CHYBA dole."],
+   "en": ["Online Sega: when the other phone's presses arrive late, the game no longer stops – it goes on with a guess and corrects itself in an instant (like online fighting games).",
+          "The online control delay stays small – 2 frames on the same Wi-Fi (before, network hiccups raised it up to 11).",
+          "The phone confirms server messages straight away and sends its presses over Wi-Fi with priority – less delay on the way.",
+          "The online game log now shows the other phone too (performance, waiting, Wi-Fi strength) – sending the log from one phone is enough.",
+          "Atari: the LOG / ERROR button is now ONLINE (two-player play for the Atari is being prepared). Log and tests are in HELP – the LOG / ERROR button at the bottom."]},
   {"verze": 404, "build": "B361", "datum": "24. 11. 2026",
    "cs": ["Atari 130XE má druhý zvukový čip POKEY – jako stereo upgrade: hry a dema pro stereo hrají levým kanálem první POKEY a pravým druhý.",
           "Obyčejné (mono) hry hrají přesně jako dřív – na obou kanálech stejně.",

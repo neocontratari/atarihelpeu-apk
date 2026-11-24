@@ -4977,3 +4977,48 @@
        u registraci, konce kodu a ucet (log jde poslat Partakovi).
      - Testy: 346 + 30 (tajne) + 8 (online cesty) + 32 (ukladani) + banka 79 + 57 + okno (Xvfb, i zalozka online se dvema
        hrami pres skutecnou NapOnline). Preklad mcs -sdk:4.5-api + KontrolaApi 4.5 / 4.8 = 0 chybi.
+
+   B362: ONLINE S ODHADEM STISKU DRUHEHO A OPRAVOU, START PO "AHOJ", ATARI TLACITKO ONLINE (24. 11. 2026)
+     Rene 24. 11. (3. test online Segy na mistni LAN, log jen z S8): "furt je ten online spatny Partaku. A to ho testuju
+     na mistni LAN"; "na atari vyhod prepis tlacitko Log Chyba - neni potreba - tam dej online". Stereo Atari mu jede
+     (vlastni program v BASICu). Rozbor logu S8: S8 sam v poradku, 72 otisku sedelo, synchronizaci 0; oba telefony ale
+     cekaly na sebe (S8 119x / 2,2 s, nejdel 201 ms; A12 4x zadost o zpozdeni), odezva 7-123 ms, zpozdeni 4 -> 11;
+     v 15:50:55 od A12 prestalo chodit vse (ani PONG) -> po 15 s konec D_TICHO. Log A12 a engine chybi.
+     - nap_online.h VERZE 3: ODHAD + OPRAVA. jehoDo_ (prvni snimek bez stisku druheho, TCP poradi), jistoDo_ (pred nim vse
+       se skutecnymi stisky), odhad_[OKNO] (odhadnuty stisk = posledni znamy). vstupyOdhad(snimek, p1, p2, odhad,
+       cekejMs, maxOdhad): skutecne / odhad (snimek - jehoDo_ < maxOdhad) / cekat; maxOdhad 0 = lockstep (vstupy()),
+       ODHAD_OPRAVA = prepocet. zkontrolujOdhady(snimek) pred kazdym snimkem: prvni nesedici odhad -> jadro nahraje stav
+       pred nim a snimky do ted spocita znovu, pak opraveno(od, po, us). Nejdelsi oprava = maxOdhad + 1 (kruh stavu
+       ODHAD_MAX + 2 = 10). otiskStavu: snimek < jistoDo_ = odeslat, jinak cekajici_ (odeslat po potvrzeni, oprava
+       zahodi). Synchronizace: chciPoslatStav az jistoDo_ >= G, hrac 1 snimek G bez odeslaneho stavu nespocita
+       (blokovano; jadro bez synchronizace -> D_ROZJETO u G); RESYNC chyba jen g < jistoDo_; stavPro(snimek >= G,
+       data, g) - hrac 2 se vrati na g; stavNahran: jistoDo_ = G, odhady a cekajici otisky pryc, cekaSnimek_ = UINT32_MAX
+       (TODO z B360). STATISTIKA (12): text (cekani, odhady, opravy, zpozdeni, odezva + vykon() z jadra + infoTelefonu()
+       z Javy) 3 s po startu, pak kazdych 10 s a pred KONEC; prijem cistyText (ASCII, 480). Ladeni: odhad,
+       pingKazdychUs 1 s, statistika*. zpozdeniSOdhadem = ceil((rtt/2 + 4) / snimek) + 1 (LAN 2). posledniZprava().
+     - nap_online_klient.h: Nastaveni.ladeni, infoTelefonu() (i pred vznikem relace), predRelaci = binarni zpravy pred
+       "hrac" se podrzi (engine posle "hrac" hraci 1 driv nez hraci 2; AHOJ hrace 1 hrac 2 driv zahodil -> hra nikdy
+       nezacala, pingy chodily, ticho nezabralo - i B361 1x z 25 behu test_b357_online). Hacek NAP_ONLINE_TEST_SIT.
+       Engine by mohl poslat "hrac" nejdriv hraci 2 (pristi verze enginu) - klient uz to nepotrebuje.
+     - nap_websocket.h: TCP_QUICKACK po kazdem recv (rychlePotvrzeni), IP_TOS / IPV6_TCLASS 0xB8.
+     - nap_sega_native_proof.cpp: NapSegaZaloha (StateBackup + ControllerManager) kruh, nap_sega_online_uloz / vrat
+       (+ obnov paletu), _oprav (g_online_prepocet: FM / PSG gen bezi, vystup ne; capture a display 0; test hacek i pri
+       prepoctu), _otisk, _vykon (EMA jadra -> g_online_odhad_max = 66 ms / EMA, 2..8; kazde 2 s vykon() text),
+       kruh uvolnen na konci. pred_krokem: lokalni -> zkontrolujOdhady (+oprava) -> synchronizace (hrac 2 g_online_snimek
+       = g, kruh pryc, navrat do logu) -> vstupyOdhad (odhad = ulozit stav). onlineStart: ladeni.odhad, zvysitNejvys 2,
+       zpozdeniNavic 4. onlineStav + odhad, odhad_sedelo, oprav, oprava_max(_ms), opravy_ms, prepocteno, odhad_max,
+       chyb_opravy, navrat_ze / na, posledni_zprava, jeho_do, druhy_info(_c / _snimek). JNI onlineTelefon(String).
+     - Java: NapOnlineHlidac - PRUBEH + odhady (jen kdyz jsou klice), "B362 ONLINE DRUHY TELEFON (ja snimek N): ...",
+       "B362 ONLINE TICHO: ... uz 2 / 5 / 10 s (posledni zprava, jeho stisky do snimku, ja snimek, stojim)", navrat,
+       oprava bez stavu; infoTelefonu() (model, Android, Wi-Fi dBm / pasmo / Mb/s, zamek, baterie, sporic, teplo; ASCII
+       200). MainActivity.napOnlineInfoTelefonu kazdych 5 s v hlidaci; manifest ACCESS_WIFI_STATE (bez SSID / adres).
+     - Atari: SVC c. 6 = {"","ONLINE",0x2fd36b} (SVC_ONLINE), Java case 6 -> atariCppOnline() (okno: pripravuje se,
+       online ted na Seze), LOG / CHYBA -> atariCppLogChyba() = tlacitko dole v HELP pristroje (setNeutralButton);
+       texty HELP CZ / EN, napoveda (seznam tlacitek, kapitola Log a chyby, online Segy + 2 TIPy), novinky B362
+       (verze 405, 5 vet), build.gradle 405 "EMU10-B362-ONLINE-ODHAD".
+     - Testy test_overeni/b362: relace 17 OK (lockstep vs odhad na stejne siti 2819 ms vs 163 ms stani) + TSAN 0;
+       skutecne jadro 2 procesy pres engine 7 OK (oprava presna - otisky stejne) + TSAN 0; start-poradi 3 OK (B361 3
+       CHYBA); Java 6 + 6; javac android 0 chyb; JNI 119 / 0; regrese b357 / b358 / b360 / Java / napovedy / b359.
+     - DALSI KROK: Rene - test B362 online Sega na LAN; stacil by log z jednoho telefonu (radky DRUHY TELEFON), ale
+       radeji z obou + export enginu (zalozka ONLINE). Sledovat: odhad / oprav v PRUBEH, limit odhadu A12 (vykon jadra),
+       TICHO (kdy a co naposledy). Pak Atari online podle PLAN_ONLINE_ATARI_PS1.txt (tlacitko uz je).

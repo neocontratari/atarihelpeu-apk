@@ -1,0 +1,15 @@
+OK     hra nahrana (testovaci ROM 68000)
+BUILD2RY real core worker start gen=1 bigstack=8MB passiveAudit=YES pcmCddaSkip=YES
+B357 ONLINE zaklada /api/v1/online/zaloz?system=sega&hra=B358&hra_id=&otisk=891e5c3ab4c57347c9dcdc6a263580c860b8ef3e&nastaveni=16&jmeno=T
+B357 ONLINE zaklada /api/v1/online/zaloz?system=sega&hra=B358&hra_id=&otisk=891e5c3ab4c57347c9dcdc6a263580c860b8ef3e&nastaveni=16&jmeno=T
+B357 ONLINE konec po 0 snimcich: spojeni se serverem nejde: Connection refused
+B357 ONLINE zaklada /api/v1/online/zaloz?system=sega&hra=B358&hra_id=&otisk=891e5c3ab4c57347c9dcdc6a263580c860b8ef3e&nastaveni=16&jmeno=T
+pokus 1: start OK -> faze=KONEC start=1 chyba=spojeni se serverem nejde: Connection refused
+pokus 2: start OK -> faze=KONEC start=2 chyba=spojeni se serverem nejde: Connection refused
+pokus 3: start OK -> faze=KONEC start=3 chyba=spojeni se serverem nejde: Connection refused
+OK     3 pokusy -> start=1, 2, 3 (kazdy pokus sve cislo)
+OK     pokazde KONEC se STEJNYM duvodem ("spojeni se serverem nejde: Connection refused") - bez cisla pokusu by log nove pokusy nerozlisil
+B357 ONLINE konec po 0 snimcich: spojeni se serverem nejde: Connection refused
+OK     hra po neuspesnych pokusech bezi dal (stav jadra se meni)
+BUILD2RY real core worker stop gen=1
+VYSLEDEK: 4 OK, 0 CHYBA

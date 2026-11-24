@@ -1,0 +1,5 @@
+B362 - engine preda AHOJ hrace 1 drive nez zpravu "hrac" hraci 2 (vlakno enginu mezi zpravami usne)
+CHYBA  pokus 1: hra zacala a dobehla - hrac 1 2 snimku, hrac 2 0 (hrac 2 ma AHOJ hrace 1: NE, stav hrace 2: ONLINE: DOMLOUVAM SE S Rene...)
+CHYBA  pokus 2: hra zacala a dobehla - hrac 1 2 snimku, hrac 2 0 (hrac 2 ma AHOJ hrace 1: NE, stav hrace 2: ONLINE: DOMLOUVAM SE S Rene...)
+CHYBA  pokus 3: hra zacala a dobehla - hrac 1 2 snimku, hrac 2 0 (hrac 2 ma AHOJ hrace 1: NE, stav hrace 2: ONLINE: DOMLOUVAM SE S Rene...)
+VYSLEDEK: 0 OK, 3 CHYB

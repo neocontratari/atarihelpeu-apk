@@ -22,6 +22,11 @@
 #include <memory>
 #include <thread>
 
+// B362: test (test_overeni/b362) si sem dosadi spicky site (vlakno site obcas "usne" jako Wi-Fi telefonu) - v appce prazdne
+#ifndef NAP_ONLINE_TEST_SIT
+#define NAP_ONLINE_TEST_SIT() do {} while (0)
+#endif
+
 namespace nap {
 namespace online {
 
@@ -77,6 +82,7 @@ class OnlineKlient {
     Ahoj ja;                               // verze, jadro, otisk hry, nastaveni, jmeno
     double snimekMs = 1000.0 / 60.0;
     uint64_t tichoUs = 15000000ULL;
+    Ladeni ladeni;                         // B362: jadro s odhadem a opravou -> ladeni.odhad = true
   };
 
   OnlineKlient() = default;
@@ -122,6 +128,17 @@ class OnlineKlient {
   /** Relace (jen ve fazi HRAJE a KONEC). shared_ptr: vlakno emulace ji drzi, i kdyz Java mezitim zavola start(). */
   std::shared_ptr<Relace> relace() { std::lock_guard<std::mutex> l(m_); return relace_; }
 
+  /** B362: telefon o sobe (model, Android, Wi-Fi - z Javy) - jde druhemu ve STATISTIKA (i do relace, ktera teprve vznikne). */
+  void infoTelefonu(const std::string &s) {
+    std::shared_ptr<Relace> r;
+    {
+      std::lock_guard<std::mutex> l(m_);
+      infoTelefonu_ = s;
+      r = relace_;
+    }
+    if (r) r->infoTelefonu(s);
+  }
+
   /** Vlakno emulace: true jednou - hra ma zacit od snimku 0 (reset jadra). */
   bool vezmiStart() { return start_.exchange(false); }
 
@@ -160,6 +177,11 @@ class OnlineKlient {
     std::vector<uint8_t> z;
     uint8_t op = 0;
     Relace *r = nullptr;
+    // B362: binarni zpravy, ktere prisly PRED zpravou enginu "hrac" (relace jeste neni). Engine posle "hrac" nejdriv
+    // hraci 1 a az pak hraci 2 - hrac 1 mezitim stihne poslat AHOJ, a kdyz ho engine preda drive nez "hrac" hraci 2,
+    // hrac 2 ho driv zahodil: AHOJ hrace 1 nikdy nedostal, START ignoroval a hra nezacala (hrac 1 stal na snimku D,
+    // pingy chodily dal, takze ani ticho nehru neukoncilo). Test b362/test_b362_poradi (engine "usne" mezi zpravami).
+    std::vector<std::vector<uint8_t>> predRelaci;
     while (true) {
       if (r) for (auto &v : r->vyzvedni()) ws_.posli(v);
       if (r && r->konec()) {
@@ -170,6 +192,7 @@ class OnlineKlient {
         break;
       }
       if (konecPozadovan_ && !r) { nastavChybu("hra zrusena"); break; }
+      if (r) { NAP_ONLINE_TEST_SIT(); }
       const int p = ws_.prijmi(z, r ? 20 : 100, &op);
       if (p < 0) {
         if (r) r->ztrataSpojeni();
@@ -187,12 +210,18 @@ class OnlineKlient {
             std::lock_guard<std::mutex> l(m_);
             jmeno_ = jsonText(j, "jmeno");
             infoHry_ = j;
-            relace_ = std::make_shared<Relace>(n_.hrac1, n_.ja, n_.snimekMs);
+            relace_ = std::make_shared<Relace>(n_.hrac1, n_.ja, n_.snimekMs, n_.ladeni);
             r = relace_.get();
             faze_ = Faze::HRAJE;
           }
           r->budik([this] { ws_.probud(); });
+          {
+            std::lock_guard<std::mutex> l(m_);
+            if (!infoTelefonu_.empty()) r->infoTelefonu(infoTelefonu_);   // B362: Java ho dala uz pred hrou
+          }
           r->zacni(tedUs());
+          for (auto &b : predRelaci) r->prijmi(b.data(), b.size(), tedUs());   // B362: AHOJ druheho, ktery prisel driv
+          predRelaci.clear();
         } else if (typ == "odesel") {
           if (r) r->druhyOdesel();
           else { nastavChybu("druhy hrac odesel"); break; }
@@ -201,8 +230,9 @@ class OnlineKlient {
           if (r) r->ukonci(D_CHYBA);
           else break;
         }
-      } else if (p == 1 && op == 2 && r) {
-        r->prijmi(z.data(), z.size(), tedUs());
+      } else if (p == 1 && op == 2) {
+        if (r) r->prijmi(z.data(), z.size(), tedUs());
+        else if (predRelaci.size() < 64) predRelaci.push_back(z);   // B362: drzet do zpravy "hrac" (viz vyse)
       }
       if (r && r->tik(tedUs(), n_.tichoUs)) start_ = true;
     }
@@ -214,7 +244,7 @@ class OnlineKlient {
   Nastaveni n_;
   mutable std::mutex m_;
   Faze faze_ = Faze::NIC;
-  std::string chyba_, kod_, jmeno_, infoHry_;
+  std::string chyba_, kod_, jmeno_, infoHry_, infoTelefonu_;
   std::shared_ptr<Relace> relace_;
   WebSocket ws_;
   std::thread vlakno_;

@@ -1,0 +1,10 @@
+B362 - test_b357_online (klient appky proti enginu, 31 kontrol) opakovane: obcas visel (hra nezacala)
+Kazdy beh nejvys 45 s; kdyz nedobehl, zasobniky vlaken (gdb): jedno vlakno emulace cekalo ve vstupy() na snimku D, druhe skoncilo
+(vezmiStart do 20 s neprisel), engine: 'hrali 0 min 45 s, zprav 114 (1 KB)' = jen pingy, hra nezacala.
+
+klient B361 (hlavicky z gitu, 25 behu):            1 visel, 24 x 31 OK
+klient B362 pred opravou poradi (25 behu):        3 visel, 22 x 31 OK   (pri soubeznem behu dvou serii - zatez)
+klient B362 s opravou (predRelaci, 20 behu):      0 visel, 20 x 31 OK
+
+Pricina dokazana testem test_b362_poradi.cpp (engine mezi dvema zpravami "hrac" usne 150 ms):
+  klient B361: hra nezacne ani jednou (VYSTUP_test_b362_poradi_proti_b361.txt), klient B362: vzdy (VYSTUP_test_b362_poradi.txt).
