@@ -5022,3 +5022,5 @@
      - DALSI KROK: Rene - test B362 online Sega na LAN; stacil by log z jednoho telefonu (radky DRUHY TELEFON), ale
        radeji z obou + export enginu (zalozka ONLINE). Sledovat: odhad / oprav v PRUBEH, limit odhadu A12 (vykon jadra),
        TICHO (kdy a co naposledy). Pak Atari online podle PLAN_ONLINE_ATARI_PS1.txt (tlacitko uz je).
+     - Commit 164d401, CI "Build APK" 45462564006 zelene (APK versionCode 405, podpis N&P). Protokol verze 3 = oba
+       telefony musi mit B362 (jinak "druhy hrac ma jinou verzi appky"). Engine se menit nemusi.
