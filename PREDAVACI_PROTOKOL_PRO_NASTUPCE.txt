@@ -4957,3 +4957,23 @@
        regrese b292 / b352 / navody / mosty / b343 / b359.
      - DALSI KROK: Rene - test B360/B361 online Sega (logy OBOU telefonu + log enginu), u Atari vyzkouset stereo hru nebo
        demo (sluchatka). Pak online Atari a PS1 - PLAN BEZ KODU: test_overeni/b361/PLAN_ONLINE_ATARI_PS1.txt.
+
+   ENGINE v12.4.5 (24. 11. 2026) - soukromy, NENI v repozitari (balicek v12_4_5_server mimo repo). Rene: "podivej se na
+     server engine - mame 16 telefonu ne 15 - a hlavne jestli se ukladaji veskere veci po predelani jako je banky posilani
+     emailu potvrzeni atd - udelej kompletni kontrolu - a na to online hrani dej samostatnou zalozku".
+     - Ukladani po v12.4.4 (slozka tajne) fungovalo: novy test test_ukladani_v12_4_5.py (32 kontrol) - vse za provozu
+       (kody, telefony, IP, bany, platby, registrace, potvrzeni, schvaleni, posta, e-maily ve fronte) prezije restart;
+       banka (test v12.3 cast B) znovu cela proti slozce tajne. Proti v12.4.4: 20 OK, 12 CHYBA = presne opravy:
+       zapis, ktery nejde (soubor drzi jiny program), se driv tise spolkl a po restartu byly zmeny pryc -> ted 4 pokusy,
+       ⚠️ UKLÁDÁNÍ, data v pameti, uklid kazdych 30 s zkousi znovu (💾 ULOŽENO); soubor, ktery pri startu nejde precist,
+       se cte se sdilenim a kdyz presto nejde, je ⚠️ DATA a server ho NEPREPISE (driv najel s 0 kody); "naposledy"
+       u telefonu se uklada i pri vypnuti; docasne bany po vyprseni zmizi samy; cislo smazane posledni registrace
+       se znovu nepouzije (#posledni= v souboru registraci).
+     - TELEFONY v hlavicce = sparovane telefony (chyba v pocitani nenalezena). Nove "(+N nespárovaný)" = kod zadany na
+       webu bez sparovani + telefon s aplikaci bez kodu (od spusteni); radek PREHLED v okne KODY A TELEFONY, pri startu
+       📱 TELEFONY a ⚠️ KONTROLA DAT (kod sparovany bez telefonu, telefon u ciziho kodu).
+     - Zalozky v hlavnim okne: 📋 PROVOZ SERVERU / 🎮 ONLINE HRANÍ (bezici hry s telefony, doba, provoz + log jen online;
+       hlavni log je bez nich). APK ve slozce = jeden radek v logu a hned se nacte. EXPORT LOGU zakryva e-maily, jmena
+       u registraci, konce kodu a ucet (log jde poslat Partakovi).
+     - Testy: 346 + 30 (tajne) + 8 (online cesty) + 32 (ukladani) + banka 79 + 57 + okno (Xvfb, i zalozka online se dvema
+       hrami pres skutecnou NapOnline). Preklad mcs -sdk:4.5-api + KontrolaApi 4.5 / 4.8 = 0 chybi.
