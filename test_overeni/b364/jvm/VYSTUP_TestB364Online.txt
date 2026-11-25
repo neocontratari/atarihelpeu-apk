@@ -1,0 +1,14 @@
+B364 - ZALOZIT HRU s hrou z naseho serveru N&P (NapOnlineHra bez Androidu)
+OK     1) hry Atari na serveru: 4 (Archon (1984) | barbarian | Čáp a žába | Decathlon) - Sega / PS1 ne, BIOS ne, spatne / cizi id ne, podle nazvu bez diakritiky
+OK        prazdny nazev = jmeno souboru bez pripony ('Archon (1984)'), id a soubor pro stazeni /api/v1/hra?id=atari-00000000000000d4
+OK        spatny / prazdny JSON = zadna hra (zadna vyjimka) - okno pak rekne 'Na serveru N&P teď nejsou žádné hry pro Atari.'
+OK     2) onlineHra z C++: 'nazev / pripraveno / proc / gen' -> gen '7'; stara odpoved bez gen dal funguje
+OK     3) hra ze serveru se spustila: novy stroj (gen 3 -> 4) a Atari zapnute (i z vypnuteho Atari, i bez predchozi odpovedi)
+OK        jeste ne: stejny stroj (porad tataz hra / BASIC), novy stroj jeste nebezi, zadna odpoved, C++ bez gen
+OK     4) v Atari bezi ta hra: stejne jmeno, '_' = mezera, diakritika z C++ ('????p a ????ba.atr') = 'Čáp a žába.atr', velka pismena
+OK        dlouhe jmeno (119 znaku, z C++ useknute na 120 B bez pripony) = ta hra; kratke jine jmeno ne
+OK        jina hra / BASIC / nic = ne (online se nezalozi s necim jinym)
+OK        ZIP / RAR (C++ spusti soubor z archivu pod jeho jmenem): cokoli krome samotneho ATARI BASICu
+OK     5) okno HRA ZALOŽENA: cislo hry jen z radku 'ceka na hrace 2 - cislo hry 4821' (4 cislice; jine radky nic)
+OK        skutecny hlidac (NapOnlineHlidac) po zalozeni napise radek, ze ktereho okno cislo vezme: 'B358 ONLINE ceka na hrace 2 - cislo hry 4821'
+VYSLEDEK: 12 OK, 0 CHYBA

@@ -1,0 +1,14 @@
+OK     N1) CS blok #onlineatari (2331 znaku) - tlacitka a texty jako v appce
+OK     N2) CS odkazu na kapitolu: 2 (ONLINE v tlacitkach pristroje + TIP u Segy)
+OK     N2) CS odkaz 1 (z #atari dd) dojede na Online - dva telefony (Atari) (top 68, lista 58)
+OK     N2) CS odkaz 2 (z #sega p) dojede na Online - dva telefony (Atari) (top 68, lista 58)
+OK     N3) CS hledani "šetrné" najde kapitolu atari s blokem online Atari
+OK     N3) CS hledani "joysticku 1" najde kapitolu atari s blokem online Atari
+OK     N1) EN blok #onlineatari (2781 znaku) - tlacitka a texty jako v appce
+OK     N2) EN odkazu na kapitolu: 2 (ONLINE v tlacitkach pristroje + TIP u Segy)
+OK     N2) EN odkaz 1 (z #atari dd) dojede na Online - dva telefony (Atari) (top 68, lista 58)
+OK     N2) EN odkaz 2 (z #sega p) dojede na Online - dva telefony (Atari) (top 68, lista 58)
+OK     N3) EN hledani "economy" najde kapitolu atari s blokem online Atari
+OK     N3) EN hledani "joystick 1" najde kapitolu atari s blokem online Atari
+OK     J) zadna chyba JavaScriptu
+VYSLEDEK: 13 kontrol, 0 CHYBA

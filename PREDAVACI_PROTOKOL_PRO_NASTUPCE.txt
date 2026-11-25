@@ -5078,3 +5078,48 @@
      - Commit 068d8e0, CI "Build APK" 45669025941 zelene (APK versionCode 406, arm64-v8a + armeabi-v7a, podpis N&P;
        NDK prelozil nap_atari_stav.h / nap_atari_online.h do napatari se zlib). Protokol verze 3 = oba telefony B362+,
        pro Atari oba B363 (jinak "druhy hrac ma jinou verzi appky"). Engine se menit nemusi.
+
+   B364: KAZETA (CLOAD PO RESETU POKEY), ZALOZIT HRU S HRAMI ZE SERVERU N&P, AKTUALIZACE "MAS NEJNOVEJSI" (25. 11. 2026)
+     Rene 25. 11. (test B363 na LAN, S8 + A12): online Atari jde ("na zaver se me decatlon povedl"), ale "je docela
+     slozite pochopit v atari jak nastavit pro dva"; Sega bezi dobre; "mame chybu v cload - nevim proc"; novacek at
+     zaklada hru z "nasich her" na enginu, ne ze sveho mobilu; "apka pri kontrole aktualizace v seting chce stahovat
+     i kdyz ma nejnovejsi aktualizaci". Logy: Online_atari_a_sega.txt (S8), chyba_csave_cload.txt (B363).
+     - CLOAD (nap_atari_machine.h, zapis SKCTL): zmena init rezimu POKEY uz nedava SIO DATA OUT na mezeru (do B363
+       serOutState = false). Program s POKE 53775,0 : POKE 53775,3 (detekce druheho POKEY - Reneho stereo program)
+       pak CSAVE nahral 20 s uvodniho tonu jako mezeru (3970 Hz misto 5293 Hz) -> CLOAD ERROR. Skutecny POKEY drzi
+       v init rezimu posledni bit (Altirra HRM) = MARK. Overeno: test_b364_kazeta 12 OK (proti B363 4 CHYBA), Reneho
+       program lokalne CSAVE 220 s / 81 zaznamu / CLOAD 10399 B / LIST stejny. serOutState je ve stavu a ridi dvoutonovy
+       rezim -> ONLINE_ATARI_JADRO 364001 (drive 363001): B363 a B364 spolu online nehraji (AHOJ -> D_JINA_HRA ->
+       "druhy hrac ma jinou verzi appky (Atari online)").
+     - nap_atari_tape.h napTapeFromWav: usek mezery > 0,5 s se pri vlozeni opravi na MARK (stare nahravky z B363 se
+       nactou; skutecna z B363 opravena 19,4 s, 81 zaznamu OK); TapeImage.opravenoMezer / opravenoSekund, log
+       "B364 KAZETA ... opraveno N useku". Dobra nahravka 0 useku; b292 kazety a WALLS (TBXL) beze zmeny.
+     - ZALOZIT HRU (MainActivity.atariOnlineZalozVyber / atariOnlineServeroveHry / atariOnlineZalozVolba(hra,
+       serverHra) / atariOnlineZalozSeHrouZeServeru): prvni volba HRA Z NASEHO SERVERU N&P (/api/v1/hry, NapOnlineHra.
+       serveroveHry: jen system, id "<system>-" + 16 hex, bez BIOSu, razeni bez diakritiky), s vypnutym Atari rovnou.
+       JAK BUDETE HRAT? -> downloadAndRun(/api/v1/hra?id=) -> vlakno ceka max 90 s na novy stroj (onlineHra ma 4. radek
+       gen = g_strojGen; NapOnlineHra.hraSpustena) s tou hrou (jeTaHra: klicSouboru bez zkraceni, C++ jmeno po bajtech
+       ASCII "??" = diakritika, useknuti na 120 B, ZIP / RAR = cokoli krome ATARI BASIC) -> atariOnlineZaloz.
+       V testu Rene zalozil hru a sel do NET HRY vybrat hru = konec online (log "hrac odesel z Atari").
+       Okno ONLINE "ONLINE - HRA PRO DVA" ve 2 krocich; po zalozeni okno HRA ZALOZENA - CISLO NNNN (hlidac:
+       NapOnlineHra.cisloZalozeneHry z radku "ceka na hrace 2 - cislo hry", napOnlineOznamenyKod = jednou).
+     - NapAktualizace.spustRucne: rucneCo(verzeZnama, naServeru, moje) -> zeptejSe jen kdyz server > moje; jinak
+       rucneBezStazeni: MAS NEJNOVEJSI VERZI (rucneText CZ / EN) s OK a PRESTO STAHNOUT ZNOVU (B324 oprava zaseknute
+       instalace), verze nezjistena = "Nepodarilo se zjistit ..." s PRESTO STAHNOUT.
+     - Setrne kresleni: v Reneho logu se zaplo na S8 i A12 pri 11-13 ms (50/s stihaly). Atari zapnout > 14 ms, vypnout
+       < 10 ms (do B363 10 / 6); Sega > 12 ms, vypnout < 8 ms (do B363 9 / 6).
+     - Napoveda CZ / EN (#onlineatari 5 kroku, ONLINE, AKTUALIZOVAT APLIKACI + otazka, TIP u kazetaku bez cisla buildu
+       - kontrola_b343 N1), novinky B364 (verze 407, 5 + 5 vet), build.gradle 407 "EMU10-B364-KAZETA-ONLINE".
+     - Rozbor logu B363 (S8 = hrac 1): online Atari deterministicke (synchronizaci 0, overeno az 126 otisku); 5x konec
+       "hrac odesel z Atari" (NET HRY / ZPET / MENU - zamerne); 2x TICHO 15 s - A12 prestal posilat (jednou hned po
+       startu ve snimku 15, jednou po 40 s); v 8. hre stali OBA telefony 13-14 s (kazdy cekal na druheho = sit mezi
+       nimi stala obema smery, ne appka), pak se hralo dal. A12 Wi-Fi 2.4 GHz -58 az -79 dBm, 3x rychlost linky
+       1 Mb/s. Co presne stalo (Wi-Fi A12 / router / engine), rekne log A12 a export enginu; kdyby se sit vracela do
+       20-30 s, prodlouzit TICHO z 15 s. Sega: 1 rozjeti (RAM Z80, snimek 780) bez oprav pred tim (oprav 0) -
+       synchronizace ho spravila; pricina zatim neznama.
+     - Testy test_overeni/b364 (JAK_SPUSTIT.txt): kazeta 12 OK; online Atari 2 procesy pres engine 12 OK (novy scenar 5:
+       jadro asi 12 ms = setrne se nezapne); Java 12 + 8 + 8; napoveda v Chromiu 28 OK; javac android 0 chyb; JNI 124 / 0;
+       regrese jadra a JNI, stavu Atari, online b357-b362, Java, napovedy, b359.
+     - DALSI KROK: Rene - B364 na OBA telefony (jinak Atari online nezacne - jine cislo jadra); online Atari: ONLINE -> ZALOZIT HRU -> HRA Z NASEHO SERVERU N&P; CLOAD
+       jeho stereo programu (a stare nahravky z B363); OPTIONS -> AKTUALIZOVAT APLIKACI = MAS NEJNOVEJSI VERZI. Poslat
+       log z A12 (PS1_LOG.txt + PS1_LOG_predchozi.txt) a export enginu (zalozka ONLINE) - proc stala sit. Pak PS1 online.

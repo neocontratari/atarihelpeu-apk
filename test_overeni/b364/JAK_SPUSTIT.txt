@@ -1,0 +1,100 @@
+B364 - KAZETA (CLOAD PO RESETU POKEY), ZALOZIT HRU S HRAMI ZE SERVERU N&P, AKTUALIZACE "MAS NEJNOVEJSI" (25. 11. 2026)
+=========================================================================================================================
+
+PROC
+  Rene 25. 11. (testy B363 - online Atari a Sega na LAN, vlastni program se stereem POKEY, CSAVE / CLOAD):
+  "Je docela slozite pochopit v atari jak nastavit pro dva ale jde to - na zaver se me decatlon povedl :-) Sega bezi
+  dobre. Vyhrady mame chybu v cload - nevim proc. Dale Kdyz nekdo zaklada hru jako novacek - at nevybira ze svho
+  mobilu ale at najede na nas engine nase hry a posledni - apka pri kontrole aktualizace v seting chce stahovat i kdyz
+  ma nejnovejsi aktualizaci".
+
+CO SE ZMENILO
+  1) CLOAD (nap_atari_machine.h, zapis SKCTL): pri zmene init rezimu POKEY (SKCTL bity 0-1 = 00 a zpet) jadro do B363
+     dalo linku SIO DATA OUT na MEZERU (serOutState = false). Program, ktery POKEY resetuje (POKE 53775,0 : POKE
+     53775,3 - bezne pri hledani druheho POKEY / stereo), pak CSAVE nahral 20 s uvodniho tonu jako mezeru (3,97 kHz
+     misto 5,33 kHz) a CLOAD prvni zaznam neprecetl (ERROR, OS precetl ~20 bajtu s chybami ramce). Skutecny POKEY si
+     v init rezimu drzi posledni vyslany bit (Altirra Hardware Reference Manual: "does not actually clear the shift
+     register, leaving it outputting the last bit shifted out") = v klidu MARK. Ted serOutState zustava.
+     serOutState je ve stavu (otisk) a ridi dvoutonovy rezim -> online cislo jadra Atari 364001 (ONLINE_ATARI_JADRO,
+     drive 363001): telefon s B363 a s B364 spolu online nehraji ("druhy hrac ma jinou verzi appky (Atari online)").
+  2) STARE NAHRAVKY (nap_atari_tape.h, napTapeFromWav): usek mezery delsi nez 0,5 s (skutecna kazeta ma mezeru nejvys
+     9 bitu = 15 ms) se pri vlozeni WAV opravi na MARK; posledni bit pred zmenou zustane (start bit prvniho $55).
+     V logu "B364 KAZETA ...: uvodni ton byl nahrany jako mezera ... opraveno N useku". Dobra nahravka = 0 useku.
+  3) ZALOZIT HRU (MainActivity, NapOnlineHra, onlineHra v nap_atari_native.cpp): Rene v testu zalozil hru s ATARI
+     BASICem a pak sel do NET HRY vybrat hru = konec online (log "hrac odesel z Atari"). Ted ZALOZIT HRU nabidne
+     HRA Z NASEHO SERVERU N&P (s vypnutym Atari rovnou) -> seznam HRY NA SERVERU N&P (/api/v1/hry, jen Atari, bez
+     BIOSu, podle nazvu) -> JAK BUDETE HRAT? (KAZDY SVUJ JOYSTICK / OBA NA JOYSTICKU 1) -> appka hru stahne a spusti
+     (downloadAndRun jako HRY), pocka az bezi (onlineHra ma 4. radek gen = kolikaty stroj; jmeno souboru jako ze
+     serveru, NapOnlineHra.jeTaHra) a online hru zalozi sama. Hra, ktera v Atari bezi, jde vybrat porad (2. volba).
+     Okno ONLINE ma nadpis ONLINE - HRA PRO DVA a postup ve 2 krocich; po zalozeni okno HRA ZALOZENA - CISLO NNNN
+     s tim, co ma udelat druhy hrac (cislo z radku hlidace "ceka na hrace 2 - cislo hry").
+  4) AKTUALIZACE (NapAktualizace.spustRucne): OPTIONS -> AKTUALIZOVAT APLIKACI do B363 vzdy otevrelo okno se stazenim
+     (i pri stejne verzi). Ted: server ma vyssi verzi = jako drive; stejnou / nizsi = MAS NEJNOVEJSI VERZI (nic se
+     nestahuje, PRESTO STAHNOUT ZNOVU = oprava zaseknute instalace B324); verzi nezjistim = rekne to.
+  5) SETRNE KRESLENI (online): v testu Reneho se zaplo na S8 i A12 pri 11-13 ms na snimek, ktere 50/s stihaly (kresli
+     jine vlakno). Atari: zapnout nad 14 ms (z 20 ms; do B363 10 ms), vypnout po 3 oknech pod 10 ms (do B363 6 ms).
+     Sega: nad 12 ms (z 16,7 ms; do B363 9 ms), vypnout pod 8 ms (do B363 6 ms).
+  6) Napoveda CZ / EN (online Atari krok za krokem, tlacitko ONLINE, AKTUALIZOVAT APLIKACI + otazka, TIP u kazetaku,
+     setrne kresleni), novinky B364 (verze 407), build.gradle 407 "EMU10-B364-KAZETA-ONLINE".
+
+Spoustet z test_overeni/b364 (g++ 13, JDK 17+, python3 + playwright). PRAC = pracovni slozka mimo repozitar.
+
+1) Kazeta - jadro Atari bez Androidu (pomocne funkce z ../b292/test_core.cpp):
+     g++ -std=c++17 -O2 -I../../app/src/main/cpp/atari -o PRAC/test_b364_kazeta test_b364_kazeta.cpp
+     PRAC/test_b364_kazeta                              -> VYSTUP_test_b364_kazeta.txt (12 OK, 0 CHYBA)
+       bez resetu POKEY; POKE 53775,0:POKE 53775,3; strojovy kod z USR (SEI, SKCTL 0, RANDOM, SKCTL 3, CLI) - kazdy:
+       RUN, CSAVE -> WAV (uvodni ton 5293 Hz = MARK, zaznamy, druh BASIC), NEW, CLOAD ve stejnem stroji, LIST stejny;
+       nahravka jako z B363 (uvodni ton mezera 19,5 s) se pri vlozeni opravi a CLOAD ji v novem stroji nacte; dobra
+       nahravka se neopravuje
+     prvni 3 scenare proti jadru B363 (stare hlavicky): 3 OK, 4 CHYBA - po resetu POKEY uvodni ton 3970 Hz, CLOAD
+       ERROR (OS precetl 27 / 38 B, chyb ramce 102 / 91)
+     volitelne (jen na PC Clauda, soubory NEJSOU v repozitari): PRAC/test_b364_kazeta reneho_program.txt stara.wav
+       -> 16 OK: Reneho program (161 radku, DUAL POKEY FOUND) CSAVE 220 s, 81 zaznamu, CLOAD 10399 B, LIST stejny;
+       skutecna nahravka z B363 (CLOAD tehdy ERROR) opravena 19,4 s, 81 zaznamu OK
+2) Online Atari - skutecny nap_atari_native.cpp ve dvou procesech pres engine (../b363/test_b363_atari_online.cpp,
+   B364 pridal scenar 5; preklad a engine jako ../b363/JAK_SPUSTIT.txt):
+     ./test_b363_atari_online N                         -> VYSTUP_regrese_b363_atari_online.txt (12 OK, 0 CHYBA)
+       1-3 beze zmeny (start ze stavu, synchronizace, ticho); 4) telefon 2 jadro +16 ms (asi 18-19 ms na snimek) ->
+       setrne kresleni zapne (drive +12 ms, prah ted 14 ms); 5) B364: jadro +9 ms (11,5-11,9 ms jako S8 / A12 v testu
+       Reneho) -> setrne kresleni se NEZAPNE, obraz dal 50/s, otisky stejne
+3) Java bez Androidu:
+     javac --release 17 -encoding UTF-8 -cp android-34.jar -d OUT ../../app/src/main/java/eu/atarihelp/emu10/*.java
+           jvm/eu/atarihelp/emu10/TestB364*.java
+     java -cp OUT eu.atarihelp.emu10.TestB364Online jvm/VYSTUP_TestB364Online.txt         (12 OK)
+       hry Atari na serveru (Sega / PS1 / BIOS / spatne id ne, razeni bez diakritiky), onlineHra se 4. radkem gen,
+       hra se spustila (gen se zmenil, Atari zapnute), je to ta hra (jmeno z C++ po bajtech ASCII "??" = diakritika,
+       '_' = mezera, useknute dlouhe jmeno, ZIP / RAR), cislo hry ze skutecneho NapOnlineHlidac
+     java -cp OUT:android-34.jar eu.atarihelp.emu10.TestB364Aktualizace ../.. jvm/VYSTUP_TestB364Aktualizace.txt  (8 OK)
+       408 > 407 nabidnout, 407 = 407 a 406 < 407 NIC NESTAHOVAT, 0 = nevim; texty CZ / EN; spustRucne vola okno se
+       stazenim jen pri vyssi verzi; nazvy oken = napoveda
+     java -cp OUT eu.atarihelp.emu10.TestB364Novinky ../.. jvm/VYSTUP_TestB364Novinky.txt   (8 OK: B364 = 407)
+     cela appka s android.jar API 34                    -> VYSTUP_javac_android.txt (40 zdroju, 139 trid, 0 chyb)
+     ../b320/kontrola_jni.py (hlavicky z javac -h)      -> VYSTUP_regrese_b320_kontrola_jni.txt (124 native metod, 0 CHYB)
+4) Napoveda v Chromiu (playwright, mosty Javy falesne jako ../b314/jazyk_harness):
+     python3 test_b364_napoveda.py [PRAC]               -> VYSTUP_test_b364_napoveda.txt (28 OK)
+       11 textu oken je opravdu v MainActivity / NapAktualizace; CZ / EN: blok #onlineatari - novy postup (zalozit ->
+       jak budete hrat -> pripojit se), stary krok "spusti hru (klidne jen titulku)" pryc; AKTUALIZOVAT APLIKACI +
+       otazka; TIP u kazetaku bez cisla buildu; tlacitko ONLINE; setrne kresleni; hledani; nic nepreteka do strany
+5) Regrese (stare testy proti B364):
+     jadro Atari a JNI (nap_atari_machine.h, nap_atari_tape.h a nap_atari_native.cpp zmeneny; JNI s -lz): ../b348 SIO
+       41 / 0 (acid800 + PoP DD), JNI 16 / 0; ../b352 jadro 18 / 0, JNI 12 / 0 (Tony 1088K); ../b353 JNI 11 / 0 (Tony,
+       PoP z RAR); ../b354 Atari 12 / 0; ../b355 Atari 11 / 0; ../b361 JNI 8 / 0 - vse stejne jako puvodne
+     ../b363 stav Atari                               -> VYSTUP_regrese_b363_stav.txt (29 OK, 0 CHYBA; spoustet ze
+       slozky b363 - Turbo-BASIC XL z assets)
+     ../b292 kazety (test_core: kazeta, kazeta-dlouha BASIC / TBXL, bootkazeta mono / stereo, kazeta-list se
+       skutecnou nahravkou WALLS z PC Clauda) - nove i stare jadro STEJNE (CSAVE -> CLOAD bez chyby, boot OK, LIST
+       WALLS 74 radku bajt po bajtu stejny)
+     online (Sega: prah setrneho kresleni 12 ms) -> VYSTUP_regrese_b3*.txt: ../b357 lockstep 30 OK, klient proti enginu
+       31 OK, Sega online 8 OK; ../b358 start 4 OK; ../b360 lockstep 28 OK, Sega online 6 OK; ../b362 relace s odhadem
+       17 OK, poradi startu 3 OK, Sega online s odhadem a opravou 7 OK
+     Java -> VYSTUP_regrese_Test*.txt: TestB358Online 15 OK, TestB360Hlidac 9 OK, TestB362Hlidac 6 OK, TestB363Online
+       12 OK (TestB363Novinky ted 6 CHYBA zamerne: hlida "nejnovejsi = B363" a puvodni text OBA NA JOYSTICKU 1 -
+       nahrazuje ho TestB364Novinky; TestB362Novinky 6 CHYBA ze stejneho duvodu)
+     napoveda: ../b311 navod 250 nazvu 0 CHYBA, mosty 137 0 chybi (spoustet ze slozky b311), odkazy 0 chyb, navod
+       v Chromiu 23 OK; ../b314 242 nazvu 0 CHYBA, jazyk navodu v Chromiu 32 OK + 2 CHYBA zname (4: "DRUHY TELEFON"
+       = nazev radku logu v anglickem TIPu od B362; 5: cesky navod se od B313 meni zamerne); ../b343 4 zamerne
+       (N7 N9 A6 V; N1 hlida i novy TIP - bez cisla buildu), napoveda v Chromiu 27 OK; ../b363 napoveda 13 OK;
+       ../b359 kontrola_novinek B364 = 407 (9 zaznamu, 0 CHYBA), ES5 10 OK (skripty se pisou do VYSTUP svych slozek -
+       zkopirovano sem jako VYSTUP_regrese_*, puvodni vraceny: git checkout --)
+NEOVERENO: skutecne telefony (CLOAD Reneho programu na telefonu, ZALOZIT HRU se stazenim ze serveru, okno
+  aktualizace), preklad NDK (CI "Build APK").

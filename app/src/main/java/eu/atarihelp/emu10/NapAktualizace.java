@@ -140,17 +140,69 @@ public final class NapAktualizace {
         }, "nap-aktualizace").start();
     }
 
-    /** Rucni spusteni z nabidky OPTIONS - stahne i kdyz je verze stejna. */
+    /** Rucni spusteni z nabidky OPTIONS. B364 (Rene: "chce stahovat i kdyz ma nejnovejsi aktualizaci"): kdyz appka
+     *  nejnovejsi verzi uz ma, rekne to a nic nestahuje - stejnou verzi stahne znovu jen PRESTO STAHNOUT ZNOVU
+     *  (B324: oprava zaseknute instalace). Kdyz verzi na serveru nezjisti, rekne to taky. */
     public static void spustRucne(final Activity a, final Hlaska log) {
         instalaceSkoncila();   // B324: rucne = uzivatel to chce znovu (i po zaseknute instalaci)
         new Thread(() -> {
-            Novinka v = zjistiNovinku();
+            final Novinka v = zjistiNovinku();
             final boolean srv = zeServeru();
             final String zip = srv ? null : (v != null) ? v.zip : ZALOZNI_ZIP;
             final int nova = (v != null) ? v.verze : 0;
             final String nazev = (v != null) ? v.nazev : "";
-            a.runOnUiThread(() -> zeptejSe(a, nova, nazev, mojeVerze(a), zip, log));
+            final int moje = mojeVerze(a);
+            final int co = rucneCo(v != null, nova, moje);
+            if (log != null) log.rekni("AKTUALIZACE rucne (OPTIONS): " + (v == null ? "verzi na serveru nezjistim"
+                    : (srv ? "na serveru N&P " : "na webu ") + nova) + ", moje " + moje
+                    + (co == RUCNE_NABIDNOUT ? " -> nabizim stazeni" : co == RUCNE_NEJNOVEJSI ? " -> mam nejnovejsi, nestahuji"
+                       : " -> nevim, jestli je novejsi"));
+            a.runOnUiThread(() -> {
+                if (co == RUCNE_NABIDNOUT) zeptejSe(a, nova, nazev, moje, zip, log);
+                else rucneBezStazeni(a, co, nova, moje, zip, log);
+            });
         }, "nap-aktualizace-rucne").start();
+    }
+
+    static final int RUCNE_NABIDNOUT = 0, RUCNE_NEJNOVEJSI = 1, RUCNE_NEVIM = 2;
+
+    /** B364: co ukazat po klepnuti na AKTUALIZOVAT APLIKACI v OPTIONS (testuje TestB364Aktualizace). */
+    static int rucneCo(boolean verzeZnama, int naServeru, int moje) {
+        if (!verzeZnama || naServeru <= 0) return RUCNE_NEVIM;
+        return naServeru > moje ? RUCNE_NABIDNOUT : RUCNE_NEJNOVEJSI;
+    }
+
+    /** B364: text okna, kdyz se nic stahovat nema (cesky / anglicky). */
+    static String rucneText(boolean en, int co, int naServeru, int moje) {
+        if (co == RUCNE_NEJNOVEJSI) {
+            if (naServeru < moje)
+                return en ? "You have version " + moje + ", newer than the N&P server (" + naServeru + "). There is nothing to download."
+                          : "Máš verzi " + moje + ", novější než je na serveru N&P (" + naServeru + "). Není co stahovat.";
+            return en ? "You already have the latest version " + moje + " – the N&P server has the same one. There is nothing to download."
+                      : "Máš nejnovější verzi " + moje + " – na serveru N&P je stejná. Není co stahovat.";
+        }
+        return en ? "I could not find out which version the N&P server has (no connection?). Try again in a while."
+                  : "Nepodařilo se zjistit, jakou verzi má server N&P (není spojení?). Zkus to za chvíli znovu.";
+    }
+
+    private static void rucneBezStazeni(final Activity a, int co, int nova, int moje, final String zip, final Hlaska log) {
+        try {
+            final boolean en = NapJazyk.en(a);
+            new AlertDialog.Builder(a)
+                    .setTitle(co == RUCNE_NEJNOVEJSI ? NapJazyk.t(a, "MÁŠ NEJNOVĚJŠÍ VERZI", "YOU HAVE THE LATEST VERSION")
+                                                     : NapJazyk.t(a, "Aktualizace", "Update"))
+                    .setMessage(rucneText(en, co, nova, moje))
+                    .setPositiveButton("OK", null)
+                    .setNeutralButton(co == RUCNE_NEJNOVEJSI ? NapJazyk.t(a, "PŘESTO STÁHNOUT ZNOVU", "DOWNLOAD AGAIN ANYWAY")
+                                                             : NapJazyk.t(a, "PŘESTO STÁHNOUT", "DOWNLOAD ANYWAY"), (d, w) -> {
+                        if (log != null) log.rekni("AKTUALIZACE rucne: hrac chce presto stahnout (" + (co == RUCNE_NEJNOVEJSI
+                                ? "stejna verze znovu, moje " + moje : "verze na serveru nezjistena") + ")");
+                        nainstaluj(a, zip, log);
+                    })
+                    .show();
+        } catch (Throwable t) {
+            if (log != null) log.rekni("AKTUALIZACE dialog: " + t.getClass().getSimpleName());
+        }
     }
 
     /** B321: server N&P ma novejsi appku - nabidnout (bez povoleni instalace nejdriv nastaveni). */

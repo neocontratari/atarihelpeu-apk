@@ -43,6 +43,8 @@ struct TapeImage {
   // B298: co je na pasce - podle prvniho platneho zaznamu (kontrolni soucet OK)
   enum Druh { NEZNAMY = 0, BASIC = 1, BOOT = 2, TEXT = 3 };
   int druh = NEZNAMY;
+  int opravenoMezer = 0;               // B364: dlouhe useky mezery (uvodni ton nahrany jako mezera) opravene na MARK
+  double opravenoSekund = 0;
   int prvniCtl = -1;                   // ridici bajt prvniho zaznamu ($FC/$FA/$FE)
   std::vector<uint8_t> prvniData;      // 128 datovych bajtu prvniho zaznamu
   double prvniCas = 0;                 // kde zacina (s)
@@ -198,6 +200,25 @@ inline bool napTapeFromWav(const uint8_t *d, size_t len, TapeImage &t, std::stri
     else if (lvl == 1 && es > em * 1.15f) lvl = 0;     // mala hystereze proti drnceni
     else if (lvl == 0 && em > es * 1.15f) lvl = 1;
     t.set(i, lvl);
+  }
+  // B364: CSAVE z appky do B363 po resetu POKEY (SKCTL 0 -> 3, napr. detekce druheho POKEY) nahral uvodni ton
+  // jako MEZERU (0). Skutecna kazeta mezeru delsi nez 9 bitu nikdy nema ($00 se start bitem), takze dlouhy usek
+  // mezery (nad 0,5 s) je klid = MARK. Posledni bit pred zmenou na 1 zustane mezerou: start bit prvniho $55.
+  {
+    const size_t dlouho = (size_t)(rate * 0.5), bitS = (size_t)std::lround(rate / 600.0);
+    size_t i = 0;
+    while (i < n) {
+      if (t.bit(i) != 0) { i++; continue; }
+      size_t j = i;
+      while (j < n && t.bit(j) == 0) j++;
+      if (j - i >= dlouho) {
+        const size_t doo = j < n ? j - bitS : j;
+        for (size_t k = i; k < doo; k++) t.set(k, 1);
+        t.opravenoMezer++;
+        t.opravenoSekund += (double)(doo - i) / rate;
+      }
+      i = j;
+    }
   }
   // diagnostika: kolik bajtu / zaznamu je na pasce pri 600 baudech
   {

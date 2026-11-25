@@ -5,6 +5,17 @@
    NapNovinky.java), Napoveda je ma nahore v sekci CO JE NOVEHO. Pole za NAP_NOVINKY = musi byt cisty JSON (Java ho
    cte pres NapJson) - zadne komentare ani carky navic. Texty pro lidi: kratce, co se zmenilo a kde to najdou. */
 window.NAP_NOVINKY = [
+  {"verze": 407, "build": "B364", "datum": "25. 11. 2026",
+   "cs": ["Kazeta: CLOAD už načte i program uložený přes CSAVE po resetu POKEY (třeba POKE 53775,0 v programu se stereem). Dřív skončil chybou.",
+          "Starší nahrávky z CSAVE, které CLOAD nenačetl, appka při vložení sama opraví – stačí kazetu znovu vybrat přes EJECT.",
+          "Online Atari: ZALOŽIT HRU teď nabídne hry z našeho serveru N&P – vybereš hru, appka ji stáhne, spustí a online hru založí sama.",
+          "Hra pro dva je jednodušší: okno ONLINE říká krok za krokem, co udělat, a po založení ukáže číslo hry, které řekneš druhému hráči.",
+          "OPTIONS → AKTUALIZOVAT APLIKACI: když už máš nejnovější verzi, appka to řekne a nic nestahuje. Šetrné kreslení online se zapne, jen když telefon opravdu nestíhá."],
+   "en": ["Tape: CLOAD now also loads a program saved with CSAVE after a POKEY reset (for example POKE 53775,0 in a stereo program). Before, it ended with an error.",
+          "Older CSAVE recordings that CLOAD could not read are repaired by the app when you insert them – just pick the tape again with EJECT.",
+          "Online Atari: CREATE A GAME now offers the games from our N&P server – pick a game, the app downloads it, starts it and creates the online game by itself.",
+          "A game for two is simpler: the ONLINE window tells you step by step what to do, and after creating it shows the game number to tell the other player.",
+          "OPTIONS → UPDATE THE APP: when you already have the latest version, the app says so and downloads nothing. Online economy drawing turns on only when the phone really cannot keep up."]},
   {"verze": 406, "build": "B363", "datum": "25. 11. 2026",
    "cs": ["Online Atari 130XE: na přístroji klepni na ONLINE → ZALOŽIT HRU (online pojede hra, která právě běží) nebo PŘIPOJIT SE.",
           "Druhý hráč hru mít nemusí – appka mu pošle celé Atari i s hrou (XEX, disketa, cartridge) a hraje se od stejné chvíle.",

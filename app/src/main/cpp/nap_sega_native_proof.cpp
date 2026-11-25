@@ -1258,7 +1258,7 @@ static uint32_t g_online_vykon_snimku = 0;
 static std::atomic<int> g_online_setrne{0};
 static std::atomic<uint32_t> g_online_setrne_c{0};       // kolikrat se zaplo
 static std::atomic<uint32_t> g_online_setrne_ms10{0};    // jadro (0,1 ms) pri zapnuti - do logu
-static int g_online_klidnych_oken = 0;                  // 2s oken po sobe pod 6 ms (vypnout po 3)
+static int g_online_klidnych_oken = 0;                  // 2s oken po sobe pod 8 ms (vypnout po 3)
 
 static void nap_sega_online_uloz(uint32_t snimek) {
     std::unique_ptr<NapSegaZaloha> &z = g_online_kruh[snimek % NAP_SEGA_KRUH];
@@ -1346,17 +1346,18 @@ static void nap_sega_online_vykon(uint64_t iterNs) {
     g_online_vykon_jadro_us += us;
     if (us > g_online_vykon_jadro_max_us) g_online_vykon_jadro_max_us = us;
     if (ted - g_online_vykon_od_us >= 2000000) {
-        // B363: setrne kresleni (obraz 30/s) - prumer jadra za 2 s nad 9 ms (z 16,7 ms); vypnout po 3 oknech pod 6 ms
+        // B363: setrne kresleni (obraz 30/s) - prumer jadra za 2 s nad 12 ms (z 16,7 ms, B364: do B363 od 9 ms);
+        // vypnout po 3 oknech pod 8 ms
         const uint64_t prumer = g_online_vykon_jadro_us / std::max<uint32_t>(g_online_vykon_snimku, 1);
         if (!g_online_setrne.load()) {
-            if (prumer > 9000 && g_online_snimek > 120) {
+            if (prumer > 12000 && g_online_snimek > 120) {
                 g_online_setrne.store(1);
                 g_online_setrne_c.fetch_add(1);
                 g_online_setrne_ms10.store((uint32_t)(prumer / 100));
                 g_online_klidnych_oken = 0;
                 NAPLOG("B363 ONLINE SETRNE KRESLENI zapnuto: jadro %.1f ms na snimek - obraz jen kazdy 2. snimek", prumer / 1000.0);
             }
-        } else if (prumer < 6000) {
+        } else if (prumer < 8000) {
             if (++g_online_klidnych_oken >= 3) {
                 g_online_setrne.store(0);
                 NAPLOG("B363 ONLINE SETRNE KRESLENI vypnuto: jadro %.1f ms", prumer / 1000.0);

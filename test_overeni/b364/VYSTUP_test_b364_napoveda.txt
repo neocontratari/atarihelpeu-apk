@@ -1,0 +1,29 @@
+OK     K) "HRA Z NAŠEHO SERVERU N&P" / "A GAME FROM OUR N&P SERVER" je v appce: tx("HRA Z NAŠEHO SERVERU N&P", "A GAME FROM OUR N&P SERVER")
+OK     K) "HRY NA SERVERU N&P" / "GAMES ON THE N&P SERVER" je v appce: tx("HRY NA SERVERU N&P (", "GAMES ON THE N&P SERVER (")
+OK     K) "HRA, KTERÁ TEĎ BĚŽÍ V ATARI" / "THE GAME RUNNING IN THE ATARI NOW" je v appce: tx("HRA, KTERÁ TEĎ BĚŽÍ V ATARI: ", "THE GAME RUNNING IN THE ATARI NOW: ")
+OK     K) "JAK BUDETE HRÁT?" / "HOW WILL YOU PLAY?" je v appce: tx("JAK BUDETE HRÁT? ", "HOW WILL YOU PLAY? ")
+OK     K) "ZALOŽIT" / "CREATE" je v appce: tx("ZALOŽIT", "CREATE")
+OK     K) "ONLINE: STAHUJI HRU, PAK JI ZALOŽÍM..." / "ONLINE: DOWNLOADING THE GAME, THEN CREATING IT..." je v appce: tx("ONLINE: STAHUJI HRU, PAK JI ZALOŽÍM...", "ONLINE: DOWNLOADING THE GAME, THEN CREATING 
+OK     K) "HRA ZALOŽENA – ČÍSLO" / "GAME CREATED – NUMBER" je v appce: tx("HRA ZALOŽENA – ČÍSLO ", "GAME CREATED – NUMBER ")
+OK     K) "KAŽDÝ SVŮJ JOYSTICK" / "EACH THEIR OWN JOYSTICK" je v appce: tx("KAŽDÝ SVŮJ JOYSTICK – hrajete oba naráz
+OK     K) "OBA NA JOYSTICKU 1" / "BOTH ON JOYSTICK 1" je v appce: tx("OBA NA JOYSTICKU 1 – střídáte se (hra má jen joystick 1)"
+OK     K) "MÁŠ NEJNOVĚJŠÍ VERZI" / "YOU HAVE THE LATEST VERSION" je v appce: NapJazyk.t(a, "MÁŠ NEJNOVĚJŠÍ VERZI", "YOU HAVE THE LATEST VERSION")
+OK     K) "PŘESTO STÁHNOUT ZNOVU" / "DOWNLOAD AGAIN ANYWAY" je v appce: NapJazyk.t(a, "PŘESTO STÁHNOUT ZNOVU", "DOWNLOAD AGAIN ANYWAY")
+OK     N1) CS blok #onlineatari (2331 znaku) ma novy postup s texty oken appky
+OK     N1) CS 5 kroku: zalozit (krok 1) -> jak budete hrat (krok 2) -> pripojit se (krok 3), stary krok "spustí hru (klidně jen titulku)" pryc
+OK     N2) CS AKTUALIZOVAT APLIKACI: MÁŠ NEJNOVĚJŠÍ VERZI / PŘESTO STÁHNOUT ZNOVU; otazka o aktualizaci: "Když už máš nejnovější verzi, appka to řekne a nic nestahuje."
+OK     N3) CS TIP u kazetaku: Kazeťák | TIP Starší nahrávky z CSAVE, které CLOAD nenačetl (program předtím resetoval POKEY, třeba POKE 53775,0, a úvodní tón kazety se nahrál špatně
+OK     N3) CS tlacitko ONLINE: "ZALOŽIT HRU s hrou z našeho serveru..."; setrne kresleni: "Zapne se jen tehdy, když telefon plný počet snímků opravdu nestíhá."
+OK     N4) CS hledani "STAHUJI HRU" najde blok online Atari
+OK     N4) CS hledani "53775" najde TIP u kazetaku
+OK     N5) CS stranka na telefonu nejde posouvat do strany (sirka obsahu 412, okno 412)
+OK     N1) EN blok #onlineatari (2781 znaku) ma novy postup s texty oken appky
+OK     N1) EN 5 kroku: zalozit (krok 1) -> jak budete hrat (krok 2) -> pripojit se (krok 3), stary krok "starts a game (the title screen is enough)" pryc
+OK     N2) EN AKTUALIZOVAT APLIKACI: YOU HAVE THE LATEST VERSION / DOWNLOAD AGAIN ANYWAY; otazka o aktualizaci: "When you already have the latest version, the app says so and downloads nothing."
+OK     N3) EN TIP u kazetaku: Tape deck | TIP Older CSAVE recordings that CLOAD could not read (the program had reset POKEY before, for example POKE 53775,0, and the tape's leader 
+OK     N3) EN tlacitko ONLINE: "CREATE A GAME with a game from our server..."; setrne kresleni: "It turns on only when the phone really cannot keep up with the full frame rate."
+OK     N4) EN hledani "DOWNLOADING THE GAME" najde blok online Atari
+OK     N4) EN hledani "53775" najde TIP u kazetaku
+OK     N5) EN stranka na telefonu nejde posouvat do strany (sirka obsahu 412, okno 412)
+OK     J) zadna chyba JavaScriptu
+VYSLEDEK: 28 kontrol, 0 CHYBA

@@ -1842,7 +1842,11 @@ public:
         if (prvInit != newInit) {
           if (!newInit) { last15 = cyc + 81 - 114; last64 = cyc + 22 - 28; polyBase = cyc + 1; }
           else polyShutOff = cyc;     // poly citace bezi dal (dobeh posuvu), pak RANDOM = $FF
-          serOutCounter = 0; serOutValid = false; serOutState = false; serOutBusy = false;
+          // B364: linka SIO DATA OUT si drzi posledni vyslany bit (Altirra HRM: init rezim "does not actually clear
+          // the shift register, leaving it outputting the last bit shifted out") - v klidu tedy dal MARK (1). Do B363
+          // tu byla mezera (0): program, ktery resetoval POKEY (SKCTL 0 -> 3), pak CSAVE nahral uvodni ton kazety
+          // jako mezeru - prvni zaznam se neprecetl a CLOAD skoncil ERROR 143 (Rene 25. 11.)
+          serOutCounter = 0; serOutValid = false; serOutBusy = false;
           // zmena init rezimu nuluje i prijimaci posuvny registr - rozpracovany
           // bajt z kazety se zahodi (OS tim po zmereni rychlosti zahodi druhy $55)
           tape.rxPhase = 0;

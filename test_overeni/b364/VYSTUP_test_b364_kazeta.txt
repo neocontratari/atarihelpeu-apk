@@ -1,0 +1,14 @@
+B364 - CSAVE po resetu POKEY (SKCTL 0 -> 3) a CLOAD z toho WAV (Atari 130XE, jadro bez Androidu)
+OK     bez resetu POKEY: CSAVE -> WAV 24.1 s, uvodni ton 5293 Hz (MARK 5327 Hz, mezera 3995 Hz), zaznamu 2 z 2 (OK 2, spatne 0), druh: BASIC program (CLOAD)
+OK     bez resetu POKEY: NEW + CLOAD ve stejnem stroji - OS precetl 129 B, chyb ramce 0, READY, LIST po CLOAD STEJNY jako pred CSAVE
+OK     program zapsal SKCTL 0 a 3 (POKEY prosel init rezimem), SKCTL ted $3
+OK     POKE 53775,0:POKE 53775,3: CSAVE -> WAV 26.6 s, uvodni ton 5293 Hz (MARK 5327 Hz, mezera 3995 Hz), zaznamu 3 z 3 (OK 3, spatne 0), druh: BASIC program (CLOAD)
+OK     POKE 53775,0:POKE 53775,3: NEW + CLOAD ve stejnem stroji - OS precetl 259 B, chyb ramce 0, READY, LIST po CLOAD STEJNY jako pred CSAVE
+OK     USR: SEI, SKCTL 0, RANDOM, SKCTL 3, CLI: CSAVE -> WAV 29.1 s, uvodni ton 5293 Hz (MARK 5327 Hz, mezera 3995 Hz), zaznamu 4 z 4 (OK 4, spatne 0), druh: BASIC program (CLOAD)
+OK     USR: SEI, SKCTL 0, RANDOM, SKCTL 3, CLI: NEW + CLOAD ve stejnem stroji - OS precetl 389 B, chyb ramce 0, READY, LIST po CLOAD STEJNY jako pred CSAVE
+OK     vzor pro nahravku z B363: CSAVE -> WAV 24.1 s, uvodni ton 5293 Hz (MARK 5327 Hz, mezera 3995 Hz), zaznamu 2 z 2 (OK 2, spatne 0), druh: BASIC program (CLOAD)
+OK     vzor pro nahravku z B363: NEW + CLOAD ve stejnem stroji - OS precetl 129 B, chyb ramce 0, READY, LIST po CLOAD STEJNY jako pred CSAVE
+OK     nahravka z B363 (uvodni ton 3994 Hz = mezera do 19.5 s): pri vlozeni opraveno 1 useku (19.5 s), zaznamu 2 (OK 2), druh: BASIC program (CLOAD)
+OK     nahravka z B363: CLOAD v novem stroji - OS precetl 129 B, chyb ramce 0, LIST STEJNY jako puvodni program
+OK     dobra nahravka (uvodni ton MARK) se pri vlozeni neopravuje: 0 useku
+VYSLEDEK: 12 OK, 0 CHYBA

@@ -1,0 +1,28 @@
+OK     Z1) CS zapati s verzi z appky: "N&P VISION · RETRO UNIVERSE René Frank ATARIHELP.EU · B343 (386)"
+OK     Z4) CS otazka "Jak otočím obrazovku na šířku nebo na výšku?" -> odkaz dojede na Obrazovka na vysku a na sirku (top 68, lista 58)
+OK     Z4) CS otazka "Jak hraju na televizi jen dálkovým ovladačem?" -> odkaz dojede na WEB TV (top 68)
+OK     Z5) CS hledani "úložiště" najde ps1, options, tv, soubory
+OK     Z5) CS hledani "L3" najde ps1, tv
+OK     Z1) EN zapati s verzi z appky: "N&P VISION · RETRO UNIVERSE René Frank ATARIHELP.EU · B343 (386)"
+OK     Z4) EN otazka "How do I turn the screen to landscape or portrait?" -> odkaz dojede na Obrazovka na vysku a na sirku (top 68, lista 58)
+OK     Z4) EN otazka "How do I play on a TV with just the remote?" -> odkaz dojede na WEB TV (top 68)
+OK     Z5) EN hledani "storage" najde ps1, options, tv, soubory
+OK     Z5) EN hledani "L3" najde ps1, tv
+OK     Z2) CS bez AHJAZYK.verze: zapati "N&P VISION · RETRO UNIVERSE René Frank ATARIHELP.EU"
+OK     Z2) EN bez AHJAZYK.verze: zapati "N&P VISION · RETRO UNIVERSE René Frank ATARIHELP.EU"
+OK     P1) PS1 na vysku: kolecko -> panel, LOAD GAME = hry ze serveru N&P, zadny Google Drive, odkaz na HELP
+OK     P1) tlacitko "HRY ZE SERVERU N&P" (do B342 PS1 GOOGLE DRIVE)
+OK     P2) klik -> AHNET.openPs1Games (seznam her N&P pro PS1)
+OK     P3) PS1 anglicky: panel bez cestiny, GAMES FROM THE N&P SERVER
+OK     S1) 360x800 NAVODY: kratky navod, cely videt (text 120 px / okno 120 px)
+OK     S1) 412x915 NAVODY: kratky navod, cely videt (text 127 px / okno 127 px)
+OK     S1) 393x873 NAVODY: kratky navod, cely videt (text 121 px / okno 121 px)
+OK     S2) 360x800 anglicky: SHORT GUIDE, cely videt (133 / 133 px)
+OK     S2) 412x915 anglicky: SHORT GUIDE, cely videt (127 / 127 px)
+OK     S2) 393x873 anglicky: SHORT GUIDE, cely videt (121 / 121 px)
+OK     S4) CS obrazovka Segy bez hry: "SEGA MEGA DRIVE – PŘIPRAVENO | SBÍRKA = hry ze serveru N&P | HRY = tvoje hry · CARTRIDGE = ROM z telefonu | NÁVODY = krátký návod" (cely videt)
+OK     S4) EN obrazovka Segy bez hry: "SEGA MEGA DRIVE – READY | CATALOG = N&P server games | GAMES = your games · CARTRIDGE = ROM from the phone | MANUALS = short guide" (cely videt)
+OK     S3) CS menu vykonu: "Podržené SBÍRKA = výkon. Při OPTIONS → VÝKON ZAŘÍZENÍ LOW hraje Sega vždy LOW."
+OK     S3) EN menu vykonu: "Hold CATALOG = performance. With OPTIONS → DEVICE PERFORMANCE LOW the Sega always plays LOW."
+OK     J) zadna chyba JavaScriptu
+VYSLEDEK: 27 kontrol, 0 CHYBA

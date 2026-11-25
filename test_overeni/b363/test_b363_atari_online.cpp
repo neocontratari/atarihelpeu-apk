@@ -8,8 +8,11 @@
 //      odhady a opravy, otisky stavu po celou hru STEJNE, otisk stroje ve snimku 660 u obou stejny, STATISTIKA.
 //   2) stroj telefonu 2 se ve snimku 300 "splete" + spicky -> synchronizace (stav od telefonu 1), hra pokracuje
 //   3) telefon 2 zamrzne (SIGSTOP) -> telefon 1 jen par snimku s odhadem, pak stoji, po 15 s konec s duvodem
-//   4) telefon 2 je "pomaly" (jadro +12 ms na snimek) -> SETRNE KRESLENI (obraz 25/s), hra jede, otisky stejne
-//   5) volitelne (jen na PC, hry nejsou v repozitari): hra z prikazove radky misto zatezoveho programu (XEX/CAR/ATR)
+//   4) telefon 2 je "pomaly" (jadro +16 ms na snimek) -> SETRNE KRESLENI (obraz 25/s), hra jede, otisky stejne
+//      (B364: prah setrneho kresleni 14 ms misto 10 ms - pomaly telefon proto +16 ms, drive +12 ms)
+//   5) B364: telefon 2 ma jadro +9 ms (asi 12 ms na snimek - tolik meli S8 a A12 v testu Reneho 25. 11. a 50/s
+//      stihaly) -> setrne kresleni se NEZAPNE (do B363 se zaplo od 10 ms a obraz byl zbytecne 25/s)
+//   6) volitelne (jen na PC, hry nejsou v repozitari): hra z prikazove radky misto zatezoveho programu (XEX/CAR/ATR)
 // Preklad (z test_overeni/b363, JAVA_HOME = JDK kvuli jni.h):
 //   g++ -std=c++17 -O2 -pthread -I../b291/stub -I$JAVA_HOME/include -I$JAVA_HOME/include/linux
 //       -I../../app/src/main/cpp/atari -o test_b363_atari_online test_b363_atari_online.cpp -lz   (vse na jednom radku)
@@ -459,10 +462,10 @@ int main(int argc, char **argv) {
              " snimku, posledni zprava od druheho: " + hodnota(a, "ODHAD", "posledni_zprava") + ", Atari bezi dal samo");
   }
 
-  std::printf("== 4) telefon 2 je pomaly (jadro +12 ms na snimek) -> setrne kresleni, hra jede dal stejne\n");
+  std::printf("== 4) telefon 2 je pomaly (jadro +16 ms na snimek) -> setrne kresleni, hra jede dal stejne\n");
   {
     Dite a, b;
-    dvojice(port, "31", "32", "900", "-", a, b, false, false, "12000", hra);
+    dvojice(port, "31", "32", "900", "-", a, b, false, false, "16000", hra);
     const std::string oa = hodnota(a, "VYSLEDEK", "otisk660"), ob = hodnota(b, "VYSLEDEK", "otisk660");
     const std::string da = hodnota(a, "DRUHY ");
     over(hodnota(b, "VYSLEDEK", "setrne_videno") == "1" && cislo(hodnota(b, "LOG", "setrne_zap")) == 1 && hodnota(a, "VYSLEDEK", "setrne_videno") == "0" &&
@@ -472,6 +475,22 @@ int main(int argc, char **argv) {
     over(oa == ob && oa != "0000000000000000" && cislo(hodnota(a, "VYSLEDEK", "rozjeti")) == 0 && cislo(hodnota(a, "VYSLEDEK", "snimek")) >= 900,
          "hra s pomalym telefonem jede: " + hodnota(a, "VYSLEDEK", "snimek") + " snimku, otisk ve snimku 660 u obou " + oa + (oa == ob ? " (STEJNY)" : " / " + ob) +
              ", limit odhadu na pomalem telefonu " + hodnota(b, "ODHAD", "odhad_max"));
+  }
+  std::printf("== 5) B364: telefon 2 ma jadro +9 ms (asi 12 ms na snimek jako S8 / A12 v testu Reneho) -> 50/s stiha, setrne kresleni se NEZAPNE\n");
+  {
+    Dite a, b;
+    dvojice(port, "41", "42", "900", "-", a, b, false, false, "9000", hra);
+    const std::string oa = hodnota(a, "VYSLEDEK", "otisk660"), ob = hodnota(b, "VYSLEDEK", "otisk660");
+    const std::string da = hodnota(a, "DRUHY ");
+    const size_t j = da.find("jadro ");
+    const std::string jadro = j == std::string::npos ? da : da.substr(j, da.find(')', j) == std::string::npos ? 30 : da.find(')', j) - j + 1);
+    double ms = 0;
+    if (j != std::string::npos) ms = std::atof(da.c_str() + j + 6);
+    over(hodnota(b, "VYSLEDEK", "setrne_videno") == "0" && cislo(hodnota(b, "LOG", "setrne_zap")) == 0 && hodnota(a, "VYSLEDEK", "setrne_videno") == "0" &&
+             ms > 10.0 && ms < 14.0 && da.find("obraz 50/s") != std::string::npos,
+         "telefon 2 (" + jadro + ") setrne kresleni nezapnul - obraz dal 50/s (prah 14 ms; do B363 by se zaplo uz od 10 ms)");
+    over(oa == ob && oa != "0000000000000000" && cislo(hodnota(a, "VYSLEDEK", "rozjeti")) == 0 && cislo(hodnota(a, "VYSLEDEK", "snimek")) >= 900,
+         "hra jede: " + hodnota(a, "VYSLEDEK", "snimek") + " snimku, otisk ve snimku 660 u obou " + oa + (oa == ob ? " (STEJNY)" : " / " + ob));
   }
   std::printf("VYSLEDEK: %d OK, %d CHYBA\n", g_ok, g_chyb);
   return g_chyb ? 1 : 0;

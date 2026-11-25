@@ -1,0 +1,100 @@
+BUILD2RY real core worker start gen=1 bigstack=8MB passiveAudit=YES pcmCddaSkip=YES
+B357 ONLINE zaklada /api/v1/online/zaloz?system=sega&hra=B362%20TEST%20ROM&hra_id=sega-0123456789abcdef&otisk=891e5c3ab4c57347c9dcdc6a263580c860b8ef3e&nastaveni=16&jmeno=Telefon%201
+BUILD2RY real core worker start gen=1 bigstack=8MB passiveAudit=YES pcmCddaSkip=YES
+B357 ONLINE pripojuje /api/v1/online/pripoj?kod=9671&jmeno=Telefon%202
+B357 ONLINE start - studeny start, snimek 0 (B362: odhad stisku druheho nejvys 8 snimku)
+B357 ONLINE start - studeny start, snimek 0 (B362: odhad stisku druheho nejvys 8 snimku)
+B357 ONLINE konec po 1260 snimcich: druhy hrac hru ukoncil
+BUILD2RY real core worker stop gen=1
+BUILD2RY real core worker stop gen=1
+B362 - online Sega s odhadem stisku druheho a opravou (skutecny nap_sega_native_proof.cpp + clownmdemu, protokol verze 3)
+== 1) spicky site na obou telefonech, stisky se meni porad -> odhady, opravy, otisky stejne
+   telefon 1 | START OK
+   telefon 1 | KOD 9671
+   telefon 1 | HRAJE
+   telefon 1 | VYSLEDEK hrac=1 overeno=21 snimek=1260 zpozdeni=2 zpozdeni_ted=3 cekani=12 cekani_ms=260 synchronizaci=0 synchronizovano=0 rozjeti=0 rozjeti_snimek=0 stav_kb=0 otisk660=c986b1fcc3ffe0aa sync_videno=0 faze=KONEC
+   telefon 1 | ODHAD odhad=182 sedelo=39 oprav=26 oprava_max=9 oprava_max_ms=11 prepocteno=153 odhad_max=8 chyb_opravy=0 druhy_info_c=2 posledni_zprava=VSTUP spicek=19 spicky_ms=2849 navrat_ze=0 navrat_na=0
+   telefon 1 | DRUHY snimek 778, cekal 5x (156 ms, nejdel 44 ms), odhad 111 snimku (sedelo 27), oprav 17 (nejdel 9 snimku / 9 ms, celkem 79 ms), zpozdeni 4, odezva 4 ms, 60.0 snimku/s, jadro 1.1 ms (nejvys 1.8), odhad nejvys 8 | TEST-A12 Android 12, Wi-Fi -61 dBm 2.4 GHz LOW_LATENCY
+   telefon 1 | CASTI 
+   telefon 1 | KONEC_TEXT 
+   telefon 1 | CHYBA_TEXT online hru jsi ukoncil
+   telefon 1 | POLE vsechna
+   telefon 2 | START OK
+   telefon 2 | HRAJE
+   telefon 2 | VYSLEDEK hrac=2 overeno=21 snimek=1260 zpozdeni=2 zpozdeni_ted=4 cekani=6 cekani_ms=172 synchronizaci=0 synchronizovano=0 rozjeti=0 rozjeti_snimek=0 stav_kb=0 otisk660=c986b1fcc3ffe0aa sync_videno=0 faze=KONEC
+   telefon 2 | ODHAD odhad=168 sedelo=35 oprav=28 oprava_max=9 oprava_max_ms=9 prepocteno=141 odhad_max=8 chyb_opravy=0 druhy_info_c=3 posledni_zprava=KONEC spicek=18 spicky_ms=2245 navrat_ze=0 navrat_na=0
+   telefon 2 | DRUHY snimek 1260, cekal 12x (260 ms, nejdel 46 ms), odhad 182 snimku (sedelo 39), oprav 26 (nejdel 9 snimku / 11 ms, celkem 142 ms), zpozdeni 3, odezva 19 ms, 60.0 snimku/s, jadro 1.0 ms (nejvys 2.0), odhad nejvys 8 | TEST-S8 Android 9, Wi-Fi HIGH_PERF
+   telefon 2 | CASTI 
+   telefon 2 | KONEC_TEXT druhy hrac hru ukoncil
+   telefon 2 | CHYBA_TEXT druhy hrac hru ukoncil
+   telefon 2 | POLE vsechna
+OK     hra jela: telefon 1 1260 snimku, telefon 2 1260; spicek 19 + 18 (2849 + 2245 ms); odhadnuto 182 + 168 snimku, oprav 26 + 28 (nejdel 9 / 9 snimku, 11 / 9 ms), ulozeny stav vzdy byl
+OK     oprava skutecneho jadra je presna: overeno 21 otisku, rozjeti 0, synchronizaci 0, otisk jadra ve snimku 660 u obou c986b1fcc3ffe0aa (STEJNY)
+OK     zpozdeni ovladani 2 -> 3 / 4 snimku, emulator stal 12x (260 ms) / 6x (172 ms), limit odhadu 8 / 8 snimku
+       telefon 1 vi o telefonu 2: snimek 778, cekal 5x (156 ms, nejdel 44 ms), odhad 111 snimku (sedelo 27), oprav 17 (nejdel 9 snimku / 9 ms, celkem 79 ms), zpozdeni 4, odezva 4 ms, 60.0 snimku/s, jadro 1.1 ms (nejvys 1.8), odhad nejvys 8 | TEST-A12 Android 12, Wi-Fi -61 dBm 2.4 GHz LOW_LATENCY
+OK     STATISTIKA: telefon 1 dostal od telefonu 2 2x jeho cisla (vykon jadra, odhady, opravy, info z Javy)
+B357 ONLINE zaklada /api/v1/online/zaloz?system=sega&hra=B362%20TEST%20ROM&hra_id=sega-0123456789abcdef&otisk=891e5c3ab4c57347c9dcdc6a263580c860b8ef3e&nastaveni=16&jmeno=Telefon%201
+BUILD2RY real core worker start gen=1 bigstack=8MB passiveAudit=YES pcmCddaSkip=YES
+B357 ONLINE pripojuje /api/v1/online/pripoj?kod=5854&jmeno=Telefon%202
+BUILD2RY real core worker start gen=1 bigstack=8MB passiveAudit=YES pcmCddaSkip=YES
+B357 ONLINE start - studeny start, snimek 0 (B362: odhad stisku druheho nejvys 8 snimku)
+B357 ONLINE start - studeny start, snimek 0 (B362: odhad stisku druheho nejvys 8 snimku)
+B360 ONLINE synchronizace: stav jadra pred snimkem 309 odeslan (2880 B)
+B360 ONLINE synchronizace: stav jadra pred snimkem 309 nahran (2880 B)
+B357 ONLINE konec po 778 snimcich: druhy hrac hru ukoncil
+BUILD2RY real core worker stop gen=1
+BUILD2RY real core worker stop gen=1
+== 2) jadro hrace 2 se ve snimku 300 splete + spicky site -> synchronizace i s odhadem, hra pokracuje
+   telefon 1 | START OK
+   telefon 1 | KOD 5854
+   telefon 1 | HRAJE
+   telefon 1 | VYSLEDEK hrac=1 overeno=12 snimek=780 zpozdeni=2 zpozdeni_ted=4 cekani=3 cekani_ms=78 synchronizaci=1 synchronizovano=1 rozjeti=1 rozjeti_snimek=300 stav_kb=3 otisk660=8a2b6a22d5104f61 sync_videno=1 faze=KONEC
+   telefon 1 | ODHAD odhad=159 sedelo=49 oprav=32 oprava_max=9 oprava_max_ms=10 prepocteno=132 odhad_max=8 chyb_opravy=0 druhy_info_c=2 posledni_zprava=VSTUP spicek=11 spicky_ms=1648 navrat_ze=0 navrat_na=0
+   telefon 1 | DRUHY snimek 775, cekal 3x (124 ms, nejdel 97 ms), odhad 122 snimku (sedelo 16), oprav 20 (nejdel 9 snimku / 10 ms, celkem 111 ms), zpozdeni 4, odezva 1 ms, 60.0 snimku/s, jadro 1.1 ms (nejvys 1.8), odhad nejvys 8 | TEST-A12 Android 12, Wi-Fi -61 dBm 2.4 GHz LOW_LATENCY
+   telefon 1 | CASTI RAM 68000
+   telefon 1 | KONEC_TEXT 
+   telefon 1 | CHYBA_TEXT online hru jsi ukoncil
+   telefon 1 | POLE vsechna
+   telefon 2 | START OK
+   telefon 2 | HRAJE
+   telefon 2 | VYSLEDEK hrac=2 overeno=12 snimek=778 zpozdeni=2 zpozdeni_ted=4 cekani=3 cekani_ms=124 synchronizaci=1 synchronizovano=1 rozjeti=1 rozjeti_snimek=300 stav_kb=3 otisk660=8a2b6a22d5104f61 sync_videno=1 faze=KONEC
+   telefon 2 | ODHAD odhad=122 sedelo=16 oprav=20 oprava_max=9 oprava_max_ms=10 prepocteno=114 odhad_max=8 chyb_opravy=0 druhy_info_c=3 posledni_zprava=KONEC spicek=14 spicky_ms=1667 navrat_ze=0 navrat_na=0
+   telefon 2 | DRUHY snimek 780, cekal 3x (78 ms, nejdel 60 ms), odhad 159 snimku (sedelo 49), oprav 32 (nejdel 9 snimku / 10 ms, celkem 127 ms), zpozdeni 4, odezva 1 ms, 60.0 snimku/s, jadro 1.1 ms (nejvys 1.8), odhad nejvys 8 | TEST-S8 Android 9, Wi-Fi HIGH_PERF
+   telefon 2 | CASTI RAM 68000
+   telefon 2 | KONEC_TEXT druhy hrac hru ukoncil
+   telefon 2 | CHYBA_TEXT druhy hrac hru ukoncil
+   telefon 2 | POLE vsechna
+OK     rozjeti poznano v otisku 300 (RAM 68000), synchronizace hotova (1 / 1), stav 3 KB
+OK     hra pokracovala: 780 / 778 snimku, otisk ve snimku 660 u obou 8a2b6a22d5104f61 (STEJNY), overeno 12, oprav 32 + 20
+BUILD2RY real core worker start gen=1 bigstack=8MB passiveAudit=YES pcmCddaSkip=YES
+B357 ONLINE zaklada /api/v1/online/zaloz?system=sega&hra=B362%20TEST%20ROM&hra_id=sega-0123456789abcdef&otisk=891e5c3ab4c57347c9dcdc6a263580c860b8ef3e&nastaveni=16&jmeno=Telefon%201
+B357 ONLINE pripojuje /api/v1/online/pripoj?kod=7194&jmeno=Telefon%202
+BUILD2RY real core worker start gen=1 bigstack=8MB passiveAudit=YES pcmCddaSkip=YES
+B357 ONLINE start - studeny start, snimek 0 (B362: odhad stisku druheho nejvys 8 snimku)
+B357 ONLINE start - studeny start, snimek 0 (B362: odhad stisku druheho nejvys 8 snimku)
+B357 ONLINE konec po 191 snimcich: od druheho hrace dlouho nic neprislo - spadla mu sit, nebo se telefon zasekl
+BUILD2RY real core worker stop gen=1
+B357 ONLINE konec po 182 snimcich: od druheho hrace dlouho nic neprislo - spadla mu sit, nebo se telefon zasekl
+BUILD2RY real core worker stop gen=1
+== 3) telefon 2 zamrzne -> telefon 1 jen par snimku s odhadem, pak stoji, po 15 s konec s duvodem
+   telefon 1 | START OK
+   telefon 1 | KOD 7194
+   telefon 1 | HRAJE
+   telefon 1 | VYSLEDEK hrac=1 overeno=4 snimek=191 zpozdeni=2 zpozdeni_ted=2 cekani=1 cekani_ms=0 synchronizaci=0 synchronizovano=0 rozjeti=0 rozjeti_snimek=0 stav_kb=0 otisk660=0000000000000000 sync_videno=0 faze=KONEC
+   telefon 1 | ODHAD odhad=8 sedelo=0 oprav=0 oprava_max=0 oprava_max_ms=0 prepocteno=0 odhad_max=8 chyb_opravy=0 druhy_info_c=1 posledni_zprava=OTISK spicek=0 spicky_ms=0 navrat_ze=0 navrat_na=0
+   telefon 1 | DRUHY snimek 180, cekal 0x (0 ms, nejdel 0 ms), odhad 0 snimku (sedelo 0), oprav 0 (nejdel 0 snimku / 0 ms, celkem 0 ms), zpozdeni 2, odezva 0 ms, 60.5 snimku/s, jadro 1.0 ms (nejvys 1.7), odhad nejvys 8 | TEST-A12 Android 12, Wi-Fi -61 dBm 2.4 GHz LOW_LATENCY
+   telefon 1 | CASTI 
+   telefon 1 | KONEC_TEXT od druheho hrace dlouho nic neprislo - spadla mu sit, nebo se telefon zasekl
+   telefon 1 | CHYBA_TEXT od druheho hrace dlouho nic neprislo - spadla mu sit, nebo se telefon zasekl
+   telefon 1 | POLE vsechna
+   telefon 2 | START OK
+   telefon 2 | HRAJE
+   telefon 2 | VYSLEDEK hrac=2 overeno=4 snimek=182 zpozdeni=2 zpozdeni_ted=2 cekani=0 cekani_ms=0 synchronizaci=0 synchronizovano=0 rozjeti=0 rozjeti_snimek=0 stav_kb=0 otisk660=0000000000000000 sync_videno=0 faze=KONEC
+   telefon 2 | ODHAD odhad=0 sedelo=0 oprav=0 oprava_max=0 oprava_max_ms=0 prepocteno=0 odhad_max=8 chyb_opravy=0 druhy_info_c=3 posledni_zprava=KONEC spicek=0 spicky_ms=0 navrat_ze=0 navrat_na=0
+   telefon 2 | DRUHY snimek 191, cekal 1x (0 ms, nejdel 0 ms), odhad 8 snimku (sedelo 0), oprav 0 (nejdel 0 snimku / 0 ms, celkem 0 ms), zpozdeni 2, odezva 0 ms, 60.5 snimku/s, jadro 1.0 ms (nejvys 1.8), odhad nejvys 8 | TEST-S8 Android 9, Wi-Fi HIGH_PERF
+   telefon 2 | CASTI 
+   telefon 2 | KONEC_TEXT od druheho hrace dlouho nic neprislo - spadla mu sit, nebo se telefon zasekl
+   telefon 2 | CHYBA_TEXT od druheho hrace dlouho nic neprislo - spadla mu sit, nebo se telefon zasekl
+   telefon 2 | POLE vsechna
+OK     telefon 1: 'od druheho hrace dlouho nic neprislo - spadla mu sit, nebo se telefon zasekl' (cele trvani 18 s), s odhadem jen 8 snimku, posledni zprava od druheho: OTISK
+VYSLEDEK: 7 OK, 0 CHYBA

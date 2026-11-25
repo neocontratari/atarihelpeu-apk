@@ -450,7 +450,7 @@ public final class NativeAtariCoreBridge {
     //  (nap_atari_native.cpp + online/nap_online*.h): spojeni s enginem, START ZE STAVU (hrac 1 posle cely stav
     //  Atari i s hrou - hrac 2 ji mit nemusi), stisky obou hracu, odhad + oprava, otisky, setrne kresleni.
     // ------------------------------------------------------------------------------------------------
-    /** "nazev\npripraveno (1/0)\nproc" - hra, ktera ted v Atari bezi (pro seznam her na enginu). */
+    /** "nazev\npripraveno (1/0)\nproc\ngen" - hra, ktera ted v Atari bezi (pro seznam her na enginu); B364: gen = kolikaty stroj. */
     private static native String onlineHra();
     /** Zacne online hru (hrac1 = zaklada s hrou, ktera v Atari bezi; obaNaJ1 = hrac 2 joystickem 1). "OK" / "CHYBA: ...". */
     private static native String onlineStart(String adresa, String cesta, String[] hlavicky, boolean hrac1, String jmeno, boolean obaNaJ1);

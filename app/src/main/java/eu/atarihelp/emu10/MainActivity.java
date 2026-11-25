@@ -9645,42 +9645,120 @@ public class MainActivity extends Activity {
         final String nazev = hra == null ? "" : NapOnlineHra.nazevHry(hra[0]);
         appendNativeLog("B363 ATARI ONLINE - okno (v Atari: " + (nazev.isEmpty() ? "-" : nazev) + ")");
         String posledni = "KONEC".equals(m.get("faze")) && !NapOnlineHra.atariPopis(m, en).isEmpty() ? NapOnlineHra.atariPopis(m, en) + "\n\n" : "";
+        // B364 (Rene 25. 11.: "je docela slozite pochopit v atari jak nastavit pro dva"): kratce, krok za krokem
         new android.app.AlertDialog.Builder(this)
-                .setTitle("ONLINE – ATARI 130XE")
+                .setTitle(tx("ONLINE – HRA PRO DVA", "ONLINE – A GAME FOR TWO"))
                 .setMessage(posledni + tx(
-                        "Hra pro dva hráče přes server N&P – každý na svém telefonu.\n\n"
-                      + "ZALOŽIT HRU: online pojede hra, která teď běží v Atari" + (nazev.isEmpty() ? "" : " (" + nazev + ")")
-                      + ". Druhý hráč ji mít nemusí – pošle se mu celé Atari i s hrou.\n\n"
-                      + "PŘIPOJIT SE: vybereš hru, kterou založil druhý hráč, nebo zadáš její číslo.",
-                        "A two-player game over the N&P server – each on their own phone.\n\n"
-                      + "CREATE A GAME: the game now running in the Atari" + (nazev.isEmpty() ? "" : " (" + nazev + ")")
-                      + " goes online. The other player does not need it – the whole Atari with the game is sent to them.\n\n"
-                      + "JOIN: pick a game the other player created, or type its number."))
-                .setPositiveButton(tx("ZALOŽIT HRU", "CREATE A GAME"), (d, w) -> atariOnlineZalozVolba(hra))
+                        "Každý hraje na svém telefonu, přes server N&P.\n\n"
+                      + "1. Jeden klepne na ZALOŽIT HRU a vybere hru z našeho serveru. Appka ji spustí a ukáže číslo hry.\n\n"
+                      + "2. Druhý klepne na PŘIPOJIT SE a hru vybere ze seznamu. Hru mít nemusí – appka mu pošle celé Atari i s hrou.",
+                        "Each plays on their own phone, over the N&P server.\n\n"
+                      + "1. One taps CREATE A GAME and picks a game from our server. The app starts it and shows the game number.\n\n"
+                      + "2. The other taps JOIN and picks the game from the list. They do not need the game – the app sends them the whole Atari with it."))
+                .setPositiveButton(tx("ZALOŽIT HRU", "CREATE A GAME"), (d, w) -> atariOnlineZalozVyber(hra))
                 .setNeutralButton(tx("PŘIPOJIT SE", "JOIN"), (d, w) -> atariOnlineSeznam())
                 .setNegativeButton(tx("ZAVŘÍT", "CLOSE"), null)
                 .show();
     }
 
-    /** B363: hrac 1 - porty (kazdy svuj joystick / oba na joysticku 1) a zalozit. */
-    private void atariOnlineZalozVolba(final String[] hra) {
-        if (hra == null || !"1".equals(hra[1])) {
+    /**
+     * B364: ZALOZIT HRU - jakou hru. Rene 25. 11.: "kdyz nekdo zaklada hru jako novacek - at nevybira ze sveho mobilu
+     * ale at najede na nas engine nase hry" (v testu nejdriv zalozil hru s ATARI BASICem a pak sel do NET HRY = konec
+     * online). Prvni volba = hry na serveru N&P; hra, ktera v Atari bezi, az druha.
+     */
+    private void atariOnlineZalozVyber(final String[] hra) {
+        if (hra == null || !"1".equals(hra[1])) { atariOnlineServeroveHry(); return; }   // Atari vypnute - rovnou hry ze serveru
+        final String nazev = NapOnlineHra.nazevHry(hra[0]);
+        final String[] volby = {
+                tx("HRA Z NAŠEHO SERVERU N&P", "A GAME FROM OUR N&P SERVER"),
+                tx("HRA, KTERÁ TEĎ BĚŽÍ V ATARI: ", "THE GAME RUNNING IN THE ATARI NOW: ") + (nazev.isEmpty() ? "ATARI BASIC" : nazev)
+        };
+        new android.app.AlertDialog.Builder(this)
+                .setTitle(tx("ZALOŽIT HRU – JAKOU?", "CREATE A GAME – WHICH ONE?"))
+                .setItems(volby, (d, w) -> { if (w == 0) atariOnlineServeroveHry(); else atariOnlineZalozVolba(hra, null); })
+                .setNegativeButton(tx("ZPĚT", "BACK"), null)
+                .show();
+    }
+
+    /** B364: hry Atari na serveru N&P (jako stranka HRY, ale primo v okne - z Atari se neodchazi). */
+    private void atariOnlineServeroveHry() {
+        if (napServer == null || !napServer.sparovano()) { atariOnlineZprava(napOnlineChyba(null)); return; }
+        NativeAtariCoreBridge.devStatusSafe(tx("ONLINE: NAČÍTÁM HRY ZE SERVERU...", "ONLINE: LOADING GAMES FROM THE SERVER..."), 3000);
+        new Thread(() -> {
+            NapServerKlient.Odpoved o = napServer.get("/api/v1/hry");
+            final String chyba = o.ok() ? null : napOnlineChyba(o);
+            final java.util.List<String[]> hry = o.ok() ? NapOnlineHra.serveroveHry(o.text(), "atari") : new java.util.ArrayList<>();
+            appendNativeLog("B364 ATARI ONLINE hry ze serveru pro zalozeni: " + (chyba != null ? chyba : hry.size() + " her Atari"));
+            runOnUiThread(() -> {
+                if (chyba != null) { atariOnlineZprava(chyba); return; }
+                if (hry.isEmpty()) {
+                    atariOnlineZprava(tx("Na serveru N&P teď nejsou žádné hry pro Atari.", "There are no Atari games on the N&P server now."));
+                    return;
+                }
+                final String[] radky = new String[hry.size()];
+                for (int i = 0; i < hry.size(); i++) radky[i] = hry.get(i)[1];
+                new android.app.AlertDialog.Builder(this)
+                        .setTitle(tx("HRY NA SERVERU N&P (", "GAMES ON THE N&P SERVER (") + hry.size() + ")")
+                        .setItems(radky, (d, w) -> atariOnlineZalozVolba(null, hry.get(w)))
+                        .setNegativeButton(tx("ZPĚT", "BACK"), null)
+                        .show();
+            });
+        }, "nap-atari-online-hry").start();
+    }
+
+    /** B363: hrac 1 - porty (kazdy svuj joystick / oba na joysticku 1) a zalozit. B364: i se hrou ze serveru (serverHra). */
+    private void atariOnlineZalozVolba(final String[] hra, final String[] serverHra) {
+        if (serverHra == null && (hra == null || !"1".equals(hra[1]))) {
             atariOnlineZprava(tx("Nejdřív zapni Atari a spusť hru – online se hraje to, co teď běží v Atari.",
                     "Turn the Atari on and start a game first – online plays what is running in the Atari now."));
             return;
         }
+        final String nazev = serverHra != null ? serverHra[1] : NapOnlineHra.nazevHry(hra[0]);
         final String[] volby = {
-                tx("KAŽDÝ SVŮJ JOYSTICK – hráč 1 = joystick 1, hráč 2 = joystick 2 (hry, kde hrají oba naráz)",
-                   "EACH THEIR OWN JOYSTICK – player 1 = joystick 1, player 2 = joystick 2 (games where both play at once)"),
-                tx("OBA NA JOYSTICKU 1 – hry, kde se hráči střídají", "BOTH ON JOYSTICK 1 – games where the players take turns")
+                tx("KAŽDÝ SVŮJ JOYSTICK – hrajete oba naráz (hráč 1 = joystick 1, hráč 2 = joystick 2)",
+                   "EACH THEIR OWN JOYSTICK – you both play at once (player 1 = joystick 1, player 2 = joystick 2)"),
+                tx("OBA NA JOYSTICKU 1 – střídáte se (hra má jen joystick 1)", "BOTH ON JOYSTICK 1 – you take turns (the game uses only joystick 1)")
         };
         final int[] vybrano = {0};
         new android.app.AlertDialog.Builder(this)
-                .setTitle(tx("ZALOŽIT HRU – JOYSTICKY", "CREATE A GAME – JOYSTICKS"))
+                .setTitle(tx("JAK BUDETE HRÁT? ", "HOW WILL YOU PLAY? ") + (nazev.isEmpty() ? "" : "– " + nazev))
                 .setSingleChoiceItems(volby, 0, (d, w) -> vybrano[0] = w)
-                .setPositiveButton(tx("ZALOŽIT", "CREATE"), (d, w) -> atariOnlineZaloz(vybrano[0] == 1))
+                .setPositiveButton(tx("ZALOŽIT", "CREATE"), (d, w) -> {
+                    if (serverHra != null) atariOnlineZalozSeHrouZeServeru(serverHra, vybrano[0] == 1);
+                    else atariOnlineZaloz(vybrano[0] == 1);
+                })
                 .setNegativeButton(tx("ZPĚT", "BACK"), null)
                 .show();
+    }
+
+    /**
+     * B364: hra ze serveru - stahnout, spustit v Atari (jako NET HRY) a az se nahraje (novy stroj s tou hrou), online
+     * hru zalozit sama. Hrac 1 pak stav posle, az hra dobehne (zavadec XEX); restart do 1088K jde do prichodu hrace 2.
+     */
+    private void atariOnlineZalozSeHrouZeServeru(final String[] h, final boolean obaNaJ1) {
+        if (napServer == null || !napServer.sparovano()) { atariOnlineZprava(napOnlineChyba(null)); return; }
+        final String[] pred = NapOnlineHra.atariHra(NativeAtariCoreBridge.onlineHraSafe());
+        final int gen = napOnlineGen.incrementAndGet();
+        final String url = napServer.server() + "/api/v1/hra?id=" + h[0];
+        appendNativeLog("B364 ATARI ONLINE zalozit se hrou ze serveru: " + h[1] + " (" + h[2] + ")"
+                + (obaNaJ1 ? ", oba na joysticku 1" : ", joystick 1 + 2") + " - stahuji a spoustim, pak zalozim online hru");
+        NativeAtariCoreBridge.devStatusSafe(tx("ONLINE: STAHUJI HRU, PAK JI ZALOŽÍM...", "ONLINE: DOWNLOADING THE GAME, THEN CREATING IT..."), 6000);
+        downloadAndRun(url);
+        new Thread(() -> {
+            final long od = android.os.SystemClock.uptimeMillis();
+            while (android.os.SystemClock.uptimeMillis() - od < 90_000L) {
+                if (gen != napOnlineGen.get()) return;   // hrac mezitim zalozil / pripojil jinak nebo ukoncil
+                final String[] ted = NapOnlineHra.atariHra(NativeAtariCoreBridge.onlineHraSafe());
+                if (NapOnlineHra.hraSpustena(pred, ted) && NapOnlineHra.jeTaHra(ted[0], h[2])) {
+                    appendNativeLog("B364 ATARI ONLINE hra ze serveru spustena (" + ted[0] + ") - zakladam online hru");
+                    runOnUiThread(() -> { if (gen == napOnlineGen.get()) atariOnlineZaloz(obaNaJ1); });
+                    return;
+                }
+                try { Thread.sleep(300); } catch (InterruptedException e) { return; }
+            }
+            appendNativeLog("B364 ATARI ONLINE hra ze serveru se do 90 s nespustila (" + h[2] + ") - online hru nezakladam");
+            runOnUiThread(() -> atariOnlineZprava(tx("Hra se nespustila – zkus ZALOŽIT HRU znovu.", "The game did not start – try CREATE A GAME again.")));
+        }, "nap-atari-online-ceka-na-hru").start();
     }
 
     private void atariOnlineZaloz(final boolean obaNaJ1) {
@@ -9778,6 +9856,21 @@ public class MainActivity extends Activity {
             if (!"OK".equals(vysl) && !"zruseno".equals(vysl)) runOnUiThread(() -> atariOnlineZprava(vysl));
             else if ("OK".equals(vysl)) runOnUiThread(() -> NativeAtariCoreBridge.devStatusSafe(tx("ONLINE: PŘIPOJUJI SE...", "ONLINE: JOINING..."), 3000));
         }, "nap-atari-online-pripoj").start();
+    }
+
+    /** B364: hra zalozena - cislo hry a co ma udelat druhy hrac (Rene: "je docela slozite pochopit, jak nastavit pro dva"). */
+    private void atariOnlineZalozeno(String kod) {
+        try {
+            if (isFinishing()) return;
+            new android.app.AlertDialog.Builder(this)
+                    .setTitle(tx("HRA ZALOŽENA – ČÍSLO ", "GAME CREATED – NUMBER ") + kod)
+                    .setMessage(tx("Řekni druhému hráči: ONLINE → PŘIPOJIT SE → hra " + kod + " (nebo ZADAT ČÍSLO HRY... a " + kod + ").\n\n"
+                                 + "Nech Atari otevřené – až se připojí, hra začne u obou od stejné chvíle.",
+                                   "Tell the other player: ONLINE → JOIN → game " + kod + " (or TYPE THE GAME NUMBER... and " + kod + ").\n\n"
+                                 + "Keep the Atari open – when they join, the game starts for both of you at the same moment."))
+                    .setPositiveButton("OK", null)
+                    .show();
+        } catch (Throwable ignored) {}
     }
 
     private void atariOnlineKonec() {
@@ -13858,6 +13951,7 @@ public class MainActivity extends Activity {
     private volatile String napOnlineSeznamLog = "";
     // B363: online hra Atari (okno ONLINE na pristroji) - hlidac cte stav z jadra Atari misto Segy
     private volatile boolean napOnlineAtari = false;
+    private volatile String napOnlineOznamenyKod = "";   // B364: cislo hry uz ukazane v okne
     private static String napOnlineStav(boolean atari) {
         return atari ? NativeAtariCoreBridge.onlineStavSafe() : NativeSegaCoreBridge.onlineStavSafe();
     }
@@ -13879,7 +13973,15 @@ public class MainActivity extends Activity {
                         else NativeSegaCoreBridge.onlineTelefonSafe(napOnlineInfoTelefonu());
                     }
                     String z = h.zmena("krok=" + napOnlineKrok + "\n" + napOnlineStav(napOnlineAtari), ted0);
-                    if (z != null) for (String r : z.split("\n")) appendNativeLog(r);
+                    if (z != null) for (String r : z.split("\n")) {
+                        appendNativeLog(r);
+                        // B364: Atari - cislo hry hraci 1 do okna (rict druhemu hraci), ne jen pod pristroj
+                        final String kod = napOnlineAtari ? NapOnlineHra.cisloZalozeneHry(r) : "";
+                        if (!kod.isEmpty() && !kod.equals(napOnlineOznamenyKod)) {
+                            napOnlineOznamenyKod = kod;
+                            runOnUiThread(() -> atariOnlineZalozeno(kod));
+                        }
+                    }
                     napOnlineWifi(h.aktivni());   // B360: Wi-Fi bez usporneho rezimu po celou online hru
                     long ted = android.os.SystemClock.uptimeMillis();
                     if (h.hotovo() && ted > napOnlineHlidatDo.get()) {

@@ -1,0 +1,11 @@
+B360 - prubeh online hry do logu: NapOnlineHlidac
+OK     1) za hry PRUBEH kazdych 10 s (ne casteji): 'B360 ONLINE PRUBEH snimek 600: cekalo se 2x (60 ms, nejdel 40 ms), zpozdeni 3, synchronizaci 0, odezva 9 ms', po 5 s (nic), po 15 s (nic)
+OK     2) zadost / zvyseni / snizeni zpozdeni kazde jednou: 'B360 ONLINE cekal jsem na stisky druheho telefonu (nejdel 97 ms) - zadam ho o vetsi zpozdeni (zadost c. 1)' | 'B360 ONLINE zpozdeni ovladani ZVYSENO na 7 snimku - druhy telefon cekal na moje stisky (sit kolisa)' | 'B360 ONLINE zpozdeni ovladani snizeno na 6 snimku (sit je klidna) || B360 ONLINE PRUBEH snimek 3200: cekalo se 2x (60 ms, nejdel 40 ms), zpozdeni 3 -> 6, synchronizaci 0, odezva 9 ms'
+OK        snizeni + PRUBEH v jednom kroku = dva radky (oddelene \n), PRUBEH ukazuje zpozdeni od startu: 3 -> 6
+OK     3) hrac 1: 'B360 ONLINE SYNCHRONIZACE c. 1: hra se rozjela (otisk ve snimku 300), lisi se: RAM 68000, VRAM - posilam druhemu telefonu cely stav hry' | 'B360 ONLINE synchronizace c. 1 hotova (stav hry 85 KB) - hraje se dal'
+OK        hrac 2: 'B360 ONLINE SYNCHRONIZACE c. 1: hra se rozjela - nahravam stav hry od hrace 1' | 'B360 ONLINE synchronizace c. 1 hotova (stav hry 85 KB) - hraje se dal'
+OK     4) novy pokus (start 2): citace od nuly - 'B358 ONLINE HRAJE s SM-A125F - odezva 9 ms, zpozdeni 3 snimku' | 'B360 ONLINE SYNCHRONIZACE c. 1: hra se rozjela - posilam druhemu telefonu cely stav hry'
+OK     5) KONEC: 'B358 ONLINE KONEC (pokus 1): od druheho hrace dlouho nic neprislo - spadla mu sit, nebo se telefon zasekl | overeno 134 otisku, snimek 7991 | cekalo se 40x (980 ms, nejdel 16000 ms), zpozdeni 3 -> 5, synchronizaci 0'
+OK        stary stav bez polozek B360 (appka B358): radek KONEC presne jako v B358 'B358 ONLINE KONEC (pokus 1): hra se rozjela | overeno 13 otisku, snimek 783'
+OK     6) Wi-Fi bez usporneho rezimu: NIC ne, stahuje ano, pripojuje ano, ceka ano, hraje ano, KONEC ne
+VYSLEDEK: 9 OK, 0 CHYBA

@@ -1,0 +1,17 @@
+B358 - online jednoduse: Java bez Androidu (NapOnlineHra, NapOnlineHlidac)
+OK     1) klicNazvu: 8/8 vzorku jako stranka Segy
+OK        prazdny nazev -> prazdny klic
+OK        puvodni jmeno souboru (CARTRIDGE) a jmeno v HRY (safeFileName) = stejny klic: 4/4
+OK     2) hra hrace 1 "Golden Axe II  World" (jeho soubor Golden_Axe_II__World_.gen) -> v HRY Golden_Axe_II__World_.gen
+OK        hrac 1 z CARTRIDGE ("Sonic The Hedgehog (USA, Europe)") -> v HRY Sonic_The_Hedgehog__USA__Europe_.gen
+OK        hru nema / prazdny nazev / bez HRY / ulozena pozice (.state) neni hra -> null
+OK     3) seznam her do logu: "2 (sega 1234, ps1 5555)", prazdny "0"
+OK     4) hlidac: stav pred pokusem si jen zapamatuje (zadny stary KONEC do logu), stejny stav = nic
+OK        B358 ONLINE pripojuji se k enginu N&P (pokus 4) | B358 ONLINE spojeno s enginem, zakladam hru | B358 ONLINE ceka na hrace 2 - cislo hry 1234
+OK        B358 ONLINE domlouva se s hracem bracha | B358 ONLINE HRAJE s bracha - odezva 23 ms, zpozdeni 3 snimku | zmena odezvy = nic
+OK        B358 ONLINE KONEC (pokus 4): druhy hrac odesel | overeno 12 otisku, snimek 720
+OK        novy pokus skoncil hned a stejne (pripojeni nestihl hlidac uvidet) -> pozna se podle cisla pokusu: B358 ONLINE KONEC (pokus 5): druhy hrac odesel | overeno 0 otisku, snimek 0
+OK        kroky appky pred spojenim: B358 ONLINE stahuji hru hrace 1 ze serveru N&P | B358 ONLINE spoustim stejnou hru z HRY (hlidani bezi dal)
+OK        duvod s odpovedi enginu jednim radkem a zkraceny (459 znaku); 'konec' ma prednost pred 'chyba'
+OK        jmeno druheho hrace bez ridicich znaku a < > do logu: B358 ONLINE HRAJE s Zlýhráč - odezva 5 ms, zpozdeni 2 snimku
+VYSLEDEK: 15 OK, 0 CHYBA

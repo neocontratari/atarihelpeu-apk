@@ -1,0 +1,10 @@
+B364 - AKTUALIZOVAT APLIKACI v OPTIONS: kdyz je appka nejnovejsi, nic nestahuje (NapAktualizace)
+OK     1) server 408 / 500, moje 407 -> nabidnout stazeni (okno AKTUALIZOVAT / TED NE jako drive)
+OK        server 407 = moje 407 (Reneho pripad) a server 406 < moje 407 -> 'mas nejnovejsi', NIC SE NESTAHUJE
+OK        verzi na serveru nezjistim (bez spojeni / 0) -> 'nevim', nic nestahovat bez ptani
+OK     2) stejna verze: 'Máš nejnovější verzi 407 – na serveru N&P je stejná. Není co stahovat.' / 'You already have the latest version 407 – the N&P server has the same one. There is nothing to download.'
+OK        u tebe novejsi: 'Máš verzi 407, novější než je na serveru N&P (406). Není co stahovat.'
+OK        nevim: 'Nepodařilo se zjistit, jakou verzi má server N&P (není spojení?). Zkus to za chvíli znovu.'
+OK     3) spustRucne vola zeptejSe (okno se stazenim) jen pro RUCNE_NABIDNOUT, jinak rucneBezStazeni
+OK        okno MÁŠ NEJNOVĚJŠÍ VERZI s PŘESTO STÁHNOUT ZNOVU (zaseknuta instalace B324 jde opravit dal) - napoveda CZ / EN ma stejne nazvy
+VYSLEDEK: 8 OK, 0 CHYBA

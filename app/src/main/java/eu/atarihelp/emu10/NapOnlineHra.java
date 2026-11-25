@@ -174,7 +174,80 @@ final class NapOnlineHra {
         if (s == null) return null;
         String[] c = s.split("\n", -1);
         if (c.length < 2) return null;
-        return new String[] { c[0].trim(), "1".equals(c[1].trim()) ? "1" : "0", c.length > 2 ? c[2].trim() : "" };
+        return new String[] { c[0].trim(), "1".equals(c[1].trim()) ? "1" : "0", c.length > 2 ? c[2].trim() : "",
+                              c.length > 3 ? c[3].trim() : "" };   // B364: [3] = kolikaty stroj (spusteni hry ze serveru)
+    }
+
+    /**
+     * B364: hry jednoho systemu na serveru N&P (/api/v1/hry) pro ZALOZIT HRU - Rene: "kdyz nekdo zaklada hru jako
+     * novacek - at nevybira ze sveho mobilu ale at najede na nas engine nase hry". {id, nazev, soubor}, serazene podle
+     * nazvu (bez diakritiky a velikosti pismen), bez BIOSu (jako stranka HRY). Spatny JSON = prazdny seznam.
+     */
+    @SuppressWarnings("unchecked")
+    static java.util.List<String[]> serveroveHry(String json, String system) {
+        java.util.List<String[]> r = new java.util.ArrayList<>();
+        Map<String, Object> o = NapJson.objekt(json);
+        Object a = o == null ? null : o.get("hry");
+        if (!(a instanceof java.util.List) || system == null) return r;
+        for (Object x : (java.util.List<Object>) a) {
+            if (!(x instanceof Map)) continue;
+            Map<String, Object> m = (Map<String, Object>) x;
+            if (!system.equals(NapJson.text(m, "system"))) continue;
+            String id = NapJson.text(m, "id"), soubor = NapJson.text(m, "soubor"), nazev = NapJson.text(m, "nazev").trim();
+            if (!id.matches(java.util.regex.Pattern.quote(system) + "-[0-9a-f]{16}")) continue;
+            if (soubor.toLowerCase(java.util.Locale.ROOT).contains("bios")) continue;
+            r.add(new String[] { id, nazev.isEmpty() ? nazevHry(soubor) : nazev, soubor });
+        }
+        r.sort((p, q) -> klicRazeni(p[1]).compareTo(klicRazeni(q[1])));
+        return r;
+    }
+
+    static String klicRazeni(String s) {
+        String t = java.text.Normalizer.normalize(s == null ? "" : s, java.text.Normalizer.Form.NFD).replaceAll("\\p{M}", "");
+        return t.toLowerCase(java.util.Locale.ROOT);
+    }
+
+    /**
+     * B364: v Atari bezi hra ze serveru? Jmeno souboru bez pripony (klicNazvu: HRY ukladaji soubory s '_', C++ jmeno
+     * zbavi diakritiky); u archivu (ZIP / RAR) C++ spusti soubor z archivu pod jeho jmenem - staci, ze nebezi samotny
+     * ATARI BASIC.
+     */
+    static boolean jeTaHra(String vAtari, String soubor) {
+        if (vAtari == null || soubor == null || vAtari.isEmpty()) return false;
+        String s = soubor.toLowerCase(java.util.Locale.ROOT);
+        if (s.endsWith(".zip") || s.endsWith(".rar")) return !"ATARI BASIC".equals(vAtari);
+        // C++ posila jmeno po bajtech ASCII (diakritika = "??") - klicNazvu bere oboje jako mezeru, takze "Ko??ka" =
+        // "Kočka"; jmeno ale NEZKRACOVAT (nazevHry ma 60 znaku a C++ jmeno s "??" je delsi - useklo by se jinde)
+        String a = klicSouboru(vAtari), b = klicSouboru(soubor);
+        if (a.isEmpty() || b.isEmpty()) return false;
+        if (a.equals(b)) return true;
+        // C++ posila nejvys 120 bajtu - hodne dlouhe jmeno muze byt useknute (i s priponou)
+        String kratsi = a.length() < b.length() ? a : b, delsi = a.length() < b.length() ? b : a;
+        return vAtari.length() >= 100 && kratsi.length() >= 24 && delsi.startsWith(kratsi);
+    }
+
+    /** B364: klic jmena souboru (bez cesty a pripony, bez zkraceni) pro jeTaHra. */
+    static String klicSouboru(String soubor) {
+        if (soubor == null) return "";
+        String s = soubor;
+        int l = Math.max(s.lastIndexOf('/'), s.lastIndexOf('\\'));
+        if (l >= 0) s = s.substring(l + 1);
+        int t = s.lastIndexOf('.');
+        if (t > 0 && s.length() - t <= 5) s = s.substring(0, t);
+        return klicNazvu(s);
+    }
+
+    /** B364: cislo hry z radku hlidace "B358 ONLINE ceka na hrace 2 - cislo hry 1234" (jinak ""). */
+    static String cisloZalozeneHry(String radek) {
+        final String z = "B358 ONLINE ceka na hrace 2 - cislo hry ";
+        if (radek == null || !radek.startsWith(z)) return "";
+        return kod(radek.substring(z.length()).trim());
+    }
+
+    /** B364: hra ze serveru se po spusteni nahrala (novy stroj) - muze se zalozit online hra. */
+    static boolean hraSpustena(String[] pred, String[] ted) {
+        if (ted == null || !"1".equals(ted[1]) || ted[3].isEmpty()) return false;
+        return pred == null || !ted[3].equals(pred[3]);
     }
 
     /**

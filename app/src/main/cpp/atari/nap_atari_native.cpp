@@ -1244,13 +1244,15 @@ static std::atomic<int> g_onlineSetrne{0};           // setrne kresleni zapnuto
 static std::atomic<uint32_t> g_onlineSetrneZapnuto{0};   // kolikrat se zaplo (Java do logu)
 static std::string g_onlineSetrneProc;               // pod g_onlineM
 static uint64_t g_onlineOknoZatezUs = 0;             // zatez za aktualni 2s okno (soucet)
-static int g_onlineKlidnychOken = 0;                 // 2s oken po sobe pod 6 ms (setrne kresleni vypnout po 3)
+static int g_onlineKlidnychOken = 0;                 // 2s oken po sobe pod 10 ms (setrne kresleni vypnout po 3)
 static long long g_onlineStatusMs = 0;               // naposledy hlaska pod pristrojem
 static uint64_t g_onlinePoslanoUs = 0;               // hrac 1 poslal stav (kdy) - do logu, jak dlouho STAV_OK trval
 
 // AHOJ: oba telefony musi mit stejne jadro Atari (stav i chovani) - hra se posila ve stavu, otisk hry tedy pevny
 static const uint8_t ONLINE_ATARI_HRA[20] = {'N', '&', 'P', ' ', 'A', 'T', 'A', 'R', 'I', ' ', '1', '3', '0', 'X', 'E', ' ', 'S', 'T', 'A', 'V'};
-static const uint32_t ONLINE_ATARI_JADRO = 363000u + nap::ATARI_STAV_VERZE;   // zmena jadra / stavu = jine cislo
+// zmena jadra / stavu = jine cislo. B364: init rezim POKEY drzi SIO DATA OUT (serOutState) - meni dvoutonovy rezim
+// i otisk stavu, takze telefon s B363 a s B364 spolu online nehraji ("druhy hrac ma jinou verzi appky")
+static const uint32_t ONLINE_ATARI_JADRO = 364000u + nap::ATARI_STAV_VERZE;
 
 /** Stisky tohoto telefonu pro snimek (jednou za snimek - opakovany pokus po cekani dostane stejne). Pod g_mStroj. */
 static uint32_t onlineLokalniBityLocked(uint32_t snimek) {
@@ -1580,10 +1582,11 @@ static bool onlinePoSnimkuLocked(uint64_t zatezUs) {
   if (ted - g_onlineVykonOdUs >= 2000000) {
     const double s = (ted - g_onlineVykonOdUs) / 1e6;
     const double prumerMs = g_onlineOknoZatezUs / 1000.0 / std::max<uint32_t>(g_onlineVykonSnimku, 1);
-    // setrne kresleni: zapnout, kdyz telefon za 2 s bral vic nez pulku snimku (10 ms z 20 ms); vypnout po 3 oknech
-    // (6 s) pod 6 ms
+    // setrne kresleni: zapnout, kdyz telefon za 2 s bral vic nez 70 % snimku (14 ms z 20 ms); vypnout po 3 oknech
+    // (6 s) pod 10 ms. B364: do B363 od 10 ms - v testu Reneho se zapnulo na S8 i A12 (11-13 ms), ktere 50/s stihaly
+    // (kresli jine vlakno na jinem jadre) - obraz zbytecne 25/s
     if (!g_onlineSetrne.load()) {
-      if (prumerMs > 10.0 && g_onlineSnimek > 100) {
+      if (prumerMs > 14.0 && g_onlineSnimek > 100) {
         g_onlineSetrne.store(1);
         g_onlineSetrneZapnuto.fetch_add(1);
         g_onlineKlidnychOken = 0;
@@ -1592,7 +1595,7 @@ static bool onlinePoSnimkuLocked(uint64_t zatezUs) {
         { std::lock_guard<std::mutex> l(g_onlineM); g_onlineSetrneProc = b; }
         devLog(std::string("B363 ATARI ONLINE SETRNE KRESLENI zapnuto: ") + b + " - na displej jde kazdy 2. snimek (25/s), emulace a zvuk dal 50/s");
       }
-    } else if (prumerMs < 6.0) {
+    } else if (prumerMs < 10.0) {
       if (++g_onlineKlidnychOken >= 3) {
         g_onlineSetrne.store(0);
         char b[200];
@@ -3147,6 +3150,12 @@ Java_eu_atarihelp_emu10_NativeAtariCoreBridge_devLoadTapeNative(JNIEnv *env, jcl
            nm.c_str(), img.seconds(), img.srcRate, img.channels, img.usedChannel + 1, img.bitsPerSample,
            img.bytes600, img.records600, img.recordsOk600, img.recordsBad600, img.framingRec600, img.framing600 - img.framingRec600,
            nap::napTapeDruh(img), img.audio.empty() ? "" : ", zvukova stopa (druhy kanal) hraje do TV jako u skutecneho magnetofonu", ms);
+  if (img.opravenoMezer > 0) {
+    char o[260];
+    snprintf(o, sizeof(o), "B364 KAZETA %s: uvodni ton byl nahrany jako mezera (CSAVE z appky do B363 po resetu POKEY) - opraveno "
+                           "%d useku (%.1f s) na klidovy ton, prvni zaznam pujde precist", nm.c_str(), img.opravenoMezer, img.opravenoSekund);
+    devLog(o);
+  }
   const int druh = img.druh;
   bool odpojenaDisketa = false;
   {
@@ -3569,14 +3578,17 @@ static std::string onlineJstr(JNIEnv *env, jstring js, size_t max = 4096) {
 }
 
 /**
- * Hra pro zalozeni online hry: "nazev\npripraveno\nproc" - nazev = XEX / disketa / cartridge, ktera v Atari bezi
+ * Hra pro zalozeni online hry: "nazev\npripraveno\nproc\ngen" - nazev = XEX / disketa / cartridge, ktera v Atari bezi
+ * (B364: gen = kolikaty stroj - po spusteni hry ze serveru se zvetsi, pak se online hra zalozi sama)
  * ("ATARI BASIC" = nic), pripraveno 1 = Atari je zapnute (hra se posle ve stavu - druhy ji mit nemusi).
  */
 extern "C" JNIEXPORT jstring JNICALL
 Java_eu_atarihelp_emu10_NativeAtariCoreBridge_onlineHra(JNIEnv *env, jclass) {
   std::string jm, proc;
+  unsigned gen = 0;
   {
     std::lock_guard<std::mutex> l(g_mStroj);
+    gen = g_strojGen;                                // B364: kolikaty stroj (Java pozna, ze se hra ze serveru spustila)
     if (g_stroj) {
       if (g_xexPosledni && !g_xexJmeno.empty()) jm = g_xexJmeno;
       else if (g_stroj->disk.mounted) jm = g_stroj->disk.name;
@@ -3585,7 +3597,7 @@ Java_eu_atarihelp_emu10_NativeAtariCoreBridge_onlineHra(JNIEnv *env, jclass) {
     }
     if (!g_stroj || !g_strojBezi.load()) proc = "Atari je vypnute";
   }
-  std::string r = nap::pcAscii(jm, 120, true) + "\n" + (proc.empty() ? "1" : "0") + "\n" + proc;
+  std::string r = nap::pcAscii(jm, 120, true) + "\n" + (proc.empty() ? "1" : "0") + "\n" + proc + "\n" + std::to_string(gen);
   return env->NewStringUTF(r.c_str());
 }
 

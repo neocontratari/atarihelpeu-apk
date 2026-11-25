@@ -1,0 +1,27 @@
+B362 - online s odhadem stisku druheho a opravou (nap_online.h verze 3)
+== 1) zpozdeni na startu: s odhadem jen jednosmerna cesta (kolisani spolkne odhad)
+OK     odezva 9 ms -> 2 snimky (LAN), 40 ms -> 3, 90 ms -> 4, 400 ms -> 14 (B361 pro 9 ms +-30 ms: 4)
+== 2) LAN se spickami obema smery (jako log S8 z 24. 11.): lockstep (B361) proti odhadu (B362), 1500 snimku
+OK     lockstep (B361): obrazy stejne, ale emulatory staly 126x, dohromady 2568 ms (nejdel 143 ms), spicek 36, zpozdeni a 10 b 10
+OK     s odhadem: 1500 snimku, po opravach KAZDY obraz i vstupy obou hracu stejne (prvni rozdil 1500)
+OK     obrazy po opravach = prepocet od nuly ze skutecnych vstupu (oprava nic nerozbila)
+OK     odhadnuto snimku a 118 (sedelo 108) b 71 (sedelo 59), oprav a 3 b 5 (nejdel 9 snimku, prepocteno 28)
+OK     emulatory s odhadem staly 8x, dohromady 161 ms (lockstep 2568 ms) - spicky do 8 snimku spolkne odhad
+OK     otisky jen ze snimku se skutecnymi stisky: overeno 25 / 25, zadne rozjeti, zadna synchronizace, oprava vzdy nasla ulozeny stav
+OK     zpozdeni ovladani zustalo male: start 2, na konci a 4 b 3 snimku (B361 v logu S8: 4 -> 11)
+== 3) odhad je omezeny: druhy telefon mlci -> nejvys 8 snimku napred, pak se ceka; ticho = konec
+OK     hrac 1 dosel s odhadem nejvys 8 snimku za posledni stisk druheho (limit 8), pak stal: snimek 209, druhy 209
+OK     po 1,5 s ticha konec: 'od druheho hrace dlouho nic neprislo - spadla mu sit, nebo se telefon zasekl', posledni zprava od druheho: VSTUP
+== 4) rozjeti + synchronizace s odhadem (hrac 2 dosel s odhadem ZA snimek G)
+OK     1 synchronizace: hrac 1 poslal stav pred snimkem 246 az po overeni snimku pred nim, hrac 2 ho nahral pred 246
+OK     hrac 2 byl s odhadem uz na snimku 249 (za G) - stav G ho vratil zpet na 246
+OK     rozdil od snimku 200 (porucha), od G zase KAZDY obraz stejny, hra dobehla do 900
+OK     po synchronizaci overeno otisku 14, lisila se cast 0 (ram[5])
+OK     jadro hrace 1 stav neposle -> konec u snimku G (243), ne jizda dal s rozjetou hrou: 'hra se rozjela a synchronizace nepomohla (otisk stavu se lisi)'
+== 5) STATISTIKA: kazdy telefon zna cisla druheho (log jednoho telefonu ukaze oba)
+       hrac 1 vi o hraci 2: snimek 241, cekal 0x (0 ms, nejdel 0 ms), odhad 3 snimku (sedelo 1), oprav 1 (nejdel 2 snimku / 0 ms, celkem 0 ms), zpozdeni 3, odezva 14 ms, 59.9 snimku/s, jadro 11.8 ms (nejvys 19.0) | SM-A125F Android 12, Wi-Fi -61 dBm 2.4 GHz, ???
+       hrac 2 vi o hraci 1: snimek 239, cekal 2x (42 ms, nejdel 39 ms), odhad 19 snimku (sedelo 11), oprav 1 (nejdel 9 snimku / 0 ms, celkem 0 ms), zpozdeni 2, odezva 14 ms | SM-G950F Android 9
+OK     statistik od druheho: hrac 1 3, hrac 2 3 (cekani, odhady, opravy, vykon, telefon)
+OK     text od druheho jen tisknutelne ASCII (diakritika a ridici znaky -> ?)
+
+VYSLEDEK: 17 OK, 0 CHYB

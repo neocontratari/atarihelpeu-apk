@@ -1,0 +1,67 @@
+B357 - online hra na Seze: skutecny nap_sega_native_proof.cpp + jadro clownmdemu + testovaci ROM 68000 (sega_test_rom.py)
+A) bez site - jadro clownmdemu primo, vstupy obou hracu online vetvi (g_online_vstup)
+OK     1) stejne vstupy -> stejnych 600 otisku i po jine hre mezi tim (studeny start maze vse); ruznych otisku 600 z 600 (stav se meni kazdy snimek)
+OK     2) hrac 1 jinak jen ve snimku 300 -> prvni rozdil otisku ve snimku 300, potom stejnych 0 (rozjeti je trvale - online by ho poznal)
+OK     3) hrac 2 jinak jen ve snimku 400 -> prvni rozdil ve snimku 400, potom stejnych 0
+OK     4) kazde z 8 tlacitek obou hracu (1 snimek) zmeni stav hry: 16 z 16
+B) dva telefony = dva procesy (kazdy sve jadro a vlakno emulace), spojeni pres engine na portu 18954
+BUILD2RY real core worker start gen=1 bigstack=8MB passiveAudit=YES pcmCddaSkip=YES
+B357 ONLINE zaklada /api/v1/online/zaloz?system=sega&hra=B357%20TEST%20ROM&hra_id=sega-0123456789abcdef&otisk=891e5c3ab4c57347c9dcdc6a263580c860b8ef3e&nastaveni=16&jmeno=Telefon%201
+BUILD2RY real core worker start gen=1 bigstack=8MB passiveAudit=YES pcmCddaSkip=YES
+B357 ONLINE pripojuje /api/v1/online/pripoj?kod=7297&jmeno=Telefon%202
+B357 ONLINE start - studeny start, snimek 0 (B362: odhad stisku druheho nejvys 8 snimku)
+B357 ONLINE start - studeny start, snimek 0 (B362: odhad stisku druheho nejvys 8 snimku)
+B320 OVLADAC klavesa 97 dolu -> B(prave) -> Sega bity 0x040
+B320 OVLADAC klavesa 97 dolu -> B(prave) -> Sega bity 0x040
+B320 OVLADAC klavesa 19 dolu -> nahoru -> Sega bity 0x001
+B320 OVLADAC klavesa 96 dolu -> A(spodni) -> Sega bity 0x020
+B320 OVLADAC klavesa 96 dolu -> A(spodni) -> Sega bity 0x020
+B320 OVLADAC klavesa 20 dolu -> dolu -> Sega bity 0x002
+B320 OVLADAC klavesa 19 dolu -> nahoru -> Sega bity 0x001
+B320 OVLADAC klavesa 99 dolu -> X(leve) -> Sega bity 0x010
+B320 OVLADAC klavesa 108 dolu -> START -> Sega bity 0x080
+B320 OVLADAC klavesa 20 dolu -> dolu -> Sega bity 0x002
+B320 OVLADAC klavesa 108 dolu -> START -> Sega bity 0x080
+B320 OVLADAC klavesa 108 nahoru -> START -> Sega bity 0x080
+B320 OVLADAC klavesa 19 nahoru -> nahoru -> Sega bity 0x001
+B320 OVLADAC klavesa 96 nahoru -> A(spodni) -> Sega bity 0x020
+B320 OVLADAC klavesa 19 dolu -> nahoru -> Sega bity 0x001
+B320 OVLADAC klavesa 21 dolu -> vlevo -> Sega bity 0x004
+B320 OVLADAC klavesa 99 nahoru -> X(leve) -> Sega bity 0x010
+B320 OVLADAC klavesa 19 nahoru -> nahoru -> Sega bity 0x001
+B320 OVLADAC klavesa 99 dolu -> X(leve) -> Sega bity 0x010
+B320 OVLADAC klavesa 97 nahoru -> B(prave) -> Sega bity 0x040
+B357 ONLINE konec po 720 snimcich: druhy hrac hru ukoncil
+BUILD2RY real core worker stop gen=1
+BUILD2RY real core worker stop gen=1
+   telefon 1 | START OK otisk=891e5c3ab4c57347c9dcdc6a263580c860b8ef3e|16
+   telefon 1 | KOD 7297
+   telefon 1 | VYSLEDEK hrac=1 overeno=12 snimek=720 zpozdeni=2 odezva=0 cekani=0 videt1=1 videt2=1 faze=KONEC
+   telefon 1 | KONEC_TEXT 
+   telefon 1 | CHYBA_TEXT online hru jsi ukoncil
+   telefon 2 | START OK otisk=891e5c3ab4c57347c9dcdc6a263580c860b8ef3e|16
+   telefon 2 | VYSLEDEK hrac=2 overeno=12 snimek=720 zpozdeni=2 odezva=0 cekani=0 videt1=1 videt2=1 faze=KONEC
+   telefon 2 | KONEC_TEXT druhy hrac hru ukoncil
+   telefon 2 | CHYBA_TEXT druhy hrac hru ukoncil
+OK     5) hrac 1 zalozil hru (cislo 7297), hrac 2 se pripojil, hrali: telefon 1 720 snimku, telefon 2 720 (zpozdeni vstupu 2 snimky)
+OK     6) overenych otisku stavu: telefon 1 12, telefon 2 12 (kazdych 60 snimku), rozjeti zadne, vstupy obou hracu v obou jadrech ano
+OK     7) hrac 1 skoncil -> telefon 2: 'druhy hrac hru ukoncil', telefon 1: 'online hru jsi ukoncil'
+BUILD2RY real core worker start gen=1 bigstack=8MB passiveAudit=YES pcmCddaSkip=YES
+B357 ONLINE zaklada /api/v1/online/zaloz?system=sega&hra=B357%20TEST%20ROM&hra_id=sega-0123456789abcdef&otisk=891e5c3ab4c57347c9dcdc6a263580c860b8ef3e&nastaveni=16&jmeno=Telefon%201
+BUILD2RY real core worker start gen=1 bigstack=8MB passiveAudit=YES pcmCddaSkip=YES
+B357 ONLINE pripojuje /api/v1/online/pripoj?kod=5887&jmeno=Telefon%202
+B357 ONLINE konec po 0 snimcich: druhy hrac ma jinou hru nebo jine nastaveni
+B357 ONLINE konec po 0 snimcich: druhy hrac ma jinou hru nebo jine nastaveni
+BUILD2RY real core worker stop gen=1
+BUILD2RY real core worker stop gen=1
+   telefon 1 | START OK otisk=891e5c3ab4c57347c9dcdc6a263580c860b8ef3e|16
+   telefon 1 | KOD 5887
+   telefon 1 | VYSLEDEK hrac=1 overeno=0 snimek=0 zpozdeni=3 odezva=0 cekani=0 videt1=0 videt2=0 faze=KONEC
+   telefon 1 | KONEC_TEXT druhy hrac ma jinou hru nebo jine nastaveni
+   telefon 1 | CHYBA_TEXT druhy hrac ma jinou hru nebo jine nastaveni
+   telefon 2 | START OK otisk=e33fe5db01a322a6d8c42763049d889c8b2f5cc4|16
+   telefon 2 | VYSLEDEK hrac=2 overeno=0 snimek=0 zpozdeni=3 odezva=0 cekani=0 videt1=0 videt2=0 faze=KONEC
+   telefon 2 | KONEC_TEXT druhy hrac ma jinou hru nebo jine nastaveni
+   telefon 2 | CHYBA_TEXT druhy hrac ma jinou hru nebo jine nastaveni
+OK     8) hrac 2 ma jinou ROM (1 bajt) -> telefon 1: 'druhy hrac ma jinou hru nebo jine nastaveni', telefon 2: 'druhy hrac ma jinou hru nebo jine nastaveni', online snimku 0 / 0 (hra nezacala)
+VYSLEDEK: 8 OK, 0 CHYBA

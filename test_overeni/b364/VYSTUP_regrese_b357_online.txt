@@ -1,0 +1,39 @@
+== 1) seznam her na enginu: zatim zadna
+OK     GET /api/v1/online/mistnosti -> 200 {"ok":true,"mistnosti":[],"server_cas":1795636479}
+== 2) chyby enginu se dostanou do appky (HTTP + JSON s duvodem)
+OK     pripojeni k neexistujici hre -> engine odmitl online (HTTP 404): {"ok":false,"duvod":"mistnost_neni","zprava":"Tahle hra už nečeká – hrá
+OK     zalozeni bez otisku hry -> HTTP 400
+OK     neznamy system -> HTTP 400
+== 3) WebSocket primo: zalozit, cislo hry, seznam, druhy se pripoji, velka zprava pres engine
+OK     hrac 1 zalozil hru (WebSocket 101, Sec-WebSocket-Accept od .NET sedi) 
+OK     engine poslal textovou zpravu
+OK     cislo hry: 5472 ({"typ":"mistnost","kod":"5472"})
+OK     seznam: hra ceka, nazev s diakritikou, hrac, id na serveru, otisk
+OK     hrac 2 se pripojil 
+OK     hrac 1 se dozvi: pripojil se bracha
+OK     hrac 2 se dozvi: hra od Rene + otisk hry (at vi, co pustit)
+OK     treti uz se nevejde -> HTTP 409 obsazeno
+OK     hrajici hra uz v seznamu neni
+OK     hrac 1 poslal 300 KB
+OK     hrac 2 dostal presne tech 300 KB (binarne, beze zmeny)
+OK     a zpatky mala zprava 3 B
+OK     hrac 2 zavrel -> hrac 1 dostane {"typ":"odesel"}
+OK     a engine spojeni zavrel
+== 4) dve appky (OnlineKlient): zalozit, najit v seznamu, pripojit, odehrat 360 snimku
+OK     appka hrace 1: CEKAM NA DRUHEHO HRACE - CISLO HRY 1086
+OK     appka hrace 2 vidi hru v seznamu: cislo 1086, hra Sonic
+OK     oba 360 snimku, KAZDY obraz stejny (a 360, b 360)
+OK     otisky stavu overeny (a 6x)
+OK     pres engine na PC: zpozdeni D = 2, odezva 0 ms
+OK     stav pro hrace: ONLINE S bracha - ODEZVA 0 MS
+OK     hrac 2 skoncil -> u hrace 1: ONLINE KONEC: druhy hrac hru ukoncil
+OK     seznam her je zase prazdny
+== 5) appka hrace 1 hru zrusi drive, nez nekdo prijde
+OK     zrusena hra 6234 zmizela ze seznamu
+== 6) odchod hrace pri spojovani (server mlci / spojeni visi) - stop() hned
+OK     a) server mlci (handshake): stop() za 0 ms, stav 'hra zrusena'
+OK     b) stop() hned po start(): 0 ms, stav 'hra zrusena'
+OK     c) TCP spojeni visi: stop() za 1 ms, stav 'hra zrusena'
+OK     d) po zruseni dalsi start() normalne funguje: cislo hry 9757
+
+VYSLEDEK: 31 OK, 0 CHYB

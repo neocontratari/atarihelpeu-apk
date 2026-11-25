@@ -1,0 +1,10 @@
+B364 - co je noveho: CLOAD, hry ze serveru pro online, aktualizace (NapNovinky nad skutecnym novinky.js)
+OK     1) nejnovejsi B364 = versionCode 407 (build.gradle 407), 5 vet cesky i anglicky
+OK     2) telefon s B363: okno jen B364 (6 radku), bez odkazu, nadpis 'CO JE NOVÉHO · B364'
+OK        telefon s B362 (nove B364,B363): okno B364 + B363, bez odkazu
+OK        telefon s B361 (nove B364,B363,B362): okno B364 + B363 a odkaz do Napovedy, B362 ne
+OK        anglicky: B364 a u telefonu s B361 'Older news: Help → WHAT'S NEW.'
+OK     3) online: ZALOZIT HRU s hrami ze serveru, okno ONLINE krok za krokem a cislo hry (HRA ZALOZENA) - jako v MainActivity (CZ i EN)
+OK        aktualizace: OPTIONS → AKTUALIZOVAT APLIKACI (tlacitko v assets/index.html) rekne MÁŠ NEJNOVĚJŠÍ VERZI
+OK        kazeta: oprava v jadre (init rezim POKEY drzi posledni bit = klid MARK) a stare nahravky opravuje nacteni WAV (nap_atari_tape.h)
+VYSLEDEK: 8 OK, 0 CHYBA
