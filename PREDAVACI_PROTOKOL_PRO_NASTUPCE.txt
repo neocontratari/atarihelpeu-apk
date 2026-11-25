@@ -5106,7 +5106,7 @@
      - NapAktualizace.spustRucne: rucneCo(verzeZnama, naServeru, moje) -> zeptejSe jen kdyz server > moje; jinak
        rucneBezStazeni: MAS NEJNOVEJSI VERZI (rucneText CZ / EN) s OK a PRESTO STAHNOUT ZNOVU (B324 oprava zaseknute
        instalace), verze nezjistena = "Nepodarilo se zjistit ..." s PRESTO STAHNOUT.
-     - Setrne kresleni: v Reneho logu se zaplo na S8 i A12 pri 11-13 ms (50/s stihaly). Atari zapnout > 14 ms, vypnout
+     - Setrne kresleni: v Reneho logu se zaplo na S8 pri 10-13 ms a na A12 pri 11-14 ms (50/s stihaly). Atari zapnout > 14 ms, vypnout
        < 10 ms (do B363 10 / 6); Sega > 12 ms, vypnout < 8 ms (do B363 9 / 6).
      - Napoveda CZ / EN (#onlineatari 5 kroku, ONLINE, AKTUALIZOVAT APLIKACI + otazka, TIP u kazetaku bez cisla buildu
        - kontrola_b343 N1), novinky B364 (verze 407, 5 + 5 vet), build.gradle 407 "EMU10-B364-KAZETA-ONLINE".
@@ -5123,3 +5123,6 @@
      - DALSI KROK: Rene - B364 na OBA telefony (jinak Atari online nezacne - jine cislo jadra); online Atari: ONLINE -> ZALOZIT HRU -> HRA Z NASEHO SERVERU N&P; CLOAD
        jeho stereo programu (a stare nahravky z B363); OPTIONS -> AKTUALIZOVAT APLIKACI = MAS NEJNOVEJSI VERZI. Poslat
        log z A12 (PS1_LOG.txt + PS1_LOG_predchozi.txt) a export enginu (zalozka ONLINE) - proc stala sit. Pak PS1 online.
+     - Commit 796bc9f, CI "Build APK" 45713609000 zelene (APK versionCode 407 "EMU10-B364-KAZETA-ONLINE", arm64-v8a +
+       armeabi-v7a, podpis N&P v2 + v3; kontrola novinek B364 = 407 OK; NDK bez varovani v nap_atari_tape.h /
+       nap_atari_machine.h / nap_atari_native.cpp). Engine se menit nemusi (/api/v1/hry a /api/v1/hra uz ma).

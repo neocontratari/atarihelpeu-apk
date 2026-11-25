@@ -31,7 +31,7 @@ CO SE ZMENILO
   4) AKTUALIZACE (NapAktualizace.spustRucne): OPTIONS -> AKTUALIZOVAT APLIKACI do B363 vzdy otevrelo okno se stazenim
      (i pri stejne verzi). Ted: server ma vyssi verzi = jako drive; stejnou / nizsi = MAS NEJNOVEJSI VERZI (nic se
      nestahuje, PRESTO STAHNOUT ZNOVU = oprava zaseknute instalace B324); verzi nezjistim = rekne to.
-  5) SETRNE KRESLENI (online): v testu Reneho se zaplo na S8 i A12 pri 11-13 ms na snimek, ktere 50/s stihaly (kresli
+  5) SETRNE KRESLENI (online): v testu Reneho se zaplo na S8 pri 10-13 ms a na A12 pri 11-14 ms na snimek, ktere 50/s stihaly (kresli
      jine vlakno). Atari: zapnout nad 14 ms (z 20 ms; do B363 10 ms), vypnout po 3 oknech pod 10 ms (do B363 6 ms).
      Sega: nad 12 ms (z 16,7 ms; do B363 9 ms), vypnout pod 8 ms (do B363 6 ms).
   6) Napoveda CZ / EN (online Atari krok za krokem, tlacitko ONLINE, AKTUALIZOVAT APLIKACI + otazka, TIP u kazetaku,
