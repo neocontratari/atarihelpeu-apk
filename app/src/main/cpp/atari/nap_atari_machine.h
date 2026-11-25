@@ -186,7 +186,7 @@ struct SioBus {
   // datovy ramec od pocitace (zapis): delka vcetne souctu, 0 = necekame
   int frameLen = 0, frameN = 0, frameSec = 0;
   bool frameBad = false;
-  uint8_t frame[260];
+  uint8_t frame[260] = {};                   // B363: nulovany (jinak zbytek haldy - lisil se mezi telefony v otisku stavu)
   // vysilani jednotky: bajt + cyklus zacatku jeho start bitu
   uint8_t outB[OUT_MAX];
   uint64_t outS[OUT_MAX];
@@ -364,6 +364,10 @@ public:
     pendingNMIs = 0; earlyNMIEN = 0; lateNMI = false; charInvert = 0; charBlink = 0xFF;
     vblankHires = false; std::memset(phantomQ, 0xFF, sizeof phantomQ);   // B348
     std::memset(dmaPat, 0, sizeof dmaPat);
+    // B363: i bajty, ktere ANTIC / GTIA / SIO nikdy nezapise (konec bufferu radku), patri do stavu online hry -
+    // po zapnuti nuly, ne zbytek haldy (jinak ma kazdy telefon po zapnuti jiny otisk stavu)
+    std::memset(pfData, 0, sizeof pfData); std::memset(pfChar, 0, sizeof pfChar); std::memset(lineOut, 0, sizeof lineOut);
+    std::memset(sio.frame, 0, sizeof sio.frame);
     updatePlayfieldTiming();
     // GTIA
     std::memset(gReg, 0, sizeof gReg);
@@ -624,7 +628,7 @@ public:
   int pfWidth = 0, pfFetchWidth = 0;
   int pfDmaStart = 114, pfDmaEnd = 114, pfDmaVEnd = 114, pfDisplayStart = 110, pfDisplayEnd = 110;
   uint8_t dmaPat[116];
-  uint8_t pfData[128], pfChar[128]; int pfDataW = 0, pfDataR = 0, pfCharW = 0;
+  uint8_t pfData[128] = {}, pfChar[128] = {}; int pfDataW = 0, pfDataR = 0, pfCharW = 0;   // B363: nulovane (viz coldInit)
   uint16_t charBase128 = 0, charBase64 = 0, charFetchPtr = 0; uint8_t charMask = 0x7F, charInvert = 0, charBlink = 0xFF;
   int pushMode = 0;                    // 0 prazdne, 1 = 160 bodu, 2 = 320 bodu (hires)
   int displayDone = 0;                 // do ktereho cyklu uz bylo hraci pole predano GTIA
@@ -643,7 +647,7 @@ public:
   uint8_t collP[4], collM[4];
   uint8_t merge[240];                  // na barevny takt: PF/P bity
   uint8_t anData[240];                 // na barevny takt: 2 bity (hires / GTIA rezimy)
-  uint8_t lineOut[480];                // vystup radku (pul taktu = bod)
+  uint8_t lineOut[480] = {};           // vystup radku (pul taktu = bod); B363: nulovany (viz coldInit)
   bool lineHires = false, vblankLine = true;
   int lastSyncCc = 0;
   struct RegChange { int pos; uint8_t reg, val; };
@@ -2326,7 +2330,7 @@ public:
         }
         case 0x21: case 0x22: {               // FORMAT
           if (disk.writeProtect) st = 144;
-          else { std::fill(disk.data.begin(), disk.data.end(), 0); for (int i = 0; i < dbyt; i++) pokeMem((uint16_t)(dbuf + i), 0xFF); st = 1; }
+          else { std::fill(disk.data.begin(), disk.data.end(), 0); disk.writes++; for (int i = 0; i < dbyt; i++) pokeMem((uint16_t)(dbuf + i), 0xFF); st = 1; }   // B363: i FORMAT = zapis (online: kopie diskety)
           break;
         }
         default: st = 139; break;             // NAK
@@ -2446,7 +2450,7 @@ public:
         const int n = (disk.sectorSize == 256 && c[1] == 0x21) ? 256 : 128;
         sioOut('A', t); t += SIO_BYTE + SIO_COMPLETE;
         if (disk.writeProtect) sioOut('E', t);
-        else { std::fill(disk.data.begin(), disk.data.end(), (uint8_t)0); sioOut('C', t); }
+        else { std::fill(disk.data.begin(), disk.data.end(), (uint8_t)0); disk.writes++; sioOut('C', t); }   // B363: i FORMAT = zapis
         t += SIO_BYTE + SIO_GAP;
         sioOutFrame(f, n, t);
         return;

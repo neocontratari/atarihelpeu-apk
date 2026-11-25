@@ -1,0 +1,120 @@
+B363 - online Atari 130XE (skutecny nap_atari_native.cpp, start ze stavu, odhad a oprava, setrne kresleni; protokol verze 3)
+== 1) start ze stavu (telefon 2 ma Atari vypnute a zadnou hru), spicky site, stisky se meni porad
+   telefon 1 | NAHRANO 1
+   telefon 1 | START OK
+   telefon 1 | KOD 5446
+   telefon 1 | HRAJE
+   telefon 1 | VYSLEDEK hrac=1 overeno=21 snimek=1260 zpozdeni=2 zpozdeni_ted=2 cekani=5 cekani_ms=72 synchronizaci=0 synchronizovano=0 rozjeti=0 rozjeti_snimek=0 stav_kb=11 otisk660=87ff0e6a5ed5bc15 sync_videno=0 faze=KONEC start_stav=4 setrne_videno=0 setrne_c=0 kod2000=00A9
+   telefon 1 | ODHAD odhad=199 sedelo=46 oprav=39 oprava_max=9 oprava_max_ms=27 prepocteno=168 odhad_max=8 chyb_opravy=0 druhy_info_c=3 posledni_zprava=VSTUP spicek=22 spicky_ms=3305 navrat_ze=0 navrat_na=0
+   telefon 1 | LOG start_odeslan=1 start_nahran=0 stav_ok=1 setrne_zap=0 konec=1 pc=2087
+   telefon 1 | DRUHY snimek 1153, cekal 5x (58 ms, nejdel 17 ms), odhad 189 snimku (sedelo 43), oprav 32 (nejdel 9 snimku / 30 ms, celkem 431 ms), zpozdeni 2, odezva 210 ms, 50.0 snimku/s (obraz 50/s), jadro 3.3 ms (nejvys 16.7), odhad nejvys 8 | TEST-A12 Android 12, Wi-Fi -61 dBm 2.4 GHz LOW_LATENCY
+   telefon 1 | CASTI 
+   telefon 1 | KONEC_TEXT 
+   telefon 1 | CHYBA_TEXT online hru jsi ukoncil
+   telefon 1 | LOGRADEK B363 ATARI ONLINE START: stav Atari pred snimkem 0 odeslan (11 KB zlib, surove 848 KB, zabaleno za 2 ms)
+   telefon 1 | LOGRADEK B363 ATARI ONLINE konec (hrac) - Atari bezi dal jen na tomto telefonu
+   telefon 2 | VYPNUTO 1
+   telefon 2 | START OK
+   telefon 2 | HRAJE
+   telefon 2 | VYSLEDEK hrac=2 overeno=21 snimek=1260 zpozdeni=2 zpozdeni_ted=3 cekani=5 cekani_ms=58 synchronizaci=0 synchronizovano=0 rozjeti=0 rozjeti_snimek=0 stav_kb=11 otisk660=87ff0e6a5ed5bc15 sync_videno=0 faze=KONEC start_stav=4 setrne_videno=0 setrne_c=0 kod2000=00A9
+   telefon 2 | ODHAD odhad=202 sedelo=52 oprav=34 oprava_max=9 oprava_max_ms=30 prepocteno=161 odhad_max=8 chyb_opravy=0 druhy_info_c=4 posledni_zprava=KONEC spicek=22 spicky_ms=2756 navrat_ze=0 navrat_na=0
+   telefon 2 | LOG start_odeslan=0 start_nahran=1 stav_ok=0 setrne_zap=0 konec=1 pc=2082
+   telefon 2 | DRUHY snimek 1260, cekal 5x (72 ms, nejdel 48 ms), odhad 199 snimku (sedelo 46), oprav 39 (nejdel 9 snimku / 27 ms, celkem 463 ms), zpozdeni 2, odezva 1 ms, 49.9 snimku/s (obraz 50/s), jadro 4.0 ms (nejvys 36.5), odhad nejvys 8 | TEST-S8 Android 9, Wi-Fi HIGH_PERF
+   telefon 2 | CASTI 
+   telefon 2 | KONEC_TEXT druhy hrac hru ukoncil
+   telefon 2 | CHYBA_TEXT druhy hrac hru ukoncil
+   telefon 2 | LOGRADEK B363 ATARI ONLINE START: stav Atari pred snimkem 0 nahran (11 KB zlib, nahrano za 0 ms) - bez cartridge, D1: prazdna
+   telefon 2 | LOGRADEK B363 ATARI ONLINE konec po 1260 snimcich: druhy hrac hru ukoncil - Atari bezi dal jen na tomto telefonu
+OK     start ze stavu: telefon 2 mel Atari vypnute, telefon 1 poslal cely stav (11 KB zlib), telefon 2 ho nahral, STAV_OK, na $2000 ma telefon 2 kod zatezoveho programu (00A9)
+OK     hra jela: telefon 1 1260 snimku, telefon 2 1260; spicek 22 + 22 (3305 + 2756 ms); odhadnuto 199 + 202 snimku, oprav 39 + 34 (nejdel 9 / 9 snimku, 27 / 30 ms), ulozeny stav vzdy byl
+OK     oprava skutecneho Atari je presna: overeno 21 otisku, rozjeti 0, synchronizaci 0, otisk stroje ve snimku 660 u obou 87ff0e6a5ed5bc15 (STEJNY)
+OK     zpozdeni ovladani 2 -> 2 / 3 snimku, Atari stalo 5x (72 ms) / 5x (58 ms), limit odhadu 8 / 8 snimku
+       telefon 1 vi o telefonu 2: snimek 1153, cekal 5x (58 ms, nejdel 17 ms), odhad 189 snimku (sedelo 43), oprav 32 (nejdel 9 snimku / 30 ms, celkem 431 ms), zpozdeni 2, odezva 210 ms, 50.0 snimku/s (obraz 50/s), jadro 3.3 ms (nejvys 16.7), odhad nejvys 8 | TEST-A12 Android 12, Wi-Fi -61 dBm 2.4 GHz LOW_LATENCY
+OK     STATISTIKA: telefon 1 dostal od telefonu 2 3x jeho cisla (vykon jadra a obrazu, odhady, opravy, info z Javy)
+== 2) stroj telefonu 2 se ve snimku 300 splete + spicky site -> synchronizace, hra pokracuje
+   telefon 1 | NAHRANO 1
+   telefon 1 | START OK
+   telefon 1 | KOD 3504
+   telefon 1 | HRAJE
+   telefon 1 | VYSLEDEK hrac=1 overeno=12 snimek=780 zpozdeni=2 zpozdeni_ted=3 cekani=1 cekani_ms=0 synchronizaci=1 synchronizovano=1 rozjeti=1 rozjeti_snimek=300 stav_kb=11 otisk660=e1d7bc58768acbfd sync_videno=1 faze=KONEC start_stav=4 setrne_videno=0 setrne_c=0 kod2000=00A9
+   telefon 1 | ODHAD odhad=119 sedelo=31 oprav=27 oprava_max=6 oprava_max_ms=20 prepocteno=88 odhad_max=8 chyb_opravy=0 druhy_info_c=2 posledni_zprava=VSTUP spicek=14 spicky_ms=1893 navrat_ze=0 navrat_na=0
+   telefon 1 | LOG start_odeslan=1 start_nahran=0 stav_ok=1 setrne_zap=0 konec=1 pc=2087
+   telefon 1 | DRUHY snimek 651, cekal 1x (49 ms, nejdel 49 ms), odhad 117 snimku (sedelo 38), oprav 21 (nejdel 9 snimku / 28 ms, celkem 240 ms), zpozdeni 2, odezva 10 ms, 50.0 snimku/s (obraz 50/s), jadro 3.3 ms (nejvys 25.9), odhad nejvys 8 | TEST-A12 Android 12, Wi-Fi -61 dBm 2.4 GHz LOW_LATENCY
+   telefon 1 | CASTI RAM 64K
+   telefon 1 | KONEC_TEXT 
+   telefon 1 | CHYBA_TEXT online hru jsi ukoncil
+   telefon 1 | LOGRADEK B363 ATARI ONLINE START: stav Atari pred snimkem 0 odeslan (11 KB zlib, surove 848 KB, zabaleno za 3 ms)
+   telefon 1 | LOGRADEK B363 ATARI ONLINE synchronizace: stav Atari pred snimkem 303 odeslan (11 KB zlib, surove 848 KB, zabaleno za 0 ms)
+   telefon 1 | LOGRADEK B363 ATARI ONLINE konec (hrac) - Atari bezi dal jen na tomto telefonu
+   telefon 2 | VYPNUTO 1
+   telefon 2 | START OK
+   telefon 2 | HRAJE
+   telefon 2 | VYSLEDEK hrac=2 overeno=12 snimek=780 zpozdeni=2 zpozdeni_ted=2 cekani=1 cekani_ms=49 synchronizaci=1 synchronizovano=1 rozjeti=1 rozjeti_snimek=300 stav_kb=11 otisk660=e1d7bc58768acbfd sync_videno=1 faze=KONEC start_stav=4 setrne_videno=0 setrne_c=0 kod2000=00A9
+   telefon 2 | ODHAD odhad=128 sedelo=40 oprav=26 oprava_max=9 oprava_max_ms=28 prepocteno=88 odhad_max=8 chyb_opravy=0 druhy_info_c=3 posledni_zprava=KONEC spicek=16 spicky_ms=1887 navrat_ze=0 navrat_na=0
+   telefon 2 | LOG start_odeslan=0 start_nahran=1 stav_ok=0 setrne_zap=0 konec=1 pc=2082
+   telefon 2 | DRUHY snimek 780, cekal 1x (0 ms, nejdel 0 ms), odhad 119 snimku (sedelo 31), oprav 27 (nejdel 6 snimku / 20 ms, celkem 274 ms), zpozdeni 3, odezva 106 ms, 50.0 snimku/s (obraz 50/s), jadro 3.7 ms (nejvys 10.7), odhad nejvys 8 | TEST-S8 Android 9, Wi-Fi HIGH_PERF
+   telefon 2 | CASTI RAM 64K
+   telefon 2 | KONEC_TEXT druhy hrac hru ukoncil
+   telefon 2 | CHYBA_TEXT druhy hrac hru ukoncil
+   telefon 2 | LOGRADEK B363 ATARI ONLINE START: stav Atari pred snimkem 0 nahran (11 KB zlib, nahrano za 0 ms) - bez cartridge, D1: prazdna
+   telefon 2 | LOGRADEK B363 ATARI ONLINE synchronizace: stav Atari pred snimkem 303 nahran (11 KB zlib, nahrano za 0 ms) - bez cartridge, D1: prazdna
+   telefon 2 | LOGRADEK B363 ATARI ONLINE konec po 780 snimcich: druhy hrac hru ukoncil - Atari bezi dal jen na tomto telefonu
+OK     rozjeti poznano v otisku 300 (RAM 64K), synchronizace hotova (1 / 1), stav 11 KB
+OK     hra pokracovala: 780 / 780 snimku, otisk ve snimku 660 u obou e1d7bc58768acbfd (STEJNY), overeno 12, oprav 27 + 26
+== 3) telefon 2 zamrzne -> telefon 1 jen par snimku s odhadem, pak stoji, po 15 s konec s duvodem
+   telefon 1 | NAHRANO 1
+   telefon 1 | START OK
+   telefon 1 | KOD 9071
+   telefon 1 | HRAJE
+   telefon 1 | VYSLEDEK hrac=1 overeno=3 snimek=161 zpozdeni=2 zpozdeni_ted=2 cekani=1 cekani_ms=0 synchronizaci=0 synchronizovano=0 rozjeti=0 rozjeti_snimek=0 stav_kb=11 otisk660=0000000000000000 sync_videno=0 faze=KONEC start_stav=4 setrne_videno=0 setrne_c=0 kod2000=00A9
+   telefon 1 | ODHAD odhad=8 sedelo=0 oprav=0 oprava_max=0 oprava_max_ms=0 prepocteno=0 odhad_max=8 chyb_opravy=0 druhy_info_c=1 posledni_zprava=VSTUP spicek=0 spicky_ms=0 navrat_ze=0 navrat_na=0
+   telefon 1 | LOG start_odeslan=1 start_nahran=0 stav_ok=1 setrne_zap=0 konec=1 pc=2082
+   telefon 1 | DRUHY snimek 150, cekal 0x (0 ms, nejdel 0 ms), odhad 0 snimku (sedelo 0), oprav 0 (nejdel 0 snimku / 0 ms, celkem 0 ms), zpozdeni 2, odezva 7 ms, 50.6 snimku/s (obraz 51/s), jadro 3.5 ms (nejvys 9.0), odhad nejvys 8 | TEST-A12 Android 12, Wi-Fi -61 dBm 2.4 GHz LOW_LATENCY
+   telefon 1 | CASTI 
+   telefon 1 | KONEC_TEXT od druheho hrace dlouho nic neprislo - spadla mu sit, nebo se telefon zasekl
+   telefon 1 | CHYBA_TEXT od druheho hrace dlouho nic neprislo - spadla mu sit, nebo se telefon zasekl
+   telefon 1 | LOGRADEK B363 ATARI ONLINE START: stav Atari pred snimkem 0 odeslan (11 KB zlib, surove 848 KB, zabaleno za 2 ms)
+   telefon 1 | LOGRADEK B363 ATARI ONLINE konec po 161 snimcich: od druheho hrace dlouho nic neprislo - spadla mu sit, nebo se telefon zasekl - Atari bezi dal jen na tomto telefonu
+   telefon 2 | VYPNUTO 1
+   telefon 2 | START OK
+   telefon 2 | HRAJE
+   telefon 2 | VYSLEDEK hrac=2 overeno=3 snimek=151 zpozdeni=2 zpozdeni_ted=2 cekani=0 cekani_ms=0 synchronizaci=0 synchronizovano=0 rozjeti=0 rozjeti_snimek=0 stav_kb=11 otisk660=0000000000000000 sync_videno=0 faze=KONEC start_stav=4 setrne_videno=0 setrne_c=0 kod2000=00A9
+   telefon 2 | ODHAD odhad=0 sedelo=0 oprav=0 oprava_max=0 oprava_max_ms=0 prepocteno=0 odhad_max=8 chyb_opravy=0 druhy_info_c=3 posledni_zprava=KONEC spicek=0 spicky_ms=0 navrat_ze=0 navrat_na=0
+   telefon 2 | LOG start_odeslan=0 start_nahran=1 stav_ok=0 setrne_zap=0 konec=1 pc=2087
+   telefon 2 | DRUHY snimek 161, cekal 1x (0 ms, nejdel 0 ms), odhad 8 snimku (sedelo 0), oprav 0 (nejdel 0 snimku / 0 ms, celkem 0 ms), zpozdeni 2, odezva 0 ms, 50.6 snimku/s (obraz 51/s), jadro 3.1 ms (nejvys 8.6), odhad nejvys 8 | TEST-S8 Android 9, Wi-Fi HIGH_PERF
+   telefon 2 | CASTI 
+   telefon 2 | KONEC_TEXT od druheho hrace dlouho nic neprislo - spadla mu sit, nebo se telefon zasekl
+   telefon 2 | CHYBA_TEXT od druheho hrace dlouho nic neprislo - spadla mu sit, nebo se telefon zasekl
+   telefon 2 | LOGRADEK B363 ATARI ONLINE START: stav Atari pred snimkem 0 nahran (11 KB zlib, nahrano za 0 ms) - bez cartridge, D1: prazdna
+   telefon 2 | LOGRADEK B363 ATARI ONLINE konec po 151 snimcich: od druheho hrace dlouho nic neprislo - spadla mu sit, nebo se telefon zasekl - Atari bezi dal jen na tomto telefonu
+OK     telefon 1: 'od druheho hrace dlouho nic neprislo - spadla mu sit, nebo se telefon zasekl' (cele trvani 26 s), s odhadem jen 8 snimku, posledni zprava od druheho: VSTUP, Atari bezi dal samo
+== 4) telefon 2 je pomaly (jadro +12 ms na snimek) -> setrne kresleni, hra jede dal stejne
+   telefon 1 | NAHRANO 1
+   telefon 1 | START OK
+   telefon 1 | KOD 9887
+   telefon 1 | HRAJE
+   telefon 1 | VYSLEDEK hrac=1 overeno=15 snimek=900 zpozdeni=2 zpozdeni_ted=2 cekani=0 cekani_ms=0 synchronizaci=0 synchronizovano=0 rozjeti=0 rozjeti_snimek=0 stav_kb=11 otisk660=fe770e07039c29b0 sync_videno=0 faze=KONEC start_stav=4 setrne_videno=0 setrne_c=0 kod2000=00A9
+   telefon 1 | ODHAD odhad=0 sedelo=0 oprav=0 oprava_max=0 oprava_max_ms=0 prepocteno=0 odhad_max=8 chyb_opravy=0 druhy_info_c=2 posledni_zprava=VSTUP spicek=0 spicky_ms=0 navrat_ze=0 navrat_na=0
+   telefon 1 | LOG start_odeslan=1 start_nahran=0 stav_ok=1 setrne_zap=0 konec=1 pc=2087
+   telefon 1 | DRUHY snimek 651, cekal 0x (0 ms, nejdel 0 ms), odhad 0 snimku (sedelo 0), oprav 0 (nejdel 0 snimku / 0 ms, celkem 0 ms), zpozdeni 2, odezva 6 ms, 50.0 snimku/s (obraz 25/s setrne), jadro 15.8 ms (nejvys 18.3), odhad nejvys 4 | TEST-A12 Android 12, Wi-Fi -61 dBm 2.4 GHz LOW_LATENCY
+   telefon 1 | CASTI 
+   telefon 1 | KONEC_TEXT 
+   telefon 1 | CHYBA_TEXT online hru jsi ukoncil
+   telefon 1 | LOGRADEK B363 ATARI ONLINE START: stav Atari pred snimkem 0 odeslan (11 KB zlib, surove 848 KB, zabaleno za 2 ms)
+   telefon 1 | LOGRADEK B363 ATARI ONLINE konec (hrac) - Atari bezi dal jen na tomto telefonu
+   telefon 2 | VYPNUTO 1
+   telefon 2 | START OK
+   telefon 2 | HRAJE
+   telefon 2 | VYSLEDEK hrac=2 overeno=15 snimek=900 zpozdeni=2 zpozdeni_ted=2 cekani=0 cekani_ms=0 synchronizaci=0 synchronizovano=0 rozjeti=0 rozjeti_snimek=0 stav_kb=11 otisk660=fe770e07039c29b0 sync_videno=0 faze=KONEC start_stav=4 setrne_videno=1 setrne_c=1 kod2000=00A9
+   telefon 2 | ODHAD odhad=0 sedelo=0 oprav=0 oprava_max=0 oprava_max_ms=0 prepocteno=0 odhad_max=4 chyb_opravy=0 druhy_info_c=3 posledni_zprava=KONEC spicek=0 spicky_ms=0 navrat_ze=0 navrat_na=0
+   telefon 2 | LOG start_odeslan=0 start_nahran=1 stav_ok=0 setrne_zap=1 konec=1 pc=2082
+   telefon 2 | DRUHY snimek 900, cekal 0x (0 ms, nejdel 0 ms), odhad 0 snimku (sedelo 0), oprav 0 (nejdel 0 snimku / 0 ms, celkem 0 ms), zpozdeni 2, odezva 0 ms, 50.0 snimku/s (obraz 50/s), jadro 2.9 ms (nejvys 6.7), odhad nejvys 8 | TEST-S8 Android 9, Wi-Fi HIGH_PERF
+   telefon 2 | CASTI 
+   telefon 2 | KONEC_TEXT druhy hrac hru ukoncil
+   telefon 2 | CHYBA_TEXT druhy hrac hru ukoncil
+   telefon 2 | LOGRADEK B363 ATARI ONLINE START: stav Atari pred snimkem 0 nahran (11 KB zlib, nahrano za 0 ms) - bez cartridge, D1: prazdna
+   telefon 2 | LOGRADEK B363 ATARI ONLINE SETRNE KRESLENI zapnuto: jadro a opravy 15.1 ms na snimek (z 20 ms, prumer za 2 s) - na displej jde kazdy 2. snimek (25/s), emulace a zvuk dal 50/s
+   telefon 2 | LOGRADEK B363 ATARI ONLINE konec po 900 snimcich: druhy hrac hru ukoncil - Atari bezi dal jen na tomto telefonu
+OK     telefon 2 si sam zapnul setrne kresleni (obraz 25/s, emulace 50/s), telefon 1 ne; telefon 1 to vi ze statistiky: 50.0 snimku/s (obraz 25/s setrne), jadro 15.8 ms (nejvys 18.
+OK     hra s pomalym telefonem jede: 900 snimku, otisk ve snimku 660 u obou fe770e07039c29b0 (STEJNY), limit odhadu na pomalem telefonu 4
+VYSLEDEK: 10 OK, 0 CHYBA

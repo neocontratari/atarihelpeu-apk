@@ -57,6 +57,8 @@
 #include "nap_atari_tv_proud.h"         // B303: obraz a zvuk na TV/PC primo z C++ (male zpozdeni)
 #include "nap_atari_archiv.h"            // B349: hry v ZIP / RAR (rozbaleni a vyber disket v C++)
 #include "../nap_ovladac.h"              // B320: herni ovladac (Retroid Pocket 6, gamepad)
+#include "nap_atari_online.h"             // B363: online Atari - stav stroje, stisky hracu, kruh pro opravu odhadu
+#include "../online/nap_online_klient.h"  // B363: online hra pres engine N&P (stejne jako Sega)
 #include <memory>
 #include <string>
 #include <thread>
@@ -66,6 +68,7 @@
 #include <android/native_window.h>
 #include <android/native_window_jni.h>
 #include <sys/resource.h>
+#include <sstream>                // B363: stav online pro Javu
 
 // BUILD2SB79: presunuto sem (z puvodniho mista dale v souboru) - musi
 // byt dostupne uz pro bootNative() vyse, ktera ted take zachytava a
@@ -140,6 +143,8 @@ static std::mutex g_mStroj;
 
 // B361: druhy POKEY (stereo) - nastaveni z Javy (OPTIONS / kolecko: POKEY STEREO), plati pro kazdy novy stroj
 static std::atomic<bool> g_pokeyStereo{true};
+// B363: nova hra / POWER / odchod uprostred online hry = konec online (definice u online hry nize, pred vlaknem emulace)
+static void onlineKonecProNovouHru(const char *proc);
 
 static void zaloz() {
   if (!g_stroj) { g_stroj = new Machine(); g_stroj->stereoPokey = g_pokeyStereo.load(); }
@@ -341,6 +346,7 @@ Java_eu_atarihelp_emu10_NativeAtariCoreBridge_atariZvukDiagNative(JNIEnv *env, j
  */
 extern "C" JNIEXPORT jstring JNICALL
 Java_eu_atarihelp_emu10_NativeAtariCoreBridge_bootNative(JNIEnv *env, jclass, jint snimku) {
+  onlineKonecProNovouHru("novy stroj (boot)");   // B363
   std::lock_guard<std::mutex> zamek(g_mStroj);
   delete g_stroj; g_stroj = nullptr;
   delete g_view;  g_view  = nullptr;
@@ -826,6 +832,10 @@ static std::vector<nap::PcAkce> g_pcVstup;
 static bool g_pcPrvni = false;
 static int g_pcNeznamych = 0;
 static std::deque<nap::PcAkce> g_pcText;            // B303: text vlozeny z PC (Ctrl+V) - pod g_mPc, do g_pcHrac po malych davkach
+// B363: online hra - stroj jede jen ze stisku relace (obou hracu, atariOnlineVstupy pred snimkem). Dotyk, herni
+// ovladac a klavesnice PC za online hry jen skladaji stisky tohoto telefonu (onlineLokalniBityLocked), do stroje nesahaji.
+static std::atomic<int> g_onlineHraje{0};
+static inline bool onlineVstupyZRelace() { return g_onlineHraje.load(std::memory_order_relaxed) != 0; }
 static int consolEfektivni() {
   int m = g_consolChtene & 7;
   long long f = g_snimkuCelkem.load();
@@ -834,7 +844,7 @@ static int consolEfektivni() {
   return m;
 }
 static void aplikujJoyLocked() {
-  if (!g_stroj) return;
+  if (!g_stroj || onlineVstupyZRelace()) return;   // B363: za online hry jen stisky z relace
   const int m = g_joyDotyk | g_joyPad | g_joyPc;
   const int m2 = g_joyPad2;                         // B354: hrac 2 = druhy herni ovladac
   g_stroj->porta = (((~m2 & 15) << 4) | (~m & 15)) & 0xFF;   // PORTA: joystick 1 = dolni 4 bity, 2 = horni, 0 = stisknuto
@@ -1034,12 +1044,14 @@ static void pcKlavesniceSnimekLocked() {
       for (int b = 0; b < 3; b++)
         if ((pc & (1 << b)) && !(g_pcConsol & (1 << b))) g_consolDrzetDo[b] = g_snimkuCelkem.load() + 5;
       g_pcConsol = pc;
-      if (g_stroj && !g_xex.aktivni()) g_stroj->consol = consolEfektivni();
+      if (g_stroj && !g_xex.aktivni() && !onlineVstupyZRelace()) g_stroj->consol = consolEfektivni();
     } else {
       g_pcHrac.pridej(x);
     }
   }
   if (!g_stroj) return;
+  // B363: za online hry jen joystick a START / SELECT / OPTION z PC (vyse) - psani klaves z PC jde jen mimo online
+  if (onlineVstupyZRelace()) { g_pcHrac.zrus(); return; }
   // psani programu z TXT / textu ma prednost (nove klavesy z PC pockaji ve fronte)
   const bool smiStisk = !g_psani.aktivni() && g_typeQ.empty();
   std::vector<int> st;
@@ -1135,6 +1147,7 @@ static unsigned g_turboGen = 0;                          // g_strojGen relace (n
 // proc ted smi bezet turbo: 0 = ne, 1 = disketa D1:, 2 = zavadec XEX (pod g_mStroj)
 static int turboDuvodLocked() {
   if (!g_turboPovoleno || !g_stroj || g_stroj->cpu.jam || !g_strojBezi.load()) return 0;
+  if (onlineVstupyZRelace()) return 0;                       // B363: za online hry bez turba (stroj jen podle relace)
   Machine &m = *g_stroj;
   const long long f = g_snimkuCelkem.load();
   int duvod = 0;
@@ -1176,6 +1189,463 @@ static void turboHlidejLocked(int duvod, int snimku) {
   }
 }
 
+// =====================================================================================================
+//  B363: ONLINE ATARI 130XE (Rene 25. 11. 2026: "mohl by jsi se prosim te uz pustit do online atari - at se
+//  nezdrzujeme"). Dva telefony, kazdy emuluje cele Atari sam, po siti (engine N&P, online/nap_online*.h) jdou jen
+//  stisky. Hrac 1 = kdo hru zalozil (joystick 1), hrac 2 = kdo se pripojil (joystick 2; nebo oba na joysticku 1).
+//   - START ZE STAVU: az se telefony domluvi, hrac 1 posle CELY stav sveho Atari i s hrou (cartridge, disketa,
+//     zavadec XEX - nap_atari_online.h, zlib) a hrac 2 ho nahraje: hrac 2 hru mit nemusi a hraje se od stejneho
+//     okamziku. Kdyz hrac 1 hru jeste nahrava (zavadec XEX, kazeta, psani programu), pocka, az dobehne.
+//   - za hry jdou do stroje JEN stisky z relace (atariOnlineVstupy pred kazdym snimkem); dotyk, herni ovladac
+//     a klavesnice PC jen skladaji stisky tohoto telefonu. Veci "bokem", ktere by stroj zmenily jen na jednom
+//     telefonu, jsou za online hry vypnute: turbo, psani TXT / textu z PC, kazeta, restart s 1088K, zaznam CSAVE.
+//     Nova hra (XEX / ATR / CAR / TXT), POWER nebo vysunuti = konec online (druhy telefon dostane KONEC).
+//   - ODHAD + OPRAVA jako u Segy (B362): stisk druheho, ktery jeste neprisel, se odhadne; pred takovym snimkem se
+//     ulozi stav (kruh), a kdyz skutecny stisk prijde jiny, stroj se vrati a snimky se spocitaji znovu (bez zvuku
+//     a obrazu). Otisk stavu po castech kazdych 60 snimku, rozjeti = synchronizace (hrac 1 posle stav znovu).
+//   - SETRNE KRESLENI (Rene: "proc treba na slabsi telefony nepridat optimalizaci? ... stacilo by jen ponizit
+//     grafiku"): emulace musi na obou telefonech bezet CELA (jinak by se hra rozjela), ale obraz se kreslit nemusi
+//     kazdy - kdyz je telefon pomaly (jadro + opravy zaberou vic nez pulku snimku), jde na displej (a TV) jen kazdy
+//     druhy snimek (25/s). Zapne / vypne se samo, je v logu i ve statistice pro druhy telefon.
+// =====================================================================================================
+static nap::online::OnlineKlient g_online;
+static std::atomic<int> g_onlineAktivni{0};          // online zapnuto (pripojuje se, ceka na hrace, hraje)
+static std::atomic<int> g_onlineStartu{0};           // kolikate spojeni (Java pozna novy pokus)
+static std::atomic<uint32_t> g_onlineSnimkuCelkem{0};
+static std::atomic<uint32_t> g_onlineStavKb{0};      // posledni stav hry poslany / prijaty (KB zlib)
+static std::atomic<int> g_onlineStartStav{0};        // 0 nic, 1 hrac 1 dohrava (nahravani hry), 2 posila / ceka na STAV_OK, 3 hrac 2 ceka na stav, 4 hotovo
+// Rizeni po jednom: onlineStart / onlineStop / nova hra / konec zjisteny vlaknem emulace (jako Sega B357).
+static std::mutex g_onlineRizeni;
+static std::mutex g_onlineM;                         // g_onlineKonec, g_onlineHraNazev
+static std::string g_onlineKonec;
+static std::atomic<bool> g_onlineObaNaJ1Volba{false};   // hrac 1: "oba na joysticku 1" pri zalozeni
+static std::atomic<bool> g_onlinePortyJ1{false};        // kopie g_onlineKontext.obaNaJ1 pro onlineStav() (cte se bez g_mStroj)
+// jen vlakno emulace (a pod g_mStroj, kde sahaji na stroj)
+static uint32_t g_onlineSnimek = 0;
+static bool g_onlineCekaStart = false;               // hrac 1: START prisel, hra se jeste nahrava - az dobehne
+static long long g_onlineCekaStartOdMs = 0;
+static nap::AtariOnlineKontext g_onlineKontext;      // pod g_mStroj
+static nap::AtariOnlineKruh<nap::online::ODHAD_MAX + 2> g_onlineKruh;   // pod g_mStroj
+static std::vector<uint8_t> g_onlineSurova;          // pod g_mStroj
+// stisky tohoto telefonu za online hry (pod g_mStroj): klavesa z pristroje drzena aspon 2 snimky, BREAK a RESET
+// jako udalost do pristiho snimku; bity pro snimek se slozi jednou (opakovany pokus po cekani posle stejne)
+static int g_onlineKlavesa = -1;
+static uint32_t g_onlineKlavesaOd = 0;
+static bool g_onlineKlavesaPustit = false, g_onlineBreak = false, g_onlineReset = false;
+static uint32_t g_onlineLokalniSnimek = UINT32_MAX, g_onlineLokalniBity = 0;
+static long long g_onlineBlokHlasenoMs = 0;          // hlaska "za online nejde" (kazeta ...) ne kazdy dotek
+// vykon (vlakno emulace)
+static uint64_t g_onlineZatezEmaUs = 5000;          // snimek + opravy + otisk za periodu (prumer)
+static std::atomic<uint32_t> g_onlineOdhadMax{nap::online::ODHAD_MAX};
+static std::atomic<uint32_t> g_onlineChybOpravy{0}, g_onlineNavratZe{0}, g_onlineNavratNa{0};
+static uint64_t g_onlineVykonOdUs = 0, g_onlineVykonJadroUs = 0, g_onlineVykonJadroMaxUs = 0;
+static uint32_t g_onlineVykonSnimku = 0, g_onlineVykonKresleno = 0;
+static std::atomic<int> g_onlineSetrne{0};           // setrne kresleni zapnuto
+static std::atomic<uint32_t> g_onlineSetrneZapnuto{0};   // kolikrat se zaplo (Java do logu)
+static std::string g_onlineSetrneProc;               // pod g_onlineM
+static uint64_t g_onlineOknoZatezUs = 0;             // zatez za aktualni 2s okno (soucet)
+static int g_onlineKlidnychOken = 0;                 // 2s oken po sobe pod 6 ms (setrne kresleni vypnout po 3)
+static long long g_onlineStatusMs = 0;               // naposledy hlaska pod pristrojem
+static uint64_t g_onlinePoslanoUs = 0;               // hrac 1 poslal stav (kdy) - do logu, jak dlouho STAV_OK trval
+
+// AHOJ: oba telefony musi mit stejne jadro Atari (stav i chovani) - hra se posila ve stavu, otisk hry tedy pevny
+static const uint8_t ONLINE_ATARI_HRA[20] = {'N', '&', 'P', ' ', 'A', 'T', 'A', 'R', 'I', ' ', '1', '3', '0', 'X', 'E', ' ', 'S', 'T', 'A', 'V'};
+static const uint32_t ONLINE_ATARI_JADRO = 363000u + nap::ATARI_STAV_VERZE;   // zmena jadra / stavu = jine cislo
+
+/** Stisky tohoto telefonu pro snimek (jednou za snimek - opakovany pokus po cekani dostane stejne). Pod g_mStroj. */
+static uint32_t onlineLokalniBityLocked(uint32_t snimek) {
+  if (snimek == g_onlineLokalniSnimek) return g_onlineLokalniBity;
+  g_onlineLokalniSnimek = snimek;
+  const int joy = (g_joyDotyk | g_joyPad | g_joyPc) & 0x1F;
+  const int konzole = (~consolEfektivni()) & 7;                 // 1 = stisknuto (kratky stisk drzen 5 snimku)
+  int kod = -1;
+  if (g_onlineKlavesa >= 0) kod = g_onlineKlavesa;
+  else if (g_padKlav) kod = g_padKlav - 1;                       // B355: tlacitko ovladace s klavesou
+  if (g_onlineKlavesaPustit && snimek >= g_onlineKlavesaOd + 2) { g_onlineKlavesa = -1; g_onlineKlavesaPustit = false; }
+  g_onlineLokalniBity = nap::atariOnlineBity(joy, konzole, kod >= 0, kod < 0 ? 0 : kod, g_onlineBreak, g_shiftZamek, g_onlineReset);
+  g_onlineBreak = g_onlineReset = false;
+  return g_onlineLokalniBity;
+}
+
+/** Otisk stavu po snimku (kazdych 60) - i pri oprave (relace ho odesle, az je snimek jisty). Pod g_mStroj. */
+static void onlineOtiskLocked(const std::shared_ptr<nap::online::Relace> &r, uint32_t snimek) {
+  if (!r || snimek % nap::online::HASH_KAZDYCH != 0 || !g_stroj) return;
+  uint64_t c[nap::ATARI_STAV_CASTI];
+  const uint64_t h = nap::atariOnlineOtisk(*g_stroj, g_onlineKontext, c);
+  r->otiskStavu(snimek, h, c, (uint8_t)nap::ATARI_STAV_CASTI);
+}
+
+// test (test_overeni/b363) si sem dosadi "poruchu" stroje hrace 2 a "pomaly telefon" (zatez navic na snimek, us) -
+// v appce prazdne / 0 (nic se neprelozi)
+#ifndef NAP_ATARI_ONLINE_TEST_PO_SNIMKU
+#define NAP_ATARI_ONLINE_TEST_PO_SNIMKU(snimek) do {} while (0)
+#endif
+#ifndef NAP_ATARI_ONLINE_TEST_ZATEZ_US
+#define NAP_ATARI_ONLINE_TEST_ZATEZ_US 0
+#endif
+
+/** Oprava: stav pred snimkem 'od' zpet, snimky od .. g_onlineSnimek-1 znovu se skutecnymi stisky. Pod g_mStroj. */
+static void onlineOpravLocked(const std::shared_ptr<nap::online::Relace> &r, uint32_t od) {
+  const uint32_t ted = g_onlineSnimek;
+  if (od >= ted || !g_stroj) return;
+  if (!g_onlineKruh.vrat(*g_stroj, g_onlineKontext, od)) {
+    // nemelo by nastat (stav se uklada pred kazdym odhadnutym snimkem) - otisky rozdil poznaji, synchronizace spravi
+    if (g_onlineChybOpravy.fetch_add(1) < 5) devLog("B363 ATARI ONLINE oprava od snimku " + std::to_string(od) + ": ulozeny stav chybi");
+    return;
+  }
+  const long long t0 = nap_ted_ns();
+  AnticView *obraz = g_stroj->view;
+  g_stroj->view = nullptr;                          // snimky opravy se nekresli (obraz uz jednou byl)
+  uint32_t f = od;
+  for (; f < ted; f++) {
+    uint32_t p1 = 0, p2 = 0;
+    bool odhad = false;
+    if (r->vstupyOdhad(f, p1, p2, odhad, 0, nap::online::ODHAD_OPRAVA) != 1) break;   // konec relace
+    if (odhad) g_onlineKruh.uloz(*g_stroj, g_onlineKontext, f);
+    nap::atariOnlineVstupy(*g_stroj, p1, p2, g_onlineKontext.obaNaJ1);
+    if (!g_stroj->cpu.jam) g_stroj->runFrame();     // presne jako normalni snimek (zaseknuty procesor = stroj stoji)
+    g_stroj->srovnatSledovaniZvuku();               // zvuk techto snimku uz jednou hral
+    g_xex.poSnimku(*g_stroj);
+    if (g_stroj->mem.chce1088) g_stroj->mem.chce1088 = false;
+    NAP_ATARI_ONLINE_TEST_PO_SNIMKU(f);
+    onlineOtiskLocked(r, f);
+  }
+  g_stroj->view = obraz;
+  if (f < ted) g_onlineSnimek = f;                   // relace skoncila uprostred - dal se stejne nehraje
+  r->opraveno(od, f, (uint64_t)((nap_ted_ns() - t0) / 1000));
+}
+
+/** Konec online hry zjisteny vlaknem emulace (relace r skoncila / spojeni skoncilo). Stroj jede dal sam. */
+static void onlineKonec(const std::shared_ptr<nap::online::Relace> &r) {
+  std::lock_guard<std::mutex> rz(g_onlineRizeni);
+  if (r ? g_online.relace() != r : g_online.faze() != nap::online::OnlineKlient::Faze::KONEC) return;
+  std::string proc = g_online.chyba();
+  if (proc.empty() && r) proc = r->textKonce();
+  {
+    std::lock_guard<std::mutex> l(g_onlineM);
+    g_onlineKonec = proc.empty() ? "online skoncilo" : proc;
+  }
+  g_onlineHraje.store(0);
+  g_onlineAktivni.store(0);
+  g_onlineSetrne.store(0);
+  g_onlineCekaStart = false;
+  {
+    std::lock_guard<std::mutex> l(g_mStroj);
+    g_onlineKruh.zahod(true);                        // stavy pro opravu uz netreba (pamet zpet)
+    g_onlineKlavesa = -1; g_onlineKlavesaPustit = false; g_onlineBreak = g_onlineReset = false;
+    aplikujJoyLocked();                              // joystick zase primo z tohoto telefonu
+    g_statusText = nap::atariEn() ? "ONLINE ENDED - " + proc : "ONLINE SKONCILO - " + proc;
+    if (g_statusText.size() > 46) g_statusText = g_statusText.substr(0, 44) + "..";
+    g_statusMs = 6000;
+  }
+  devLog("B363 ATARI ONLINE konec po " + std::to_string(g_onlineSnimek) + " snimcich: " + proc + " - Atari bezi dal jen na tomto telefonu");
+}
+
+/**
+ * Nova hra / POWER / vysunuti uprostred online = konec online (druhy telefon dostane KONEC). Z Javy (JNI) i z
+ * vlakna emulace - NE pod g_mStroj (stop ceka na vlakno site).
+ */
+static void onlineKonecProNovouHru(const char *proc) {
+  std::lock_guard<std::mutex> rz(g_onlineRizeni);
+  if (!g_onlineAktivni.load()) return;
+  g_onlineAktivni.store(0);
+  g_onlineHraje.store(0);
+  g_onlineSetrne.store(0);
+  g_online.stop();
+  {
+    std::lock_guard<std::mutex> l(g_onlineM);
+    g_onlineKonec = std::string(proc) + " - online skoncilo";
+  }
+  devLog(std::string("B363 ATARI ONLINE konec - ") + proc);
+}
+
+/** Hrac 1: je stroj pripraveny poslat stav? (hra uz se nenahrava). Pod g_mStroj. "" = ano, jinak proc ne. */
+static std::string onlineNepripravenLocked() {
+  if (!g_stroj || !g_strojBezi.load()) return "Atari je vypnute";
+  if (g_xex.aktivni()) return "XEX se nahrava";
+  if (g_kazBoot.aktivni()) return "hra se nahrava z kazety";
+  if (g_psani.aktivni()) return "appka pise program";
+  if (!g_typeQ.empty()) return "appka pise text";
+  return "";
+}
+
+/** Zacatek online hry v tomto stroji (oba telefony): veci bokem pryc, stisky jen z relace. Pod g_mStroj. */
+static void onlineZacniLocked(bool hrac1) {
+  g_typeQ.clear();
+  g_psani.zrus();
+  g_kazBoot.zrus();
+  g_pcHrac.zrus();
+  g_rec.reset();
+  { std::lock_guard<std::mutex> p(g_mPc); g_pcText.clear(); }
+  if (g_stroj && g_stroj->tape.play) {
+    g_stroj->tape.play = false;                      // kazeta za online hry stoji (na druhem telefonu neni)
+    devLog("B363 ATARI ONLINE: kazetak zastaven (za online hry se kazeta nepouziva)");
+  }
+  if (g_stroj) { g_stroj->tape.line = 1; g_stroj->tape.rxPhase = 0; }
+  if (!hrac1) g_xex.zrus();                          // hrac 2: zavadec prijde ve stavu od hrace 1
+  g_onlineKontext.obaNaJ1 = hrac1 && g_onlineObaNaJ1Volba.load();
+  g_onlinePortyJ1.store(g_onlineKontext.obaNaJ1);
+  g_onlineKontext.xex = &g_xex;
+  g_onlineKruh.zahod(false);
+  g_onlineSnimek = 0;
+  g_onlineLokalniSnimek = UINT32_MAX;
+  g_onlineKlavesa = -1; g_onlineKlavesaPustit = false; g_onlineBreak = g_onlineReset = false;
+  g_onlineVykonOdUs = 0; g_onlineVykonSnimku = 0; g_onlineVykonKresleno = 0; g_onlineVykonJadroUs = g_onlineVykonJadroMaxUs = 0;
+  g_onlineZatezEmaUs = 5000;
+  g_onlineOknoZatezUs = 0;
+  g_onlineKlidnychOken = 0;
+  g_onlineNavratZe.store(0);
+  g_onlineNavratNa.store(0);
+  g_onlineHraje.store(1);
+}
+
+/** Hrac 2 dostal stav: Atari zapnout (i na pristroji), jinak se snimky nepocitaji. Pod g_mStroj. */
+static void onlineZapniPoStavuLocked() {
+  if (!g_strojBezi.load()) devLog("B363 ATARI ONLINE: Atari bylo vypnute - zapinam ho (stav od hrace 1)");
+  g_strojBezi = true;
+  g_atariRing.clear();
+}
+
+/**
+ * Pred snimkem (vlakno emulace, BEZ g_mStroj - ceka se tu na stisky druheho nejvys 30 ms):
+ * 1 = emulovat snimek se stisky p1 / p2 z relace, 0 = ted ne (stisky / stav druheho jeste neprisly), -1 = bez online.
+ */
+static int onlinePredSnimkem(uint32_t &p1, uint32_t &p2) {
+  if (!g_onlineAktivni.load()) { g_onlineCekaStart = false; return -1; }   // (konec z Javy - dalsi hra zacne od nuly)
+  if (g_online.vezmiStart()) {
+    std::shared_ptr<nap::online::Relace> r = g_online.relace();
+    const bool hrac1 = r && r->hrac1();
+    std::lock_guard<std::mutex> l(g_mStroj);
+    if (hrac1) {
+      g_onlineCekaStart = true;                      // stav pujde, az hra dobehne do pripraveneho stavu
+      g_onlineCekaStartOdMs = nap_ted_ms();
+      g_onlineStartStav.store(1);
+      devLog("B363 ATARI ONLINE start: domluveno s " + g_online.jmenoDruheho() + " - posilam mu cely stav Atari i s hrou");
+    } else {
+      onlineZacniLocked(false);
+      g_onlineStartStav.store(3);
+      devLog("B363 ATARI ONLINE start: domluveno s " + g_online.jmenoDruheho() + " - cekam na stav Atari od hrace 1 (hra prijde s nim)");
+    }
+  }
+  if (g_onlineCekaStart) {
+    std::string proc;
+    {
+      std::lock_guard<std::mutex> l(g_mStroj);
+      proc = onlineNepripravenLocked();
+      if (proc.empty()) {
+        onlineZacniLocked(true);
+        g_onlineCekaStart = false;
+        g_onlineStartStav.store(2);
+      }
+    }
+    if (!proc.empty()) {
+      if (g_online.faze() == nap::online::OnlineKlient::Faze::KONEC) { onlineKonec(nullptr); return -1; }
+      std::shared_ptr<nap::online::Relace> r = g_online.relace();
+      if (r && r->konec()) { onlineKonec(r); return -1; }
+      static long long hlaseno = 0;
+      if (nap_ted_ms() - hlaseno > 5000) {
+        hlaseno = nap_ted_ms();
+        devLog("B363 ATARI ONLINE: stav jeste neposilam - " + proc + " (ceka se " + std::to_string((nap_ted_ms() - g_onlineCekaStartOdMs) / 1000) + " s)");
+      }
+      return -1;                                     // hra se dohrava na tomto telefonu (zavadec, kazeta ...)
+    }
+  }
+  if (!g_onlineHraje.load()) {
+    // ceka se na druheho hrace: hra zatim bezi normalne jen na tomto telefonu
+    if (g_online.faze() == nap::online::OnlineKlient::Faze::KONEC) { onlineKonec(nullptr); return -1; }
+    return -1;
+  }
+  std::shared_ptr<nap::online::Relace> r = g_online.relace();
+  if (!r) return 0;
+  long long prace = 0;                              // cas prace (oprava, stav) - ne cekani na sit
+  {
+    std::lock_guard<std::mutex> l(g_mStroj);
+    if (!g_stroj) return 0;
+    r->lokalni(g_onlineSnimek, onlineLokalniBityLocked(g_onlineSnimek));
+  }
+  const uint32_t opravitOd = r->zkontrolujOdhady(g_onlineSnimek);
+  if (opravitOd != UINT32_MAX) {
+    const long long a = nap_ted_ns();
+    std::lock_guard<std::mutex> l(g_mStroj);
+    onlineOpravLocked(r, opravitOd);
+    prace += nap_ted_ns() - a;
+  }
+  if (r->hrac1()) {
+    if (r->chciPoslatStav(g_onlineSnimek)) {
+      std::vector<uint8_t> st;
+      bool ok;
+      const long long a = nap_ted_ns();
+      {
+        std::lock_guard<std::mutex> l(g_mStroj);
+        ok = g_stroj && nap::atariOnlineZabal(*g_stroj, g_onlineKontext, g_onlineSurova, st);
+      }
+      prace += nap_ted_ns() - a;
+      if (ok && st.size() < (3u << 20) + (900u << 10)) {   // engine predava zpravy do 4 MB
+        r->posliStav(g_onlineSnimek, st);
+        g_onlineStavKb.store((uint32_t)((st.size() + 1023) / 1024));
+        g_onlinePoslanoUs = nap::online::tedUs();
+        char b[260];
+        snprintf(b, sizeof(b), "B363 ATARI ONLINE %s: stav Atari pred snimkem %u odeslan (%u KB zlib, surove %u KB, zabaleno za %lld ms)",
+                 g_onlineSnimek == 0 ? "START" : "synchronizace", g_onlineSnimek, g_onlineStavKb.load(),
+                 (unsigned)(g_onlineSurova.size() / 1024), (nap_ted_ns() - a) / 1000000);
+        devLog(b);
+      } else {
+        devLog(std::string("B363 ATARI ONLINE: stav Atari ") + (ok ? "je moc velky (" + std::to_string(st.size() / 1024) + " KB, engine predava do 4 MB)" : "nejde zabalit") + " - konec");
+        r->ukonci(g_onlineSnimek == 0 ? nap::online::D_START : nap::online::D_ROZJETO);
+      }
+    }
+  } else {
+    std::vector<uint8_t> st;
+    uint32_t g = 0;
+    const int k = r->stavPro(g_onlineSnimek, st, g, 30);
+    if (k < 0) return 0;                             // stav od hrace 1 jeste neprisel - Atari stoji
+    if (k > 0) {
+      const long long a = nap_ted_ns();
+      std::lock_guard<std::mutex> l(g_mStroj);
+      if (g_stroj && nap::atariOnlineRozbal(*g_stroj, g_onlineKontext, st, g_onlineSurova)) {
+        const uint32_t bylo = g_onlineSnimek;
+        g_onlineSnimek = g;
+        g_onlineKruh.zahod(false);
+        g_onlineLokalniSnimek = UINT32_MAX;
+        r->stavNahran(g);
+        g_onlinePortyJ1.store(g_onlineKontext.obaNaJ1);   // porty urcil hrac 1 (prislo ve stavu)
+        g_onlineStavKb.store((uint32_t)((st.size() + 1023) / 1024));
+        if (bylo > g) { g_onlineNavratZe.store(bylo); g_onlineNavratNa.store(g); }
+        if (g == 0) { onlineZapniPoStavuLocked(); g_onlineStartStav.store(4); }
+        g_xexPosledni = false;                       // program ve stroji neni XEX z tohoto telefonu (restart 1088K ne)
+        char b[300];
+        snprintf(b, sizeof(b), "B363 ATARI ONLINE %s: stav Atari pred snimkem %u nahran (%u KB zlib, nahrano za %lld ms)%s - %s%s, D1: %s",
+                 g == 0 ? "START" : "synchronizace", g, g_onlineStavKb.load(), (nap_ted_ns() - a) / 1000000,
+                 bylo > g ? (" - vracen ze snimku " + std::to_string(bylo)).c_str() : "",
+                 g_stroj->cart.vlozena() ? "cartridge " : "", g_stroj->cart.vlozena() ? g_stroj->cart.jmeno.c_str() : "bez cartridge",
+                 g_stroj->disk.mounted ? g_stroj->disk.name.c_str() : "prazdna");
+        devLog(b);
+        if (g == 0) { g_statusText = nap::tx(u8"ONLINE: HRA OD HRÁČE 1 NAHRÁNA", "ONLINE: GAME FROM PLAYER 1 LOADED"); g_statusMs = 4000; }
+        prace += nap_ted_ns() - a;
+      } else {
+        // poskozeny / cizi stav (jina verze) - stroj muze byt napul prepsany: zapnout znovu, konec (oba vedi proc)
+        devLog("B363 ATARI ONLINE: stav od hrace 1 nejde nahrat (" + std::to_string(st.size() / 1024) + " KB) - konec, Atari zapnuto znovu");
+        g_xex.zrus();
+        studenyStartLocked(7);
+        r->ukonci(g == 0 ? nap::online::D_START : nap::online::D_ROZJETO);
+      }
+    }
+  }
+  bool odhad = false;
+  const int v = r->vstupyOdhad(g_onlineSnimek, p1, p2, odhad, 30, g_onlineOdhadMax.load());
+  if (v == 0) return 0;
+  if (v < 0) { onlineKonec(r); return -1; }
+  if (odhad) {
+    const long long a = nap_ted_ns();
+    std::lock_guard<std::mutex> l(g_mStroj);
+    if (g_stroj) g_onlineKruh.uloz(*g_stroj, g_onlineKontext, g_onlineSnimek);
+    prace += nap_ted_ns() - a;
+  }
+  if (g_onlineStartStav.load() == 2 && !r->startZeStavu()) {
+    g_onlineStartStav.store(4);
+    devLog("B363 ATARI ONLINE START: hrac 2 stav nahral (STAV_OK za " + std::to_string((nap::online::tedUs() - g_onlinePoslanoUs) / 1000) + " ms) - hraje se");
+  }
+  g_onlineVykonJadroUs += (uint64_t)(prace / 1000);   // oprava a stav se pocitaji do zateze telefonu
+  return 1;
+}
+
+/**
+ * Po snimku online hry (pod g_mStroj): otisk stavu, dalsi snimek, vykon telefonu (limit odhadu, setrne kresleni).
+ * zatezUs = jadro tohoto snimku (stisky, snimek, zvuk, zavadec); opravy a stav pricetl onlinePredSnimkem.
+ * Vraci true = tento snimek jde na displej (setrne kresleni: jen kazdy druhy).
+ */
+static bool onlinePoSnimkuLocked(uint64_t zatezUs) {
+  std::shared_ptr<nap::online::Relace> r = g_online.relace();
+  NAP_ATARI_ONLINE_TEST_PO_SNIMKU(g_onlineSnimek);
+  onlineOtiskLocked(r, g_onlineSnimek);
+  const uint32_t snimek = g_onlineSnimek++;
+  g_onlineSnimkuCelkem.store(g_onlineSnimek);
+  // zatez za periodu = tento snimek + opravy / stav (g_onlineVykonJadroUs uz ma pricteno)
+  const uint64_t zatez = zatezUs + g_onlineVykonJadroUs + (uint64_t)(NAP_ATARI_ONLINE_TEST_ZATEZ_US);
+  g_onlineVykonJadroUs = 0;
+  g_onlineZatezEmaUs = (g_onlineZatezEmaUs * 15 + zatez) / 16;
+  // limit odhadu: oprava nejvys ~66 ms pocitani (pomaly telefon = mene snimku napred)
+  uint32_t m = (uint32_t)(66000 / std::max<uint64_t>(g_onlineZatezEmaUs, 1000));
+  m = std::max<uint32_t>(2, std::min<uint32_t>(nap::online::ODHAD_MAX, m));
+  g_onlineOdhadMax.store(m);
+  // kazde 2 s: prumer zateze za okno (snimky + opravy + stav) -> setrne kresleni a text pro druhy telefon (STATISTIKA).
+  // Prumer za 2 s (ne kratky prumer): davka oprav pri spicce site setrne kresleni nezapne, pomaly telefon ano.
+  const uint64_t ted = nap::online::tedUs();
+  const bool kreslit = !g_onlineSetrne.load() || (snimek & 1) == 0;
+  if (!g_onlineVykonOdUs) g_onlineVykonOdUs = ted;
+  g_onlineVykonSnimku++;
+  if (kreslit) g_onlineVykonKresleno++;
+  g_onlineOknoZatezUs += zatez;
+  if (zatez > g_onlineVykonJadroMaxUs) g_onlineVykonJadroMaxUs = zatez;
+  if (ted - g_onlineVykonOdUs >= 2000000) {
+    const double s = (ted - g_onlineVykonOdUs) / 1e6;
+    const double prumerMs = g_onlineOknoZatezUs / 1000.0 / std::max<uint32_t>(g_onlineVykonSnimku, 1);
+    // setrne kresleni: zapnout, kdyz telefon za 2 s bral vic nez pulku snimku (10 ms z 20 ms); vypnout po 3 oknech
+    // (6 s) pod 6 ms
+    if (!g_onlineSetrne.load()) {
+      if (prumerMs > 10.0 && g_onlineSnimek > 100) {
+        g_onlineSetrne.store(1);
+        g_onlineSetrneZapnuto.fetch_add(1);
+        g_onlineKlidnychOken = 0;
+        char b[200];
+        snprintf(b, sizeof(b), "jadro a opravy %.1f ms na snimek (z 20 ms, prumer za 2 s)", prumerMs);
+        { std::lock_guard<std::mutex> l(g_onlineM); g_onlineSetrneProc = b; }
+        devLog(std::string("B363 ATARI ONLINE SETRNE KRESLENI zapnuto: ") + b + " - na displej jde kazdy 2. snimek (25/s), emulace a zvuk dal 50/s");
+      }
+    } else if (prumerMs < 6.0) {
+      if (++g_onlineKlidnychOken >= 3) {
+        g_onlineSetrne.store(0);
+        char b[200];
+        snprintf(b, sizeof(b), "B363 ATARI ONLINE SETRNE KRESLENI vypnuto: telefon zase stiha (%.1f ms na snimek) - obraz zase 50/s", prumerMs);
+        devLog(b);
+      }
+    } else {
+      g_onlineKlidnychOken = 0;
+    }
+    char b[200];
+    snprintf(b, sizeof(b), "%.1f snimku/s (obraz %.0f/s%s), jadro %.1f ms (nejvys %.1f), odhad nejvys %u", g_onlineVykonSnimku / s,
+             g_onlineVykonKresleno / s, g_onlineSetrne.load() ? " setrne" : "", prumerMs, g_onlineVykonJadroMaxUs / 1000.0, m);
+    if (r) r->vykon(b);
+    g_onlineVykonOdUs = ted;
+    g_onlineVykonSnimku = g_onlineVykonKresleno = 0;
+    g_onlineVykonJadroMaxUs = 0;
+    g_onlineOknoZatezUs = 0;
+  }
+  return kreslit;
+}
+
+/** Hlaska pod pristrojem za online (kazde 2 s): cislo hry, s kym, odezva; vlakno emulace, pod g_mStroj. */
+static void onlineStatusLocked() {
+  if (!g_onlineAktivni.load()) return;
+  const long long ted = nap_ted_ms();
+  if (ted - g_onlineStatusMs < 2000) return;
+  g_onlineStatusMs = ted;
+  const bool en = nap::atariEn();
+  std::string t;
+  using F = nap::online::OnlineKlient::Faze;
+  const F f = g_online.faze();
+  std::shared_ptr<nap::online::Relace> r = g_online.relace();
+  if (f == F::PRIPOJUJE) t = en ? "ONLINE: CONNECTING..." : u8"ONLINE: PŘIPOJUJI SE...";
+  else if (f == F::CEKA_NA_HRACE) t = (en ? "ONLINE: WAITING - GAME NUMBER " : u8"ONLINE: ČEKÁM - ČÍSLO HRY ") + g_online.kodMistnosti();
+  else if (f == F::HRAJE && r) {
+    const int s = g_onlineStartStav.load();
+    if (g_onlineCekaStart) t = en ? "ONLINE: FINISHING LOADING..." : u8"ONLINE: DOKONČUJI NAHRÁVÁNÍ...";
+    else if (s == 2) t = en ? "ONLINE: SENDING THE GAME..." : u8"ONLINE: POSÍLÁM HRU HRÁČI 2...";
+    else if (s == 3) t = en ? "ONLINE: RECEIVING THE GAME..." : u8"ONLINE: PŘIJÍMÁM HRU OD HRÁČE 1...";
+    else if (!r->bezi()) t = en ? "ONLINE: CONNECTING PHONES..." : u8"ONLINE: DOMLOUVÁM SE...";
+    else {
+      std::string jm = g_online.jmenoDruheho();
+      if (jm.size() > 12) jm = jm.substr(0, 12);
+      for (char &c : jm) if ((unsigned char)c < 32 || (unsigned char)c > 126) c = '?';
+      t = (en ? "ONLINE P" : u8"ONLINE H") + std::string(r->hrac1() ? "1" : "2") + (en ? " WITH " : " S ") + jm + " - " +
+          std::to_string(r->odezvaMs()) + " MS" + (g_onlineSetrne.load() ? (en ? " (ECO)" : u8" (ŠETRNĚ)") : "");
+    }
+  }
+  if (t.empty()) return;
+  g_statusText = t;
+  g_statusMs = 2600;
+}
+
 static void emuVlaknoMain() {
   std::vector<float> zvuk(882), pasek(882), zvukVen(882), zvukR(882), zvukVenR(882);   // B361: R = druhy POKEY
   bool stereoBylo = false, pk2Bezel = false;
@@ -1183,15 +1653,19 @@ static void emuVlaknoMain() {
   long long dalsi = nap_ted_ns();
   devLog("B291 EMULACE_VLAKNO start (50 snimku/s, zvuk OpenSL, vse v C++)");
   nastavPriorituVlakna(-8, "EMULACE_VLAKNO");
+  bool posunout = true;   // B363: dalsi snimek az za periodu; online po cekani na druheho hned (bez dalsi periody)
   while (g_run.load()) {
     // 1) udalosti z doteku na pristroji
     std::vector<nap::dev::Ev> ev;
     { std::lock_guard<std::mutex> l(g_mEv); ev.swap(g_evQ); }
+    const char *koncitOnline = nullptr;   // B363: POWER za online hry = konec online (az mimo g_mStroj)
     if (!ev.empty()) {
       std::lock_guard<std::mutex> l(g_mStroj);
+      const bool onl = onlineVstupyZRelace();   // B363: stisky jdou do stisku tohoto telefonu, ne do stroje
       for (const auto &e : ev) {
         switch (e.t) {
           case nap::dev::Ev::POWER_ON: {
+            if (g_onlineAktivni.load()) koncitOnline = "POWER (studeny start Atari)";
             g_xex.zrus();
             // B298: START/SELECT/OPTION, ktere uzivatel PRAVE DRZI na pristroji,
             // plati i pri zapnuti - jako na skutecnem 130XE (START = boot
@@ -1226,6 +1700,7 @@ static void emuVlaknoMain() {
             break;
           }
           case nap::dev::Ev::POWER_OFF:
+            if (g_onlineAktivni.load()) koncitOnline = "Atari vypnute (POWER)";
             g_strojBezi = false; g_typeQ.clear(); g_rec.reset(); g_xex.zrus(); g_atariRing.clear(); g_psani.zrus();
             g_pcHrac.zrus();                                       // B302: klavesy z PC ve fronte zahodit
             { std::lock_guard<std::mutex> p(g_mPc); g_pcVstup.clear(); g_pcText.clear(); }
@@ -1233,6 +1708,11 @@ static void emuVlaknoMain() {
             break;
           case nap::dev::Ev::KEY:
             vstupHraceTed();                                   // B353: hrac hraje -> zadne turbo
+            if (onl) {                                         // B363: klavesa do stisku tohoto telefonu (drzena aspon 2 snimky)
+              g_onlineKlavesa = e.v & 0xFF; g_onlineKlavesaOd = g_onlineSnimek; g_onlineKlavesaPustit = false;
+              zalogujKlavesuLocked(e.v, false);
+              break;
+            }
             // B292: klavesa drzena, dokud je na ni prst (OS ji pak opakuje)
             if (g_stroj && g_strojBezi) {
               g_stroj->klavesa(e.v, true);
@@ -1242,13 +1722,40 @@ static void emuVlaknoMain() {
             }
             break;
           case nap::dev::Ev::KEYUP:
+            if (onl) { g_onlineKlavesaPustit = true; break; }   // B363
             if (g_stroj) g_stroj->klavesaPustena();
             break;
           case nap::dev::Ev::SHIFT:
             g_shiftZamek = e.v != 0;
-            if (g_stroj) g_stroj->shiftDrzen(g_shiftZamek);
+            if (g_stroj && !onl) g_stroj->shiftDrzen(g_shiftZamek);   // B363: online - SHIFT jde ve stiscich
             break;
           case nap::dev::Ev::TAPE:
+          case nap::dev::Ev::REWIND:
+          case nap::dev::Ev::FFWD:
+            if (onl) {                                         // B363: kazeta jen na jednom telefonu by hru rozjela
+              if (nap_ted_ms() - g_onlineBlokHlasenoMs > 3000) {
+                g_onlineBlokHlasenoMs = nap_ted_ms();
+                g_statusText = nap::tx(u8"ZA ONLINE HRY KAZETA NEJDE", "NO TAPE DURING AN ONLINE GAME"); g_statusMs = 3000;
+              }
+              break;
+            }
+            if (e.t == nap::dev::Ev::REWIND) {
+              if (g_stroj && g_stroj->tape.loaded) {
+                g_stroj->tape.pos = 0; g_stroj->tape.rxPhase = 0;
+                devLog("B292 KAZETAK REW - pasek pretocen na zacatek");
+              }
+              break;
+            }
+            if (e.t == nap::dev::Ev::FFWD) {
+              if (g_stroj && g_stroj->tape.loaded) {
+                nap::TapeDeck &t = g_stroj->tape;
+                t.pos = std::min((double)t.img.n, t.pos + 10.0 * t.img.rate); t.rxPhase = 0;
+                char b[120];
+                snprintf(b, sizeof(b), "B292 KAZETAK FWD - pasek +10 s (pozice %.1f / %.1f s)", t.pos / t.img.rate, t.img.seconds());
+                devLog(b);
+              }
+              break;
+            }
             if (g_stroj) {
               g_stroj->tape.play = (e.v & 1) != 0;
               char b[200];
@@ -1259,32 +1766,18 @@ static void emuVlaknoMain() {
               devLog(b);
             }
             break;
-          case nap::dev::Ev::REWIND:
-            if (g_stroj && g_stroj->tape.loaded) {
-              g_stroj->tape.pos = 0; g_stroj->tape.rxPhase = 0;
-              devLog("B292 KAZETAK REW - pasek pretocen na zacatek");
-            }
-            break;
-          case nap::dev::Ev::FFWD:
-            if (g_stroj && g_stroj->tape.loaded) {
-              nap::TapeDeck &t = g_stroj->tape;
-              t.pos = std::min((double)t.img.n, t.pos + 10.0 * t.img.rate); t.rxPhase = 0;
-              char b[120];
-              snprintf(b, sizeof(b), "B292 KAZETAK FWD - pasek +10 s (pozice %.1f / %.1f s)", t.pos / t.img.rate, t.img.seconds());
-              devLog(b);
-            }
-            break;
           case nap::dev::Ev::CONSOL: {
             vstupHraceTed();                                   // B353: hrac hraje -> zadne turbo
             int nove = e.v & 7;
             for (int b = 0; b < 3; b++)
               if (!(nove & (1 << b)) && (g_consolChtene & (1 << b))) g_consolDrzetDo[b] = g_snimkuCelkem.load() + 5;
             g_consolChtene = nove;
-            if (g_stroj) g_stroj->consol = consolEfektivni();
+            if (g_stroj && !onl) g_stroj->consol = consolEfektivni();   // B363: online - konzole ve stiscich
             break;
           }
           case nap::dev::Ev::RESET:
             vstupHraceTed();                                   // B353: hrac hraje -> zadne turbo
+            if (onl) { g_onlineReset = true; devLog("B363 ATARI ONLINE: RESET (pujde ve stiscich - oba telefony ve stejnem snimku)"); break; }
             if (g_stroj && g_strojBezi) {
               g_stroj->reset(); g_stroj->consol = 7;
               g_kazBoot.zrus();          // B298: teply start boot z kazety nedela
@@ -1294,6 +1787,7 @@ static void emuVlaknoMain() {
             break;
           case nap::dev::Ev::BREAK:
             vstupHraceTed();                                   // B353: hrac hraje -> zadne turbo
+            if (onl) { g_onlineBreak = true; zalogujKlavesuLocked(-1, false); break; }   // B363
             if (g_stroj && g_strojBezi) {
               g_stroj->breakKey();
               zalogujKlavesuLocked(-1, false);
@@ -1316,7 +1810,7 @@ static void emuVlaknoMain() {
               for (int b = 0; b < 3; b++)
                 if ((pc2 & (1 << b)) && !(g_padConsol2 & (1 << b))) g_consolDrzetDo[b] = g_snimkuCelkem.load() + 5;
               g_padConsol2 = pc2;
-              if (g_stroj && !g_xex.aktivni()) g_stroj->consol = consolEfektivni();
+              if (g_stroj && !g_xex.aktivni() && !onl) g_stroj->consol = consolEfektivni();
               if (!g_joyHlasenoPad2 && (e.v & 0xFF)) { g_joyHlasenoPad2 = true; devLog("B354 JOYSTICK 2 z druheho herniho ovladace (hrac 2: smer, FIRE, START / SELECT / OPTION)"); }
               break;
             }
@@ -1331,15 +1825,19 @@ static void emuVlaknoMain() {
               for (int b = 0; b < 3; b++)
                 if ((pc & (1 << b)) && !(g_padConsol & (1 << b))) g_consolDrzetDo[b] = g_snimkuCelkem.load() + 5;
               g_padConsol = pc;
-              if (g_stroj && !g_xex.aktivni()) g_stroj->consol = consolEfektivni();
+              if (g_stroj && !g_xex.aktivni() && !onl) g_stroj->consol = consolEfektivni();
             }
             // B355: tlacitko s klavesou (mapa: MEZERA, RETURN, ESC, HELP, P ...) - drzena jako prstem
-            if (kl != g_padKlav && g_stroj && g_strojBezi) {
+            // B363: za online hry jde klavesa ovladace ve stiscich tohoto telefonu (g_padKlav)
+            if (kl != g_padKlav && g_stroj && g_strojBezi && !onl) {
               if (kl) g_stroj->klavesa(kl - 1, true);
               else g_stroj->klavesaPustena();
             }
             g_padKlav = kl;
-            if (brk && !g_padBreak && g_stroj && g_strojBezi) g_stroj->breakKey();   // B355: BREAK z ovladace
+            if (brk && !g_padBreak && g_stroj && g_strojBezi) {   // B355: BREAK z ovladace
+              if (onl) g_onlineBreak = true;                 // B363: online - ve stiscich
+              else g_stroj->breakKey();
+            }
             g_padBreak = brk;
             if (!g_joyHlasenoPad) { g_joyHlasenoPad = true; devLog("B296 JOYSTICK 1 z herniho ovladace / klavesnice telefonu (smer, FIRE, START, SELECT, OPTION)"); }
             break;
@@ -1349,6 +1847,7 @@ static void emuVlaknoMain() {
       }
       vyzvednoutVystupyLocked();
     }
+    if (koncitOnline) onlineKonecProNovouHru(koncitOnline);   // B363: mimo g_mStroj (ceka na vlakno site)
     if (!g_strojBezi.load()) {
       // B302: pocitac vypnuty - klavesy z PC zahodit, ale joystick a START/SELECT/OPTION
       // drzene na PC plati (F1 drzene pri POWER = boot z kazety jako na skrini)
@@ -1376,10 +1875,33 @@ static void emuVlaknoMain() {
       if (korekce < -1600000LL) korekce = -1600000LL;
       perioda += korekce;
     }
-    dalsi += perioda;
+    if (posunout) dalsi += perioda;
+    posunout = true;
     long long ted = nap_ted_ns();
     if (dalsi > ted) std::this_thread::sleep_for(std::chrono::nanoseconds(dalsi - ted));
     else if (ted - dalsi > 200000000LL) dalsi = ted;   // zpozdeni (pozadi): nedohanet naraz
+    // B363: online - snimek jen se stisky obou hracu z relace (ceka se tu na druheho nejvys 30 ms, mimo g_mStroj);
+    // hrac 1 pred snimkem 0 posle cely stav Atari, hrac 2 ho nahraje. 0 = ted ne (Atari stoji) - hned znovu
+    uint32_t onlineP1 = 0, onlineP2 = 0;
+    const long long onlineOd = nap_ted_ns();
+    const int online = onlinePredSnimkem(onlineP1, onlineP2);
+    if (online == 0) {
+      posunout = false;
+      if (nap_ted_ns() - onlineOd < 1000000LL) std::this_thread::sleep_for(std::chrono::milliseconds(2));   // pojistka: zadne tocení naprazdno
+      {
+        std::lock_guard<std::mutex> l(g_mStroj);
+        onlineStatusLocked();
+        if (!g_statusText.empty()) { statusText.swap(g_statusText); statusMs = g_statusMs; g_statusText.clear(); }
+      }
+      if (!statusText.empty()) {
+        std::lock_guard<std::mutex> dl(g_mDev);
+        devGet().setStatusMessage(statusText.c_str(), nap_ted_ms(), statusMs);
+        statusText.clear();
+        pokeRender();
+      }
+      continue;
+    }
+    const bool onl = online == 1;
     // 3) jeden snimek stroje; B353: pri nahravani (turbo) az TURBO_MAX snimku v teto periode
     const long long davkaOd = nap_ted_ns();
     int vDavce = 0;
@@ -1390,12 +1912,18 @@ static void emuVlaknoMain() {
       std::lock_guard<std::mutex> l(g_mStroj);
       if (!g_stroj) { g_pamet1088 = false; studenyStartLocked(7); }
       pcKlavesniceSnimekLocked();                                 // B302: klavesnice pocitace (TV/PC)
-      if (!g_xex.aktivni()) g_stroj->consol = consolEfektivni();   // pri zavadeni XEX drzi OPTION zavadec
-      if (g_kazBoot.aktivni()) g_stroj->consol = nap::KazetaBoot::konzole(g_stroj->consol);   // B298: boot z kazety
-      g_typeQ.step(*g_stroj);
+      if (onl) {
+        // B363: online - do stroje jen stisky obou hracu z relace (stejne na obou telefonech)
+        nap::atariOnlineVstupy(*g_stroj, onlineP1, onlineP2, g_onlineKontext.obaNaJ1);
+      } else {
+        if (!g_xex.aktivni()) g_stroj->consol = consolEfektivni();   // pri zavadeni XEX drzi OPTION zavadec
+        if (g_kazBoot.aktivni()) g_stroj->consol = nap::KazetaBoot::konzole(g_stroj->consol);   // B298: boot z kazety
+        g_typeQ.step(*g_stroj);
+      }
+      const long long jadroOd = nap_ted_ns();
       // B299: pri psani programu z TXT jde dalsi klavesa hned, jak ji OS prevezme
       if (!g_stroj->cpu.jam) {
-        if (g_psani.pise()) g_stroj->runFrameRadky([](Machine &m) { g_psani.radek(m); });
+        if (!onl && g_psani.pise()) g_stroj->runFrameRadky([](Machine &m) { g_psani.radek(m); });
         else g_stroj->runFrame();
       }
       if (g_stroj->cpu.jam) { std::fill(zvuk.begin(), zvuk.end(), 0.f); std::fill(zvukR.begin(), zvukR.end(), 0.f); }
@@ -1415,12 +1943,21 @@ static void emuVlaknoMain() {
       // reproduktor - presne to, co by zapsal skutecny Atari 410/1010
       g_stroj->genTape(pasek.data(), 882);
       for (float &v : pasek) v *= 0.8f;
-      g_rec.snimek(*g_stroj, pasek.data(), 882);
-      g_xex.poSnimku(*g_stroj);
-      if (g_stroj->mem.chce1088 && !g_stroj->mem.rezim1088) restart1088Locked();   // B352
-      if (g_kazBoot.poSnimku(*g_stroj)) { g_statusText = nap::tx(u8"NAHRÁVÁ SE Z KAZETY...", "LOADING FROM TAPE..."); g_statusMs = 15000; }
-      g_psani.poSnimku(*g_stroj);
-      if (!g_psani.status.empty()) { g_statusText = g_psani.status; g_statusMs = g_psani.statusMs; g_psani.status.clear(); }
+      if (!onl) g_rec.snimek(*g_stroj, pasek.data(), 882);   // B363: za online hry zadny zaznam CSAVE
+      g_xex.poSnimku(*g_stroj);                              // B363: online taky - zavadec je ve stavu (oba stejne)
+      if (g_stroj->mem.chce1088 && !g_stroj->mem.rezim1088) {
+        if (!onl) restart1088Locked();                       // B352
+        else {                                               // B363: online - restart jen na jednom telefonu ne
+          g_stroj->mem.chce1088 = false;
+          static bool hlaseno = false;
+          if (!hlaseno) { hlaseno = true; devLog("B363 ATARI ONLINE: program chce 1088K - za online hry se nerestartuje (spust ho s 1 MB pred online hrou)"); }
+        }
+      }
+      if (!onl) {
+        if (g_kazBoot.poSnimku(*g_stroj)) { g_statusText = nap::tx(u8"NAHRÁVÁ SE Z KAZETY...", "LOADING FROM TAPE..."); g_statusMs = 15000; }
+        g_psani.poSnimku(*g_stroj);
+        if (!g_psani.status.empty()) { g_statusText = g_psani.status; g_statusMs = g_psani.statusMs; g_psani.status.clear(); }
+      }
       // B296: VBXE - do logu, kdyz ho program najde / zapne XDL / zmeni rezim
       {
         static int hlaseni = 0;
@@ -1492,22 +2029,28 @@ static void emuVlaknoMain() {
       }
       g_snimkuCelkem++;
       vDavce++;
+      // B363: online - otisk stavu, dalsi snimek, vykon telefonu; setrne kresleni = na displej jen kazdy 2. snimek
+      bool kreslit = true;
+      if (onl) kreslit = onlinePoSnimkuLocked((uint64_t)((nap_ted_ns() - jadroOd) / 1000));
       // B353: dalsi snimek hned (turbo), dokud se nahrava, je cas v rozpoctu periody a nejvys TURBO_MAX
       const int turbo = turboDuvodLocked();
       pokracovat = turbo && vDavce < TURBO_MAX && nap_ted_ns() - davkaOd < TURBO_ROZPOCET_NS;
       if (!pokracovat) {
         if (vDavce > 1) { std::fill(zvukVen.begin(), zvukVen.end(), 0.f); std::fill(zvukVenR.begin(), zvukVenR.end(), 0.f); }   // turbo: ticho
         nap_atari_audio_push_stereo(zvukVen.data(), zvukVenR.data(), 882);
-        {
-          std::lock_guard<std::mutex> f(g_mFrame);
-          if (g_sdilenySnimek.size() != (size_t)AnticView::FW * AnticView::H)
-            g_sdilenySnimek.assign((size_t)AnticView::FW * AnticView::H, 0xFF000000u);
-          std::memcpy(g_sdilenySnimek.data(), g_view->fb, g_sdilenySnimek.size() * 4);
+        if (kreslit) {
+          {
+            std::lock_guard<std::mutex> f(g_mFrame);
+            if (g_sdilenySnimek.size() != (size_t)AnticView::FW * AnticView::H)
+              g_sdilenySnimek.assign((size_t)AnticView::FW * AnticView::H, 0xFF000000u);
+            std::memcpy(g_sdilenySnimek.data(), g_view->fb, g_sdilenySnimek.size() * 4);
+          }
+          g_snimekSeq++;
+          tvProudSnimek();                               // B303: prohlizec na TV/PC - novy snimek
         }
-        g_snimekSeq++;
-        tvProudSnimek();                                 // B303: prohlizec na TV/PC - novy snimek
         turboHlidejLocked(turbo, vDavce);
       }
+      onlineStatusLocked();                              // B363: hlaska pod pristrojem za online (kazde 2 s)
       vyzvednoutVystupyLocked();
       if (!g_statusText.empty()) { statusText.swap(g_statusText); statusMs = g_statusMs; g_statusText.clear(); }
     }
@@ -1705,6 +2248,7 @@ Java_eu_atarihelp_emu10_NativeAtariCoreBridge_devStartNative(JNIEnv *, jclass, j
 /** Stop pristroje (odchod z HELP, appka na pozadi). Ceka na obe vlakna. */
 extern "C" JNIEXPORT void JNICALL
 Java_eu_atarihelp_emu10_NativeAtariCoreBridge_devStopNative(JNIEnv *, jclass) {
+  onlineKonecProNovouHru("hrac odesel z Atari (appka na pozadi / jina obrazovka)");   // B363: bez vlakna emulace online nejde
   std::lock_guard<std::mutex> r(g_mRun);
   if (!g_run.load()) return;
   g_run = false;
@@ -1839,6 +2383,12 @@ Java_eu_atarihelp_emu10_NativeAtariCoreBridge_devCtlNative(JNIEnv *env, jclass, 
   if (cmd == "pokey_stereo:1" || cmd == "pokey_stereo:0" || cmd == "pokey_stereo") {
     if (cmd != "pokey_stereo") {
       const bool zap = cmd == "pokey_stereo:1";
+      // B363: za online hry se POKEY 2 neprepina (zmenil by stroj jen na tomto telefonu) - plati od dalsiho zapnuti
+      if (g_onlineAktivni.load()) {
+        g_pokeyStereo.store(zap);
+        devLog(std::string("B363 ATARI ONLINE: POKEY STEREO ") + (zap ? "zapnuto" : "vypnuto") + " - plati az po online hre (dalsi zapnuti)");
+        return env->NewStringUTF(zap ? "1" : "0");
+      }
       const bool zmena = g_pokeyStereo.exchange(zap) != zap;
       {
         std::lock_guard<std::mutex> l(g_mStroj);
@@ -1897,6 +2447,7 @@ Java_eu_atarihelp_emu10_NativeAtariCoreBridge_devCtlNative(JNIEnv *env, jclass, 
   // B316: slot pro cartridge - "cart" = co je ve slotu ("" = prazdny),
   // "cart_eject" = vytahnout cartridge a zapnout znovu (BASIC)
   if (cmd == "cart" || cmd == "cart_eject") {
+    if (cmd == "cart_eject") onlineKonecProNovouHru("cartridge vysunuta");   // B363
     std::string jm;
     {
       std::lock_guard<std::mutex> l(g_mStroj);
@@ -1929,6 +2480,7 @@ Java_eu_atarihelp_emu10_NativeAtariCoreBridge_devCtlNative(JNIEnv *env, jclass, 
   // "disk_eject" = vysunout a zapnout znovu (BASIC), "atr_vymena" = dalsi ATR
   // jen vymenit bez restartu (druha strana hry), "atr_normal" = zrusit
   if (cmd == "d1" || cmd == "disk_eject" || cmd == "atr_vymena" || cmd == "atr_normal") {
+    if (cmd == "disk_eject") onlineKonecProNovouHru("disketa vysunuta");   // B363
     std::string out, jm;
     bool vysunuto = false;
     {
@@ -2183,6 +2735,12 @@ Java_eu_atarihelp_emu10_NativeAtariCoreBridge_devTypeTextNative(JNIEnv *env, jcl
   std::string t = c ? c : "";
   if (c) env->ReleaseStringUTFChars(text, c);
   if (runPotom) { if (!t.empty() && t.back() != '\n') t.push_back('\n'); t += "RUN"; }
+  if (g_onlineAktivni.load()) {   // B363: psani textu by stroj zmenilo jen na tomto telefonu
+    devLog("B363 ATARI ONLINE: psani textu za online hry nejde (" + std::to_string(t.size()) + " znaku nenapsano)");
+    std::lock_guard<std::mutex> dl(g_mDev);
+    devGet().setStatusMessage(nap::tx(u8"ZA ONLINE HRY SE TEXT NEPÍŠE", "NO TYPING DURING AN ONLINE GAME"), nap_ted_ms(), 4000);
+    return 0;
+  }
   int n, preskoceno;
   {
     std::lock_guard<std::mutex> l(g_mStroj);
@@ -2210,6 +2768,7 @@ Java_eu_atarihelp_emu10_NativeAtariCoreBridge_devProgramNative(JNIEnv *env, jcla
   std::string nm = "program.txt";
   if (jmeno) { const char *c = env->GetStringUTFChars(jmeno, nullptr); if (c) { nm = c; env->ReleaseStringUTFChars(jmeno, c); } }
   for (auto &ch : nm) if ((unsigned char)ch >= 0x80) ch = '?';
+  onlineKonecProNovouHru("appka pise program z TXT");   // B363
   std::string vysl;
   bool odpojena = false;
   {
@@ -2479,6 +3038,9 @@ Java_eu_atarihelp_emu10_NativeAtariCoreBridge_devVlozNative(JNIEnv *env, jclass,
   if (!nap::pcJeText(buf.data(), buf.size())) {
     vysl = "VLOZENI: TO NENI TEXT (XEX / ATR / BAS NAHRAJ V APPCE)";
     devLog("B303 VLOZENI z PC: " + std::to_string(n) + " B neni text - nic se nepise");
+  } else if (g_onlineAktivni.load()) {
+    vysl = "VLOZENI: ZA ONLINE HRY NEJDE";             // B363: text by stroj zmenil jen na jednom telefonu
+    devLog("B303 VLOZENI z PC: " + std::to_string(n) + " B - za online hry se nepise (B363)");
   } else if (!g_strojBezi.load()) {
     vysl = "VLOZENI: ATARI JE VYPNUTE";                // text by se jinak napsal az po zapnuti
     devLog("B303 VLOZENI z PC: " + std::to_string(n) + " B - Atari je vypnute, nic se nepise");
@@ -2520,6 +3082,7 @@ Java_eu_atarihelp_emu10_NativeAtariCoreBridge_devVlozNative(JNIEnv *env, jclass,
 extern "C" JNIEXPORT jboolean JNICALL
 Java_eu_atarihelp_emu10_NativeAtariCoreBridge_devLoadXexNative(JNIEnv *env, jclass, jbyteArray data, jstring jmeno) {
   if (!data) return JNI_FALSE;
+  onlineKonecProNovouHru("spustena jina hra (XEX)");   // B363: nova hra uprostred online = konec online
   jsize n = env->GetArrayLength(data);
   std::vector<uint8_t> buf((size_t)n);
   if (n > 0) env->GetByteArrayRegion(data, 0, n, (jbyte *)buf.data());
@@ -2563,6 +3126,7 @@ Java_eu_atarihelp_emu10_NativeAtariCoreBridge_devLoadTapeNative(JNIEnv *env, jcl
   jsize n = env->GetArrayLength(data);
   std::vector<uint8_t> buf((size_t)n);
   if (n > 0) env->GetByteArrayRegion(data, 0, n, (jbyte *)buf.data());
+  onlineKonecProNovouHru("vlozena kazeta");   // B363
   nap::TapeImage img; std::string err;
   const long long t0 = nap_ted_ms();
   const bool ok = nap::napTapeFromWav(buf.data(), buf.size(), img, err);
@@ -2680,6 +3244,7 @@ Java_eu_atarihelp_emu10_NativeAtariCoreBridge_devArchivNative(JNIEnv *env, jclas
   jsize n = env->GetArrayLength(data);
   std::vector<uint8_t> buf((size_t)n);
   if (n > 0) env->GetByteArrayRegion(data, 0, n, (jbyte *)buf.data());
+  onlineKonecProNovouHru("spustena jina hra (archiv)");   // B363
   if (!nap::AtariArchiv::jeArchiv(buf.data(), buf.size())) {
     if (!vymena) {
       std::lock_guard<std::mutex> a(g_mArchiv);
@@ -2768,6 +3333,7 @@ Java_eu_atarihelp_emu10_NativeAtariCoreBridge_devLoadAtrNative(JNIEnv *env, jcla
   jsize n = env->GetArrayLength(data);
   std::vector<uint8_t> buf((size_t)n);
   if (n > 0) env->GetByteArrayRegion(data, 0, n, (jbyte *)buf.data());
+  onlineKonecProNovouHru("vlozena jina disketa (ATR)");   // B363
   nap::AtrDisk d;
   char b[300];
   if (!d.load(buf.data(), buf.size(), nm)) {
@@ -2840,6 +3406,7 @@ Java_eu_atarihelp_emu10_NativeAtariCoreBridge_devLoadCarNative(JNIEnv *env, jcla
   jsize n = env->GetArrayLength(data);
   std::vector<uint8_t> buf((size_t)n);
   if (n > 0) env->GetByteArrayRegion(data, 0, n, (jbyte *)buf.data());
+  onlineKonecProNovouHru("vlozena jina cartridge (CAR)");   // B363
   const std::string kratke = nm.size() > 26 ? nm.substr(0, 24) + ".." : nm;   // na pristroj (jako u diskety)
   nap::Cartridge c;
   const nap::Cartridge::Chyba ch = c.nactiCar(buf.data(), buf.size(), nm);
@@ -2987,4 +3554,188 @@ Java_eu_atarihelp_emu10_NativeAtariCoreBridge_devInfoNative(JNIEnv *env, jclass)
            jam ? " JAM" : "", g_motorOn.load() ? "ZAP" : "VYP", (unsigned)fronta,
            (unsigned)((g_atariRing.avail() / 2) * 1000 / 44100));
   return env->NewStringUTF(b);
+}
+
+// =====================================================================================================
+//  B363: ONLINE ATARI - JNI (NativeAtariCoreBridge.online*). Hrani je cele v C++ (vlakno emulace + vlakno site);
+//  Java jen sklada dotazy na engine (NapOnlineHra), podepisuje je a ukazuje okno ONLINE na pristroji.
+// =====================================================================================================
+static std::string onlineJstr(JNIEnv *env, jstring js, size_t max = 4096) {
+  std::string s;
+  if (!js) return s;
+  const char *c = env->GetStringUTFChars(js, nullptr);
+  if (c) { s.assign(c, strnlen(c, max)); env->ReleaseStringUTFChars(js, c); }
+  return s;
+}
+
+/**
+ * Hra pro zalozeni online hry: "nazev\npripraveno\nproc" - nazev = XEX / disketa / cartridge, ktera v Atari bezi
+ * ("ATARI BASIC" = nic), pripraveno 1 = Atari je zapnute (hra se posle ve stavu - druhy ji mit nemusi).
+ */
+extern "C" JNIEXPORT jstring JNICALL
+Java_eu_atarihelp_emu10_NativeAtariCoreBridge_onlineHra(JNIEnv *env, jclass) {
+  std::string jm, proc;
+  {
+    std::lock_guard<std::mutex> l(g_mStroj);
+    if (g_stroj) {
+      if (g_xexPosledni && !g_xexJmeno.empty()) jm = g_xexJmeno;
+      else if (g_stroj->disk.mounted) jm = g_stroj->disk.name;
+      else if (g_stroj->cart.vlozena()) jm = g_stroj->cart.jmeno;
+      else jm = "ATARI BASIC";
+    }
+    if (!g_stroj || !g_strojBezi.load()) proc = "Atari je vypnute";
+  }
+  std::string r = nap::pcAscii(jm, 120, true) + "\n" + (proc.empty() ? "1" : "0") + "\n" + proc;
+  return env->NewStringUTF(r.c_str());
+}
+
+/**
+ * Zacne online hru (hrac1 = zaklada s hrou, ktera ted v Atari bezi; obaNaJ1 = hrac 2 hraje joystickem 1 - hry, kde
+ * se hraci stridaji). "OK" nebo text chyby. Do domluvy telefonu Atari bezi normalne; hrac 2: Atari se zapne
+ * a ceka na stav od hrace 1.
+ */
+extern "C" JNIEXPORT jstring JNICALL
+Java_eu_atarihelp_emu10_NativeAtariCoreBridge_onlineStart(JNIEnv *env, jclass, jstring jadresa, jstring jcesta, jobjectArray jhlavicky,
+                                                         jboolean hrac1, jstring jjmeno, jboolean obaNaJ1) {
+  nap::online::OnlineKlient::Nastaveni n;
+  n.adresa = onlineJstr(env, jadresa);
+  n.cesta = onlineJstr(env, jcesta);
+  if (jhlavicky) {
+    const jsize k = env->GetArrayLength(jhlavicky);
+    for (jsize i = 0; i < k; i++) {
+      jstring h = (jstring)env->GetObjectArrayElement(jhlavicky, i);
+      n.hlavicky.push_back(onlineJstr(env, h, 1024));
+      if (h) env->DeleteLocalRef(h);
+    }
+  }
+  n.hrac1 = hrac1 == JNI_TRUE;
+  n.ja.jadro = nap::online::J_ATARI;
+  n.ja.jmeno = onlineJstr(env, jjmeno, 60);
+  std::memcpy(n.ja.hra, ONLINE_ATARI_HRA, 20);
+  n.ja.nastaveni = ONLINE_ATARI_JADRO;
+  n.snimekMs = 20.0;                         // PAL 50 snimku/s
+  // jako Sega B362: odhad + oprava (zpozdeni na startu jen na jednosmernou cestu, za hry roste po malych krocich);
+  // B363: start ze stavu (hrac 1 posle cely stav Atari i s hrou)
+  n.ladeni.odhad = true;
+  n.ladeni.zvysitNejvys = 2;
+  n.ladeni.zpozdeniNavic = 4;
+  n.ladeni.startZeStavu = true;
+  if (n.adresa.empty() || n.cesta.empty()) return env->NewStringUTF("CHYBA: chybi adresa enginu");
+  if (n.hrac1 && !g_strojBezi.load()) return env->NewStringUTF("CHYBA: Atari je vypnute - zapni ho a spust hru");
+  {
+    std::lock_guard<std::mutex> rz(g_onlineRizeni);
+    g_onlineHraje.store(0);
+    g_onlineAktivni.store(0);
+    g_online.start(n);
+    {
+      std::lock_guard<std::mutex> l(g_onlineM);
+      g_onlineKonec.clear();
+      g_onlineSetrneProc.clear();
+    }
+    g_onlineObaNaJ1Volba.store(n.hrac1 && obaNaJ1 == JNI_TRUE);
+    g_onlineStartu.fetch_add(1);
+    g_onlineSnimkuCelkem.store(0);
+    g_onlineStavKb.store(0);
+    g_onlineStartStav.store(0);
+    g_onlineSetrne.store(0);
+    g_onlineSetrneZapnuto.store(0);
+    g_onlineChybOpravy.store(0);
+    g_onlineOdhadMax.store(nap::online::ODHAD_MAX);
+    g_onlineAktivni.store(1);
+  }
+  bool zapnuto = false;
+  if (!n.hrac1 && !g_strojBezi.load()) {     // hrac 2: Atari zapnout (stav od hrace 1 ho stejne cely prepise)
+    std::lock_guard<std::mutex> l(g_mStroj);
+    if (!g_stroj) { g_pamet1088 = false; studenyStartLocked(7); }
+    g_strojBezi = true;
+    zapnuto = true;
+  }
+  if (zapnuto) {
+    std::lock_guard<std::mutex> dl(g_mDev);
+    nap::dev::Device &dv = devGet();
+    if (!dv.power) { dv.power = true; dv.powerAt = nap_ted_ms(); }
+    dv.atariValid = false; dv.markScreen(); dv.markLegend();
+  }
+  devLog(std::string("B363 ATARI ONLINE ") + (n.hrac1 ? "zaklada hru" : "pripojuje se ke hre") + " " + n.cesta.substr(0, n.cesta.find('?')) +
+         (n.hrac1 ? (g_onlineObaNaJ1Volba.load() ? " - porty: oba hraci na joysticku 1" : " - porty: hrac 1 = joystick 1, hrac 2 = joystick 2") : "") +
+         (zapnuto ? " (Atari bylo vypnute - zapnuto)" : ""));
+  pokeRender();
+  return env->NewStringUTF("OK");
+}
+
+/** Konec online hry (hrac odchazi). Atari bezi dal samo (ovladani zase jen tento telefon). */
+extern "C" JNIEXPORT void JNICALL
+Java_eu_atarihelp_emu10_NativeAtariCoreBridge_onlineStop(JNIEnv *, jclass) {
+  bool bylo;
+  {
+    std::lock_guard<std::mutex> rz(g_onlineRizeni);
+    bylo = g_onlineAktivni.load() != 0;
+    g_onlineAktivni.store(0);
+    g_onlineHraje.store(0);
+    g_onlineSetrne.store(0);
+    g_online.stop();
+    std::lock_guard<std::mutex> l(g_mStroj);
+    g_onlineKruh.zahod(true);
+    g_onlineKlavesa = -1; g_onlineKlavesaPustit = false; g_onlineBreak = g_onlineReset = false;
+    aplikujJoyLocked();
+  }
+  if (bylo) devLog("B363 ATARI ONLINE konec (hrac) - Atari bezi dal jen na tomto telefonu");
+}
+
+/** Stav pro Javu: radky klic=hodnota (stejne klice jako Sega - NapOnlineHlidac; navic system, start_stav, setrne). */
+extern "C" JNIEXPORT jstring JNICALL
+Java_eu_atarihelp_emu10_NativeAtariCoreBridge_onlineStav(JNIEnv *env, jclass) {
+  using F = nap::online::OnlineKlient::Faze;
+  const F f = g_online.faze();
+  const char *fs = f == F::PRIPOJUJE ? "PRIPOJUJE" : f == F::CEKA_NA_HRACE ? "CEKA_NA_HRACE" : f == F::HRAJE ? "HRAJE" : f == F::KONEC ? "KONEC" : "NIC";
+  std::shared_ptr<nap::online::Relace> r = g_online.relace();
+  std::string konec, setrneProc;
+  {
+    std::lock_guard<std::mutex> l(g_onlineM);
+    konec = g_onlineKonec;
+    setrneProc = g_onlineSetrneProc;
+  }
+  // jina hra / nastaveni u Atari = jina verze appky (hra jde ve stavu)
+  std::string chyba = g_online.chyba();
+  auto verze = [](std::string &t) {
+    const std::string jh = nap::online::popisDuvodu(nap::online::D_JINA_HRA);
+    const size_t i = t.find(jh);
+    if (i != std::string::npos) t.replace(i, jh.size(), "druhy hrac ma jinou verzi appky (Atari online) - aktualizujte obe");
+  };
+  verze(konec);
+  verze(chyba);
+  std::ostringstream o;
+  o << "system=atari\nfaze=" << fs << "\nkod=" << g_online.kodMistnosti() << "\ndruhy=" << g_online.jmenoDruheho()
+    << "\npopis=" << g_online.popis() << "\nchyba=" << chyba
+    << "\nodezva=" << (r ? r->odezvaMs() : 0) << "\nzpozdeni=" << (r ? r->zpozdeni() : 0)
+    << "\novereno=" << (r ? r->overenychOtisku() : 0) << "\ncekani=" << (r ? r->cekani() : 0)
+    << "\nsnimek=" << g_onlineSnimkuCelkem.load() << "\naktivni=" << g_onlineAktivni.load()
+    << "\nhraje=" << ((g_onlineHraje.load() && g_onlineStartStav.load() == 4) ? 1 : 0) << "\nhrac1=" << (r ? (r->hrac1() ? 1 : 0) : 0)
+    << "\nkonec=" << konec << "\nstart=" << g_onlineStartu.load() << "\nstart_stav=" << g_onlineStartStav.load()
+    << "\nsetrne=" << g_onlineSetrne.load() << "\nsetrne_c=" << g_onlineSetrneZapnuto.load() << "\nsetrne_proc=" << setrneProc
+    << "\nporty=" << (g_onlinePortyJ1.load() ? "J1" : "J1J2");
+  if (r) {
+    o << "\nzpozdeni_ted=" << r->zpozdeniTed() << "\ncekani_ms=" << r->cekaniMs() << "\ncekani_max_ms=" << r->cekaniMaxMs()
+      << "\ndlouhych=" << r->dlouhychCekani() << "\nzadosti=" << r->zadosti() << "\nzvyseni=" << r->zvyseni()
+      << "\nsnizeni=" << r->snizeni() << "\nsync=" << (r->synchronizuje() && !r->startZeStavu() ? 1 : 0) << "\nsynchronizaci=" << r->synchronizaci()
+      << "\nsynchronizovano=" << r->synchronizovano() << "\nrozjeti=" << r->rozjeti() << "\nrozjeti_snimek=" << r->rozjetoVeSnimku()
+      << "\nrozjeti_casti=" << nap::online::nazvyCasti(r->rozdilCasti(), nap::atariStavNazvyCasti(), nap::ATARI_STAV_CASTI)
+      << "\nstav_kb=" << g_onlineStavKb.load() << "\nticho_ms=" << r->tichoMs() << "\nstoji_ms=" << r->stojiMs()
+      << "\nodhad=" << r->odhadnuto() << "\nodhad_sedelo=" << r->odhaduSedelo() << "\noprav=" << r->oprav()
+      << "\noprava_max=" << r->opravaMax() << "\noprava_max_ms=" << r->opravaMaxMs() << "\nopravy_ms=" << r->opravyMs()
+      << "\nprepocteno=" << r->prepocteno() << "\nodhad_max=" << g_onlineOdhadMax.load()
+      << "\nchyb_opravy=" << g_onlineChybOpravy.load() << "\nnavrat_ze=" << g_onlineNavratZe.load()
+      << "\nnavrat_na=" << g_onlineNavratNa.load() << "\nposledni_zprava=" << r->posledniZprava()
+      << "\njeho_do=" << r->jehoDo() << "\ndruhy_info_c=" << r->statistikDruheho()
+      << "\ndruhy_info_snimek=" << r->mujSnimekPriStatistice() << "\ndruhy_info=" << r->statistikaDruheho();
+  }
+  return env->NewStringUTF(o.str().c_str());
+}
+
+/** Telefon o sobe (model, Android, Wi-Fi, baterie - Java kazdych par s) - jde druhemu telefonu ve STATISTIKA. */
+extern "C" JNIEXPORT void JNICALL
+Java_eu_atarihelp_emu10_NativeAtariCoreBridge_onlineTelefon(JNIEnv *env, jclass, jstring jinfo) {
+  std::string s = onlineJstr(env, jinfo, 200);
+  for (char &c : s) if ((unsigned char)c < 32 || (unsigned char)c > 126) c = '?';   // jen ASCII (log druheho)
+  g_online.infoTelefonu(s);
 }

@@ -1,0 +1,43 @@
+B363 - ulozeni a nahrani celeho stavu Atari 130XE (online hra: start ze stavu, synchronizace, oprava odhadu)
+PRENOS STAVU (64 bitu): ukladam
+OK     BASIC (program napsany klavesami): stav ulozen (64 bitu, 4 KB zlib) + 500 snimku vysledku
+OK     Turbo-BASIC XL (XEX, zavadec ve stavu): stav ulozen (64 bitu, 37 KB zlib) + 400 snimku vysledku
+OK     zatez POKEY 2 + VBXE + banky 320K: stav ulozen (64 bitu, 10 KB zlib) + 400 snimku vysledku
+OK     zatez POKEY 2 + VBXE + banky 1088K, oba hraci na joysticku 1: stav ulozen (64 bitu, 23 KB zlib) + 400 snimku vysledku
+OK     disketa D1: - vlastni SIO, zapis sektoru (kopie diskety pri oprave): stav ulozen (64 bitu, 10 KB zlib) + 700 snimku vysledku
+VYSLEDEK: 5 OK, 0 CHYBA
+B363 - ulozeni a nahrani celeho stavu Atari 130XE (online hra: start ze stavu, synchronizace, oprava odhadu)
+PRENOS STAVU (32 bitu): nahravam a porovnavam
+OK     BASIC (program napsany klavesami): stav z druhe architektury nahran (32 bitu), 500 snimku: obraz, zvuk a otisk stavu KAZDY SNIMEK STEJNE
+OK     BASIC (program napsany klavesami): i vlastni stroj od zapnuti (32 bitu) pocita stejne jako druha architektura
+OK     Turbo-BASIC XL (XEX, zavadec ve stavu): stav z druhe architektury nahran (32 bitu), 400 snimku: obraz, zvuk a otisk stavu KAZDY SNIMEK STEJNE
+OK     Turbo-BASIC XL (XEX, zavadec ve stavu): i vlastni stroj od zapnuti (32 bitu) pocita stejne jako druha architektura
+OK     zatez POKEY 2 + VBXE + banky 320K: stav z druhe architektury nahran (32 bitu), 400 snimku: obraz, zvuk a otisk stavu KAZDY SNIMEK STEJNE
+OK     zatez POKEY 2 + VBXE + banky 320K: i vlastni stroj od zapnuti (32 bitu) pocita stejne jako druha architektura
+OK     zatez POKEY 2 + VBXE + banky 1088K, oba hraci na joysticku 1: stav z druhe architektury nahran (32 bitu), 400 snimku: obraz, zvuk a otisk stavu KAZDY SNIMEK STEJNE
+OK     zatez POKEY 2 + VBXE + banky 1088K, oba hraci na joysticku 1: i vlastni stroj od zapnuti (32 bitu) pocita stejne jako druha architektura
+OK     disketa D1: - vlastni SIO, zapis sektoru (kopie diskety pri oprave): stav z druhe architektury nahran (32 bitu), 700 snimku: obraz, zvuk a otisk stavu KAZDY SNIMEK STEJNE
+OK     disketa D1: - vlastni SIO, zapis sektoru (kopie diskety pri oprave): i vlastni stroj od zapnuti (32 bitu) pocita stejne jako druha architektura
+VYSLEDEK: 10 OK, 0 CHYBA
+==========
+B363 - ulozeni a nahrani celeho stavu Atari 130XE (online hra: start ze stavu, synchronizace, oprava odhadu)
+PRENOS STAVU (32 bitu): ukladam
+OK     BASIC (program napsany klavesami): stav ulozen (32 bitu, 4 KB zlib) + 500 snimku vysledku
+OK     Turbo-BASIC XL (XEX, zavadec ve stavu): stav ulozen (32 bitu, 37 KB zlib) + 400 snimku vysledku
+OK     zatez POKEY 2 + VBXE + banky 320K: stav ulozen (32 bitu, 11 KB zlib) + 400 snimku vysledku
+OK     zatez POKEY 2 + VBXE + banky 1088K, oba hraci na joysticku 1: stav ulozen (32 bitu, 24 KB zlib) + 400 snimku vysledku
+OK     disketa D1: - vlastni SIO, zapis sektoru (kopie diskety pri oprave): stav ulozen (32 bitu, 10 KB zlib) + 700 snimku vysledku
+VYSLEDEK: 5 OK, 0 CHYBA
+B363 - ulozeni a nahrani celeho stavu Atari 130XE (online hra: start ze stavu, synchronizace, oprava odhadu)
+PRENOS STAVU (64 bitu): nahravam a porovnavam
+OK     BASIC (program napsany klavesami): stav z druhe architektury nahran (64 bitu), 500 snimku: obraz, zvuk a otisk stavu KAZDY SNIMEK STEJNE
+OK     BASIC (program napsany klavesami): i vlastni stroj od zapnuti (64 bitu) pocita stejne jako druha architektura
+OK     Turbo-BASIC XL (XEX, zavadec ve stavu): stav z druhe architektury nahran (64 bitu), 400 snimku: obraz, zvuk a otisk stavu KAZDY SNIMEK STEJNE
+OK     Turbo-BASIC XL (XEX, zavadec ve stavu): i vlastni stroj od zapnuti (64 bitu) pocita stejne jako druha architektura
+OK     zatez POKEY 2 + VBXE + banky 320K: stav z druhe architektury nahran (64 bitu), 400 snimku: obraz, zvuk a otisk stavu KAZDY SNIMEK STEJNE
+OK     zatez POKEY 2 + VBXE + banky 320K: i vlastni stroj od zapnuti (64 bitu) pocita stejne jako druha architektura
+OK     zatez POKEY 2 + VBXE + banky 1088K, oba hraci na joysticku 1: stav z druhe architektury nahran (64 bitu), 400 snimku: obraz, zvuk a otisk stavu KAZDY SNIMEK STEJNE
+OK     zatez POKEY 2 + VBXE + banky 1088K, oba hraci na joysticku 1: i vlastni stroj od zapnuti (64 bitu) pocita stejne jako druha architektura
+OK     disketa D1: - vlastni SIO, zapis sektoru (kopie diskety pri oprave): stav z druhe architektury nahran (64 bitu), 700 snimku: obraz, zvuk a otisk stavu KAZDY SNIMEK STEJNE
+OK     disketa D1: - vlastni SIO, zapis sektoru (kopie diskety pri oprave): i vlastni stroj od zapnuti (64 bitu) pocita stejne jako druha architektura
+VYSLEDEK: 10 OK, 0 CHYBA

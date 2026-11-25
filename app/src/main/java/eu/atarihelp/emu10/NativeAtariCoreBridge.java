@@ -445,6 +445,45 @@ public final class NativeAtariCoreBridge {
         try { String r = devVlozNative(data); return r == null ? "VLOZENI: CHYBA" : r; } catch (Throwable t) { return "VLOZENI: CHYBA"; }
     }
 
+    // ------------------------------------------------------------------------------------------------
+    //  B363: ONLINE ATARI pres engine N&P (Rene 25. 11.: "uz pustit do online atari"). Hrani je cele v C++
+    //  (nap_atari_native.cpp + online/nap_online*.h): spojeni s enginem, START ZE STAVU (hrac 1 posle cely stav
+    //  Atari i s hrou - hrac 2 ji mit nemusi), stisky obou hracu, odhad + oprava, otisky, setrne kresleni.
+    // ------------------------------------------------------------------------------------------------
+    /** "nazev\npripraveno (1/0)\nproc" - hra, ktera ted v Atari bezi (pro seznam her na enginu). */
+    private static native String onlineHra();
+    /** Zacne online hru (hrac1 = zaklada s hrou, ktera v Atari bezi; obaNaJ1 = hrac 2 joystickem 1). "OK" / "CHYBA: ...". */
+    private static native String onlineStart(String adresa, String cesta, String[] hlavicky, boolean hrac1, String jmeno, boolean obaNaJ1);
+    private static native void onlineStop();
+    /** Radky klic=hodnota (stejne klice jako Sega - NapOnlineHlidac; navic system, start_stav, setrne, porty). */
+    private static native String onlineStav();
+    /** Telefon o sobe (model, Android, Wi-Fi) - jde druhemu telefonu ve STATISTIKA. */
+    private static native void onlineTelefon(String info);
+
+    public static String onlineHraSafe() {
+        if (!loaded) return null;
+        try { return onlineHra(); } catch (Throwable t) { return null; }
+    }
+    public static String onlineStartSafe(String adresa, String cesta, String[] hlavicky, boolean hrac1, String jmeno, boolean obaNaJ1) {
+        if (!loaded) return "CHYBA: knihovna Atari neni nactena";
+        try {
+            final String r = onlineStart(adresa, cesta, hlavicky, hrac1, jmeno == null ? "" : jmeno, obaNaJ1);
+            return r == null ? "CHYBA: jadro nevratilo nic" : r;
+        } catch (Throwable t) { return "CHYBA: " + t.getMessage(); }
+    }
+    public static void onlineStopSafe() {
+        if (!loaded) return;
+        try { onlineStop(); } catch (Throwable ignored) {}
+    }
+    public static String onlineStavSafe() {
+        if (!loaded) return "faze=NIC";
+        try { final String r = onlineStav(); return r == null ? "faze=NIC" : r; } catch (Throwable t) { return "faze=NIC"; }
+    }
+    public static void onlineTelefonSafe(String info) {
+        if (!loaded) return;
+        try { onlineTelefon(info == null ? "" : info); } catch (Throwable ignored) {}
+    }
+
     /** Vrati vysledek jako JSON. Nikdy nehodi vyjimku. */
     public static String runSelfTestSafe() {
         if (!loaded) {

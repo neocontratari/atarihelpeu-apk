@@ -1,0 +1,36 @@
+B363 - ulozeni a nahrani celeho stavu Atari 130XE (online hra: start ze stavu, synchronizace, oprava odhadu)
+== BASIC (program napsany klavesami)
+OK     BASIC (program napsany klavesami): stav ulozen v snimku 1093 (326 KB, zlib 4 KB) a nahran do jineho stroje - radku programu 2
+OK     BASIC (program napsany klavesami): hned po nahrani stejny otisk
+OK     BASIC (program napsany klavesami): oprava - stav pred snimkem 1343 vracen (kruh 640 KB)
+OK     BASIC (program napsany klavesami): 500 snimku po nahrani (s 1 opravou odhadu) - otisk stavu, obraz a zvuk KAZDY SNIMEK STEJNE | radku programu 2
+OK     BASIC (program napsany klavesami): 12x prenos do jineho (spinaveho) stroje, pokazde 29 snimku stejne
+== Turbo-BASIC XL (XEX, zavadec ve stavu)
+OK     Turbo-BASIC XL (XEX, zavadec ve stavu): stav ulozen v snimku 620 (347 KB, zlib 37 KB) a nahran do jineho stroje - zavadec XEX ve stavu 4 (INIT bezi - po navratu nahraje zbytek)
+OK     Turbo-BASIC XL (XEX, zavadec ve stavu): hned po nahrani stejny otisk
+OK     Turbo-BASIC XL (XEX, zavadec ve stavu): oprava - stav pred snimkem 820 vracen (kruh 640 KB)
+OK     Turbo-BASIC XL (XEX, zavadec ve stavu): 400 snimku po nahrani (s 1 opravou odhadu) - otisk stavu, obraz a zvuk KAZDY SNIMEK STEJNE | zavadec XEX ve stavu 4 (INIT bezi - po navratu nahraje zbytek)
+OK     Turbo-BASIC XL (XEX, zavadec ve stavu): 12x prenos do jineho (spinaveho) stroje, pokazde 29 snimku stejne
+== zatez POKEY 2 + VBXE + banky 320K
+OK     zatez POKEY 2 + VBXE + banky 320K: stav ulozen v snimku 300 (848 KB, zlib 10 KB) a nahran do jineho stroje - VBXE zapisu 1787, blitru 26, POKEY 2 hraje, $0605=80 $0606=00
+OK     zatez POKEY 2 + VBXE + banky 320K: hned po nahrani stejny otisk
+OK     zatez POKEY 2 + VBXE + banky 320K: oprava - stav pred snimkem 500 vracen (kruh 1676 KB)
+OK     zatez POKEY 2 + VBXE + banky 320K: 400 snimku po nahrani (s 1 opravou odhadu) - otisk stavu, obraz a zvuk KAZDY SNIMEK STEJNE | VBXE zapisu 5151, blitru 76, POKEY 2 hraje, $0605=80 $0606=00
+OK     zatez POKEY 2 + VBXE + banky 320K: 12x prenos do jineho (spinaveho) stroje, pokazde 29 snimku stejne
+== zatez POKEY 2 + VBXE + banky 1088K, oba hraci na joysticku 1
+OK     zatez POKEY 2 + VBXE + banky 1088K, oba hraci na joysticku 1: stav ulozen v snimku 300 (1616 KB, zlib 23 KB) a nahran do jineho stroje - VBXE zapisu 1787, blitru 26, POKEY 2 hraje, $0605=80 $0606=00
+OK     zatez POKEY 2 + VBXE + banky 1088K, oba hraci na joysticku 1: hned po nahrani stejny otisk
+OK     zatez POKEY 2 + VBXE + banky 1088K, oba hraci na joysticku 1: oprava - stav pred snimkem 500 vracen (kruh 2176 KB)
+OK     zatez POKEY 2 + VBXE + banky 1088K, oba hraci na joysticku 1: 400 snimku po nahrani (s 1 opravou odhadu) - otisk stavu, obraz a zvuk KAZDY SNIMEK STEJNE | VBXE zapisu 5151, blitru 76, POKEY 2 hraje, $0605=80 $0606=00
+OK     zatez POKEY 2 + VBXE + banky 1088K, oba hraci na joysticku 1: 12x prenos do jineho (spinaveho) stroje, pokazde 29 snimku stejne
+== disketa D1: - vlastni SIO, zapis sektoru (kopie diskety pri oprave)
+OK     disketa D1: - vlastni SIO, zapis sektoru (kopie diskety pri oprave): stav ulozen v snimku 150 (416 KB, zlib 10 KB) a nahran do jineho stroje - zapisu na disketu 0, prikazu SIO pres POKEY 0, DONE=0
+OK     disketa D1: - vlastni SIO, zapis sektoru (kopie diskety pri oprave): hned po nahrani stejny otisk
+OK     disketa D1: - vlastni SIO, zapis sektoru (kopie diskety pri oprave): oprava - stav pred snimkem 500 vracen (kruh 640 KB), v 8 snimcich se spatnym odhadem zapsano na disketu 1x (jina data) - disketa vracena
+OK     disketa D1: - vlastni SIO, zapis sektoru (kopie diskety pri oprave): 700 snimku po nahrani (s 1 opravou odhadu) - otisk stavu, obraz a zvuk KAZDY SNIMEK STEJNE | zapisu na disketu 2, prikazu SIO pres POKEY 6, DONE=90
+OK     disketa D1: - vlastni SIO, zapis sektoru (kopie diskety pri oprave): 12x prenos do jineho (spinaveho) stroje, pokazde 29 snimku stejne
+OK     poskozena data (zlib), jina verze stavu a useknuta data se NENAHRAJI
+OK     BASIC: stav po 400 snimcich od zapnuti nezavisi na zbytku haldy (halda 00/FF vs A5/5A, 326 KB bajt po bajtu)
+OK     zatez 1088K: stav po 400 snimcich od zapnuti nezavisi na zbytku haldy (halda 00/FF vs A5/5A, 1616 KB bajt po bajtu)
+OK     disketa (SIO): stav po 400 snimcich od zapnuti nezavisi na zbytku haldy (halda 00/FF vs A5/5A, 416 KB bajt po bajtu)
+VYSLEDEK: 29 OK, 0 CHYBA

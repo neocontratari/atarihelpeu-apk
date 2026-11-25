@@ -38,8 +38,10 @@ DELKA = {"imp": 1, "acc": 1, "imm": 2, "zp": 2, "zpx": 2, "zpy": 2, "izx": 2, "i
 
 def hodnota(t, sym, pruchod):
     t = t.strip()
-    if t.startswith("<"): return hodnota(t[1:], sym, pruchod) & 0xFF
-    if t.startswith(">"): return (hodnota(t[1:], sym, pruchod) >> 8) & 0xFF
+    if t.startswith("<") or t.startswith(">"):   # B363: i dopredny odkaz (v 1. pruchodu jeste neznamy)
+        v = hodnota(t[1:], sym, pruchod)
+        if v is None: return None
+        return v & 0xFF if t.startswith("<") else (v >> 8) & 0xFF
     casti = re.split(r"([+-])", t)
     v, zn = 0, "+"
     for c in casti:

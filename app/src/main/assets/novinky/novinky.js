@@ -5,6 +5,17 @@
    NapNovinky.java), Napoveda je ma nahore v sekci CO JE NOVEHO. Pole za NAP_NOVINKY = musi byt cisty JSON (Java ho
    cte pres NapJson) - zadne komentare ani carky navic. Texty pro lidi: kratce, co se zmenilo a kde to najdou. */
 window.NAP_NOVINKY = [
+  {"verze": 406, "build": "B363", "datum": "25. 11. 2026",
+   "cs": ["Online Atari 130XE: na přístroji klepni na ONLINE → ZALOŽIT HRU (online pojede hra, která právě běží) nebo PŘIPOJIT SE.",
+          "Druhý hráč hru mít nemusí – appka mu pošle celé Atari i s hrou (XEX, disketa, cartridge) a hraje se od stejné chvíle.",
+          "Hráč 1 = joystick 1, hráč 2 = joystick 2. Pro hry, kde se hráči střídají, zvol při založení OBA NA JOYSTICKU 1.",
+          "Jako u Segy: když stisk druhého přijde pozdě, hra na něj nečeká – jede dál s odhadem a hned se sama opraví.",
+          "Slabší telefon si za online hry sám zapne šetrné kreslení: na displej jde každý 2. snímek, hra sama běží celá (Atari i Sega)."],
+   "en": ["Online Atari 130XE: on the device tap ONLINE → CREATE A GAME (the game that is running now goes online) or JOIN.",
+          "The other player does not need the game – the app sends them the whole Atari with the game (XEX, disk, cartridge) and play starts from the same moment.",
+          "Player 1 = joystick 1, player 2 = joystick 2. For games where the players take turns, choose BOTH ON JOYSTICK 1 when creating.",
+          "Like on the Sega: when the other player's press arrives late, the game does not wait for it – it goes on with a guess and corrects itself at once.",
+          "During an online game a slower phone turns on economy drawing by itself: every 2nd frame goes to the screen, the game itself runs in full (Atari and Sega)."]},
   {"verze": 405, "build": "B362", "datum": "24. 11. 2026",
    "cs": ["Online Sega: když stisky druhého telefonu přijdou pozdě, hra už nestojí – jede dál s odhadem a za okamžik se sama opraví (jako online bojovky).",
           "Zpoždění ovládání online zůstává malé – na stejné Wi-Fi 2 snímky (dřív při výkyvech sítě rostlo až na 11).",

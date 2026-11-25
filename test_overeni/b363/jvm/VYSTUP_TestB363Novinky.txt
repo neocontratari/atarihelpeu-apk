@@ -1,0 +1,9 @@
+B363 - co je noveho: online Atari, setrne kresleni (NapNovinky nad skutecnym novinky.js)
+OK     1) nejnovejsi B363 = versionCode 406 (build.gradle 406), 5 vet cesky i anglicky
+OK     2) telefon s B362: okno jen B363 (6 radku), bez odkazu, nadpis 'CO JE NOVÉHO · B363'
+OK        telefon s B361 (nove B363,B362): okno B363 + B362, bez odkazu
+OK        telefon s B360 (nove B363,B362,B361): okno B363 + B362 a odkaz do Napovedy, B361 ne
+OK        anglicky: B363 a u telefonu s B360 'Older news: Help → WHAT'S NEW.'
+OK     3) okno rika presne, co v appce je: ONLINE na pristroji, ZALOZIT HRU / PRIPOJIT SE, OBA NA JOYSTICKU 1 (CZ i EN)
+OK        setrne kresleni je v obou jadrech: Atari (kazdy 2. snimek na displej) i Sega (delitel obrazu 2)
+VYSLEDEK: 7 OK, 0 CHYBA

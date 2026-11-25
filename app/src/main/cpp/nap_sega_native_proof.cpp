@@ -1250,6 +1250,15 @@ static std::atomic<uint32_t> g_online_chyb_opravy{0};
 static std::atomic<uint32_t> g_online_navrat_ze{0}, g_online_navrat_na{0};   // hrac 2: synchronizace ho vratila zpet
 static uint64_t g_online_vykon_od_us = 0, g_online_vykon_jadro_us = 0, g_online_vykon_jadro_max_us = 0;
 static uint32_t g_online_vykon_snimku = 0;
+// B363: SETRNE KRESLENI (Rene 25. 11.: "proc treba na slabsi telefony nepridat optimalizaci? Pri hrani online ...
+// stacilo by jen ponizit grafiku"). Jadro musi na obou telefonech pocitat KAZDY snimek (jinak by se hra rozjela),
+// ale obraz se kreslit nemusi kazdy: kdyz jadro bere vic nez ~9 ms z 16,7 ms, jde na displej jen kazdy 2. snimek
+// (30/s - stejne jako rezim LOW / S8 bez hladoveni) - prumer za 2 s (kratka spicka ho nezapne); vypne se po 6 s pod
+// 6 ms. Java ho zapise do logu (onlineStav).
+static std::atomic<int> g_online_setrne{0};
+static std::atomic<uint32_t> g_online_setrne_c{0};       // kolikrat se zaplo
+static std::atomic<uint32_t> g_online_setrne_ms10{0};    // jadro (0,1 ms) pri zapnuti - do logu
+static int g_online_klidnych_oken = 0;                  // 2s oken po sobe pod 6 ms (vypnout po 3)
 
 static void nap_sega_online_uloz(uint32_t snimek) {
     std::unique_ptr<NapSegaZaloha> &z = g_online_kruh[snimek % NAP_SEGA_KRUH];
@@ -1331,14 +1340,33 @@ static void nap_sega_online_vykon(uint64_t iterNs) {
     m = std::max<uint32_t>(2, std::min<uint32_t>(nap::online::ODHAD_MAX, m));
     g_online_odhad_max.store(m);
     const uint64_t ted = nap::online::tedUs();
+
     if (!g_online_vykon_od_us) g_online_vykon_od_us = ted;
     g_online_vykon_snimku++;
     g_online_vykon_jadro_us += us;
     if (us > g_online_vykon_jadro_max_us) g_online_vykon_jadro_max_us = us;
     if (ted - g_online_vykon_od_us >= 2000000) {
+        // B363: setrne kresleni (obraz 30/s) - prumer jadra za 2 s nad 9 ms (z 16,7 ms); vypnout po 3 oknech pod 6 ms
+        const uint64_t prumer = g_online_vykon_jadro_us / std::max<uint32_t>(g_online_vykon_snimku, 1);
+        if (!g_online_setrne.load()) {
+            if (prumer > 9000 && g_online_snimek > 120) {
+                g_online_setrne.store(1);
+                g_online_setrne_c.fetch_add(1);
+                g_online_setrne_ms10.store((uint32_t)(prumer / 100));
+                g_online_klidnych_oken = 0;
+                NAPLOG("B363 ONLINE SETRNE KRESLENI zapnuto: jadro %.1f ms na snimek - obraz jen kazdy 2. snimek", prumer / 1000.0);
+            }
+        } else if (prumer < 6000) {
+            if (++g_online_klidnych_oken >= 3) {
+                g_online_setrne.store(0);
+                NAPLOG("B363 ONLINE SETRNE KRESLENI vypnuto: jadro %.1f ms", prumer / 1000.0);
+            }
+        } else {
+            g_online_klidnych_oken = 0;
+        }
         char b[160];
-        std::snprintf(b, sizeof(b), "%.1f snimku/s, jadro %.1f ms (nejvys %.1f), odhad nejvys %u",
-                      g_online_vykon_snimku * 1e6 / (double)(ted - g_online_vykon_od_us),
+        std::snprintf(b, sizeof(b), "%.1f snimku/s%s, jadro %.1f ms (nejvys %.1f), odhad nejvys %u",
+                      g_online_vykon_snimku * 1e6 / (double)(ted - g_online_vykon_od_us), g_online_setrne.load() ? " (obraz 30/s setrne)" : "",
                       g_online_vykon_jadro_us / 1000.0 / std::max<uint32_t>(g_online_vykon_snimku, 1), g_online_vykon_jadro_max_us / 1000.0, m);
         std::shared_ptr<nap::online::Relace> r = g_online.relace();
         if (r) r->vykon(b);
@@ -1363,6 +1391,7 @@ static void nap_sega_online_konec(const std::shared_ptr<nap::online::Relace> &r)
     }
     g_online_hraje.store(0);
     g_online_aktivni.store(0);
+    g_online_setrne.store(0);           // B363
     nap_sega_online_kruh_zahod(true);   // B362: stavy pro opravu uz netreba
     NAPLOG("B357 ONLINE konec po %u snimcich: %s", g_online_snimek, proc.c_str());
 }
@@ -1384,6 +1413,8 @@ static int nap_sega_online_pred_krokem() {
         g_online_vykon_jadro_us = g_online_vykon_jadro_max_us = 0;
         g_online_navrat_ze.store(0);
         g_online_navrat_na.store(0);
+        g_online_setrne.store(0);   // B363
+        g_online_klidnych_oken = 0;
         g_online_hraje.store(1);
         NAPLOG("B357 ONLINE start - studeny start, snimek 0 (B362: odhad stisku druheho nejvys %u snimku)", g_online_odhad_max.load());
     }
@@ -1503,6 +1534,7 @@ static void nap_real_worker_thread(int generation) {
                 // Audio frontend timing and FIFO sizes stay identical in both modes.
                 uint32_t preIt = g_real_thread_iterations.load();
                 int divisor = g_native_perf_low.load() ? 2 : 1;
+                if (online == 1 && g_online_setrne.load()) divisor = std::max(divisor, 2);   // B363: setrne kresleni za online
                 bool audioHungry = false;
                 // BUILD2RV: S8 no-starve mode reduces native scanline capture when audio FIFO is low.
                 // The WebView/TextureView can keep presenting the cached frame, while the core spends
@@ -2580,6 +2612,9 @@ Java_eu_atarihelp_emu10_NativeSegaCoreBridge_onlineStav(JNIEnv *env, jclass) {
           << "\njeho_do=" << r->jehoDo() << "\ndruhy_info_c=" << r->statistikDruheho()
           << "\ndruhy_info_snimek=" << r->mujSnimekPriStatistice() << "\ndruhy_info=" << r->statistikaDruheho();
     }
+    // B363: setrne kresleni (Java ho zapise do logu)
+    o << "\nsetrne=" << g_online_setrne.load() << "\nsetrne_c=" << g_online_setrne_c.load()
+      << "\nsetrne_proc=jadro " << (g_online_setrne_ms10.load() / 10) << "." << (g_online_setrne_ms10.load() % 10) << " ms na snimek (z 16.7 ms)";
     return env->NewStringUTF(o.str().c_str());
 }
 

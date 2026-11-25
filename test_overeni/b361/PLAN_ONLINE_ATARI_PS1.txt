@@ -6,6 +6,14 @@ B362 (24. 11.): 3. test Segy na LAN = sekani (spicky site obema smery) -> online
 + opravu (nap_online.h verze 3, sdileny pro vsechna jadra). Pro Atari (A2) a PS1 (P3) z toho plyne: jadro musi umet
 rychle ulozit / nahrat stav (pro opravu, ne jen pro start) - u Atari A1 tedy hned s ohledem na rychlost (kruh az 10
 stavu), u PS1 je stav velky (RAM 2 MB + VRAM 1 MB + SPU 512 KB) - oprava jen par snimku, nebo lockstep (maxOdhad 0).
+B363 (25. 11.): Rene "uz pustit do online atari - at se nezdrzujeme" (Sega B362 zatim netestovana) -> ATARI ONLINE
+HOTOVO v kodu: A1 stav Atari (nap_atari_stav.h, i s disketou / cartridge / zavadecem XEX), A2 nic mimo vstupy (turbo,
+TXT, klavesnice PC, kazeta, CSAVE, restart 1088K, POKEY STEREO az po hre), A3 vstup u32 + porty (volba OBA NA
+JOYSTICKU 1), A4 vlakno emulace s odhadem a opravou (kruh 10 stavu), A5 tlacitko ONLINE na pristroji (ZALOZIT HRU /
+PRIPOJIT SE), A6 testy (../b363). Navic START ZE STAVU: hrac 2 nepotrebuje hru ani zapnute Atari - hrac 1 mu posle
+cele Atari (otisk hry = 40 nul, hra jde ve stavu, engine se NEMENI; protokol zustava verze 3). Navic SETRNE KRESLENI
+(Atari i Sega): slaby telefon posila na displej jen kazdy 2. snimek, emulace a zvuk naplno.
+Zbyva: test Reneho na dvou telefonech (logy obou + engine), pak PS1 (bod 2).
 
 =====================================================================================================================
 0) VYCHOZI STAV (overeno v kodu, B361)
@@ -169,6 +177,7 @@ stavu), u PS1 je stav velky (RAM 2 MB + VRAM 1 MB + SPU 512 KB) - oprava jen par
        servisni tlacitko c. 6 = ONLINE (zatim okno "pripravuje se"), LOG / CHYBA je tlacitko dole v HELP.
        A5 tedy: ONLINE na pristroji otevre ZALOZIT / PRIPOJIT (misto okna "pripravuje se").
  2. Atari porty: vychozi "kazdy svuj joystick", nebo "oba na joysticku 1" (stridave hry)?
+    -> B363: hrac 1 vybere pri ZALOZIT HRU (KAZDY SVUJ JOYSTICK / OBA NA JOYSTICKU 1), hrac 2 to dostane ve stavu.
  3. PS1 karta online: prazdna, nebo karta hrace 1? A muze si hrac 1 nechat, co se ulozi online?
  4. Chce i pro Atari ULOZIT / NAHRAT POZICI (vyjde z A1 skoro zadarmo)?
  5. Poradi: Atari, pak PS1 (doporuceno), nebo naopak?

@@ -161,6 +161,97 @@ final class NapOnlineHra {
         return nastaveniMistnosti == null || nastaveniMistnosti.isEmpty() || o[1].equals(nastaveniMistnosti.trim());
     }
 
+    // ------------------------------------------------------------------------------------------------
+    //  B363: ONLINE ATARI 130XE (Rene 25. 11.: "uz pustit do online atari"). Hra jde druhemu telefonu ve stavu
+    //  Atari (START ZE STAVU v C++) - otisk hry tedy engine nepotrebuje (chce 40 hex znaku: nuly), nastaveni =
+    //  verze jadra (jen do seznamu). Hrac 2 nic nestahuje ani nespousti.
+    // ------------------------------------------------------------------------------------------------
+    static final String ATARI_OTISK = "0000000000000000000000000000000000000000";
+    static final String ATARI_NASTAVENI = "363";
+
+    /** "nazev\npripraveno\nproc" z C++ (NativeAtariCoreBridge.onlineHra) -> {nazev, "1"/"0", proc}; null = nic. */
+    static String[] atariHra(String s) {
+        if (s == null) return null;
+        String[] c = s.split("\n", -1);
+        if (c.length < 2) return null;
+        return new String[] { c[0].trim(), "1".equals(c[1].trim()) ? "1" : "0", c.length > 2 ? c[2].trim() : "" };
+    }
+
+    /**
+     * Hry jednoho systemu, ktere na enginu cekaji na hrace 2 (JSON /api/v1/online/mistnosti): {kod, hra, hrac, ceka_s},
+     * nejvys 20, v poradi enginu. Spatny JSON = prazdny seznam.
+     */
+    @SuppressWarnings("unchecked")
+    static java.util.List<String[]> mistnosti(String json, String system) {
+        java.util.List<String[]> r = new java.util.ArrayList<>();
+        Map<String, Object> o = NapJson.objekt(json);
+        Object a = o == null ? null : o.get("mistnosti");
+        if (!(a instanceof java.util.List)) return r;
+        for (Object x : (java.util.List<Object>) a) {
+            if (!(x instanceof Map)) continue;
+            Map<String, Object> m = (Map<String, Object>) x;
+            if (system != null && !system.equals(NapJson.text(m, "system"))) continue;
+            String k = kod(NapJson.text(m, "kod"));
+            if (k.isEmpty()) continue;
+            String h = NapJson.text(m, "hrac");
+            r.add(new String[] { k, nazevHry(NapJson.text(m, "hra")), h.isEmpty() ? "?" : jmeno(h), NapJson.text(m, "ceka_s") });
+            if (r.size() >= 20) break;
+        }
+        return r;
+    }
+
+    /** Radek seznamu her pro hrace: "1234 – Archon (SM-A125F, čeká 2 min)". */
+    static String popisMistnosti(String[] m, boolean en) {
+        long s = 0;
+        try { s = Long.parseLong(m[3]); } catch (RuntimeException ignored) {}
+        String ceka = s < 60 ? (en ? "waiting " + s + " s" : "čeká " + s + " s") : (en ? "waiting " + (s / 60) + " min" : "čeká " + (s / 60) + " min");
+        return m[0] + " – " + (m[1].isEmpty() ? "Atari" : m[1]) + " (" + m[2] + ", " + ceka + ")";
+    }
+
+    /**
+     * Stav online Atari pro hrace (okno ONLINE na pristroji), z radku C++ (onlineStav): faze, cislo hry, druhy hrac,
+     * odezva, zpozdeni, start ze stavu, setrne kresleni, konec s duvodem.
+     */
+    static String atariPopis(Map<String, String> m, boolean en) {
+        String faze = m.getOrDefault("faze", "NIC"), kod = m.getOrDefault("kod", ""), druhy = jmeno(m.getOrDefault("druhy", ""));
+        String konec = m.getOrDefault("konec", "");
+        if (konec.isEmpty()) konec = m.getOrDefault("chyba", "");
+        boolean hrac1 = "1".equals(m.get("hrac1"));
+        String startStav = m.getOrDefault("start_stav", "0");
+        StringBuilder b = new StringBuilder();
+        switch (faze) {
+            case "PRIPOJUJE":
+                b.append(en ? "Connecting to the N&P engine..." : "Připojuji se k enginu N&P...");
+                break;
+            case "CEKA_NA_HRACE":
+                if (kod.isEmpty()) b.append(en ? "Connected, creating the game..." : "Spojeno, zakládám hru...");
+                else b.append(en ? "Waiting for player 2.\nGAME NUMBER: " + kod + "\n\nTell it to the other player - they tap ONLINE → JOIN on their Atari. Meanwhile you can keep playing."
+                                 : "Čekám na hráče 2.\nČÍSLO HRY: " + kod + "\n\nŘekni ho druhému hráči – na svém Atari klepne ONLINE → PŘIPOJIT SE. Zatím můžeš hrát dál.");
+                break;
+            case "HRAJE":
+                if ("1".equals(startStav)) b.append(en ? "Player 2 joined (" + druhy + "). Your game is still loading - it will be sent as soon as it finishes."
+                                                       : "Hráč 2 je tu (" + druhy + "). Hra se ještě nahrává – pošlu ji, jakmile doběhne.");
+                else if ("2".equals(startStav)) b.append(en ? "Sending the whole Atari with the game to " + druhy + "..." : "Posílám hráči " + druhy + " celé Atari i s hrou...");
+                else if ("3".equals(startStav)) b.append(en ? "Receiving the game from " + druhy + "..." : "Přijímám hru od hráče " + druhy + "...");
+                else {
+                    b.append(en ? "Playing online with " + druhy : "Hraješ online s " + druhy).append(hrac1 ? (en ? " (you are player 1)" : " (jsi hráč 1)") : (en ? " (you are player 2)" : " (jsi hráč 2)"));
+                    b.append(en ? "\nResponse: " : "\nOdezva: ").append(m.getOrDefault("odezva", "?")).append(" ms");
+                    b.append(en ? ", control delay: " : ", zpoždění ovládání: ").append(m.getOrDefault("zpozdeni_ted", m.getOrDefault("zpozdeni", "?"))).append(en ? " frames" : " snímků");
+                    b.append("J1".equals(m.get("porty")) ? (en ? "\nBoth players on joystick 1." : "\nOba hráči na joysticku 1.")
+                                                         : (en ? "\nPlayer 1 = joystick 1, player 2 = joystick 2." : "\nHráč 1 = joystick 1, hráč 2 = joystick 2."));
+                    if ("1".equals(m.get("setrne"))) b.append(en ? "\nEconomy drawing: this phone shows every 2nd frame (the game itself runs in full)."
+                                                                : "\nŠetrné kreslení: tenhle telefon ukazuje každý 2. snímek (hra sama běží celá).");
+                }
+                break;
+            case "KONEC":
+                b.append(en ? "Online ended: " : "Online skončilo: ").append(konec.isEmpty() ? "-" : konec);
+                break;
+            default:
+                b.append(en ? "Online is off." : "Online neběží.");
+        }
+        return b.toString();
+    }
+
     private static String enc(String s) {
         try { return URLEncoder.encode(s == null ? "" : s, "UTF-8"); } catch (UnsupportedEncodingException e) { return ""; }
     }

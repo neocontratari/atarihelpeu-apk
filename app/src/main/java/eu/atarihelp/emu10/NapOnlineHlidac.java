@@ -24,6 +24,11 @@ import java.util.Map;
  * synchronizaci, synchronizovano, rozjeti_snimek, rozjeti_casti, stav_kb (NativeSegaCoreBridge.onlineStav).
  * B362: odhad, odhad_sedelo, oprav, oprava_max, oprava_max_ms, opravy_ms, prepocteno, odhad_max, chyb_opravy,
  * navrat_ze, navrat_na, posledni_zprava, jeho_do, ticho_ms, druhy_info_c, druhy_info_snimek, druhy_info.
+ *
+ * B363 (Rene 25. 11.: online Atari + "proc treba na slabsi telefony nepridat optimalizaci?"): stejne klice posila i
+ * Atari (NativeAtariCoreBridge.onlineStav, navic system=atari, start_stav, porty) - radky HRAJE / KONEC reknou, ze jde
+ * o Atari. SETRNE KRESLENI (setrne, setrne_proc): u Segy zapis zmeny sem (C++ Segy pise jen do logcatu), u Atari ji
+ * zapise C++ samo (devLog). PRUBEH rekne, kdyz je setrne kresleni zapnute.
  */
 final class NapOnlineHlidac {
     static final long PRUBEH_KAZDYCH_MS = 10000;
@@ -35,6 +40,7 @@ final class NapOnlineHlidac {
     // B362: statistika od druheho telefonu, ticho, navrat pri synchronizaci, oprava bez stavu
     private long druhyInfo = 0, chybOpravy = 0, navratZe = 0;
     private int tichoHlaseno = 0;   // kolik prahu ticha (2 / 5 / 10 s) uz je v logu
+    private String setrne = "0";     // B363: setrne kresleni (obraz kazdy 2. snimek)
     static final long[] TICHO_PRAHY_MS = {2000, 5000, 10000};
 
     /** Radky stavu -> radek / radky do logu, kdyz se neco zmenilo; jinak null. Prvni volani si stav jen zapamatuje. */
@@ -60,7 +66,7 @@ final class NapOnlineHlidac {
         // B360: citace prubehu (novy pokus = od nuly)
         long nZadosti = cislo(m, "zadosti"), nZvyseni = cislo(m, "zvyseni"), nSnizeni = cislo(m, "snizeni");
         long nSync = cislo(m, "synchronizaci"), nSynchronizovano = cislo(m, "synchronizovano");
-        if (novyPokus || poprve) { zadosti = zvyseni = snizeni = synchronizaci = synchronizovano = 0; druhyInfo = chybOpravy = navratZe = 0; tichoHlaseno = 0; }
+        if (novyPokus || poprve) { zadosti = zvyseni = snizeni = synchronizaci = synchronizovano = 0; druhyInfo = chybOpravy = navratZe = 0; tichoHlaseno = 0; setrne = "0"; }
         long nDruhyInfo = cislo(m, "druhy_info_c"), nChybOpravy = cislo(m, "chyb_opravy"), nNavratZe = cislo(m, "navrat_ze");
         StringBuilder ven = new StringBuilder();
         if (!poprve && zmena) {
@@ -107,6 +113,15 @@ final class NapOnlineHlidac {
                         + (jehoDo > 0 ? ", jeho stisky do snimku " + (jehoDo - 1) : "") + ", ja snimek " + hodnota(m, "snimek")
                         + ", stojim " + hodnota(m, "stoji_ms") + " ms)");
             }
+            // B363: setrne kresleni (Sega; Atari ho zapise C++ samo)
+            String nSetrne = hodnota(m, "setrne");
+            if (!"atari".equals(hodnota(m, "system")) && !nSetrne.isEmpty() && !nSetrne.equals(setrne)) {
+                if ("1".equals(nSetrne))
+                    pridej(ven, "B363 ONLINE SETRNE KRESLENI zapnuto (telefon nestiha: " + jedenRadek(hodnota(m, "setrne_proc"))
+                            + ") - na displej jde kazdy 2. snimek, hra sama bezi cela");
+                else pridej(ven, "B363 ONLINE SETRNE KRESLENI vypnuto - telefon zase stiha, obraz zase kazdy snimek");
+            }
+            if (!nSetrne.isEmpty()) setrne = nSetrne;
             if (!hralo) prubehPosledniMs = tedMs;
             else if (tedMs - prubehPosledniMs >= PRUBEH_KAZDYCH_MS) {
                 prubehPosledniMs = tedMs;
@@ -135,9 +150,11 @@ final class NapOnlineHlidac {
                 return nKod.isEmpty() ? "B358 ONLINE spojeno s enginem, zakladam hru" : "B358 ONLINE ceka na hrace 2 - cislo hry " + nKod;
             case "HRAJE":
                 if (!"1".equals(nHraje)) return "B358 ONLINE domlouva se s hracem " + nDruhy;
-                return "B358 ONLINE HRAJE s " + nDruhy + " - odezva " + hodnota(m, "odezva") + " ms, zpozdeni " + hodnota(m, "zpozdeni") + " snimku";
+                return "B358 ONLINE HRAJE" + ("atari".equals(hodnota(m, "system")) ? " (Atari 130XE)" : "") + " s " + nDruhy + " - odezva "
+                        + hodnota(m, "odezva") + " ms, zpozdeni " + hodnota(m, "zpozdeni") + " snimku";
             case "KONEC":
-                return "B358 ONLINE KONEC (pokus " + nStart + "): " + (nKonec.isEmpty() ? "bez duvodu" : jedenRadek(nKonec))
+                return "B358 ONLINE KONEC" + ("atari".equals(hodnota(m, "system")) ? " (Atari 130XE)" : "") + " (pokus " + nStart + "): "
+                        + (nKonec.isEmpty() ? "bez duvodu" : jedenRadek(nKonec))
                         + " | overeno " + hodnota(m, "overeno") + " otisku, snimek " + hodnota(m, "snimek")
                         + (m.containsKey("cekani_ms") ? " | " + prubeh(m) : "");
             default:
@@ -157,6 +174,7 @@ final class NapOnlineHlidac {
         if (m.containsKey("odhad"))
             r += ", odhad " + hodnota(m, "odhad") + " snimku (sedelo " + hodnota(m, "odhad_sedelo") + "), oprav " + hodnota(m, "oprav")
                     + " (nejdel " + hodnota(m, "oprava_max") + " snimku / " + hodnota(m, "oprava_max_ms") + " ms), limit odhadu " + hodnota(m, "odhad_max");
+        if ("1".equals(hodnota(m, "setrne"))) r += ", setrne kresleni (obraz kazdy 2. snimek)";   // B363
         return r;
     }
 

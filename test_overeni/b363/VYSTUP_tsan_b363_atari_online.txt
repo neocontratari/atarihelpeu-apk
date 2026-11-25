@@ -1,0 +1,416 @@
+B291 HELP otevren - pristroj ZAPNUT, studeny start Atari
+B293 JADRO = ATARI 130XE PAL: RAM 64 kB + rozsirena 16x16 kB (B323: 320K Compy Shop - PORTB bity 2-3 a 6-7, banky 130XE beze zmeny; procesor bit 4, ANTIC bit 5; B352: program, ktery hleda vic nez 16 bank, se sam spusti znovu s 1088K = 64 bank jako Ultimate 1MB - PORTB bity 1-3 a 5-7), OS XL/XE rev.2 (soucet $9211), BASIC rev.C vestaveny, self-test ROM $5000, TRIG3 = RD5 cartridge (prazdny slot = 0), RESET = reset CPU+ANTIC+PIA/MMU, plovouci datova sbernice, ANTIC/GTIA PAL 312 radku, POKEY 1,773 MHz
+B316 CARTRIDGE: soubory .car (XEX/MOBIL, NET, ZIP) - slot $8000-$9FFF / $A000-$BFFF pred BASICem, banky pres $D500-$D5FF, 67 typu (standard 2-16 kB, XEGS a Switchable XEGS, MegaCart, Atarimax 128 kB / 1 MB, SIC!, Williams, Express, Diamond, SpartaDOS X, OSS, Blizzard, Phoenix, Turbosoft, Atrax, Bounty Bob, J(atari)Cart, DCart ...); jiny program (XEX / ATR / TXT) cartridge vytahne, POWER ji necha ve slotu.
+B296 VBXE FX 1.26 v jadre: registry $D640, 512 kB VRAM, MEMAC A/B, XDL (overlay LR/SR/HR/text 80 sloupcu), atributova mapa, palety 4x256, blitter (rezimy 0-6, zoom, vzor, kolize) + IRQ; obraz 4 body na barevny takt. Joystick 1: leva pulka obrazovky = smer, prava = FIRE; herni ovladac taky.
+B298 ZVUK s pasmem jako TV (FIR 16 kHz, bez prekladu ultrazvuku do slysitelna), asynchronni prijem POKEY restartuje casovace 3+4 start bitem; KAZETA: hra (boot) = START+OPTION a RETURN samo, stereo WAV = zvukova stopa do TV, CLOAD i s disketou v D1:; DISKETA: ATR/DISK = vysunout / vymenit bez restartu.
+B299 BASIC/TBXL TXT: TXT soubor s programem napise appka sama do ATARI BASICu / Turbo-BASICu XL; klavesy z pristroje do logu (B299 KLAVESY); LOG/CHYBA = stav a cela pamet Atari v logu; SIO zkratka jen se zapnutou ROM OS (Turbo-BASIC XL ma na $E459 vlastni kod).
+B300 POKEY: casovac s AUDF=$FF (perioda 256) tika a dava preruseni - drive stal (Ghostbusters: hudba a rec z preruseni casovace 1, bez nej titulka stala; nejhlubsi tony byly potichu).
+B301 TV/PC (web prohlizec v appce): obraz Atari 130XE primo z jadra (vyrez 336x240 jako na telefonu) a zvuk 44100 Hz stereo - drive bylo na TV videt jen stranku s testy pod pristrojem.
+B302 KLAVESNICE POCITACE (prohlizec na TV/PC) -> Atari 130XE primo v C++: psani podle rozlozeni (cesky: diakritika bez hacku, AltGr znaky), sipky = kurzor, F1/F3/F4 START/SELECT/OPTION, F2 BREAK, F6 HELP, F8 INVERZE, F9 HRANI (WASD/sipky joystick, K skok, L FIRE); klavesy v tempu, ktere OS stihne.
+B303 TV/PC CELE V C++: kazdy snimek Atari (50/s) jako paleta + jen zmenene radky a zvuk v jednom proudu (/atari.stream) - Java uz nezvetsuje ani nekomprimuje (H.264/JPEG); Ctrl+V nebo pretazeny TXT v prohlizeci = program do BASICu bez NEW (UTF-8 s e s hackem uz neni ATASCII), jiny text = klavesy.
+B348 DISKETA D1: i na urovni bajtu SIO jako skutecna 1050 (hry s vlastnim zavadecem - xBIOS, Prince of Persia: ramec prikazu pres POKEY a linku COMMAND, odpovedi A/C/N/E, cteni/zapis/STATUS/FORMAT, 19200 Bd); OPTION pri bootu z diskety jen 1 s; Acid800 V0.1 38/38 (LXA jako SALLY, asynchronni prijem POKEY drzi casovace 3+4, hraci ve VBLANK po hires radku, fantomove DMA hracu).
+B349 ARCHIVY: hra v ZIP / RAR (XEX/MOBIL, ATR/DISK, NET HRY) se rozbali v C++ (deflate, RAR 2.9 vcetne pevneho a filtru); spusti se samostatna disketa > sada (strana A / Disk 1) > XEX > CAR, ostatni diskety z archivu nabidne ATR/DISK (i VYMENIT BEZ RESTARTU).
+B350 RAR5 (novy WinRAR 5 / 7): hlavicky vint + CRC32, komprese v blocich, filtry DELTA / E8 / E8E9 / ARM, pevny archiv (i s prazdnym souborem uprostred), odkazy se preskoci.
+B351 PPMd (RAR 4 "nejlepsi" = komprese textu): model PPMd var.H + rozsahovy dekoder RAR v C++, prechody PPMd <-> LZ, unikove prikazy, pevny archiv; heslo, vic dilu a RAR 1.5 / 2.0 zatim ne.
+B352 PAMET 1 MB: vychozi 320K (130XE + Compy Shop); program, ktery do rozsirene pameti zapisuje pod vic nez 16 ruznymi PORTB (hleda vic bank), se sam spusti znovu s 1088K (64 bank jako Ultimate 1MB) - Tony VBXE 496 KB.
+B353 TURBO pri nahravani: disketa D1: (SIO pres POKEY i OS v posledni 1 s) nebo zavadec XEX -> az 8 snimku za periodu 20 ms (kolik telefon stihne), zvuk ztlumeny; ne, kdyz hrac drzi joystick / klavesu nebo 3 s po stisku.
+B291 EMULACE_VLAKNO start (50 snimku/s, zvuk OpenSL, vse v C++)
+B291 EMULACE_VLAKNO priorita nice=-8 nastavena
+B291 PRISTROJ plocha nova 1080x2160 -> kresleni 1080x2160
+B291 KRESLICI_VLAKNO start (pristroj kresli C++ primo na displej)
+B291 KRESLICI_VLAKNO priorita nice=-4 nastavena
+B291 PRISTROJ rozlozen 1080x2160 (displej 1080x2160) za 606 ms
+B291 XEX b363_stres.xex: 486 bajtu - studeny start s OPTION (BASIC vypnuty), pak segmenty
+B353 TURBO start: zavadec XEX b363_stres.xex - az 8 snimku za periodu (kolik telefon stihne), zvuk ztlumeny
+B353 TURBO konec: 3.0 s, emulovano 1.7 s Atari (0.6x rychleji)
+B291 XEX OS nastartovan za 87 snimku (BASIC=VYPNUTY, RAMTOP=$C0) - nahravam segmenty
+B291 XEX b363_stres.xex nahrano: 2 segmentu, 476 bajtu, 0 x INIT -> start $2000 (RUNAD)
+B361 POKEY 2: program pouziva druhy POKEY ($D210-$D21F, stereo upgrade) - hleda ho, nebo na nem hraje
+B296 VBXE: program nasel kartu VBXE (registry $D640, FX 1.26) a pouziva ji
+B361 POKEY STEREO: program hraje na druhy POKEY - levy kanal POKEY 1, pravy POKEY 2
+B363 ATARI ONLINE zaklada hru /api/v1/online/zaloz - porty: hrac 1 = joystick 1, hrac 2 = joystick 2
+B291 HELP otevren - pristroj ZAPNUT, studeny start Atari
+B293 JADRO = ATARI 130XE PAL: RAM 64 kB + rozsirena 16x16 kB (B323: 320K Compy Shop - PORTB bity 2-3 a 6-7, banky 130XE beze zmeny; procesor bit 4, ANTIC bit 5; B352: program, ktery hleda vic nez 16 bank, se sam spusti znovu s 1088K = 64 bank jako Ultimate 1MB - PORTB bity 1-3 a 5-7), OS XL/XE rev.2 (soucet $9211), BASIC rev.C vestaveny, self-test ROM $5000, TRIG3 = RD5 cartridge (prazdny slot = 0), RESET = reset CPU+ANTIC+PIA/MMU, plovouci datova sbernice, ANTIC/GTIA PAL 312 radku, POKEY 1,773 MHz
+B316 CARTRIDGE: soubory .car (XEX/MOBIL, NET, ZIP) - slot $8000-$9FFF / $A000-$BFFF pred BASICem, banky pres $D500-$D5FF, 67 typu (standard 2-16 kB, XEGS a Switchable XEGS, MegaCart, Atarimax 128 kB / 1 MB, SIC!, Williams, Express, Diamond, SpartaDOS X, OSS, Blizzard, Phoenix, Turbosoft, Atrax, Bounty Bob, J(atari)Cart, DCart ...); jiny program (XEX / ATR / TXT) cartridge vytahne, POWER ji necha ve slotu.
+B296 VBXE FX 1.26 v jadre: registry $D640, 512 kB VRAM, MEMAC A/B, XDL (overlay LR/SR/HR/text 80 sloupcu), atributova mapa, palety 4x256, blitter (rezimy 0-6, zoom, vzor, kolize) + IRQ; obraz 4 body na barevny takt. Joystick 1: leva pulka obrazovky = smer, prava = FIRE; herni ovladac taky.
+B298 ZVUK s pasmem jako TV (FIR 16 kHz, bez prekladu ultrazvuku do slysitelna), asynchronni prijem POKEY restartuje casovace 3+4 start bitem; KAZETA: hra (boot) = START+OPTION a RETURN samo, stereo WAV = zvukova stopa do TV, CLOAD i s disketou v D1:; DISKETA: ATR/DISK = vysunout / vymenit bez restartu.
+B299 BASIC/TBXL TXT: TXT soubor s programem napise appka sama do ATARI BASICu / Turbo-BASICu XL; klavesy z pristroje do logu (B299 KLAVESY); LOG/CHYBA = stav a cela pamet Atari v logu; SIO zkratka jen se zapnutou ROM OS (Turbo-BASIC XL ma na $E459 vlastni kod).
+B300 POKEY: casovac s AUDF=$FF (perioda 256) tika a dava preruseni - drive stal (Ghostbusters: hudba a rec z preruseni casovace 1, bez nej titulka stala; nejhlubsi tony byly potichu).
+B301 TV/PC (web prohlizec v appce): obraz Atari 130XE primo z jadra (vyrez 336x240 jako na telefonu) a zvuk 44100 Hz stereo - drive bylo na TV videt jen stranku s testy pod pristrojem.
+B302 KLAVESNICE POCITACE (prohlizec na TV/PC) -> Atari 130XE primo v C++: psani podle rozlozeni (cesky: diakritika bez hacku, AltGr znaky), sipky = kurzor, F1/F3/F4 START/SELECT/OPTION, F2 BREAK, F6 HELP, F8 INVERZE, F9 HRANI (WASD/sipky joystick, K skok, L FIRE); klavesy v tempu, ktere OS stihne.
+B303 TV/PC CELE V C++: kazdy snimek Atari (50/s) jako paleta + jen zmenene radky a zvuk v jednom proudu (/atari.stream) - Java uz nezvetsuje ani nekomprimuje (H.264/JPEG); Ctrl+V nebo pretazeny TXT v prohlizeci = program do BASICu bez NEW (UTF-8 s e s hackem uz neni ATASCII), jiny text = klavesy.
+B348 DISKETA D1: i na urovni bajtu SIO jako skutecna 1050 (hry s vlastnim zavadecem - xBIOS, Prince of Persia: ramec prikazu pres POKEY a linku COMMAND, odpovedi A/C/N/E, cteni/zapis/STATUS/FORMAT, 19200 Bd); OPTION pri bootu z diskety jen 1 s; Acid800 V0.1 38/38 (LXA jako SALLY, asynchronni prijem POKEY drzi casovace 3+4, hraci ve VBLANK po hires radku, fantomove DMA hracu).
+B349 ARCHIVY: hra v ZIP / RAR (XEX/MOBIL, ATR/DISK, NET HRY) se rozbali v C++ (deflate, RAR 2.9 vcetne pevneho a filtru); spusti se samostatna disketa > sada (strana A / Disk 1) > XEX > CAR, ostatni diskety z archivu nabidne ATR/DISK (i VYMENIT BEZ RESTARTU).
+B350 RAR5 (novy WinRAR 5 / 7): hlavicky vint + CRC32, komprese v blocich, filtry DELTA / E8 / E8E9 / ARM, pevny archiv (i s prazdnym souborem uprostred), odkazy se preskoci.
+B351 PPMd (RAR 4 "nejlepsi" = komprese textu): model PPMd var.H + rozsahovy dekoder RAR v C++, prechody PPMd <-> LZ, unikove prikazy, pevny archiv; heslo, vic dilu a RAR 1.5 / 2.0 zatim ne.
+B352 PAMET 1 MB: vychozi 320K (130XE + Compy Shop); program, ktery do rozsirene pameti zapisuje pod vic nez 16 ruznymi PORTB (hleda vic bank), se sam spusti znovu s 1088K (64 bank jako Ultimate 1MB) - Tony VBXE 496 KB.
+B353 TURBO pri nahravani: disketa D1: (SIO pres POKEY i OS v posledni 1 s) nebo zavadec XEX -> az 8 snimku za periodu 20 ms (kolik telefon stihne), zvuk ztlumeny; ne, kdyz hrac drzi joystick / klavesu nebo 3 s po stisku.
+B291 EMULACE_VLAKNO start (50 snimku/s, zvuk OpenSL, vse v C++)
+B291 EMULACE_VLAKNO priorita nice=-8 nastavena
+B291 KRESLICI_VLAKNO start (pristroj kresli C++ primo na displej)
+B291 KRESLICI_VLAKNO priorita nice=-4 nastavena
+B291 PRISTROJ plocha nova 1080x2160 -> kresleni 1080x2160
+B291 POWER VYPNUTO
+B291 PRISTROJ rozlozen 1080x2160 (displej 1080x2160) za 1542 ms
+B363 ATARI ONLINE pripojuje se ke hre /api/v1/online/pripoj (Atari bylo vypnute - zapnuto)
+B363 ATARI ONLINE start: domluveno s Telefon 2 - posilam mu cely stav Atari i s hrou
+B363 ATARI ONLINE START: stav Atari pred snimkem 0 odeslan (10 KB zlib, surove 848 KB, zabaleno za 20 ms)
+B363 ATARI ONLINE start: domluveno s Telefon 1 - cekam na stav Atari od hrace 1 (hra prijde s nim)
+B363 ATARI ONLINE START: stav Atari pred snimkem 0 nahran (10 KB zlib, nahrano za 11 ms) - bez cartridge, D1: prazdna
+B363 ATARI ONLINE START: hrac 2 stav nahral (STAV_OK za 55 ms) - hraje se
+B296 JOYSTICK 1 z herniho ovladace / klavesnice telefonu (smer, FIRE, START, SELECT, OPTION)
+B361 POKEY 2: program pouziva druhy POKEY ($D210-$D21F, stereo upgrade) - hleda ho, nebo na nem hraje
+B361 POKEY STEREO: program hraje na druhy POKEY - levy kanal POKEY 1, pravy POKEY 2
+B296 VBXE: program nasel kartu VBXE (registry $D640, FX 1.26) a pouziva ji
+B296 JOYSTICK 1 z herniho ovladace / klavesnice telefonu (smer, FIRE, START, SELECT, OPTION)
+B363 ATARI ONLINE SETRNE KRESLENI zapnuto: jadro a opravy 64.2 ms na snimek (z 20 ms, prumer za 2 s) - na displej jde kazdy 2. snimek (25/s), emulace a zvuk dal 50/s
+B363 ATARI ONLINE SETRNE KRESLENI zapnuto: jadro a opravy 63.3 ms na snimek (z 20 ms, prumer za 2 s) - na displej jde kazdy 2. snimek (25/s), emulace a zvuk dal 50/s
+B363 ATARI ONLINE konec po 1098 snimcich: druhy hrac hru ukoncil - Atari bezi dal jen na tomto telefonu
+B363 ATARI ONLINE konec (hrac) - Atari bezi dal jen na tomto telefonu
+B291 EMULACE_VLAKNO stop
+B291 KRESLICI_VLAKNO stop
+B291 EMULACE_VLAKNO stop
+B291 KRESLICI_VLAKNO stop
+B363 - online Atari 130XE (skutecny nap_atari_native.cpp, start ze stavu, odhad a oprava, setrne kresleni; protokol verze 3)
+== 1) start ze stavu (telefon 2 ma Atari vypnute a zadnou hru), spicky site, stisky se meni porad
+   telefon 1 | NAHRANO 1
+   telefon 1 | START OK
+   telefon 1 | KOD 9127
+   telefon 1 | HRAJE
+   telefon 1 | VYSLEDEK hrac=1 overeno=19 snimek=1094 zpozdeni=2 zpozdeni_ted=6 cekani=8 cekani_ms=552 synchronizaci=0 synchronizovano=0 rozjeti=0 rozjeti_snimek=0 stav_kb=10 otisk660=a61971dd102be438 sync_videno=0 faze=HRAJE start_stav=4 setrne_videno=1 setrne_c=1 kod2000=00A9
+   telefon 1 | ODHAD odhad=75 sedelo=16 oprav=45 oprava_max=3 oprava_max_ms=150 prepocteno=63 odhad_max=2 chyb_opravy=0 druhy_info_c=7 posledni_zprava=VSTUP spicek=60 spicky_ms=8549 navrat_ze=0 navrat_na=0
+   telefon 1 | LOG start_odeslan=1 start_nahran=0 stav_ok=1 setrne_zap=1 konec=0 pc=2082
+   telefon 1 | DRUHY snimek 976, cekal 7x (478 ms, nejdel 109 ms), odhad 50 snimku (sedelo 8), oprav 26 (nejdel 3 snimku / 164 ms, celkem 1884 ms), zpozdeni 5, odezva 49 ms, 17.0 snimku/s (obraz 8/s setrne), jadro 55.1 ms (nejvys 102.7), odhad nejvys 2 | TEST-A12 Android 12, Wi-Fi -61 dBm 2.4 GHz LOW_LATENCY
+   telefon 1 | CASTI 
+   telefon 1 | KONEC_TEXT 
+   telefon 1 | CHYBA_TEXT 
+   telefon 1 | LOGRADEK B363 ATARI ONLINE START: stav Atari pred snimkem 0 odeslan (10 KB zlib, surove 848 KB, zabaleno za 20 ms)
+   telefon 1 | LOGRADEK B363 ATARI ONLINE SETRNE KRESLENI zapnuto: jadro a opravy 63.3 ms na snimek (z 20 ms, prumer za 2 s) - na displej jde kazdy 2. snimek (25/s), emulace a zvuk dal 50/s
+   telefon 2 | VYPNUTO 1
+   telefon 2 | START OK
+   telefon 2 | HRAJE
+   telefon 2 | VYSLEDEK hrac=2 overeno=19 snimek=1098 zpozdeni=2 zpozdeni_ted=5 cekani=7 cekani_ms=478 synchronizaci=0 synchronizovano=0 rozjeti=0 rozjeti_snimek=0 stav_kb=10 otisk660=a61971dd102be438 sync_videno=0 faze=KONEC start_stav=4 setrne_videno=1 setrne_c=1 kod2000=00A9
+   telefon 2 | ODHAD odhad=55 sedelo=10 oprav=30 oprava_max=3 oprava_max_ms=164 prepocteno=48 odhad_max=2 chyb_opravy=0 druhy_info_c=8 posledni_zprava=KONEC spicek=60 spicky_ms=8669 navrat_ze=0 navrat_na=0
+   telefon 2 | LOG start_odeslan=0 start_nahran=1 stav_ok=0 setrne_zap=1 konec=1 pc=2085
+   telefon 2 | DRUHY snimek 1095, cekal 8x (552 ms, nejdel 172 ms), odhad 75 snimku (sedelo 16), oprav 45 (nejdel 3 snimku / 150 ms, celkem 2764 ms), zpozdeni 6, odezva 41 ms, 18.1 snimku/s (obraz 9/s setrne), jadro 52.3 ms (nejvys 83.2), odhad nejvys 2 | TEST-S8 Android 9, Wi-Fi HIGH_PERF
+   telefon 2 | CASTI 
+   telefon 2 | KONEC_TEXT druhy hrac hru ukoncil
+   telefon 2 | CHYBA_TEXT druhy hrac hru ukoncil
+   telefon 2 | LOGRADEK B363 ATARI ONLINE START: stav Atari pred snimkem 0 nahran (10 KB zlib, nahrano za 11 ms) - bez cartridge, D1: prazdna
+   telefon 2 | LOGRADEK B363 ATARI ONLINE SETRNE KRESLENI zapnuto: jadro a opravy 64.2 ms na snimek (z 20 ms, prumer za 2 s) - na displej jde kazdy 2. snimek (25/s), emulace a zvuk dal 50/s
+   telefon 2 | LOGRADEK B363 ATARI ONLINE konec po 1098 snimcich: druhy hrac hru ukoncil - Atari bezi dal jen na tomto telefonu
+OK     start ze stavu: telefon 2 mel Atari vypnute, telefon 1 poslal cely stav (10 KB zlib), telefon 2 ho nahral, STAV_OK, na $2000 ma telefon 2 kod zatezoveho programu (00A9)
+CHYBA  hra jela: telefon 1 1094 snimku, telefon 2 1098; spicek 60 + 60 (8549 + 8669 ms); odhadnuto 75 + 55 snimku, oprav 45 + 30 (nejdel 3 / 3 snimku, 150 / 164 ms), ulozeny stav vzdy byl
+OK     oprava skutecneho Atari je presna: overeno 19 otisku, rozjeti 0, synchronizaci 0, otisk stroje ve snimku 660 u obou a61971dd102be438 (STEJNY)
+OK     zpozdeni ovladani 2 -> 6 / 5 snimku, Atari stalo 8x (552 ms) / 7x (478 ms), limit odhadu 2 / 2 snimku
+       telefon 1 vi o telefonu 2: snimek 976, cekal 7x (478 ms, nejdel 109 ms), odhad 50 snimku (sedelo 8), oprav 26 (nejdel 3 snimku / 164 ms, celkem 1884 ms), zpozdeni 5, odezva 49 ms, 17.0 snimku/s (obraz 8/s setrne), jadro 55.1 ms (nejvys 102.7), odhad nejvys 2 | TEST-A12 Android 12, Wi-Fi -61 dBm 2.4 GHz LOW_LATENCY
+OK     STATISTIKA: telefon 1 dostal od telefonu 2 7x jeho cisla (vykon jadra a obrazu, odhady, opravy, info z Javy)
+B291 HELP otevren - pristroj ZAPNUT, studeny start Atari
+B293 JADRO = ATARI 130XE PAL: RAM 64 kB + rozsirena 16x16 kB (B323: 320K Compy Shop - PORTB bity 2-3 a 6-7, banky 130XE beze zmeny; procesor bit 4, ANTIC bit 5; B352: program, ktery hleda vic nez 16 bank, se sam spusti znovu s 1088K = 64 bank jako Ultimate 1MB - PORTB bity 1-3 a 5-7), OS XL/XE rev.2 (soucet $9211), BASIC rev.C vestaveny, self-test ROM $5000, TRIG3 = RD5 cartridge (prazdny slot = 0), RESET = reset CPU+ANTIC+PIA/MMU, plovouci datova sbernice, ANTIC/GTIA PAL 312 radku, POKEY 1,773 MHz
+B316 CARTRIDGE: soubory .car (XEX/MOBIL, NET, ZIP) - slot $8000-$9FFF / $A000-$BFFF pred BASICem, banky pres $D500-$D5FF, 67 typu (standard 2-16 kB, XEGS a Switchable XEGS, MegaCart, Atarimax 128 kB / 1 MB, SIC!, Williams, Express, Diamond, SpartaDOS X, OSS, Blizzard, Phoenix, Turbosoft, Atrax, Bounty Bob, J(atari)Cart, DCart ...); jiny program (XEX / ATR / TXT) cartridge vytahne, POWER ji necha ve slotu.
+B296 VBXE FX 1.26 v jadre: registry $D640, 512 kB VRAM, MEMAC A/B, XDL (overlay LR/SR/HR/text 80 sloupcu), atributova mapa, palety 4x256, blitter (rezimy 0-6, zoom, vzor, kolize) + IRQ; obraz 4 body na barevny takt. Joystick 1: leva pulka obrazovky = smer, prava = FIRE; herni ovladac taky.
+B298 ZVUK s pasmem jako TV (FIR 16 kHz, bez prekladu ultrazvuku do slysitelna), asynchronni prijem POKEY restartuje casovace 3+4 start bitem; KAZETA: hra (boot) = START+OPTION a RETURN samo, stereo WAV = zvukova stopa do TV, CLOAD i s disketou v D1:; DISKETA: ATR/DISK = vysunout / vymenit bez restartu.
+B299 BASIC/TBXL TXT: TXT soubor s programem napise appka sama do ATARI BASICu / Turbo-BASICu XL; klavesy z pristroje do logu (B299 KLAVESY); LOG/CHYBA = stav a cela pamet Atari v logu; SIO zkratka jen se zapnutou ROM OS (Turbo-BASIC XL ma na $E459 vlastni kod).
+B300 POKEY: casovac s AUDF=$FF (perioda 256) tika a dava preruseni - drive stal (Ghostbusters: hudba a rec z preruseni casovace 1, bez nej titulka stala; nejhlubsi tony byly potichu).
+B301 TV/PC (web prohlizec v appce): obraz Atari 130XE primo z jadra (vyrez 336x240 jako na telefonu) a zvuk 44100 Hz stereo - drive bylo na TV videt jen stranku s testy pod pristrojem.
+B302 KLAVESNICE POCITACE (prohlizec na TV/PC) -> Atari 130XE primo v C++: psani podle rozlozeni (cesky: diakritika bez hacku, AltGr znaky), sipky = kurzor, F1/F3/F4 START/SELECT/OPTION, F2 BREAK, F6 HELP, F8 INVERZE, F9 HRANI (WASD/sipky joystick, K skok, L FIRE); klavesy v tempu, ktere OS stihne.
+B303 TV/PC CELE V C++: kazdy snimek Atari (50/s) jako paleta + jen zmenene radky a zvuk v jednom proudu (/atari.stream) - Java uz nezvetsuje ani nekomprimuje (H.264/JPEG); Ctrl+V nebo pretazeny TXT v prohlizeci = program do BASICu bez NEW (UTF-8 s e s hackem uz neni ATASCII), jiny text = klavesy.
+B348 DISKETA D1: i na urovni bajtu SIO jako skutecna 1050 (hry s vlastnim zavadecem - xBIOS, Prince of Persia: ramec prikazu pres POKEY a linku COMMAND, odpovedi A/C/N/E, cteni/zapis/STATUS/FORMAT, 19200 Bd); OPTION pri bootu z diskety jen 1 s; Acid800 V0.1 38/38 (LXA jako SALLY, asynchronni prijem POKEY drzi casovace 3+4, hraci ve VBLANK po hires radku, fantomove DMA hracu).
+B349 ARCHIVY: hra v ZIP / RAR (XEX/MOBIL, ATR/DISK, NET HRY) se rozbali v C++ (deflate, RAR 2.9 vcetne pevneho a filtru); spusti se samostatna disketa > sada (strana A / Disk 1) > XEX > CAR, ostatni diskety z archivu nabidne ATR/DISK (i VYMENIT BEZ RESTARTU).
+B350 RAR5 (novy WinRAR 5 / 7): hlavicky vint + CRC32, komprese v blocich, filtry DELTA / E8 / E8E9 / ARM, pevny archiv (i s prazdnym souborem uprostred), odkazy se preskoci.
+B351 PPMd (RAR 4 "nejlepsi" = komprese textu): model PPMd var.H + rozsahovy dekoder RAR v C++, prechody PPMd <-> LZ, unikove prikazy, pevny archiv; heslo, vic dilu a RAR 1.5 / 2.0 zatim ne.
+B352 PAMET 1 MB: vychozi 320K (130XE + Compy Shop); program, ktery do rozsirene pameti zapisuje pod vic nez 16 ruznymi PORTB (hleda vic bank), se sam spusti znovu s 1088K (64 bank jako Ultimate 1MB) - Tony VBXE 496 KB.
+B353 TURBO pri nahravani: disketa D1: (SIO pres POKEY i OS v posledni 1 s) nebo zavadec XEX -> az 8 snimku za periodu 20 ms (kolik telefon stihne), zvuk ztlumeny; ne, kdyz hrac drzi joystick / klavesu nebo 3 s po stisku.
+B291 EMULACE_VLAKNO start (50 snimku/s, zvuk OpenSL, vse v C++)
+B291 KRESLICI_VLAKNO start (pristroj kresli C++ primo na displej)
+B291 PRISTROJ plocha nova 1080x2160 -> kresleni 1080x2160
+B291 EMULACE_VLAKNO priorita nice=-8 nastavena
+B291 KRESLICI_VLAKNO priorita nice=-4 nastavena
+B291 PRISTROJ rozlozen 1080x2160 (displej 1080x2160) za 617 ms
+B291 XEX b363_stres.xex: 486 bajtu - studeny start s OPTION (BASIC vypnuty), pak segmenty
+B353 TURBO start: zavadec XEX b363_stres.xex - az 8 snimku za periodu (kolik telefon stihne), zvuk ztlumeny
+B353 TURBO konec: 2.8 s, emulovano 1.7 s Atari (0.6x rychleji)
+B291 XEX OS nastartovan za 87 snimku (BASIC=VYPNUTY, RAMTOP=$C0) - nahravam segmenty
+B291 XEX b363_stres.xex nahrano: 2 segmentu, 476 bajtu, 0 x INIT -> start $2000 (RUNAD)
+B361 POKEY 2: program pouziva druhy POKEY ($D210-$D21F, stereo upgrade) - hleda ho, nebo na nem hraje
+B296 VBXE: program nasel kartu VBXE (registry $D640, FX 1.26) a pouziva ji
+B361 POKEY STEREO: program hraje na druhy POKEY - levy kanal POKEY 1, pravy POKEY 2
+B363 ATARI ONLINE zaklada hru /api/v1/online/zaloz - porty: hrac 1 = joystick 1, hrac 2 = joystick 2
+B291 HELP otevren - pristroj ZAPNUT, studeny start Atari
+B293 JADRO = ATARI 130XE PAL: RAM 64 kB + rozsirena 16x16 kB (B323: 320K Compy Shop - PORTB bity 2-3 a 6-7, banky 130XE beze zmeny; procesor bit 4, ANTIC bit 5; B352: program, ktery hleda vic nez 16 bank, se sam spusti znovu s 1088K = 64 bank jako Ultimate 1MB - PORTB bity 1-3 a 5-7), OS XL/XE rev.2 (soucet $9211), BASIC rev.C vestaveny, self-test ROM $5000, TRIG3 = RD5 cartridge (prazdny slot = 0), RESET = reset CPU+ANTIC+PIA/MMU, plovouci datova sbernice, ANTIC/GTIA PAL 312 radku, POKEY 1,773 MHz
+B316 CARTRIDGE: soubory .car (XEX/MOBIL, NET, ZIP) - slot $8000-$9FFF / $A000-$BFFF pred BASICem, banky pres $D500-$D5FF, 67 typu (standard 2-16 kB, XEGS a Switchable XEGS, MegaCart, Atarimax 128 kB / 1 MB, SIC!, Williams, Express, Diamond, SpartaDOS X, OSS, Blizzard, Phoenix, Turbosoft, Atrax, Bounty Bob, J(atari)Cart, DCart ...); jiny program (XEX / ATR / TXT) cartridge vytahne, POWER ji necha ve slotu.
+B296 VBXE FX 1.26 v jadre: registry $D640, 512 kB VRAM, MEMAC A/B, XDL (overlay LR/SR/HR/text 80 sloupcu), atributova mapa, palety 4x256, blitter (rezimy 0-6, zoom, vzor, kolize) + IRQ; obraz 4 body na barevny takt. Joystick 1: leva pulka obrazovky = smer, prava = FIRE; herni ovladac taky.
+B298 ZVUK s pasmem jako TV (FIR 16 kHz, bez prekladu ultrazvuku do slysitelna), asynchronni prijem POKEY restartuje casovace 3+4 start bitem; KAZETA: hra (boot) = START+OPTION a RETURN samo, stereo WAV = zvukova stopa do TV, CLOAD i s disketou v D1:; DISKETA: ATR/DISK = vysunout / vymenit bez restartu.
+B299 BASIC/TBXL TXT: TXT soubor s programem napise appka sama do ATARI BASICu / Turbo-BASICu XL; klavesy z pristroje do logu (B299 KLAVESY); LOG/CHYBA = stav a cela pamet Atari v logu; SIO zkratka jen se zapnutou ROM OS (Turbo-BASIC XL ma na $E459 vlastni kod).
+B300 POKEY: casovac s AUDF=$FF (perioda 256) tika a dava preruseni - drive stal (Ghostbusters: hudba a rec z preruseni casovace 1, bez nej titulka stala; nejhlubsi tony byly potichu).
+B301 TV/PC (web prohlizec v appce): obraz Atari 130XE primo z jadra (vyrez 336x240 jako na telefonu) a zvuk 44100 Hz stereo - drive bylo na TV videt jen stranku s testy pod pristrojem.
+B302 KLAVESNICE POCITACE (prohlizec na TV/PC) -> Atari 130XE primo v C++: psani podle rozlozeni (cesky: diakritika bez hacku, AltGr znaky), sipky = kurzor, F1/F3/F4 START/SELECT/OPTION, F2 BREAK, F6 HELP, F8 INVERZE, F9 HRANI (WASD/sipky joystick, K skok, L FIRE); klavesy v tempu, ktere OS stihne.
+B303 TV/PC CELE V C++: kazdy snimek Atari (50/s) jako paleta + jen zmenene radky a zvuk v jednom proudu (/atari.stream) - Java uz nezvetsuje ani nekomprimuje (H.264/JPEG); Ctrl+V nebo pretazeny TXT v prohlizeci = program do BASICu bez NEW (UTF-8 s e s hackem uz neni ATASCII), jiny text = klavesy.
+B348 DISKETA D1: i na urovni bajtu SIO jako skutecna 1050 (hry s vlastnim zavadecem - xBIOS, Prince of Persia: ramec prikazu pres POKEY a linku COMMAND, odpovedi A/C/N/E, cteni/zapis/STATUS/FORMAT, 19200 Bd); OPTION pri bootu z diskety jen 1 s; Acid800 V0.1 38/38 (LXA jako SALLY, asynchronni prijem POKEY drzi casovace 3+4, hraci ve VBLANK po hires radku, fantomove DMA hracu).
+B349 ARCHIVY: hra v ZIP / RAR (XEX/MOBIL, ATR/DISK, NET HRY) se rozbali v C++ (deflate, RAR 2.9 vcetne pevneho a filtru); spusti se samostatna disketa > sada (strana A / Disk 1) > XEX > CAR, ostatni diskety z archivu nabidne ATR/DISK (i VYMENIT BEZ RESTARTU).
+B350 RAR5 (novy WinRAR 5 / 7): hlavicky vint + CRC32, komprese v blocich, filtry DELTA / E8 / E8E9 / ARM, pevny archiv (i s prazdnym souborem uprostred), odkazy se preskoci.
+B351 PPMd (RAR 4 "nejlepsi" = komprese textu): model PPMd var.H + rozsahovy dekoder RAR v C++, prechody PPMd <-> LZ, unikove prikazy, pevny archiv; heslo, vic dilu a RAR 1.5 / 2.0 zatim ne.
+B352 PAMET 1 MB: vychozi 320K (130XE + Compy Shop); program, ktery do rozsirene pameti zapisuje pod vic nez 16 ruznymi PORTB (hleda vic bank), se sam spusti znovu s 1088K (64 bank jako Ultimate 1MB) - Tony VBXE 496 KB.
+B353 TURBO pri nahravani: disketa D1: (SIO pres POKEY i OS v posledni 1 s) nebo zavadec XEX -> az 8 snimku za periodu 20 ms (kolik telefon stihne), zvuk ztlumeny; ne, kdyz hrac drzi joystick / klavesu nebo 3 s po stisku.
+B291 EMULACE_VLAKNO start (50 snimku/s, zvuk OpenSL, vse v C++)
+B291 EMULACE_VLAKNO priorita nice=-8 nastavena
+B291 KRESLICI_VLAKNO start (pristroj kresli C++ primo na displej)
+B291 KRESLICI_VLAKNO priorita nice=-4 nastavena
+B291 PRISTROJ plocha nova 1080x2160 -> kresleni 1080x2160
+B291 POWER VYPNUTO
+B291 PRISTROJ rozlozen 1080x2160 (displej 1080x2160) za 1427 ms
+B363 ATARI ONLINE pripojuje se ke hre /api/v1/online/pripoj (Atari bylo vypnute - zapnuto)
+B363 ATARI ONLINE start: domluveno s Telefon 2 - posilam mu cely stav Atari i s hrou
+B363 ATARI ONLINE start: domluveno s Telefon 1 - cekam na stav Atari od hrace 1 (hra prijde s nim)
+B363 ATARI ONLINE START: stav Atari pred snimkem 0 odeslan (10 KB zlib, surove 848 KB, zabaleno za 50 ms)
+B363 ATARI ONLINE START: stav Atari pred snimkem 0 nahran (10 KB zlib, nahrano za 4 ms) - bez cartridge, D1: prazdna
+B363 ATARI ONLINE START: hrac 2 stav nahral (STAV_OK za 49 ms) - hraje se
+B361 POKEY 2: program pouziva druhy POKEY ($D210-$D21F, stereo upgrade) - hleda ho, nebo na nem hraje
+B361 POKEY STEREO: program hraje na druhy POKEY - levy kanal POKEY 1, pravy POKEY 2
+B296 VBXE: program nasel kartu VBXE (registry $D640, FX 1.26) a pouziva ji
+B296 JOYSTICK 1 z herniho ovladace / klavesnice telefonu (smer, FIRE, START, SELECT, OPTION)
+B296 JOYSTICK 1 z herniho ovladace / klavesnice telefonu (smer, FIRE, START, SELECT, OPTION)
+B363 ATARI ONLINE SETRNE KRESLENI zapnuto: jadro a opravy 45.3 ms na snimek (z 20 ms, prumer za 2 s) - na displej jde kazdy 2. snimek (25/s), emulace a zvuk dal 50/s
+B363 ATARI ONLINE SETRNE KRESLENI zapnuto: jadro a opravy 53.5 ms na snimek (z 20 ms, prumer za 2 s) - na displej jde kazdy 2. snimek (25/s), emulace a zvuk dal 50/s
+B363 ATARI ONLINE synchronizace: stav Atari pred snimkem 309 odeslan (11 KB zlib, surove 848 KB, zabaleno za 6 ms)
+B363 ATARI ONLINE synchronizace: stav Atari pred snimkem 309 nahran (11 KB zlib, nahrano za 3 ms) - bez cartridge, D1: prazdna
+B363 ATARI ONLINE konec (hrac) - Atari bezi dal jen na tomto telefonu
+B363 ATARI ONLINE konec po 782 snimcich: druhy hrac hru ukoncil - Atari bezi dal jen na tomto telefonu
+B291 EMULACE_VLAKNO stop
+B291 KRESLICI_VLAKNO stop
+B291 EMULACE_VLAKNO stop
+B291 KRESLICI_VLAKNO stop
+== 2) stroj telefonu 2 se ve snimku 300 splete + spicky site -> synchronizace, hra pokracuje
+   telefon 1 | NAHRANO 1
+   telefon 1 | START OK
+   telefon 1 | KOD 8599
+   telefon 1 | HRAJE
+   telefon 1 | VYSLEDEK hrac=1 overeno=12 snimek=781 zpozdeni=2 zpozdeni_ted=6 cekani=7 cekani_ms=337 synchronizaci=1 synchronizovano=1 rozjeti=1 rozjeti_snimek=300 stav_kb=11 otisk660=62fe9896b4b594f6 sync_videno=1 faze=KONEC start_stav=4 setrne_videno=1 setrne_c=1 kod2000=00A9
+   telefon 1 | ODHAD odhad=75 sedelo=9 oprav=45 oprava_max=3 oprava_max_ms=160 prepocteno=69 odhad_max=2 chyb_opravy=0 druhy_info_c=5 posledni_zprava=VSTUP spicek=44 spicky_ms=5828 navrat_ze=0 navrat_na=0
+   telefon 1 | LOG start_odeslan=1 start_nahran=0 stav_ok=1 setrne_zap=1 konec=1 pc=2085
+   telefon 1 | DRUHY snimek 714, cekal 4x (222 ms, nejdel 106 ms), odhad 46 snimku (sedelo 9), oprav 25 (nejdel 3 snimku / 165 ms, celkem 1630 ms), zpozdeni 6, odezva 22 ms, 15.5 snimku/s (obraz 8/s setrne), jadro 62.0 ms (nejvys 83.1), odhad nejvys 2 | TEST-A12 Android 12, Wi-Fi -61 dBm 2.4 GHz LOW_LATENCY
+   telefon 1 | CASTI RAM 64K
+   telefon 1 | KONEC_TEXT 
+   telefon 1 | CHYBA_TEXT online hru jsi ukoncil
+   telefon 1 | LOGRADEK B363 ATARI ONLINE START: stav Atari pred snimkem 0 odeslan (10 KB zlib, surove 848 KB, zabaleno za 50 ms)
+   telefon 1 | LOGRADEK B363 ATARI ONLINE synchronizace: stav Atari pred snimkem 309 odeslan (11 KB zlib, surove 848 KB, zabaleno za 6 ms)
+   telefon 1 | LOGRADEK B363 ATARI ONLINE SETRNE KRESLENI zapnuto: jadro a opravy 45.3 ms na snimek (z 20 ms, prumer za 2 s) - na displej jde kazdy 2. snimek (25/s), emulace a zvuk dal 50/s
+   telefon 1 | LOGRADEK B363 ATARI ONLINE konec (hrac) - Atari bezi dal jen na tomto telefonu
+   telefon 2 | VYPNUTO 1
+   telefon 2 | START OK
+   telefon 2 | HRAJE
+   telefon 2 | VYSLEDEK hrac=2 overeno=12 snimek=782 zpozdeni=2 zpozdeni_ted=6 cekani=4 cekani_ms=222 synchronizaci=1 synchronizovano=1 rozjeti=1 rozjeti_snimek=300 stav_kb=11 otisk660=62fe9896b4b594f6 sync_videno=1 faze=KONEC start_stav=4 setrne_videno=1 setrne_c=1 kod2000=00A9
+   telefon 2 | ODHAD odhad=46 sedelo=9 oprav=25 oprava_max=3 oprava_max_ms=165 prepocteno=40 odhad_max=2 chyb_opravy=0 druhy_info_c=6 posledni_zprava=KONEC spicek=44 spicky_ms=5916 navrat_ze=0 navrat_na=0
+   telefon 2 | LOG start_odeslan=0 start_nahran=1 stav_ok=0 setrne_zap=1 konec=1 pc=2082
+   telefon 2 | DRUHY snimek 781, cekal 7x (337 ms, nejdel 103 ms), odhad 75 snimku (sedelo 9), oprav 45 (nejdel 3 snimku / 160 ms, celkem 2669 ms), zpozdeni 6, odezva 84 ms, 14.7 snimku/s (obraz 7/s setrne), jadro 64.1 ms (nejvys 163.4), odhad nejvys 2 | TEST-S8 Android 9, Wi-Fi HIGH_PERF
+   telefon 2 | CASTI RAM 64K
+   telefon 2 | KONEC_TEXT druhy hrac hru ukoncil
+   telefon 2 | CHYBA_TEXT druhy hrac hru ukoncil
+   telefon 2 | LOGRADEK B363 ATARI ONLINE START: stav Atari pred snimkem 0 nahran (10 KB zlib, nahrano za 4 ms) - bez cartridge, D1: prazdna
+   telefon 2 | LOGRADEK B363 ATARI ONLINE synchronizace: stav Atari pred snimkem 309 nahran (11 KB zlib, nahrano za 3 ms) - bez cartridge, D1: prazdna
+   telefon 2 | LOGRADEK B363 ATARI ONLINE SETRNE KRESLENI zapnuto: jadro a opravy 53.5 ms na snimek (z 20 ms, prumer za 2 s) - na displej jde kazdy 2. snimek (25/s), emulace a zvuk dal 50/s
+   telefon 2 | LOGRADEK B363 ATARI ONLINE konec po 782 snimcich: druhy hrac hru ukoncil - Atari bezi dal jen na tomto telefonu
+OK     rozjeti poznano v otisku 300 (RAM 64K), synchronizace hotova (1 / 1), stav 11 KB
+OK     hra pokracovala: 781 / 782 snimku, otisk ve snimku 660 u obou 62fe9896b4b594f6 (STEJNY), overeno 12, oprav 45 + 25
+B291 HELP otevren - pristroj ZAPNUT, studeny start Atari
+B293 JADRO = ATARI 130XE PAL: RAM 64 kB + rozsirena 16x16 kB (B323: 320K Compy Shop - PORTB bity 2-3 a 6-7, banky 130XE beze zmeny; procesor bit 4, ANTIC bit 5; B352: program, ktery hleda vic nez 16 bank, se sam spusti znovu s 1088K = 64 bank jako Ultimate 1MB - PORTB bity 1-3 a 5-7), OS XL/XE rev.2 (soucet $9211), BASIC rev.C vestaveny, self-test ROM $5000, TRIG3 = RD5 cartridge (prazdny slot = 0), RESET = reset CPU+ANTIC+PIA/MMU, plovouci datova sbernice, ANTIC/GTIA PAL 312 radku, POKEY 1,773 MHz
+B316 CARTRIDGE: soubory .car (XEX/MOBIL, NET, ZIP) - slot $8000-$9FFF / $A000-$BFFF pred BASICem, banky pres $D500-$D5FF, 67 typu (standard 2-16 kB, XEGS a Switchable XEGS, MegaCart, Atarimax 128 kB / 1 MB, SIC!, Williams, Express, Diamond, SpartaDOS X, OSS, Blizzard, Phoenix, Turbosoft, Atrax, Bounty Bob, J(atari)Cart, DCart ...); jiny program (XEX / ATR / TXT) cartridge vytahne, POWER ji necha ve slotu.
+B296 VBXE FX 1.26 v jadre: registry $D640, 512 kB VRAM, MEMAC A/B, XDL (overlay LR/SR/HR/text 80 sloupcu), atributova mapa, palety 4x256, blitter (rezimy 0-6, zoom, vzor, kolize) + IRQ; obraz 4 body na barevny takt. Joystick 1: leva pulka obrazovky = smer, prava = FIRE; herni ovladac taky.
+B298 ZVUK s pasmem jako TV (FIR 16 kHz, bez prekladu ultrazvuku do slysitelna), asynchronni prijem POKEY restartuje casovace 3+4 start bitem; KAZETA: hra (boot) = START+OPTION a RETURN samo, stereo WAV = zvukova stopa do TV, CLOAD i s disketou v D1:; DISKETA: ATR/DISK = vysunout / vymenit bez restartu.
+B299 BASIC/TBXL TXT: TXT soubor s programem napise appka sama do ATARI BASICu / Turbo-BASICu XL; klavesy z pristroje do logu (B299 KLAVESY); LOG/CHYBA = stav a cela pamet Atari v logu; SIO zkratka jen se zapnutou ROM OS (Turbo-BASIC XL ma na $E459 vlastni kod).
+B300 POKEY: casovac s AUDF=$FF (perioda 256) tika a dava preruseni - drive stal (Ghostbusters: hudba a rec z preruseni casovace 1, bez nej titulka stala; nejhlubsi tony byly potichu).
+B301 TV/PC (web prohlizec v appce): obraz Atari 130XE primo z jadra (vyrez 336x240 jako na telefonu) a zvuk 44100 Hz stereo - drive bylo na TV videt jen stranku s testy pod pristrojem.
+B302 KLAVESNICE POCITACE (prohlizec na TV/PC) -> Atari 130XE primo v C++: psani podle rozlozeni (cesky: diakritika bez hacku, AltGr znaky), sipky = kurzor, F1/F3/F4 START/SELECT/OPTION, F2 BREAK, F6 HELP, F8 INVERZE, F9 HRANI (WASD/sipky joystick, K skok, L FIRE); klavesy v tempu, ktere OS stihne.
+B303 TV/PC CELE V C++: kazdy snimek Atari (50/s) jako paleta + jen zmenene radky a zvuk v jednom proudu (/atari.stream) - Java uz nezvetsuje ani nekomprimuje (H.264/JPEG); Ctrl+V nebo pretazeny TXT v prohlizeci = program do BASICu bez NEW (UTF-8 s e s hackem uz neni ATASCII), jiny text = klavesy.
+B348 DISKETA D1: i na urovni bajtu SIO jako skutecna 1050 (hry s vlastnim zavadecem - xBIOS, Prince of Persia: ramec prikazu pres POKEY a linku COMMAND, odpovedi A/C/N/E, cteni/zapis/STATUS/FORMAT, 19200 Bd); OPTION pri bootu z diskety jen 1 s; Acid800 V0.1 38/38 (LXA jako SALLY, asynchronni prijem POKEY drzi casovace 3+4, hraci ve VBLANK po hires radku, fantomove DMA hracu).
+B349 ARCHIVY: hra v ZIP / RAR (XEX/MOBIL, ATR/DISK, NET HRY) se rozbali v C++ (deflate, RAR 2.9 vcetne pevneho a filtru); spusti se samostatna disketa > sada (strana A / Disk 1) > XEX > CAR, ostatni diskety z archivu nabidne ATR/DISK (i VYMENIT BEZ RESTARTU).
+B350 RAR5 (novy WinRAR 5 / 7): hlavicky vint + CRC32, komprese v blocich, filtry DELTA / E8 / E8E9 / ARM, pevny archiv (i s prazdnym souborem uprostred), odkazy se preskoci.
+B351 PPMd (RAR 4 "nejlepsi" = komprese textu): model PPMd var.H + rozsahovy dekoder RAR v C++, prechody PPMd <-> LZ, unikove prikazy, pevny archiv; heslo, vic dilu a RAR 1.5 / 2.0 zatim ne.
+B352 PAMET 1 MB: vychozi 320K (130XE + Compy Shop); program, ktery do rozsirene pameti zapisuje pod vic nez 16 ruznymi PORTB (hleda vic bank), se sam spusti znovu s 1088K (64 bank jako Ultimate 1MB) - Tony VBXE 496 KB.
+B353 TURBO pri nahravani: disketa D1: (SIO pres POKEY i OS v posledni 1 s) nebo zavadec XEX -> az 8 snimku za periodu 20 ms (kolik telefon stihne), zvuk ztlumeny; ne, kdyz hrac drzi joystick / klavesu nebo 3 s po stisku.
+B291 EMULACE_VLAKNO start (50 snimku/s, zvuk OpenSL, vse v C++)
+B291 EMULACE_VLAKNO priorita nice=-8 nastavena
+B291 KRESLICI_VLAKNO start (pristroj kresli C++ primo na displej)
+B291 PRISTROJ plocha nova 1080x2160 -> kresleni 1080x2160
+B291 KRESLICI_VLAKNO priorita nice=-4 nastavena
+B291 PRISTROJ rozlozen 1080x2160 (displej 1080x2160) za 752 ms
+B291 XEX b363_stres.xex: 486 bajtu - studeny start s OPTION (BASIC vypnuty), pak segmenty
+B353 TURBO start: zavadec XEX b363_stres.xex - az 8 snimku za periodu (kolik telefon stihne), zvuk ztlumeny
+B353 TURBO konec: 2.5 s, emulovano 1.7 s Atari (0.7x rychleji)
+B291 XEX OS nastartovan za 87 snimku (BASIC=VYPNUTY, RAMTOP=$C0) - nahravam segmenty
+B291 XEX b363_stres.xex nahrano: 2 segmentu, 476 bajtu, 0 x INIT -> start $2000 (RUNAD)
+B361 POKEY 2: program pouziva druhy POKEY ($D210-$D21F, stereo upgrade) - hleda ho, nebo na nem hraje
+B296 VBXE: program nasel kartu VBXE (registry $D640, FX 1.26) a pouziva ji
+B361 POKEY STEREO: program hraje na druhy POKEY - levy kanal POKEY 1, pravy POKEY 2
+B363 ATARI ONLINE zaklada hru /api/v1/online/zaloz - porty: hrac 1 = joystick 1, hrac 2 = joystick 2
+B291 HELP otevren - pristroj ZAPNUT, studeny start Atari
+B293 JADRO = ATARI 130XE PAL: RAM 64 kB + rozsirena 16x16 kB (B323: 320K Compy Shop - PORTB bity 2-3 a 6-7, banky 130XE beze zmeny; procesor bit 4, ANTIC bit 5; B352: program, ktery hleda vic nez 16 bank, se sam spusti znovu s 1088K = 64 bank jako Ultimate 1MB - PORTB bity 1-3 a 5-7), OS XL/XE rev.2 (soucet $9211), BASIC rev.C vestaveny, self-test ROM $5000, TRIG3 = RD5 cartridge (prazdny slot = 0), RESET = reset CPU+ANTIC+PIA/MMU, plovouci datova sbernice, ANTIC/GTIA PAL 312 radku, POKEY 1,773 MHz
+B316 CARTRIDGE: soubory .car (XEX/MOBIL, NET, ZIP) - slot $8000-$9FFF / $A000-$BFFF pred BASICem, banky pres $D500-$D5FF, 67 typu (standard 2-16 kB, XEGS a Switchable XEGS, MegaCart, Atarimax 128 kB / 1 MB, SIC!, Williams, Express, Diamond, SpartaDOS X, OSS, Blizzard, Phoenix, Turbosoft, Atrax, Bounty Bob, J(atari)Cart, DCart ...); jiny program (XEX / ATR / TXT) cartridge vytahne, POWER ji necha ve slotu.
+B296 VBXE FX 1.26 v jadre: registry $D640, 512 kB VRAM, MEMAC A/B, XDL (overlay LR/SR/HR/text 80 sloupcu), atributova mapa, palety 4x256, blitter (rezimy 0-6, zoom, vzor, kolize) + IRQ; obraz 4 body na barevny takt. Joystick 1: leva pulka obrazovky = smer, prava = FIRE; herni ovladac taky.
+B298 ZVUK s pasmem jako TV (FIR 16 kHz, bez prekladu ultrazvuku do slysitelna), asynchronni prijem POKEY restartuje casovace 3+4 start bitem; KAZETA: hra (boot) = START+OPTION a RETURN samo, stereo WAV = zvukova stopa do TV, CLOAD i s disketou v D1:; DISKETA: ATR/DISK = vysunout / vymenit bez restartu.
+B299 BASIC/TBXL TXT: TXT soubor s programem napise appka sama do ATARI BASICu / Turbo-BASICu XL; klavesy z pristroje do logu (B299 KLAVESY); LOG/CHYBA = stav a cela pamet Atari v logu; SIO zkratka jen se zapnutou ROM OS (Turbo-BASIC XL ma na $E459 vlastni kod).
+B300 POKEY: casovac s AUDF=$FF (perioda 256) tika a dava preruseni - drive stal (Ghostbusters: hudba a rec z preruseni casovace 1, bez nej titulka stala; nejhlubsi tony byly potichu).
+B301 TV/PC (web prohlizec v appce): obraz Atari 130XE primo z jadra (vyrez 336x240 jako na telefonu) a zvuk 44100 Hz stereo - drive bylo na TV videt jen stranku s testy pod pristrojem.
+B302 KLAVESNICE POCITACE (prohlizec na TV/PC) -> Atari 130XE primo v C++: psani podle rozlozeni (cesky: diakritika bez hacku, AltGr znaky), sipky = kurzor, F1/F3/F4 START/SELECT/OPTION, F2 BREAK, F6 HELP, F8 INVERZE, F9 HRANI (WASD/sipky joystick, K skok, L FIRE); klavesy v tempu, ktere OS stihne.
+B303 TV/PC CELE V C++: kazdy snimek Atari (50/s) jako paleta + jen zmenene radky a zvuk v jednom proudu (/atari.stream) - Java uz nezvetsuje ani nekomprimuje (H.264/JPEG); Ctrl+V nebo pretazeny TXT v prohlizeci = program do BASICu bez NEW (UTF-8 s e s hackem uz neni ATASCII), jiny text = klavesy.
+B348 DISKETA D1: i na urovni bajtu SIO jako skutecna 1050 (hry s vlastnim zavadecem - xBIOS, Prince of Persia: ramec prikazu pres POKEY a linku COMMAND, odpovedi A/C/N/E, cteni/zapis/STATUS/FORMAT, 19200 Bd); OPTION pri bootu z diskety jen 1 s; Acid800 V0.1 38/38 (LXA jako SALLY, asynchronni prijem POKEY drzi casovace 3+4, hraci ve VBLANK po hires radku, fantomove DMA hracu).
+B349 ARCHIVY: hra v ZIP / RAR (XEX/MOBIL, ATR/DISK, NET HRY) se rozbali v C++ (deflate, RAR 2.9 vcetne pevneho a filtru); spusti se samostatna disketa > sada (strana A / Disk 1) > XEX > CAR, ostatni diskety z archivu nabidne ATR/DISK (i VYMENIT BEZ RESTARTU).
+B350 RAR5 (novy WinRAR 5 / 7): hlavicky vint + CRC32, komprese v blocich, filtry DELTA / E8 / E8E9 / ARM, pevny archiv (i s prazdnym souborem uprostred), odkazy se preskoci.
+B351 PPMd (RAR 4 "nejlepsi" = komprese textu): model PPMd var.H + rozsahovy dekoder RAR v C++, prechody PPMd <-> LZ, unikove prikazy, pevny archiv; heslo, vic dilu a RAR 1.5 / 2.0 zatim ne.
+B352 PAMET 1 MB: vychozi 320K (130XE + Compy Shop); program, ktery do rozsirene pameti zapisuje pod vic nez 16 ruznymi PORTB (hleda vic bank), se sam spusti znovu s 1088K (64 bank jako Ultimate 1MB) - Tony VBXE 496 KB.
+B353 TURBO pri nahravani: disketa D1: (SIO pres POKEY i OS v posledni 1 s) nebo zavadec XEX -> az 8 snimku za periodu 20 ms (kolik telefon stihne), zvuk ztlumeny; ne, kdyz hrac drzi joystick / klavesu nebo 3 s po stisku.
+B291 EMULACE_VLAKNO start (50 snimku/s, zvuk OpenSL, vse v C++)
+B291 KRESLICI_VLAKNO start (pristroj kresli C++ primo na displej)
+B291 PRISTROJ plocha nova 1080x2160 -> kresleni 1080x2160
+B291 EMULACE_VLAKNO priorita nice=-8 nastavena
+B291 KRESLICI_VLAKNO priorita nice=-4 nastavena
+B291 POWER VYPNUTO
+B291 PRISTROJ rozlozen 1080x2160 (displej 1080x2160) za 1969 ms
+B363 ATARI ONLINE start: domluveno s Telefon 2 - posilam mu cely stav Atari i s hrou
+B363 ATARI ONLINE START: stav Atari pred snimkem 0 odeslan (9 KB zlib, surove 848 KB, zabaleno za 30 ms)
+B363 ATARI ONLINE pripojuje se ke hre /api/v1/online/pripoj (Atari bylo vypnute - zapnuto)
+B363 ATARI ONLINE start: domluveno s Telefon 1 - cekam na stav Atari od hrace 1 (hra prijde s nim)
+B363 ATARI ONLINE START: stav Atari pred snimkem 0 nahran (9 KB zlib, nahrano za 7 ms) - bez cartridge, D1: prazdna
+B363 ATARI ONLINE START: hrac 2 stav nahral (STAV_OK za 419 ms) - hraje se
+B361 POKEY 2: program pouziva druhy POKEY ($D210-$D21F, stereo upgrade) - hleda ho, nebo na nem hraje
+B361 POKEY STEREO: program hraje na druhy POKEY - levy kanal POKEY 1, pravy POKEY 2
+B296 VBXE: program nasel kartu VBXE (registry $D640, FX 1.26) a pouziva ji
+B296 JOYSTICK 1 z herniho ovladace / klavesnice telefonu (smer, FIRE, START, SELECT, OPTION)
+B296 JOYSTICK 1 z herniho ovladace / klavesnice telefonu (smer, FIRE, START, SELECT, OPTION)
+B363 ATARI ONLINE konec po 28 snimcich: od druheho hrace dlouho nic neprislo - spadla mu sit, nebo se telefon zasekl - Atari bezi dal jen na tomto telefonu
+B291 EMULACE_VLAKNO stop
+B291 KRESLICI_VLAKNO stop
+B363 ATARI ONLINE konec po 24 snimcich: od druheho hrace dlouho nic neprislo - spadla mu sit, nebo se telefon zasekl - Atari bezi dal jen na tomto telefonu
+B291 EMULACE_VLAKNO stop
+B291 KRESLICI_VLAKNO stop
+== 3) telefon 2 zamrzne -> telefon 1 jen par snimku s odhadem, pak stoji, po 15 s konec s duvodem
+   telefon 1 | NAHRANO 1
+   telefon 1 | START OK
+   telefon 1 | KOD 5059
+   telefon 1 | HRAJE
+   telefon 1 | VYSLEDEK hrac=1 overeno=1 snimek=28 zpozdeni=2 zpozdeni_ted=2 cekani=2 cekani_ms=0 synchronizaci=0 synchronizovano=0 rozjeti=0 rozjeti_snimek=0 stav_kb=9 otisk660=0000000000000000 sync_videno=0 faze=KONEC start_stav=4 setrne_videno=0 setrne_c=0 kod2000=00A9
+   telefon 1 | ODHAD odhad=3 sedelo=0 oprav=1 oprava_max=1 oprava_max_ms=110 prepocteno=1 odhad_max=2 chyb_opravy=0 druhy_info_c=1 posledni_zprava=VSTUP spicek=0 spicky_ms=0 navrat_ze=0 navrat_na=0
+   telefon 1 | LOG start_odeslan=1 start_nahran=0 stav_ok=1 setrne_zap=0 konec=1 pc=2082
+   telefon 1 | DRUHY snimek 19, cekal 0x (0 ms, nejdel 0 ms), odhad 0 snimku (sedelo 0), oprav 0 (nejdel 0 snimku / 0 ms, celkem 0 ms), zpozdeni 2, odezva 64 ms, 8.0 snimku/s (obraz 8/s), jadro 115.5 ms (nejvys 180.2), odhad nejvys 2 | TEST-A12 Android 12, Wi-Fi -61 dBm 2.4 GHz LOW_LATENCY
+   telefon 1 | CASTI 
+   telefon 1 | KONEC_TEXT od druheho hrace dlouho nic neprislo - spadla mu sit, nebo se telefon zasekl
+   telefon 1 | CHYBA_TEXT od druheho hrace dlouho nic neprislo - spadla mu sit, nebo se telefon zasekl
+   telefon 1 | LOGRADEK B363 ATARI ONLINE START: stav Atari pred snimkem 0 odeslan (9 KB zlib, surove 848 KB, zabaleno za 30 ms)
+   telefon 1 | LOGRADEK B363 ATARI ONLINE konec po 28 snimcich: od druheho hrace dlouho nic neprislo - spadla mu sit, nebo se telefon zasekl - Atari bezi dal jen na tomto telefonu
+   telefon 2 | VYPNUTO 1
+   telefon 2 | START OK
+   telefon 2 | HRAJE
+   telefon 2 | VYSLEDEK hrac=2 overeno=1 snimek=24 zpozdeni=2 zpozdeni_ted=2 cekani=0 cekani_ms=0 synchronizaci=0 synchronizovano=0 rozjeti=0 rozjeti_snimek=0 stav_kb=9 otisk660=0000000000000000 sync_videno=0 faze=KONEC start_stav=4 setrne_videno=0 setrne_c=0 kod2000=00A9
+   telefon 2 | ODHAD odhad=0 sedelo=0 oprav=0 oprava_max=0 oprava_max_ms=0 prepocteno=0 odhad_max=2 chyb_opravy=0 druhy_info_c=3 posledni_zprava=KONEC spicek=0 spicky_ms=0 navrat_ze=0 navrat_na=0
+   telefon 2 | LOG start_odeslan=0 start_nahran=1 stav_ok=0 setrne_zap=0 konec=1 pc=2082
+   telefon 2 | DRUHY snimek 28, cekal 2x (0 ms, nejdel 0 ms), odhad 3 snimku (sedelo 0), oprav 1 (nejdel 1 snimku / 110 ms, celkem 110 ms), zpozdeni 2, odezva 158 ms, 7.3 snimku/s (obraz 7/s), jadro 112.4 ms (nejvys 180.8), odhad nejvys 2 | TEST-S8 Android 9, Wi-Fi HIGH_PERF
+   telefon 2 | CASTI 
+   telefon 2 | KONEC_TEXT od druheho hrace dlouho nic neprislo - spadla mu sit, nebo se telefon zasekl
+   telefon 2 | CHYBA_TEXT od druheho hrace dlouho nic neprislo - spadla mu sit, nebo se telefon zasekl
+   telefon 2 | LOGRADEK B363 ATARI ONLINE START: stav Atari pred snimkem 0 nahran (9 KB zlib, nahrano za 7 ms) - bez cartridge, D1: prazdna
+   telefon 2 | LOGRADEK B363 ATARI ONLINE konec po 24 snimcich: od druheho hrace dlouho nic neprislo - spadla mu sit, nebo se telefon zasekl - Atari bezi dal jen na tomto telefonu
+OK     telefon 1: 'od druheho hrace dlouho nic neprislo - spadla mu sit, nebo se telefon zasekl' (cele trvani 29 s), s odhadem jen 3 snimku, posledni zprava od druheho: VSTUP, Atari bezi dal samo
+B291 HELP otevren - pristroj ZAPNUT, studeny start Atari
+B293 JADRO = ATARI 130XE PAL: RAM 64 kB + rozsirena 16x16 kB (B323: 320K Compy Shop - PORTB bity 2-3 a 6-7, banky 130XE beze zmeny; procesor bit 4, ANTIC bit 5; B352: program, ktery hleda vic nez 16 bank, se sam spusti znovu s 1088K = 64 bank jako Ultimate 1MB - PORTB bity 1-3 a 5-7), OS XL/XE rev.2 (soucet $9211), BASIC rev.C vestaveny, self-test ROM $5000, TRIG3 = RD5 cartridge (prazdny slot = 0), RESET = reset CPU+ANTIC+PIA/MMU, plovouci datova sbernice, ANTIC/GTIA PAL 312 radku, POKEY 1,773 MHz
+B316 CARTRIDGE: soubory .car (XEX/MOBIL, NET, ZIP) - slot $8000-$9FFF / $A000-$BFFF pred BASICem, banky pres $D500-$D5FF, 67 typu (standard 2-16 kB, XEGS a Switchable XEGS, MegaCart, Atarimax 128 kB / 1 MB, SIC!, Williams, Express, Diamond, SpartaDOS X, OSS, Blizzard, Phoenix, Turbosoft, Atrax, Bounty Bob, J(atari)Cart, DCart ...); jiny program (XEX / ATR / TXT) cartridge vytahne, POWER ji necha ve slotu.
+B296 VBXE FX 1.26 v jadre: registry $D640, 512 kB VRAM, MEMAC A/B, XDL (overlay LR/SR/HR/text 80 sloupcu), atributova mapa, palety 4x256, blitter (rezimy 0-6, zoom, vzor, kolize) + IRQ; obraz 4 body na barevny takt. Joystick 1: leva pulka obrazovky = smer, prava = FIRE; herni ovladac taky.
+B298 ZVUK s pasmem jako TV (FIR 16 kHz, bez prekladu ultrazvuku do slysitelna), asynchronni prijem POKEY restartuje casovace 3+4 start bitem; KAZETA: hra (boot) = START+OPTION a RETURN samo, stereo WAV = zvukova stopa do TV, CLOAD i s disketou v D1:; DISKETA: ATR/DISK = vysunout / vymenit bez restartu.
+B299 BASIC/TBXL TXT: TXT soubor s programem napise appka sama do ATARI BASICu / Turbo-BASICu XL; klavesy z pristroje do logu (B299 KLAVESY); LOG/CHYBA = stav a cela pamet Atari v logu; SIO zkratka jen se zapnutou ROM OS (Turbo-BASIC XL ma na $E459 vlastni kod).
+B300 POKEY: casovac s AUDF=$FF (perioda 256) tika a dava preruseni - drive stal (Ghostbusters: hudba a rec z preruseni casovace 1, bez nej titulka stala; nejhlubsi tony byly potichu).
+B301 TV/PC (web prohlizec v appce): obraz Atari 130XE primo z jadra (vyrez 336x240 jako na telefonu) a zvuk 44100 Hz stereo - drive bylo na TV videt jen stranku s testy pod pristrojem.
+B302 KLAVESNICE POCITACE (prohlizec na TV/PC) -> Atari 130XE primo v C++: psani podle rozlozeni (cesky: diakritika bez hacku, AltGr znaky), sipky = kurzor, F1/F3/F4 START/SELECT/OPTION, F2 BREAK, F6 HELP, F8 INVERZE, F9 HRANI (WASD/sipky joystick, K skok, L FIRE); klavesy v tempu, ktere OS stihne.
+B303 TV/PC CELE V C++: kazdy snimek Atari (50/s) jako paleta + jen zmenene radky a zvuk v jednom proudu (/atari.stream) - Java uz nezvetsuje ani nekomprimuje (H.264/JPEG); Ctrl+V nebo pretazeny TXT v prohlizeci = program do BASICu bez NEW (UTF-8 s e s hackem uz neni ATASCII), jiny text = klavesy.
+B348 DISKETA D1: i na urovni bajtu SIO jako skutecna 1050 (hry s vlastnim zavadecem - xBIOS, Prince of Persia: ramec prikazu pres POKEY a linku COMMAND, odpovedi A/C/N/E, cteni/zapis/STATUS/FORMAT, 19200 Bd); OPTION pri bootu z diskety jen 1 s; Acid800 V0.1 38/38 (LXA jako SALLY, asynchronni prijem POKEY drzi casovace 3+4, hraci ve VBLANK po hires radku, fantomove DMA hracu).
+B349 ARCHIVY: hra v ZIP / RAR (XEX/MOBIL, ATR/DISK, NET HRY) se rozbali v C++ (deflate, RAR 2.9 vcetne pevneho a filtru); spusti se samostatna disketa > sada (strana A / Disk 1) > XEX > CAR, ostatni diskety z archivu nabidne ATR/DISK (i VYMENIT BEZ RESTARTU).
+B350 RAR5 (novy WinRAR 5 / 7): hlavicky vint + CRC32, komprese v blocich, filtry DELTA / E8 / E8E9 / ARM, pevny archiv (i s prazdnym souborem uprostred), odkazy se preskoci.
+B351 PPMd (RAR 4 "nejlepsi" = komprese textu): model PPMd var.H + rozsahovy dekoder RAR v C++, prechody PPMd <-> LZ, unikove prikazy, pevny archiv; heslo, vic dilu a RAR 1.5 / 2.0 zatim ne.
+B352 PAMET 1 MB: vychozi 320K (130XE + Compy Shop); program, ktery do rozsirene pameti zapisuje pod vic nez 16 ruznymi PORTB (hleda vic bank), se sam spusti znovu s 1088K (64 bank jako Ultimate 1MB) - Tony VBXE 496 KB.
+B353 TURBO pri nahravani: disketa D1: (SIO pres POKEY i OS v posledni 1 s) nebo zavadec XEX -> az 8 snimku za periodu 20 ms (kolik telefon stihne), zvuk ztlumeny; ne, kdyz hrac drzi joystick / klavesu nebo 3 s po stisku.
+B291 EMULACE_VLAKNO start (50 snimku/s, zvuk OpenSL, vse v C++)
+B291 EMULACE_VLAKNO priorita nice=-8 nastavena
+B291 KRESLICI_VLAKNO start (pristroj kresli C++ primo na displej)
+B291 KRESLICI_VLAKNO priorita nice=-4 nastavena
+B291 PRISTROJ plocha nova 1080x2160 -> kresleni 1080x2160
+B291 PRISTROJ rozlozen 1080x2160 (displej 1080x2160) za 1364 ms
+B291 XEX b363_stres.xex: 486 bajtu - studeny start s OPTION (BASIC vypnuty), pak segmenty
+B353 TURBO start: zavadec XEX b363_stres.xex - az 8 snimku za periodu (kolik telefon stihne), zvuk ztlumeny
+B353 TURBO konec: 3.5 s, emulovano 1.7 s Atari (0.5x rychleji)
+B291 XEX OS nastartovan za 87 snimku (BASIC=VYPNUTY, RAMTOP=$C0) - nahravam segmenty
+B291 XEX b363_stres.xex nahrano: 2 segmentu, 476 bajtu, 0 x INIT -> start $2000 (RUNAD)
+B361 POKEY 2: program pouziva druhy POKEY ($D210-$D21F, stereo upgrade) - hleda ho, nebo na nem hraje
+B296 VBXE: program nasel kartu VBXE (registry $D640, FX 1.26) a pouziva ji
+B361 POKEY STEREO: program hraje na druhy POKEY - levy kanal POKEY 1, pravy POKEY 2
+B363 ATARI ONLINE zaklada hru /api/v1/online/zaloz - porty: hrac 1 = joystick 1, hrac 2 = joystick 2
+B291 HELP otevren - pristroj ZAPNUT, studeny start Atari
+B293 JADRO = ATARI 130XE PAL: RAM 64 kB + rozsirena 16x16 kB (B323: 320K Compy Shop - PORTB bity 2-3 a 6-7, banky 130XE beze zmeny; procesor bit 4, ANTIC bit 5; B352: program, ktery hleda vic nez 16 bank, se sam spusti znovu s 1088K = 64 bank jako Ultimate 1MB - PORTB bity 1-3 a 5-7), OS XL/XE rev.2 (soucet $9211), BASIC rev.C vestaveny, self-test ROM $5000, TRIG3 = RD5 cartridge (prazdny slot = 0), RESET = reset CPU+ANTIC+PIA/MMU, plovouci datova sbernice, ANTIC/GTIA PAL 312 radku, POKEY 1,773 MHz
+B316 CARTRIDGE: soubory .car (XEX/MOBIL, NET, ZIP) - slot $8000-$9FFF / $A000-$BFFF pred BASICem, banky pres $D500-$D5FF, 67 typu (standard 2-16 kB, XEGS a Switchable XEGS, MegaCart, Atarimax 128 kB / 1 MB, SIC!, Williams, Express, Diamond, SpartaDOS X, OSS, Blizzard, Phoenix, Turbosoft, Atrax, Bounty Bob, J(atari)Cart, DCart ...); jiny program (XEX / ATR / TXT) cartridge vytahne, POWER ji necha ve slotu.
+B296 VBXE FX 1.26 v jadre: registry $D640, 512 kB VRAM, MEMAC A/B, XDL (overlay LR/SR/HR/text 80 sloupcu), atributova mapa, palety 4x256, blitter (rezimy 0-6, zoom, vzor, kolize) + IRQ; obraz 4 body na barevny takt. Joystick 1: leva pulka obrazovky = smer, prava = FIRE; herni ovladac taky.
+B298 ZVUK s pasmem jako TV (FIR 16 kHz, bez prekladu ultrazvuku do slysitelna), asynchronni prijem POKEY restartuje casovace 3+4 start bitem; KAZETA: hra (boot) = START+OPTION a RETURN samo, stereo WAV = zvukova stopa do TV, CLOAD i s disketou v D1:; DISKETA: ATR/DISK = vysunout / vymenit bez restartu.
+B299 BASIC/TBXL TXT: TXT soubor s programem napise appka sama do ATARI BASICu / Turbo-BASICu XL; klavesy z pristroje do logu (B299 KLAVESY); LOG/CHYBA = stav a cela pamet Atari v logu; SIO zkratka jen se zapnutou ROM OS (Turbo-BASIC XL ma na $E459 vlastni kod).
+B300 POKEY: casovac s AUDF=$FF (perioda 256) tika a dava preruseni - drive stal (Ghostbusters: hudba a rec z preruseni casovace 1, bez nej titulka stala; nejhlubsi tony byly potichu).
+B301 TV/PC (web prohlizec v appce): obraz Atari 130XE primo z jadra (vyrez 336x240 jako na telefonu) a zvuk 44100 Hz stereo - drive bylo na TV videt jen stranku s testy pod pristrojem.
+B302 KLAVESNICE POCITACE (prohlizec na TV/PC) -> Atari 130XE primo v C++: psani podle rozlozeni (cesky: diakritika bez hacku, AltGr znaky), sipky = kurzor, F1/F3/F4 START/SELECT/OPTION, F2 BREAK, F6 HELP, F8 INVERZE, F9 HRANI (WASD/sipky joystick, K skok, L FIRE); klavesy v tempu, ktere OS stihne.
+B303 TV/PC CELE V C++: kazdy snimek Atari (50/s) jako paleta + jen zmenene radky a zvuk v jednom proudu (/atari.stream) - Java uz nezvetsuje ani nekomprimuje (H.264/JPEG); Ctrl+V nebo pretazeny TXT v prohlizeci = program do BASICu bez NEW (UTF-8 s e s hackem uz neni ATASCII), jiny text = klavesy.
+B348 DISKETA D1: i na urovni bajtu SIO jako skutecna 1050 (hry s vlastnim zavadecem - xBIOS, Prince of Persia: ramec prikazu pres POKEY a linku COMMAND, odpovedi A/C/N/E, cteni/zapis/STATUS/FORMAT, 19200 Bd); OPTION pri bootu z diskety jen 1 s; Acid800 V0.1 38/38 (LXA jako SALLY, asynchronni prijem POKEY drzi casovace 3+4, hraci ve VBLANK po hires radku, fantomove DMA hracu).
+B349 ARCHIVY: hra v ZIP / RAR (XEX/MOBIL, ATR/DISK, NET HRY) se rozbali v C++ (deflate, RAR 2.9 vcetne pevneho a filtru); spusti se samostatna disketa > sada (strana A / Disk 1) > XEX > CAR, ostatni diskety z archivu nabidne ATR/DISK (i VYMENIT BEZ RESTARTU).
+B350 RAR5 (novy WinRAR 5 / 7): hlavicky vint + CRC32, komprese v blocich, filtry DELTA / E8 / E8E9 / ARM, pevny archiv (i s prazdnym souborem uprostred), odkazy se preskoci.
+B351 PPMd (RAR 4 "nejlepsi" = komprese textu): model PPMd var.H + rozsahovy dekoder RAR v C++, prechody PPMd <-> LZ, unikove prikazy, pevny archiv; heslo, vic dilu a RAR 1.5 / 2.0 zatim ne.
+B352 PAMET 1 MB: vychozi 320K (130XE + Compy Shop); program, ktery do rozsirene pameti zapisuje pod vic nez 16 ruznymi PORTB (hleda vic bank), se sam spusti znovu s 1088K (64 bank jako Ultimate 1MB) - Tony VBXE 496 KB.
+B353 TURBO pri nahravani: disketa D1: (SIO pres POKEY i OS v posledni 1 s) nebo zavadec XEX -> az 8 snimku za periodu 20 ms (kolik telefon stihne), zvuk ztlumeny; ne, kdyz hrac drzi joystick / klavesu nebo 3 s po stisku.
+B291 EMULACE_VLAKNO start (50 snimku/s, zvuk OpenSL, vse v C++)
+B291 EMULACE_VLAKNO priorita nice=-8 nastavena
+B291 KRESLICI_VLAKNO start (pristroj kresli C++ primo na displej)
+B291 KRESLICI_VLAKNO priorita nice=-4 nastavena
+B291 PRISTROJ plocha nova 1080x2160 -> kresleni 1080x2160
+B291 POWER VYPNUTO
+B363 ATARI ONLINE start: domluveno s Telefon 2 - posilam mu cely stav Atari i s hrou
+B363 ATARI ONLINE START: stav Atari pred snimkem 0 odeslan (9 KB zlib, surove 848 KB, zabaleno za 22 ms)
+B291 PRISTROJ rozlozen 1080x2160 (displej 1080x2160) za 2085 ms
+B363 ATARI ONLINE pripojuje se ke hre /api/v1/online/pripoj (Atari bylo vypnute - zapnuto)
+B363 ATARI ONLINE start: domluveno s Telefon 1 - cekam na stav Atari od hrace 1 (hra prijde s nim)
+B363 ATARI ONLINE START: stav Atari pred snimkem 0 nahran (9 KB zlib, nahrano za 9 ms) - bez cartridge, D1: prazdna
+B363 ATARI ONLINE START: hrac 2 stav nahral (STAV_OK za 364 ms) - hraje se
+B361 POKEY 2: program pouziva druhy POKEY ($D210-$D21F, stereo upgrade) - hleda ho, nebo na nem hraje
+B361 POKEY STEREO: program hraje na druhy POKEY - levy kanal POKEY 1, pravy POKEY 2
+B296 VBXE: program nasel kartu VBXE (registry $D640, FX 1.26) a pouziva ji
+B296 JOYSTICK 1 z herniho ovladace / klavesnice telefonu (smer, FIRE, START, SELECT, OPTION)
+B296 JOYSTICK 1 z herniho ovladace / klavesnice telefonu (smer, FIRE, START, SELECT, OPTION)
+B363 ATARI ONLINE SETRNE KRESLENI zapnuto: jadro a opravy 55.7 ms na snimek (z 20 ms, prumer za 2 s) - na displej jde kazdy 2. snimek (25/s), emulace a zvuk dal 50/s
+B363 ATARI ONLINE SETRNE KRESLENI zapnuto: jadro a opravy 66.2 ms na snimek (z 20 ms, prumer za 2 s) - na displej jde kazdy 2. snimek (25/s), emulace a zvuk dal 50/s
+B363 ATARI ONLINE konec po 900 snimcich: druhy hrac hru ukoncil - Atari bezi dal jen na tomto telefonu
+B363 ATARI ONLINE konec (hrac) - Atari bezi dal jen na tomto telefonu
+B291 EMULACE_VLAKNO stop
+B291 KRESLICI_VLAKNO stop
+B291 KRESLICI_VLAKNO stop
+B291 EMULACE_VLAKNO stop
+== 4) telefon 2 je pomaly (jadro +12 ms na snimek) -> setrne kresleni, hra jede dal stejne
+   telefon 1 | NAHRANO 1
+   telefon 1 | START OK
+   telefon 1 | KOD 2578
+   telefon 1 | HRAJE
+   telefon 1 | VYSLEDEK hrac=1 overeno=15 snimek=901 zpozdeni=2 zpozdeni_ted=2 cekani=1 cekani_ms=0 synchronizaci=0 synchronizovano=0 rozjeti=0 rozjeti_snimek=0 stav_kb=9 otisk660=8832e10d7b06cb82 sync_videno=0 faze=KONEC start_stav=4 setrne_videno=1 setrne_c=1 kod2000=00A9
+   telefon 1 | ODHAD odhad=84 sedelo=23 oprav=55 oprava_max=2 oprava_max_ms=119 prepocteno=63 odhad_max=2 chyb_opravy=0 druhy_info_c=7 posledni_zprava=VSTUP spicek=0 spicky_ms=0 navrat_ze=0 navrat_na=0
+   telefon 1 | LOG start_odeslan=1 start_nahran=0 stav_ok=1 setrne_zap=1 konec=1 pc=2085
+   telefon 1 | DRUHY snimek 793, cekal 1x (21 ms, nejdel 21 ms), odhad 27 snimku (sedelo 4), oprav 20 (nejdel 3 snimku / 187 ms, celkem 1189 ms), zpozdeni 2, odezva 56 ms, 17.1 snimku/s (obraz 9/s setrne), jadro 64.2 ms (nejvys 74.9), odhad nejvys 2 | TEST-A12 Android 12, Wi-Fi -61 dBm 2.4 GHz LOW_LATENCY
+   telefon 1 | CASTI 
+   telefon 1 | KONEC_TEXT 
+   telefon 1 | CHYBA_TEXT online hru jsi ukoncil
+   telefon 1 | LOGRADEK B363 ATARI ONLINE START: stav Atari pred snimkem 0 odeslan (9 KB zlib, surove 848 KB, zabaleno za 22 ms)
+   telefon 1 | LOGRADEK B363 ATARI ONLINE SETRNE KRESLENI zapnuto: jadro a opravy 55.7 ms na snimek (z 20 ms, prumer za 2 s) - na displej jde kazdy 2. snimek (25/s), emulace a zvuk dal 50/s
+   telefon 1 | LOGRADEK B363 ATARI ONLINE konec (hrac) - Atari bezi dal jen na tomto telefonu
+   telefon 2 | VYPNUTO 1
+   telefon 2 | START OK
+   telefon 2 | HRAJE
+   telefon 2 | VYSLEDEK hrac=2 overeno=15 snimek=900 zpozdeni=2 zpozdeni_ted=2 cekani=1 cekani_ms=21 synchronizaci=0 synchronizovano=0 rozjeti=0 rozjeti_snimek=0 stav_kb=9 otisk660=8832e10d7b06cb82 sync_videno=0 faze=KONEC start_stav=4 setrne_videno=1 setrne_c=1 kod2000=00A9
+   telefon 2 | ODHAD odhad=31 sedelo=6 oprav=22 oprava_max=3 oprava_max_ms=187 prepocteno=25 odhad_max=2 chyb_opravy=0 druhy_info_c=8 posledni_zprava=KONEC spicek=0 spicky_ms=0 navrat_ze=0 navrat_na=0
+   telefon 2 | LOG start_odeslan=0 start_nahran=1 stav_ok=0 setrne_zap=1 konec=1 pc=2087
+   telefon 2 | DRUHY snimek 901, cekal 1x (0 ms, nejdel 0 ms), odhad 84 snimku (sedelo 23), oprav 55 (nejdel 2 snimku / 119 ms, celkem 2436 ms), zpozdeni 2, odezva 41 ms, 18.3 snimku/s (obraz 9/s setrne), jadro 51.7 ms (nejvys 113.1), odhad nejvys 2 | TEST-S8 Android 9, Wi-Fi HIGH_PERF
+   telefon 2 | CASTI 
+   telefon 2 | KONEC_TEXT druhy hrac hru ukoncil
+   telefon 2 | CHYBA_TEXT druhy hrac hru ukoncil
+   telefon 2 | LOGRADEK B363 ATARI ONLINE START: stav Atari pred snimkem 0 nahran (9 KB zlib, nahrano za 9 ms) - bez cartridge, D1: prazdna
+   telefon 2 | LOGRADEK B363 ATARI ONLINE SETRNE KRESLENI zapnuto: jadro a opravy 66.2 ms na snimek (z 20 ms, prumer za 2 s) - na displej jde kazdy 2. snimek (25/s), emulace a zvuk dal 50/s
+   telefon 2 | LOGRADEK B363 ATARI ONLINE konec po 900 snimcich: druhy hrac hru ukoncil - Atari bezi dal jen na tomto telefonu
+CHYBA  telefon 2 si sam zapnul setrne kresleni (obraz 25/s, emulace 50/s), telefon 1 ne; telefon 1 to vi ze statistiky: 17.1 snimku/s (obraz 9/s setrne), jadro 64.2 ms (nejvys 74.9
+OK     hra s pomalym telefonem jede: 901 snimku, otisk ve snimku 660 u obou 8832e10d7b06cb82 (STEJNY), limit odhadu na pomalem telefonu 2
+VYSLEDEK: 8 OK, 2 CHYBA

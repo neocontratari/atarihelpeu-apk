@@ -339,7 +339,8 @@ if(NAP_ENABLE_ATARI)
     # na displej) a vlakna (emulace a kresleni bezi ve vlastnich vlaknech).
     # find_package i tady: Atari nesmi zaviset na tom, jestli je zapnute PS1.
     find_package(Threads REQUIRED)
-    target_link_libraries(napatari ${log-lib} OpenSLES android Threads::Threads)
+    # B363: online Atari - systemova zlib z NDK (stav Atari pro druhy telefon zabaleny, jako Sega B360)
+    target_link_libraries(napatari ${log-lib} OpenSLES android Threads::Threads z)
     # stejna prisnost jako NDK: chybejici symbol shodi build, ne az appku
     target_link_options(napatari PRIVATE -Wl,--no-undefined -Wl,-z,max-page-size=16384)
 endif()

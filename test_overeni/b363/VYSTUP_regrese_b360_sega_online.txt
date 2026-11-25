@@ -1,0 +1,86 @@
+BUILD2RY real core worker start gen=1 bigstack=8MB passiveAudit=YES pcmCddaSkip=YES
+B357 ONLINE zaklada /api/v1/online/zaloz?system=sega&hra=B360%20TEST%20ROM&hra_id=sega-0123456789abcdef&otisk=891e5c3ab4c57347c9dcdc6a263580c860b8ef3e&nastaveni=16&jmeno=Telefon%201
+BUILD2RY real core worker start gen=1 bigstack=8MB passiveAudit=YES pcmCddaSkip=YES
+B357 ONLINE pripojuje /api/v1/online/pripoj?kod=1273&jmeno=Telefon%202
+B357 ONLINE start - studeny start, snimek 0 (B362: odhad stisku druheho nejvys 8 snimku)
+B357 ONLINE start - studeny start, snimek 0 (B362: odhad stisku druheho nejvys 8 snimku)
+B360 ONLINE synchronizace: stav jadra pred snimkem 303 odeslan (2850 B)
+B360 ONLINE synchronizace: stav jadra pred snimkem 303 nahran (2850 B)
+B357 ONLINE konec po 780 snimcich: druhy hrac hru ukoncil
+BUILD2RY real core worker stop gen=1
+BUILD2RY real core worker stop gen=1
+B360 - online Sega: synchronizace stavu pri rozjeti, text konce, prubeh hry (skutecny nap_sega_native_proof.cpp + clownmdemu)
+== 1) jadro hrace 2 se ve snimku 300 splete -> synchronizace pres engine, hra pokracuje
+   telefon 1 | START OK
+   telefon 1 | KOD 1273
+   telefon 1 | HRAJE
+   telefon 1 | VYSLEDEK hrac=1 overeno=12 snimek=780 zpozdeni=2 zpozdeni_ted=2 cekani=0 cekani_ms=0 synchronizaci=1 synchronizovano=1 rozjeti=1 rozjeti_snimek=300 stav_kb=3 otisk660=731c8ff40c095abe sync_videno=1 faze=KONEC
+   telefon 1 | CASTI RAM 68000
+   telefon 1 | KONEC_TEXT 
+   telefon 1 | CHYBA_TEXT online hru jsi ukoncil
+   telefon 1 | POLE vsechna
+   telefon 2 | START OK
+   telefon 2 | HRAJE
+   telefon 2 | VYSLEDEK hrac=2 overeno=12 snimek=780 zpozdeni=2 zpozdeni_ted=2 cekani=0 cekani_ms=0 synchronizaci=1 synchronizovano=1 rozjeti=1 rozjeti_snimek=300 stav_kb=3 otisk660=731c8ff40c095abe sync_videno=1 faze=KONEC
+   telefon 2 | CASTI RAM 68000
+   telefon 2 | KONEC_TEXT druhy hrac hru ukoncil
+   telefon 2 | CHYBA_TEXT druhy hrac hru ukoncil
+   telefon 2 | POLE vsechna
+OK     rozjeti poznano v otisku 300, synchronizace: telefon 1 poslal stav, telefon 2 nahral (synchronizovano 1 / 1), stav jadra 3 KB (zlib)
+OK     casti otisku: lisila se 'RAM 68000' (porucha byla v RAM 68000) - tohle pujde do logu appky
+OK     hra pokracovala: telefon 1 780 snimku, telefon 2 780, otisk jadra ve snimku 660 u obou 731c8ff40c095abe (STEJNY), overeno otisku 12
+OK     konec jako dosud: telefon 1 skoncil sam -> telefon 2 'druhy hrac hru ukoncil'
+BUILD2RY real core worker start gen=1 bigstack=8MB passiveAudit=YES pcmCddaSkip=YES
+B357 ONLINE zaklada /api/v1/online/zaloz?system=sega&hra=B360%20TEST%20ROM&hra_id=sega-0123456789abcdef&otisk=891e5c3ab4c57347c9dcdc6a263580c860b8ef3e&nastaveni=16&jmeno=Telefon%201
+BUILD2RY real core worker start gen=1 bigstack=8MB passiveAudit=YES pcmCddaSkip=YES
+B357 ONLINE pripojuje /api/v1/online/pripoj?kod=3828&jmeno=Telefon%202
+B357 ONLINE start - studeny start, snimek 0 (B362: odhad stisku druheho nejvys 8 snimku)
+B357 ONLINE start - studeny start, snimek 0 (B362: odhad stisku druheho nejvys 8 snimku)
+B357 ONLINE konec po 599 snimcich: druhy hrac hru ukoncil
+BUILD2RY real core worker stop gen=1
+BUILD2RY real core worker stop gen=1
+== 2) bez poruchy: zadna synchronizace, prubeh hry v onlineStav
+   telefon 1 | START OK
+   telefon 1 | KOD 3828
+   telefon 1 | HRAJE
+   telefon 1 | VYSLEDEK hrac=1 overeno=10 snimek=600 zpozdeni=2 zpozdeni_ted=2 cekani=0 cekani_ms=0 synchronizaci=0 synchronizovano=0 rozjeti=0 rozjeti_snimek=0 stav_kb=0 otisk660=0000000000000000 sync_videno=0 faze=KONEC
+   telefon 1 | CASTI 
+   telefon 1 | KONEC_TEXT 
+   telefon 1 | CHYBA_TEXT online hru jsi ukoncil
+   telefon 1 | POLE vsechna
+   telefon 2 | START OK
+   telefon 2 | HRAJE
+   telefon 2 | VYSLEDEK hrac=2 overeno=10 snimek=599 zpozdeni=2 zpozdeni_ted=2 cekani=0 cekani_ms=0 synchronizaci=0 synchronizovano=0 rozjeti=0 rozjeti_snimek=0 stav_kb=0 otisk660=0000000000000000 sync_videno=0 faze=KONEC
+   telefon 2 | CASTI 
+   telefon 2 | KONEC_TEXT druhy hrac hru ukoncil
+   telefon 2 | CHYBA_TEXT druhy hrac hru ukoncil
+   telefon 2 | POLE vsechna
+OK     600 snimku, overeno 10 otisku, synchronizaci 0, zpozdeni 2 -> 2, cekani 0x (0 ms), nove polozky onlineStav vsechna
+BUILD2RY real core worker start gen=1 bigstack=8MB passiveAudit=YES pcmCddaSkip=YES
+B357 ONLINE zaklada /api/v1/online/zaloz?system=sega&hra=B360%20TEST%20ROM&hra_id=sega-0123456789abcdef&otisk=891e5c3ab4c57347c9dcdc6a263580c860b8ef3e&nastaveni=16&jmeno=Telefon%201
+BUILD2RY real core worker start gen=1 bigstack=8MB passiveAudit=YES pcmCddaSkip=YES
+B357 ONLINE pripojuje /api/v1/online/pripoj?kod=2337&jmeno=Telefon%202
+B357 ONLINE start - studeny start, snimek 0 (B362: odhad stisku druheho nejvys 8 snimku)
+B357 ONLINE start - studeny start, snimek 0 (B362: odhad stisku druheho nejvys 8 snimku)
+B357 ONLINE konec po 191 snimcich: od druheho hrace dlouho nic neprislo - spadla mu sit, nebo se telefon zasekl
+BUILD2RY real core worker stop gen=1
+B357 ONLINE konec po 182 snimcich: od druheho hrace dlouho nic neprislo - spadla mu sit, nebo se telefon zasekl
+BUILD2RY real core worker stop gen=1
+== 3) telefon 2 zamrzne (jako A12 v pokusu 2) -> telefon 1 po 15 s konci s duvodem, ne 'online skoncilo'
+   telefon 1 | START OK
+   telefon 1 | KOD 2337
+   telefon 1 | HRAJE
+   telefon 1 | VYSLEDEK hrac=1 overeno=4 snimek=191 zpozdeni=2 zpozdeni_ted=2 cekani=1 cekani_ms=0 synchronizaci=0 synchronizovano=0 rozjeti=0 rozjeti_snimek=0 stav_kb=0 otisk660=0000000000000000 sync_videno=0 faze=KONEC
+   telefon 1 | CASTI 
+   telefon 1 | KONEC_TEXT od druheho hrace dlouho nic neprislo - spadla mu sit, nebo se telefon zasekl
+   telefon 1 | CHYBA_TEXT od druheho hrace dlouho nic neprislo - spadla mu sit, nebo se telefon zasekl
+   telefon 1 | POLE vsechna
+   telefon 2 | START OK
+   telefon 2 | HRAJE
+   telefon 2 | VYSLEDEK hrac=2 overeno=4 snimek=182 zpozdeni=2 zpozdeni_ted=2 cekani=0 cekani_ms=0 synchronizaci=0 synchronizovano=0 rozjeti=0 rozjeti_snimek=0 stav_kb=0 otisk660=0000000000000000 sync_videno=0 faze=KONEC
+   telefon 2 | CASTI 
+   telefon 2 | KONEC_TEXT od druheho hrace dlouho nic neprislo - spadla mu sit, nebo se telefon zasekl
+   telefon 2 | CHYBA_TEXT od druheho hrace dlouho nic neprislo - spadla mu sit, nebo se telefon zasekl
+   telefon 2 | POLE vsechna
+OK     telefon 1: 'od druheho hrace dlouho nic neprislo - spadla mu sit, nebo se telefon zasekl' (cele trvani 18 s)
+VYSLEDEK: 6 OK, 0 CHYBA

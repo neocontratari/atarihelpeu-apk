@@ -1,0 +1,5 @@
+B362 - engine preda AHOJ hrace 1 drive nez zpravu "hrac" hraci 2 (vlakno enginu mezi zpravami usne)
+OK     pokus 1: hra zacala a dobehla - hrac 1 240 snimku, hrac 2 240 (hrac 2 ma AHOJ hrace 1: ano, stav hrace 2: ONLINE S Rene - ODEZVA 1 MS)
+OK     pokus 2: hra zacala a dobehla - hrac 1 240 snimku, hrac 2 240 (hrac 2 ma AHOJ hrace 1: ano, stav hrace 2: ONLINE S Rene - ODEZVA 0 MS)
+OK     pokus 3: hra zacala a dobehla - hrac 1 240 snimku, hrac 2 240 (hrac 2 ma AHOJ hrace 1: ano, stav hrace 2: ONLINE S Rene - ODEZVA 0 MS)
+VYSLEDEK: 3 OK, 0 CHYB

@@ -1,0 +1,14 @@
+B363 - online Atari v Jave: NapOnlineHra (okno ONLINE) a NapOnlineHlidac (log)
+OK     1) hra z C++: 'Archon_(1984).atr' pripravena, vypnute Atari = 'Atari je vypnute', nesmysl = nic
+OK        cesta na engine: /api/v1/online/zaloz?system=atari&hra=Archon+%281984%29&hra_id=&otisk=0000000000000000000000000000000000000000&nastaveni=363&jmeno=SM-G950F (otisk 40 hex znaku jako chce engine JeOtisk, hra jde ve stavu)
+OK     2) seznam: jen hry Atari (Sega ne), cislo hry musi mit 4 cislice ("12" pryc), jmeno bez < > (2 hry)
+OK        radky pro hrace: '4821 – Archon (1984) (Rene S8, čeká 2 min)' / '7702 – Atari (?, waiting 45 s)'
+OK        spatny JSON / prazdny seznam = zadna hra (zadna vyjimka)
+OK     3) ceka na hrace 2: cislo hry a co ma udelat druhy (CZ: 'Čekám na hráče 2. || ČÍSLO HRY: 4821 || ...')
+OK        start ze stavu: hrac 1 'Posílám ... celé Atari i s hrou', hrac 2 'Přijímám hru od hráče ...' (i EN)
+OK        hra bezi: s kym, odezva, zpozdeni, joysticky, setrne kresleni (CZ i EN)
+OK        konec s duvodem z C++: 'Online skončilo: druhy hrac hru ukoncil'
+OK     4) Atari v logu: 'B358 ONLINE HRAJE (Atari 130XE) s SM-A125F - odezva 12 ms, zpozdeni 2 snimku' / konec 'B358 ONLINE KONEC (Atari 130XE) (pokus 3): druhy hrac hru ukoncil | ov...', setrne kresleni u Atari nepise (C++ samo)
+OK        Sega: zapnuti / vypnuti setrneho kresleni jednou do logu, PRUBEH s 'setrne kresleni': B363 ONLINE SETRNE KRESLENI zapnuto (tel...
+OK        Sega bez klice system: radek HRAJE beze zmeny ('B358 ONLINE HRAJE s SM-A125F - odezva 9 ms, zpozdeni 2 snimku')
+VYSLEDEK: 12 OK, 0 CHYBA

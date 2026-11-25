@@ -34,8 +34,12 @@
 //      Otisky stavu jdou jen ze snimku spocitanych se skutecnymi stisky (odhadnute se odeslou, az se potvrdi).
 //    STATISTIKA text  kazdych 10 s druhemu telefonu (cekani, odhady, opravy, vykon, Wi-Fi) - log jednoho telefonu
 //      ukaze oba.
+//  B363 (stale verze 3, jen nove jadro) - ONLINE ATARI (Rene 25. 11.: "uz pustit do online atari"):
+//    START ZE STAVU (Ladeni::startZeStavu, jadro J_ATARI): hrac 1 posle pred snimkem 0 STAV(0) = cely stav sveho
+//      Atari i s hrou (cartridge, disketa, zavadec XEX), hrac 2 ho nahraje a posle STAV_OK - hrac 2 hru mit nemusi.
+//      Hrac 1 pocita snimek 1 az po STAV_OK; hrac 2 ceka na stav nejvys 60 s (D_START), pak konec.
 //  Vsechna cisla little-endian. Bez Androidu a bez site - test test_overeni/b357 (dva emulatory, simulovana
-//  sit se zpozdenim a kolisanim), B362: test_overeni/b362 (spicky site, odhad a oprava).
+//  sit se zpozdenim a kolisanim), B362: test_overeni/b362 (spicky site, odhad a oprava), B363: test_overeni/b363.
 // =====================================================================================================
 #pragma once
 
@@ -68,7 +72,8 @@ enum Duvod : uint8_t {
   D_VERZE = 4,       // jina verze protokolu (starsi appka)
   D_TICHO = 5,       // od druheho hrace dlouho nic neprislo
   D_CHYBA = 6,       // poskozena zprava
-  D_SIT = 7          // spojeni se serverem spadlo
+  D_SIT = 7,         // spojeni se serverem spadlo
+  D_START = 8        // B363: start ze stavu - stav hry od hrace 1 neprisel
 };
 
 enum class Stav { CEKA_AHOJ, MERI, CEKA_START, BEZI, KONEC };
@@ -100,6 +105,10 @@ struct Ladeni {
   uint64_t statistikaPrvniUs = 3000000;          // B362: prvni STATISTIKA 3 s po startu
   uint64_t statistikaKazdychUs = 10000000;       // B362: pak kazdych 10 s
   bool odhad = false;                            // B362: jadro umi odhad + opravu -> START zpozdeni bez rezervy na kolisani
+  // B363: START ZE STAVU (Atari): hrac 1 posle pred snimkem 0 cely stav sveho stroje (i s hrou), hrac 2 ho nahraje -
+  // hrac 2 hru mit nemusi. Hrac 1 snimek 1 a dal pocita az po STAV_OK (oba zacnou spolu, zadne cekani navic).
+  bool startZeStavu = false;
+  uint64_t cekatNaStartUs = 60000000;            // hrac 2 ceka na stav hrace 1 nejvys 60 s (hrac 1 muze dokoncovat nahravani hry)
 };
 
 inline const char *popisDuvodu(uint8_t d) {
@@ -111,6 +120,7 @@ inline const char *popisDuvodu(uint8_t d) {
     case D_TICHO: return "od druheho hrace dlouho nic neprislo - spadla mu sit, nebo se telefon zasekl";
     case D_CHYBA: return "poskozena zprava ze site";
     case D_SIT: return "spojeni se serverem spadlo";
+    case D_START: return "od hrace 1 neprisla hra (stav pocitace) - zkuste to znovu";
     default: return "";
   }
 }
@@ -320,7 +330,9 @@ class Relace {
       }
       // B360: hrac 2 videl rozdil otisku a synchronizace od hrace 1 neprisla / RESYNC prisel, ale stav ne
       if (!hrac1_ && rozjetoVidimUs_ && ted > rozjetoVidimUs_ + ladeni_.cekatNaSynchronizaciUs) ukonciLocked(D_ROZJETO, true);
-      else if (!hrac1_ && resyncAktivni_ && !maStav_ && resyncOdUs_ && ted > resyncOdUs_ + ladeni_.cekatNaStavUs) ukonciLocked(D_ROZJETO, true);
+      else if (!hrac1_ && resyncAktivni_ && !maStav_ && resyncOdUs_ &&
+               ted > resyncOdUs_ + (startStav_ ? ladeni_.cekatNaStartUs : ladeni_.cekatNaStavUs))
+        ukonciLocked(startStav_ ? D_START : D_ROZJETO, true);   // B363: stav na startu neprisel
     }
     const bool s = startPrave_;
     startPrave_ = false;
@@ -467,7 +479,7 @@ class Relace {
       }
       case STAV_OK: {    // B360: hrac 2 -> 1: nahrano
         if (n < 5) return chybaLocked();
-        if (hrac1_ && resyncAktivni_ && stavOdeslan_ && r32(d + 1) == resyncG_) { resyncAktivni_ = false; synchronizovano_++; }
+        if (hrac1_ && resyncAktivni_ && stavOdeslan_ && r32(d + 1) == resyncG_) stavPotvrzenLocked();
         return true;
       }
       case STATISTIKA: { // B362: druhy telefon o sobe (cekani, odhady, vykon, Wi-Fi) - jen do logu
@@ -578,7 +590,10 @@ class Relace {
       ukonciLocked(D_ROZJETO, true);
     // synchronizace: snimek G a dal se ted nesmi spocitat (hrac 2: nejdriv stav od hrace 1; B362 hrac 1: nejdriv
     // stav odeslat - az budou snimky pred G overene)
-    auto blokovano = [&]() { return resyncAktivni_ && snimek >= resyncG_ && (hrac1_ ? !stavOdeslan_ : true); };
+    // B363: start ze stavu - hrac 1 smi snimek 0 (stav uz poslal), snimek 1 a dal az po STAV_OK od hrace 2
+    auto blokovano = [&]() {
+      return resyncAktivni_ && snimek >= resyncG_ && (hrac1_ ? (!stavOdeslan_ || (startStav_ && snimek > resyncG_)) : true);
+    };
     auto mam = [&]() {
       if (stav_ == Stav::KONEC) return true;
       if (blokovano()) return false;
@@ -711,7 +726,8 @@ class Relace {
     std::lock_guard<std::mutex> l(m_);
     if (hrac1_ || !resyncAktivni_ || snimek != resyncG_) return;
     resyncAktivni_ = false;
-    synchronizovano_++;
+    if (startStav_) startStav_ = false;   // B363: start ze stavu se nepocita jako synchronizace
+    else synchronizovano_++;
     if (cekaSnimek_ == snimek) cekaOdUs_ = 0;   // cekani na stav se nepocita jako cekani na stisky
     cekaSnimek_ = UINT32_MAX;                  // B362 (z B360): dalsi cekani na snimek G se zase meri
     // B362: od G se pocita znovu z nahraneho stavu - odhady a cekajici otisky pred tim neplati
@@ -756,6 +772,8 @@ class Relace {
   uint32_t synchronizaci() const { std::lock_guard<std::mutex> l(m_); return synchronizaci_; }
   uint32_t synchronizovano() const { std::lock_guard<std::mutex> l(m_); return synchronizovano_; }
   bool synchronizuje() const { std::lock_guard<std::mutex> l(m_); return resyncAktivni_; }
+  /** B363: start ze stavu jeste neskoncil (hrac 1 stav posila / hrac 2 ho ceka nebo nahrava). */
+  bool startZeStavu() const { std::lock_guard<std::mutex> l(m_); return startStav_; }
   uint32_t stavKB() const { std::lock_guard<std::mutex> l(m_); return stavKB_; }
   /** Jak dlouho emulator ted stoji (ceka na stisky druheho nebo na stav) - 0 = nestoji. */
   uint32_t stojiMs() const { std::lock_guard<std::mutex> l(m_); return cekaOdUs_ ? (uint32_t)((tedUs() - cekaOdUs_) / 1000) : 0; }
@@ -815,6 +833,18 @@ class Relace {
     jistoDo_ = 0;
     jehoDo_ = D_;
     posunJehoDoLocked();
+    if (ladeni_.startZeStavu) {
+      // B363: pred snimkem 0 prijde cely stav od hrace 1 (jako synchronizace se snimkem G = 0, bez zpravy RESYNC -
+      // oba o tom vedi z AHOJ / jadra)
+      resyncAktivni_ = true;
+      resyncG_ = 0;
+      stavOdeslan_ = false;
+      maStav_ = false;
+      stavData_.clear();
+      ignorujDo_ = 0;
+      resyncOdUs_ = ted;
+      startStav_ = true;
+    }
   }
 
   /** B362: jehoDo_ = prvni snimek bez stisku druheho (stisky chodi poporade - TCP). */
@@ -861,7 +891,7 @@ class Relace {
     if (b[i].h == h) {
       overeno_++;
       // B360: stejny otisk po snimku G = synchronizace se povedla (STAV_OK prijde taky, tohle je pojistka)
-      if (hrac1_ && resyncAktivni_ && stavOdeslan_ && s >= resyncG_) { resyncAktivni_ = false; synchronizovano_++; }
+      if (hrac1_ && resyncAktivni_ && stavOdeslan_ && s >= resyncG_) stavPotvrzenLocked();
       return;
     }
     if (stav_ == Stav::KONEC || s < ignorujDo_) return;   // pred synchronizaci - stara data, uz se resi
@@ -872,6 +902,22 @@ class Relace {
     for (uint8_t k = 0; k < n; k++) if (a[i].casti[k] != b[i].casti[k]) rozdilCasti_ |= 1u << k;
     if (hrac1_) zacniSynchronizaciLocked();
     else if (!rozjetoVidimUs_) rozjetoVidimUs_ = tedUs();
+  }
+
+  /**
+   * Hrac 1: hrac 2 stav nahral (STAV_OK, nebo pojistka - stejny otisk po G). B363: start ze stavu se nepocita jako
+   * synchronizace a cekani hrace 1 na STAV_OK neni cekani na stisky druheho (zadna zadost o vetsi zpozdeni).
+   */
+  void stavPotvrzenLocked() {
+    resyncAktivni_ = false;
+    if (startStav_) {
+      startStav_ = false;
+      cekaOdUs_ = 0;
+      cekaSnimek_ = UINT32_MAX;
+    } else {
+      synchronizovano_++;
+    }
+    cv_.notify_all();
   }
 
   /** Hrac 1: hra se rozjela - RESYNC(G), stav pujde pred snimkem G (prvni, pro ktery jeste neodesel muj vstup). */
@@ -983,6 +1029,7 @@ class Relace {
   // B360: synchronizace stavu
   uint32_t resyncG_ = 0, ignorujDo_ = 0, synchronizaci_ = 0, synchronizovano_ = 0, rozjeti_ = 0, rozdilCasti_ = 0, stavKB_ = 0;
   bool resyncAktivni_ = false, stavOdeslan_ = false, maStav_ = false;
+  bool startStav_ = false;   // B363: start ze stavu bezi (do STAV_OK / nahrani)
   std::vector<uint8_t> stavData_;
   std::deque<uint64_t> synchronizaceCasy_;
   uint64_t rozjetoVidimUs_ = 0, resyncOdUs_ = 0;

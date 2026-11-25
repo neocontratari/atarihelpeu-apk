@@ -1,0 +1,113 @@
+B363 - ONLINE ATARI 130XE (START ZE STAVU, ODHAD + OPRAVA) + SETRNE KRESLENI NA SLABSICH TELEFONECH (25. 11. 2026)
+=====================================================================================================================
+
+PROC
+  Rene 25. 11.: "zatim bez testu sega online - mohl by jsi se prosim te uz pustit do online atari - at se nezdrzujeme"
+  a "proc treba na slabsi telefony nepridat optimalizaci? Pri hrani online - ... stacilo by jen ponizit grafiku".
+  Plan: ../b361/PLAN_ONLINE_ATARI_PS1.txt (A1-A6). Online vrstva (nap_online.h verze 3: odhad stisku + oprava,
+  synchronizace, STATISTIKA) je spolecna se Segou (B357-B362) - pro Atari se pridal start ze stavu.
+
+CO SE ZMENILO
+  1) STAV ATARI (novy app/src/main/cpp/atari/nap_atari_stav.h): cely stroj do bajtu a zpet - JEDEN seznam poli
+     (atariStavPole) pro zapis, cteni i otisk, takze se nic nemuze "zapomenout" jen v jednom smeru. Pevne velikosti,
+     little-endian (stejne na arm64 i armeabi-v7a). Hlavicka "NAPA" + verze + priznaky, 8 casti (RAM 64K, rozsirena
+     pamet, procesor a casovani, ANTIC, GTIA, POKEY a PIA, VBXE, disk a cartridge). Procesor vcetne rozdelane
+     instrukce, cyklus, POKEY 1 i 2 (B361), rozsirena pamet jen aktivni banky (16 / 64), VBXE VRAM jen kdyz program
+     VBXE pouzil, s priznakem MEDIA i obsah diskety a cartridge. Oprava odhadu: kruh stavu bez diskety a cartridge,
+     disketa jako kopie jen pri zmene (pocitadlo zapisu disk.writes; FORMAT ho ted taky zvysuje).
+  2) ONLINE NA ATARI (novy nap_atari_online.h + nap_atari_native.cpp):
+     - vstup u32 na hrace a snimek: smer, FIRE, START / SELECT / OPTION, klavesa (KBCODE + drzena + SHIFT), BREAK,
+       RESET. Porty: hrac 1 = joystick 1, hrac 2 = joystick 2, nebo "OBA NA JOYSTICKU 1" (hry, kde se hraci stridaji).
+     - START ZE STAVU (nap_online.h, Ladeni::startZeStavu): hrac 1 posle pred snimkem 0 cely stav Atari i s hrou
+       (disketa / cartridge / zavadec XEX, zlib), hrac 2 nepotrebuje mit hru ani zapnute Atari. Hrac 1 ceka, az mu
+       hra dobehne (zavadec XEX, kazeta, psani programu), hrac 2 ceka na stav nejvys 60 s (pak D_START = 8).
+     - za online hry nejde do stroje nic "bokem": turbo, psani TXT / klavesnice PC, kazeta, CSAVE, restart 1088K;
+       prepnuti POKEY STEREO az po hre. Nova hra, POWER, vysunuti, odchod z Atari = konec online hry.
+     - odhad stisku druheho + oprava (jako Sega B362): kruh ODHAD_MAX + 2 stavu, limit odhadu podle rychlosti jadra
+       (66 ms / prumer snimku, 2..8), otisk stavu kazdych 60 snimku po castech, synchronizace celym stavem.
+     - JNI onlineHra / onlineStart / onlineStop / onlineStav / onlineTelefon; Java: okno ONLINE na pristroji
+       (ZALOZIT HRU s volbou joysticku / PRIPOJIT SE ze seznamu her Atari nebo cislem), hlidac (log jako Sega).
+  3) SETRNE KRESLENI (Atari i Sega): emulace a zvuk bezi vzdy naplno, jen na displej / TV jde mene snimku.
+     Atari: prumer za 2 s (snimek + opravy + stav) nad 10 ms (z 20 ms) -> kazdy 2. snimek (25/s); vypne se po
+     3 oknech pod 6 ms. Sega: prumer za 2 s nad 9 ms -> delitel obrazu aspon 2 (30/s); vypne se po 3 oknech pod
+     6 ms. Prumer za 2 s, ne kratky: davka oprav pri spicce site ho nezapne, pomaly telefon ano.
+  4) JADRO ATARI (nap_atari_machine.h): konce bufferu radku ANTIC (pfData, pfChar), GTIA (lineOut) a ramec SIO
+     (frame), ktere emulace nikdy nezapise, byly po zapnuti "zbytek haldy" - obraz ani zvuk to nemenilo, ale kazdy
+     telefon (a 32 / 64 bitu) mel jiny otisk stavu. Ted nulovane (deklarace i coldInit). FORMAT zvysuje disk.writes.
+  5) Napoveda CZ / EN (kapitola "Online - dva telefony (Atari)", TIP u Segy), novinky B363 (verze 406),
+     build.gradle 406 "EMU10-B363-ONLINE-ATARI", CMake: napatari linkuje zlib (z).
+
+1) Stav Atari bez Androidu (nap_atari_stav.h + nap_atari_online.h, programy z ../b348 a test_b363_stres.h):
+     python3 ../b348/asm6502.py test_b363_stres.asm test_b363_stres.h B363S START,PBTAB   (zatezovy program)
+     g++ -std=c++17 -O2 -I../../app/src/main/cpp/atari -o test_b363_stav test_b363_stav.cpp -lz
+     ./test_b363_stav                        -> VYSTUP_test_b363_stav.txt (29 OK, 0 CHYBA)
+       - BASIC (program napsany stisky), Turbo-BASIC XL z XEX (zavadec ve stavu), zatezovy program 320K,
+         zatezovy program 1088K + "oba na joysticku 1", program s vlastnim SIO (ZAPIS na disketu behem objizdky)
+       - kazdy: ulozit ve snimku S -> nahrat do JINEHO stroje -> stejne stisky -> obraz, zvuk (udalosti POKEY 1 / 2
+         a kazety) a otisk po castech STEJNE kazdy snimek; oprava odhadu (8 snimku jinak, navrat, znovu spravne =
+         stejne jako druhy stroj, disketa vracena); 12 prenosu do "spinavych" stroju; poskozena data = chyba, ne pad
+     volitelne hry z prikazove radky (jen na PC - hry NEJSOU v repozitari): ./test_b363_stav hra.xex hra.car
+     1088:hra.xex ... (na PC Clauda 6 her: 59 OK, 0 CHYBA = 29 vestavenych + 6 x 5:
+     Air Strike, Ghostbusters, Sonic A8, KITT (XEX), Wonderboy (cartridge VBXE, stav zlib 375 KB), Tony 1088K + VBXE
+     (stav 2054 KB, zlib 453 KB) - kazda: 600 snimku po nahrani s opravou odhadu KAZDY SNIMEK STEJNE)
+       - stav po zapnuti nezavisi na zbytku haldy: operator new testu vyplni pamet vzorem (00/FF proti A5/5A) ->
+         BASIC, zatez 1088K a disketa po 400 snimcich bajt po bajtu stejne (pred opravou jadra 4 pole jinak)
+     Prenos mezi 64 a 32 bity (arm64 telefon <-> armeabi-v7a, napr. TV; na PC g++ -m32, balicek g++-multilib +
+     lib32z1-dev):
+       g++ -m32 -msse2 -mfpmath=sse -std=c++17 -O2 -I../../app/src/main/cpp/atari -o test_b363_stav32 test_b363_stav.cpp -lz
+       ./test_b363_stav --prenos-uloz p64.bin && ./test_b363_stav32 --prenos-over p64.bin   (a naopak 32 -> 64)
+                                             -> VYSTUP_test_b363_prenos_32_64.txt (64 -> 32: 5 + 10 OK, 32 -> 64: 5 + 10 OK, 0 CHYBA)
+       5 scenaru: stav z druhe architektury nahran a kazdy snimek obraz, zvuk i otisk stejne; i vlastni stroj od
+       zapnuti pocita stejne jako druha architektura (stav 32 = 64 bitu bajt po bajtu)
+     Mutace (pole vynechane ze stavu - musi to test poznat?): z 16 poli pozna 6 hned (pcnt, collP, polyBase, frameN,
+     pfDataR, serOutCounter), po pridani preruseni casovace do zatezoveho programu i irqen (6 CHYBA). Nepozna pole,
+     ktera maji na konci snimku skoro vzdy vychozi hodnotu: takeIrq (na konci snimku nikdy), polled (vzdy), irqst
+     (cekajici preruseni POKEY na konci snimku jen 3x ze 700 snimku), rowCounter, wsyncPending ... Ve stavu jsou
+     presto vsechna (jeden seznam poli pro zapis, cteni i otisk).
+2) Skutecny nap_atari_native.cpp ve dvou procesech pres engine (mono NapOnlineTest = trida NapOnline z NapServer.cs
+   v12.4.5, balicek enginu u Reneho / Clauda, NE v repozitari - preklad v ../b357/JAK_SPUSTIT.txt):
+     g++ -std=c++17 -O2 -pthread -I../b291/stub -I$JAVA_HOME/include -I$JAVA_HOME/include/linux
+         -I../../app/src/main/cpp/atari -o test_b363_atari_online test_b363_atari_online.cpp -lz   (jeden radek)
+     mono NapOnlineTest.exe --port N &   ./test_b363_atari_online N
+                                             -> VYSTUP_test_b363_atari_online.txt (10 OK, 0 CHYBA)
+       1) start ze stavu: telefon 2 ma Atari VYPNUTE a zadnou hru, telefon 1 hraje zatezovy program (POKEY 2, VBXE,
+          banky, kolize, preruseni casovace) -> dostane cely stav, na $2000 ma program; spicky site obema smery,
+          stisky se meni kazdych 5-85 ms: odhady a opravy az 9 snimku, otisky po celou hru STEJNE, otisk stroje
+          ve snimku 660 u obou stejny = oprava skutecneho Atari je presna; STATISTIKA
+       2) porucha stroje telefonu 2 ve snimku 300 -> synchronizace (stav od telefonu 1), hra pokracuje
+       3) telefon 2 zamrzne (SIGSTOP) -> telefon 1 jen par snimku s odhadem, pak stoji, po 15 s ticha konec s duvodem
+       4) telefon 2 "pomaly" (jadro +12 ms na snimek) -> sam zapne SETRNE KRESLENI (obraz 25/s, emulace 50/s),
+          telefon 1 ne; hra jede, otisky stejne, limit odhadu na pomalem telefonu nizsi
+     volitelne hra misto zatezoveho programu: ./test_b363_atari_online N hra.car (na PC Clauda Wonderboy VBXE
+     cartridge, stav 360 KB zlib: 10 OK, 0 CHYBA)
+     ThreadSanitizer (-O1 -g -fsanitize=thread)  -> VYSTUP_tsan_b363_atari_online.txt (0 hlaseni; pred opravou 7x totez -
+                                                 onlineStav cetl obaNaJ1 bez zamku, ted atomic g_onlinePortyJ1)
+       pod TSAN je jadro ~10x pomalejsi (55-75 ms na snimek): 8 OK + 2 CHYBA jen casove - setrne kresleni zapnou OBA
+       telefony a spicek je vic (oprava, otisky, synchronizace, ticho a start ze stavu i tak spravne)
+3) Napoveda v Chromiu (playwright, mosty Javy falesne jako ../b314/jazyk_harness):
+     python3 test_b363_napoveda.py [PRAC]  -> VYSTUP_test_b363_napoveda.txt (13 OK: blok #onlineatari CZ / EN ma
+       tlacitka a texty presne jako appka, oba odkazy na nej dojedou, hledani "šetrné" / "economy" ho najde, JS bez chyb)
+4) Java bez Androidu:
+     javac --release 17 -encoding UTF-8 -d OUT ../../app/src/main/java/eu/atarihelp/emu10/NapOnlineHra.java
+           ../../app/src/main/java/eu/atarihelp/emu10/NapOnlineHlidac.java ../../app/src/main/java/eu/atarihelp/emu10/NapJson.java
+           ../../app/src/main/java/eu/atarihelp/emu10/NapNovinky.java jvm/eu/atarihelp/emu10/TestB363Online.java
+           jvm/eu/atarihelp/emu10/TestB363Novinky.java
+     java -cp OUT eu.atarihelp.emu10.TestB363Online jvm/VYSTUP_TestB363Online.txt        (12 OK)
+     java -cp OUT eu.atarihelp.emu10.TestB363Novinky ../.. jvm/VYSTUP_TestB363Novinky.txt (7 OK: B363 = 406)
+     cela appka s android.jar API 34         -> VYSTUP_javac_android.txt (40 zdroju, 139 trid, 0 chyb)
+     ../b320/kontrola_jni.py (hlavicky z javac -h) -> VYSTUP_regrese_b320_kontrola_jni.txt (124 native metod, 0 CHYB)
+5) Regrese (stare testy proti B363):
+     jadro Atari a JNI (nap_atari_machine.h a nap_atari_native.cpp zmeneny; testy JNI ted s -lz, native kod pouziva
+     zlib): ../b348 SIO 41 / 0 (acid800 + PoP DD), JNI 16 / 0; ../b352 jadro 18 / 0, JNI 12 / 0 (Tony 1088K);
+     ../b353 JNI 11 / 0; ../b354 Atari 12 / 0; ../b355 Atari 11 / 0; ../b361 JNI 8 / 0 - vse stejne jako puvodne
+     (lisi se jen casy a radky logu pridane v B349-B353)
+     online (nap_online.h, Sega se setrnym kreslenim) -> VYSTUP_regrese_b3*.txt: ../b357 lockstep 30 OK, klient proti
+     enginu 31 OK, Sega online 8 OK; ../b358 start 4 OK; ../b360 lockstep 28 OK, Sega online 6 OK; ../b362 relace
+     s odhadem 17 OK, poradi startu 3 OK, Sega online s odhadem a opravou 7 OK
+     Java -> VYSTUP_regrese_Test*.txt: TestB358Online 15 OK, TestB360Hlidac 9 OK, TestB362Hlidac 6 OK
+     (TestB362Novinky ted 5 CHYBA zamerne: hlida "nejnovejsi = B362" - nahrazuje ho TestB363Novinky)
+     napoveda: ../b311 navod 241 nazvu 0 CHYBA, mosty 137 0 chybi (spoustet ze slozky b311), odkazy 0 chyb, navod
+     v Chromiu 23 OK; ../b314 233 nazvu 0 CHYBA; ../b343 4 zamerne (N7 N9 A6 V), napoveda v Chromiu 27 OK;
+     ../b359 kontrola_novinek B363 = 406 (8 zaznamu, 0 CHYBA), ES5 10 OK (skripty se pisou do VYSTUP svych slozek -
+     zkopirovano sem jako VYSTUP_regrese_*, puvodni vraceny: git checkout --)
+NEOVERENO: skutecne telefony (Wi-Fi, vykon A12 se zatezovou hrou VBXE), preklad NDK (CI "Build APK").
