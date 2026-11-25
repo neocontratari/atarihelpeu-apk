@@ -5075,3 +5075,6 @@
      - DALSI KROK: Rene - test online Atari (OBA telefony B363): hrac 1 spusti hru -> ONLINE -> ZALOZIT HRU (joysticky),
        hrac 2 -> ONLINE -> PRIPOJIT SE. Logy obou telefonu + export enginu (zalozka ONLINE). Sledovat: start ze stavu
        (KB, doba), odhad / oprav, setrne kresleni na A12, TICHO. Online Sega B362 porad neotestovana. Pak PS1.
+     - Commit 068d8e0, CI "Build APK" 45669025941 zelene (APK versionCode 406, arm64-v8a + armeabi-v7a, podpis N&P;
+       NDK prelozil nap_atari_stav.h / nap_atari_online.h do napatari se zlib). Protokol verze 3 = oba telefony B362+,
+       pro Atari oba B363 (jinak "druhy hrac ma jinou verzi appky"). Engine se menit nemusi.
